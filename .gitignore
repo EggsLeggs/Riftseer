@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# SQLite database files
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Build artifacts
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+
+# Bun
+bun.lock
+
+# npm
+package-lock.json
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
