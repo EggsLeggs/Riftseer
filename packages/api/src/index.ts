@@ -277,12 +277,15 @@ const app = new Elysia()
     }
   )
 
-  .listen(parseInt(process.env.API_PORT ?? "3000", 10));
+  .listen(
+    parseInt(process.env.PORT ?? process.env.API_PORT ?? "3000", 10)
+  );
 
+const port = process.env.PORT ?? process.env.API_PORT ?? "3000";
 logger.info("RiftSeer API started", {
-  port: process.env.API_PORT ?? "3000",
+  port,
   provider: provider.sourceName,
-  swagger: `http://localhost:${process.env.API_PORT ?? "3000"}/swagger`,
+  swagger: `http://localhost:${port}/swagger`,
 });
 
 export type App = typeof app;

@@ -1,3 +1,5 @@
+# Root Dockerfile so Railway uses Docker (and bun) instead of Railpack/npm.
+# npm doesn't support workspace:* — this image uses bun install.
 FROM oven/bun:1.2-alpine AS base
 WORKDIR /app
 
