@@ -41,4 +41,12 @@ export class RiotProvider implements CardDataProvider {
   async resolveRequest(_req: CardRequest): Promise<ResolvedCard> {
     throw new Error("RiotProvider is not yet implemented.");
   }
+
+  async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
+    return [];
+  }
+
+  async getRandomCard(): Promise<Card | null> {
+    return null;
+  }
 }

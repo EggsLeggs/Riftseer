@@ -47,6 +47,14 @@ class StubProvider implements CardDataProvider {
     }
     return { request: req, card: null, matchType: "not-found" };
   }
+
+  async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
+    return [{ setCode: "OGN", setName: "Origins", cardCount: 1 }];
+  }
+
+  async getRandomCard(): Promise<Card | null> {
+    return STUB_CARD;
+  }
 }
 
 // ─── Replicate the app inline with stub provider ──────────────────────────────

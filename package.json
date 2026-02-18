@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": ["packages/core", "packages/api"],
   "scripts": {
-    "dev:api": "bun --watch packages/api/src/index.ts",
+    "dev:api": "cd packages/api && bun --watch src/index.ts",
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
     "test:api": "bun test ./packages/api/src/__tests__/*.test.ts",

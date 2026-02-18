@@ -17,6 +17,7 @@
 
 import { Elysia, t } from "elysia";
 import { swagger } from "@elysiajs/swagger";
+import { staticPlugin } from "@elysiajs/static";
 import {
   createProvider,
   parseCardRequests,
@@ -54,6 +55,7 @@ const CardSchema = t.Object({
   might: t.Optional(t.Nullable(t.Number())),
   power: t.Optional(t.Nullable(t.Number())),
   tags: t.Optional(t.Array(t.String())),
+  artist: t.Optional(t.String()),
 });
 
 const CardRequestSchema = t.Object({
@@ -157,6 +159,26 @@ const app = new Elysia()
     }
   )
 
+  // ── GET /cards/random ─────────────────────────────────────────────────────
+  .get(
+    "/cards/random",
+    async ({ set }) => {
+      const card = await provider.getRandomCard();
+      if (!card) {
+        set.status = 404;
+        return { error: "No cards available", code: "NOT_FOUND" };
+      }
+      return sanitiseCard(card);
+    },
+    {
+      detail: {
+        tags: ["Cards"],
+        summary: "Get a random card",
+        description: "Returns a single random card from the index.",
+      },
+    }
+  )
+
   // ── GET /cards/:id ────────────────────────────────────────────────────────
   .get(
     "/cards/:id",
@@ -227,7 +249,6 @@ const app = new Elysia()
   .post(
     "/resolve",
     async ({ body }) => {
-      // Accept either raw strings "[[Sun Disc|OGN]]" or structured requests
       const requests = body.requests.slice(0, 20).map((r: string) => {
         const parsed = parseCardRequests(`[[${r}]]`);
         return parsed[0] ?? { raw: r, name: r };
@@ -275,6 +296,41 @@ const app = new Elysia()
         },
       },
     }
+  )
+
+  // ── GET /sets ─────────────────────────────────────────────────────────────
+  .get(
+    "/sets",
+    async () => {
+      const sets = await provider.getSets();
+      return { count: sets.length, sets };
+    },
+    {
+      response: t.Object({
+        count: t.Number(),
+        sets: t.Array(
+          t.Object({
+            setCode: t.String(),
+            setName: t.String(),
+            cardCount: t.Number(),
+          })
+        ),
+      }),
+      detail: {
+        tags: ["Cards"],
+        summary: "List all sets",
+        description: "Returns all known card sets with card counts.",
+      },
+    }
+  )
+
+  // ── Static frontend ─────────────────────────────────────────────────────
+  // Dev: default prefix "/public" (Bun HMR requires it)
+  // Production: prefix "/" so the SPA lives at the root
+  .use(
+    await staticPlugin(
+      process.env.NODE_ENV === "production" ? { prefix: "/" } : undefined
+    )
   )
 
   .listen(

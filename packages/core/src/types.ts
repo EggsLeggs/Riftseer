@@ -35,6 +35,8 @@ export interface Card {
   power?: number | null;
   /** Card tags, e.g. ["Poro"]. */
   tags?: string[];
+  /** Artist who illustrated the card. */
+  artist?: string;
   /** Provider-specific raw data (for debugging; not sent to clients by default). */
   raw?: Record<string, unknown>;
 }
