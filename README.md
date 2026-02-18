@@ -193,6 +193,19 @@ is started — Elysia's `.handle()` method is used for route testing.
 
 ## Deployment
 
+### Railway
+
+Deploy **only the API** as a single service. The repo root has a `Dockerfile` and
+`railway.toml` so Railway uses Docker + `bun` (not npm). `@riftseer/core` is a
+library bundled into the API — do **not** create a separate Railway service for
+`packages/core`; it has no start command and is not a runnable app.
+
+1. Create one service from this repo (no root directory).
+2. Railway will detect the Dockerfile and use `railway.toml` for the start command
+   and healthcheck (`/health`).
+3. Set `PORT` (Railway sets this automatically), and optionally `CARD_PROVIDER`,
+   `API_BASE_URL`, `SITE_BASE_URL`, etc.
+
 ### Docker Compose (recommended)
 
 ```bash
