@@ -1,0 +1,403 @@
+/*
+ * Riftbound icon system
+ *
+ * All assets stored locally in public/icons/.
+ */
+
+/* Base inline icon style — used in card text via CardTextRenderer */
+.inline-icon {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.15em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* ─── Energy (mana cost) ─────────────────────────────────────────────────────── */
+.icon-energy {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Numbered energy costs — Riftbound style: white circle, dark teal number */
+.icon-energy-0,
+.icon-energy-1,
+.icon-energy-2,
+.icon-energy-3,
+.icon-energy-4,
+.icon-energy-5 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  min-width: 24px;
+  min-height: 24px;
+  vertical-align: -0.25em;
+  border-radius: 50%;
+  background-color: #1a1a2e;
+  color: #fff;
+  font-size: 0.75em;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+[data-theme="dark"] .icon-energy-0,
+[data-theme="dark"] .icon-energy-1,
+[data-theme="dark"] .icon-energy-2,
+[data-theme="dark"] .icon-energy-3,
+[data-theme="dark"] .icon-energy-4,
+[data-theme="dark"] .icon-energy-5 {
+  background-color: #fff;
+  color: #013951;
+}
+
+.icon-energy-0::before { content: "0"; }
+.icon-energy-1::before { content: "1"; }
+.icon-energy-2::before { content: "2"; }
+.icon-energy-3::before { content: "3"; }
+.icon-energy-4::before { content: "4"; }
+.icon-energy-5::before { content: "5"; }
+
+/* Gear cards: energy cost as diamond instead of circle */
+.icon-energy-gear.icon-energy-0,
+.icon-energy-gear.icon-energy-1,
+.icon-energy-gear.icon-energy-2,
+.icon-energy-gear.icon-energy-3,
+.icon-energy-gear.icon-energy-4,
+.icon-energy-gear.icon-energy-5 {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+/* Inline energy icons in card text — match line height, don’t disrupt it */
+.inline-icon.icon-energy-0,
+.inline-icon.icon-energy-1,
+.inline-icon.icon-energy-2,
+.inline-icon.icon-energy-3,
+.inline-icon.icon-energy-4,
+.inline-icon.icon-energy-5 {
+  width: 1.25em;
+  height: 1.25em;
+  min-width: 0;
+  min-height: 0;
+  vertical-align: -0.2em;
+  font-size: 0.7em;
+}
+
+/* ─── Might (defense stat) ───────────────────────────────────────────────────── */
+.icon-might {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/stats/might.svg");
+}
+
+/* ─── Power (attack stat) ────────────────────────────────────────────────────── */
+.icon-power {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/stats/card_type_rune.svg");
+}
+
+/* ─── Exhaust (tap) ──────────────────────────────────────────────────────────── */
+.icon-exhaust {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/stats/exhaust.svg");
+}
+
+/* ─── Artist ─────────────────────────────────────────────────────────────────── */
+.icon-artist {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/misc/artist.svg");
+}
+
+/* ─── Battlefield ────────────────────────────────────────────────────────────── */
+.icon-battlefield {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/types/battlefield.png");
+}
+
+/* ─── Unit ──────────────────────────────────────────────────────────────────── */
+.icon-unit {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/types/unit.png");
+}
+
+/* ─── Champion ───────────────────────────────────────────────────────────────── */
+.icon-champion {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/types/champion.png");
+}
+
+/* ─── Rune (card type) ──────────────────────────────────────────────────────── */
+.icon-rune {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/types/rune.png");
+}
+
+/* ─── Rarity icons ───────────────────────────────────────────────────────────── */
+.icon-rarity {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.icon-rarity-common {
+  background-image: url("/icons/rarity/rarity_common.png");
+}
+
+.icon-rarity-showcase {
+  background-image: url("/icons/rarity/rarity_showcase.png");
+}
+
+.icon-rarity-uncommon {
+  background-image: url("/icons/rarity/rarity_uncommon.png");
+}
+
+.icon-rarity-rare {
+  background-image: url("/icons/rarity/rarity_rare.png");
+}
+
+.icon-rarity-epic {
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/5e9799d87d0f8baa55f6d9bddb9750669a0f485b-455x419.png?accountingTag=RB&auto=format&fit=fill&q=80&w=48");
+}
+
+.icon-rarity-legendary {
+  /* TODO: add local assets when available */
+}
+
+/* ─── Rune domain icons (6: Fury, Calm, Mind, Body, Chaos, Order) ─────────────
+ * Glyph style: coloured circle + white icon
+ */
+.icon-rune-fury {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/domains/rune_fury.png");
+}
+
+.icon-rune-calm {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/domains/rune_calm.png");
+}
+
+.icon-rune-mind {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/domains/rune_mind.png");
+}
+
+.icon-rune-body {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/domains/rune_body.png");
+}
+
+.icon-rune-chaos {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/domains/rune_chaos.png");
+}
+
+.icon-rune-order {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/domains/rune_order.png");
+}
+
+/* Rainbow (any) domain — generic rune glyph */
+.icon-rune-rainbow {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/domains/rune_rainbow.svg");
+}
+
+/* ─── Rune domain glyph variants (circular SVGs for type line) ────────────────── */
+.icon-rune-fury-glyph,
+.icon-rune-calm-glyph,
+.icon-rune-mind-glyph,
+.icon-rune-body-glyph,
+.icon-rune-chaos-glyph,
+.icon-rune-order-glyph,
+.icon-rune-rainbow-glyph {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.icon-rune-fury-glyph   { background-image: url("/icons/domains/rune_fury.svg"); }
+.icon-rune-calm-glyph   { background-image: url("/icons/domains/rune_calm.svg"); }
+.icon-rune-mind-glyph   { background-image: url("/icons/domains/rune_mind.svg"); }
+.icon-rune-body-glyph   { background-image: url("/icons/domains/rune_body.svg"); }
+.icon-rune-chaos-glyph  { background-image: url("/icons/domains/rune_chaos.svg"); }
+.icon-rune-order-glyph  { background-image: url("/icons/domains/rune_order.svg"); }
+.icon-rune-rainbow-glyph { background-image: url("/icons/domains/rune_rainbow.svg"); }
+
+/* ─── SVG icon theme filter ─────────────────────────────────────────────────────
+ * Pure-white glyphs (might, power, exhaust, artist) need to be flipped to black
+ * in light mode. Rune domain icons already have their own coloured backgrounds
+ * so they stay unfiltered in both themes.
+ */
+.icon-might,
+.icon-power,
+.icon-exhaust,
+.icon-artist,
+.icon-battlefield,
+.icon-unit,
+.icon-champion,
+.icon-rune,
+.icon-spell,
+.icon-gear {
+  filter: brightness(0);
+  transition: filter 0.2s ease;
+}
+
+[data-theme="dark"] .icon-might,
+[data-theme="dark"] .icon-power,
+[data-theme="dark"] .icon-exhaust,
+[data-theme="dark"] .icon-artist,
+[data-theme="dark"] .icon-battlefield,
+[data-theme="dark"] .icon-unit,
+[data-theme="dark"] .icon-champion,
+[data-theme="dark"] .icon-rune,
+[data-theme="dark"] .icon-spell,
+[data-theme="dark"] .icon-gear,
+[data-theme="dark"] .icon-legend {
+  filter: none;
+}
+
+/* ─── Card type icons (gear, legend, spell, token) ────────────────────────────── */
+.icon-gear,
+.icon-legend,
+.icon-token {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.icon-gear {
+  background-image: url("/icons/types/gear.png");
+}
+
+.icon-legend {
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/59e98d14f83125c88880af1d61213e3aef941370-64x64.png?auto=format&fit=fill&q=80&w=48");
+  filter: brightness(0);
+}
+
+.icon-token {
+  /* TODO: add local assets when available */
+}
+
+.icon-spell {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("/icons/types/spell.png");
+}

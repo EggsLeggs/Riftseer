@@ -47,6 +47,9 @@ interface RawText {
 
 interface RawSet {
   set_id: string;
+  /** Full set name (e.g. "Origins: Proving Grounds") */
+  name?: string;
+  /** Short label (e.g. "Proving Grounds") */
   label: string;
 }
 
@@ -103,15 +106,17 @@ export function normalizeCardName(name: string): string {
 // ─── Raw → normalised Card mapping ────────────────────────────────────────────
 
 function toCard(raw: RawCard): Card {
+  const rawEffect = (raw as { effect?: string }).effect;
   return {
     id: raw.id,
     name: raw.name,
     normalizedName: normalizeCardName(raw.name),
     setCode: raw.set?.set_id?.toUpperCase(),
-    setName: raw.set?.label,
+    setName: raw.set?.name ?? raw.set?.label,
     collectorNumber: String(raw.collector_number),
     imageUrl: raw.media?.image_url,
     text: raw.text?.plain,
+    effect: typeof rawEffect === "string" ? rawEffect : undefined,
     cost: raw.attributes?.energy ?? undefined,
     typeLine: raw.classification?.type,
     supertype: raw.classification?.supertype,
@@ -120,6 +125,11 @@ function toCard(raw: RawCard): Card {
     might: raw.attributes?.might,
     power: raw.attributes?.power,
     tags: raw.tags,
+    artist: raw.media?.artist,
+    alternateArt: raw.metadata?.alternate_art ?? false,
+    overnumbered: raw.metadata?.overnumbered ?? false,
+    signature: raw.metadata?.signature ?? false,
+    orientation: raw.orientation,
     raw: raw as Record<string, unknown>,
   };
 }
@@ -385,6 +395,48 @@ export class RiftCodexProvider implements CardDataProvider {
     }
 
     return { request: req, card: null, matchType: "not-found" };
+  }
+
+  async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
+    const setMap = new Map<string, { setCode: string; setName: string; cardCount: number }>();
+    for (const card of this.byId.values()) {
+      if (!card.setCode) continue;
+      const existing = setMap.get(card.setCode);
+      if (existing) {
+        existing.cardCount++;
+      } else {
+        setMap.set(card.setCode, {
+          setCode: card.setCode,
+          setName: card.setName ?? card.setCode,
+          cardCount: 1,
+        });
+      }
+    }
+    return Array.from(setMap.values()).sort((a, b) => a.setName.localeCompare(b.setName));
+  }
+
+  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<Card[]> {
+    const limit = opts.limit ?? 1000;
+    const upper = setCode.toUpperCase();
+    const cards = Array.from(this.byId.values()).filter(
+      (c) => c.setCode === upper
+    );
+    cards.sort((a, b) => {
+      const na = a.collectorNumber ?? "";
+      const nb = b.collectorNumber ?? "";
+      const numA = parseInt(na, 10);
+      const numB = parseInt(nb, 10);
+      if (!Number.isNaN(numA) && !Number.isNaN(numB)) return numA - numB;
+      return na.localeCompare(nb, undefined, { numeric: true });
+    });
+    return cards.slice(0, limit);
+  }
+
+  async getRandomCard(): Promise<Card | null> {
+    const keys = Array.from(this.byId.keys());
+    if (keys.length === 0) return null;
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    return this.byId.get(randomKey) ?? null;
   }
 
   // ── Metadata (used by API /meta) ─────────────────────────────────────────────

@@ -1,0 +1,37 @@
+---
+description: Rules for packages/api — ElysiaJS REST server
+globs: ["packages/api/**/*.ts"]
+alwaysApply: false
+---
+
+# packages/api Rules
+
+## Elysia Conventions
+- Define all routes in `src/index.ts` directly on the app instance
+- Use `.get()`, `.post()` etc. with Elysia's schema annotations (`.query()`, `.body()`, `.response()`) for automatic Swagger generation
+- Do not create a separate Express-style router pattern — Elysia handles composition natively
+
+## Response Hygiene
+- Strip the `raw` field from card objects before sending responses (it's internal to providers)
+- Return `{ error: string }` with the appropriate HTTP status for error cases (400 / 404 / 500)
+- Never expose internal stack traces in API responses
+
+## Testing Routes
+```typescript
+// Correct pattern — no live server needed
+const res = await app.handle(new Request('http://localhost/api/health'))
+const data = await res.json()
+```
+
+## Batch Limits
+- `POST /api/resolve` accepts a maximum of 20 `CardRequest` items — validate and return 400 if exceeded
+
+## New Routes Checklist
+1. Add handler in `src/index.ts` with Elysia schema
+2. Add test in `src/__tests__/routes.test.ts`
+3. If the route exposes or logs new user/request data, update `packages/frontend/src/components/PrivacyPage.tsx`
+
+## Provider Access
+- The provider is initialized once at startup via `createProvider()` from `@riftseer/core`
+- Do NOT re-initialize or call `createProvider()` per-request
+- All card operations go through the `CardDataProvider` interface — do not import concrete providers directly

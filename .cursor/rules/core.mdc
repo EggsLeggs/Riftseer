@@ -1,0 +1,32 @@
+---
+description: Rules for packages/core — types, provider interface, parser, DB
+globs: ["packages/core/**/*.ts"]
+alwaysApply: false
+---
+
+# packages/core Rules
+
+## CardDataProvider Interface
+- All data providers implement `CardDataProvider` from `src/provider.ts`
+- **Never** couple `packages/api` or `packages/bot` directly to a concrete provider — always go through the interface
+- New providers: create in `src/providers/<name>.ts`, add a case to the factory in `src/providers/index.ts`
+
+## SQLite
+- Use `bun:sqlite` — never `better-sqlite3` or any other SQLite library
+- All DB access goes through helpers in `src/db.ts` (`getDb`, `getCachedCards`, `setCachedCards`, etc.)
+- DB path comes from `DB_PATH` env var
+
+## Parser
+- `parseCardRequests(text: string): CardRequest[]` in `src/parser.ts`
+- Token format: `[[Name]]` or `[[Name|SET-001]]`
+- `packages/bot/src/parser.ts` is a copy — if the logic changes, update both
+
+## Card Types
+- Canonical `Card` type lives in `src/types.ts` — it is the source of truth
+- When adding a field: update `types.ts`, then update the normalization in `providers/riftcodex.ts` (`toCard()`)
+- Do NOT add provider-specific fields to the `Card` type — use `raw` for unstructured passthrough
+
+## Fuzzy Search
+- Uses fuse.js v7; index is built over `name` and `metadata.clean_name`
+- Threshold from `FUZZY_THRESHOLD` env var (0–1, lower = stricter)
+- Exact match is always tried before fuzzy

@@ -1,0 +1,41 @@
+---
+description: RiftSeer monorepo — top-level conventions and architecture
+alwaysApply: true
+---
+
+# RiftSeer Project Rules
+
+## Runtime & Package Manager
+- **Always use Bun** as the runtime and package manager for workspace packages (`packages/core`, `packages/api`, `packages/frontend`)
+- `packages/bot` is a standalone npm project — use `npm` and `npx devvit` there, not `bun`
+- Minimum Bun version: 1.2
+
+## Monorepo Layout
+```
+packages/core       → types, CardDataProvider interface, parser, DB, providers
+packages/api        → ElysiaJS REST server
+packages/frontend   → React 19 + Vite SPA
+packages/bot        → Devvit Reddit bot (NOT a Bun workspace member)
+```
+
+## TypeScript
+- Use TypeScript everywhere; no `.js` source files in packages
+- `tsconfig.base.json` at root defines shared compiler settings (ESNext, bundler resolution, strict)
+- Each package extends the base config
+
+## Environment Variables
+All runtime config comes from env vars. Document any new variable in `.env.example` and in the root `CLAUDE.md` table.
+
+## Testing
+- Run `bun test` from root (covers core + api)
+- Test files live in `src/__tests__/` within each package
+- Use `bun test` patterns — Jest-compatible, `mock()` from `bun:test`
+- For Elysia routes: `app.handle(new Request(...))` — no live server
+
+## No Over-Engineering
+- Don't add abstraction layers that serve one use case
+- Don't add error handling for cases that can't happen
+- Don't add comments to self-evident code
+
+## Legal Pages
+`packages/frontend/src/components/PrivacyPage.tsx` and `TermsPage.tsx` are user-facing legal documents. If you add new data collection, new third-party services, or change how data is stored/retained, you **must** update the relevant legal page and its "Last Updated" date.

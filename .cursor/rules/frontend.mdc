@@ -1,0 +1,51 @@
+---
+description: Rules for packages/frontend — React 19 + Vite SPA
+globs: ["packages/frontend/**/*.{ts,tsx}"]
+alwaysApply: false
+---
+
+# packages/frontend Rules
+
+## Component Conventions
+- Functional components only — no class components
+- TypeScript for all components; avoid `any`
+- Co-locate component logic in the file unless it is reused elsewhere
+- Use Tailwind utility classes; avoid inline styles and CSS modules
+
+## UI Components
+- Reuse primitives from `src/components/ui/` (badge, button, card, input, table — Shadcn-style)
+- Do NOT add new UI libraries (no Material UI, Chakra, Radix direct installs, etc.)
+- Lucide React for icons
+
+## API Client
+- Use the typed helpers exported from `src/api.ts` — do not call `fetch` directly to the API
+- The Eden client is typed against the Elysia server's inferred types; adding a new route requires a new helper in `src/api.ts`
+
+## Routing
+- Routes are defined in `src/App.tsx` using React Router 7
+- Legal page routes are `/docs/terms` and `/docs/privacy` — do not change these paths without updating the footer links
+
+## Theme
+- `useTheme()` from `src/hooks/useTheme.tsx` provides `{ theme, setTheme }`
+- Stored in `localStorage` under key `"theme"` as `"dark"` or `"light"`
+- The `<html>` element gets a `dark` class; Tailwind uses `darkMode: 'class'`
+
+## Legal Pages — MUST KEEP ACCURATE
+`PrivacyPage.tsx` and `TermsPage.tsx` are user-facing legal documents, not just UI components.
+
+### Update PrivacyPage.tsx when:
+- A new analytics, monitoring, or tracking service is added or removed
+- New data is written to `localStorage`, cookies, or the server database
+- The bot starts storing new KV keys or logging additional user data
+- A new third-party service (hosting, CDN, auth, error tracking) is introduced
+- Server log retention or content changes
+- PostHog configuration changes (session recording, sampling, opt-out mechanics)
+
+### Update TermsPage.tsx when:
+- Acceptable-use rules change (new prohibited actions)
+- Age requirements change
+- Riot Games / Riftbound trademark or attribution language needs updating
+- Liability, warranty, or dispute resolution wording changes
+- Contact information changes
+
+**Always update the "Last Updated" date at the top of the component when modifying either legal page.**
