@@ -12,7 +12,10 @@
  *
  * Card data:
  *   Delegated to the external RiftSeer Elysia API (packages/api).
- *   Configure the URL in the app's Settings after installing it on your subreddit.
+ *   URLs are stored as app-level secrets (shared across all subreddits).
+ *   Set them once with:
+ *     npx devvit settings set apiBaseUrl
+ *     npx devvit settings set siteBaseUrl
  *
  * Deploy:
  *   cd packages/bot
@@ -22,7 +25,7 @@
  *   npx devvit playtest r/yoursubreddit  # local live testing
  */
 
-import { Devvit } from "@devvit/public-api";
+import { Devvit, SettingScope } from "@devvit/public-api";
 import { parseCardRequests } from "./parser.js";
 import { buildReply } from "./handler.js";
 
@@ -30,31 +33,35 @@ import { buildReply } from "./handler.js";
 
 Devvit.configure({
   redditAPI: true, // post comment replies
-  kvStore: true,   // track replied IDs
-  http: true,      // call external RiftSeer API
+  kvStore: true, // track replied IDs
+  http: {
+    domains: [
+      "riftseerapi-production.up.railway.app",
+      "riftseer.thinkhuman.dev",
+    ],
+  },
 });
 
-// ─── Installer-configurable settings ─────────────────────────────────────────
-// Mods configure these from the subreddit's App settings page after installing.
+// ─── App-level secrets (set once by the developer, shared across subreddits) ──
+// Set via CLI: npx devvit settings set <name>
 
 Devvit.addSettings([
   {
     type: "string",
     name: "apiBaseUrl",
     label: "RiftSeer API base URL",
-    helpText:
-      "Full URL of your running RiftSeer Elysia API, e.g. https://api.riftseer.example.com",
-    isSecret: false,
-    defaultValue: "",
+    helpText: "Full URL of the RiftSeer Elysia API.",
+    scope: SettingScope.App,
+    isSecret: true,
   },
   {
     type: "string",
     name: "siteBaseUrl",
     label: "RiftSeer site base URL",
     helpText:
-      "URL of the future React card browser site, used for [site] and [txt] links in replies.",
+      "URL of the React card browser site, used for [site] and [txt] links in replies.",
+    scope: SettingScope.App,
     isSecret: false,
-    defaultValue: "https://example.com",
   },
 ]);
 
@@ -84,10 +91,13 @@ Devvit.addTrigger({
     // Resolve via external API
     const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
     const siteBaseUrl =
-      (await context.settings.get<string>("siteBaseUrl")) || "https://example.com";
+      (await context.settings.get<string>("siteBaseUrl")) ||
+      "https://example.com";
 
     if (!apiBaseUrl) {
-      console.error("[RiftSeer] apiBaseUrl setting is not configured. Skipping.");
+      console.error(
+        "[RiftSeer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
+      );
       return;
     }
 
@@ -99,7 +109,9 @@ Devvit.addTrigger({
       text: reply,
     });
 
-    console.log(`[RiftSeer] Replied to comment t1_${comment.id} (${requests.length} card(s))`);
+    console.log(
+      `[RiftSeer] Replied to comment t1_${comment.id} (${requests.length} card(s))`,
+    );
   },
 });
 
@@ -132,10 +144,13 @@ Devvit.addTrigger({
 
     const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
     const siteBaseUrl =
-      (await context.settings.get<string>("siteBaseUrl")) || "https://example.com";
+      (await context.settings.get<string>("siteBaseUrl")) ||
+      "https://example.com";
 
     if (!apiBaseUrl) {
-      console.error("[RiftSeer] apiBaseUrl setting is not configured. Skipping.");
+      console.error(
+        "[RiftSeer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
+      );
       return;
     }
 
@@ -147,7 +162,9 @@ Devvit.addTrigger({
       text: reply,
     });
 
-    console.log(`[RiftSeer] Replied to post t3_${post.id} (${requests.length} card(s))`);
+    console.log(
+      `[RiftSeer] Replied to post t3_${post.id} (${requests.length} card(s))`,
+    );
   },
 });
 
