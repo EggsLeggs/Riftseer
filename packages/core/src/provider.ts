@@ -47,4 +47,16 @@ export interface CardDataProvider {
    * Never throws — returns { card: null, matchType: "not-found" } on miss.
    */
   resolveRequest(req: CardRequest): Promise<ResolvedCard>;
+
+  /**
+   * Return all known sets with their code, name, and card count.
+   * Optional — providers that don't support this may return [].
+   */
+  getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>>;
+
+  /**
+   * Return a single random card from the provider's index.
+   * Returns null if the index is empty.
+   */
+  getRandomCard(): Promise<Card | null>;
 }

@@ -120,6 +120,7 @@ function toCard(raw: RawCard): Card {
     might: raw.attributes?.might,
     power: raw.attributes?.power,
     tags: raw.tags,
+    artist: raw.media?.artist,
     raw: raw as Record<string, unknown>,
   };
 }
@@ -385,6 +386,31 @@ export class RiftCodexProvider implements CardDataProvider {
     }
 
     return { request: req, card: null, matchType: "not-found" };
+  }
+
+  async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
+    const setMap = new Map<string, { setCode: string; setName: string; cardCount: number }>();
+    for (const card of this.byId.values()) {
+      if (!card.setCode) continue;
+      const existing = setMap.get(card.setCode);
+      if (existing) {
+        existing.cardCount++;
+      } else {
+        setMap.set(card.setCode, {
+          setCode: card.setCode,
+          setName: card.setName ?? card.setCode,
+          cardCount: 1,
+        });
+      }
+    }
+    return Array.from(setMap.values()).sort((a, b) => a.setName.localeCompare(b.setName));
+  }
+
+  async getRandomCard(): Promise<Card | null> {
+    const keys = Array.from(this.byId.keys());
+    if (keys.length === 0) return null;
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    return this.byId.get(randomKey) ?? null;
   }
 
   // ── Metadata (used by API /meta) ─────────────────────────────────────────────

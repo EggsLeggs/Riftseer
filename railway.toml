@@ -1,11 +1,10 @@
 # Railway config: use Docker and bun (not npm) so the container starts correctly.
-# Without this, a saved start command like "npm run start --workspace=@riftseer/api"
-# can override the Dockerfile CMD and fail (Bun image has no npm).
+# The Dockerfile sets WORKDIR to packages/api so the static plugin finds ./public.
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "bun packages/api/src/index.ts"
+startCommand = "bun src/index.ts"
 healthcheckPath = "/health"
