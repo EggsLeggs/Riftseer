@@ -52,7 +52,7 @@ export async function buildReply(
 
   let data: ApiResolveResponse;
   try {
-    const res = await fetch(`${api}/resolve`, {
+    const res = await fetch(`${api}/api/resolve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requests: rawStrings }),
@@ -99,9 +99,9 @@ function formatCard(result: ApiResolvedCard, apiBase: string, siteBase: string):
 
   const { id, name: cardName, imageUrl } = result.card;
   const img = imageUrl ?? "";
-  const apiUrl = `${apiBase}/cards/${id}`;
-  const siteUrl = `${siteBase}/cards/${id}`;
-  const txtUrl = `${siteBase}/cards/${id}/text`;
+  const apiUrl = `${apiBase}/api/cards/${id}`;
+  const siteUrl = `${siteBase}/card/${id}`;
+  const txtUrl = `${siteBase}/card/${id}/text`;
 
   const nameLink = img ? `[${esc(displayName)}](${img})` : esc(displayName);
   const fuzzyNote =

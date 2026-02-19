@@ -49,7 +49,6 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Card image hover effect */
 .card-grid-item {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border-radius: 0.5rem;

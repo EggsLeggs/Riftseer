@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Riftbound Icons</title>
+  <link rel="stylesheet" href="../packages/api/public/icons/icons.css" />
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 2rem; background: #1a1a2e; color: #eee; }
+    .icon-energy-1, .icon-energy-2, .icon-energy-3, .icon-energy-4, .icon-energy-5 { margin: 0 auto; }
+    h1 { margin-bottom: 0.5rem; }
+    p { color: #888; margin-bottom: 2rem; }
+    section { margin-bottom: 2rem; }
+    h2 { font-size: 1rem; color: #4a90d9; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem; }
+    .cell { text-align: center; padding: 0.75rem; background: #252540; border-radius: 8px; }
+    .cell img { width: 40px; height: 40px; display: block; margin: 0 auto 0.5rem; object-fit: contain; }
+    .cell span { font-size: 0.75rem; color: #aaa; }
+    .cell svg { width: 40px; height: 40px; display: block; margin: 0 auto 0.5rem; }
+    .note { font-size: 0.85rem; color: #6b7280; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <h1>Riftbound Icons</h1>
+  <p>Local copies of icons used in the app. Run <code>./icons/download-assets.sh</code> to fetch PNGs and exhaust SVG from Riot CDNs.</p>
+
+  <section>
+    <h2>Stats</h2>
+    <div class="grid">
+      <div class="cell"><img src="stats/might.svg" alt=""/><span>might</span></div>
+      <div class="cell"><img src="stats/power.svg" alt=""/><span>power</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Status</h2>
+    <div class="grid">
+      <div class="cell"><img src="status/exhaust.svg" alt=""/><span>exhaust</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Misc</h2>
+    <div class="grid">
+      <div class="cell"><img src="misc/artist.svg" alt=""/><span>artist</span></div>
+      <div class="cell"><img src="misc/battlefield.png" alt=""/><span>battlefield</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Energy cost (CSS)</h2>
+    <div class="grid">
+      <div class="cell"><span class="icon-energy-1"></span><span>1</span></div>
+      <div class="cell"><span class="icon-energy-2"></span><span>2</span></div>
+      <div class="cell"><span class="icon-energy-3"></span><span>3</span></div>
+      <div class="cell"><span class="icon-energy-4"></span><span>4</span></div>
+      <div class="cell"><span class="icon-energy-5"></span><span>5</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Card types</h2>
+    <div class="grid">
+      <div class="cell"><img src="card-types/unit.png" alt=""/><span>unit</span></div>
+      <div class="cell"><img src="card-types/spell.png" alt=""/><span>spell</span></div>
+      <div class="cell"><img src="card-types/champion.png" alt=""/><span>champion</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Rarities</h2>
+    <div class="grid">
+      <div class="cell"><img src="rarities/showcase.png" alt=""/><span>showcase</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Domains (glyph style)</h2>
+    <div class="grid">
+      <div class="cell"><img src="domains/rune_rainbow.svg" alt=""/><span>rainbow (any)</span></div>
+      <div class="cell"><img src="domains/rune_fury.svg" alt=""/><span>fury</span></div>
+      <div class="cell"><img src="domains/rune_calm.svg" alt=""/><span>calm</span></div>
+      <div class="cell"><img src="domains/rune_mind.svg" alt=""/><span>mind</span></div>
+      <div class="cell"><img src="domains/rune_body.svg" alt=""/><span>body</span></div>
+      <div class="cell"><img src="domains/rune_chaos.svg" alt=""/><span>chaos</span></div>
+      <div class="cell"><img src="domains/rune_order.svg" alt=""/><span>order</span></div>
+    </div>
+  </section>
+
+  <p class="note">PNG files (battlefield, unit, domains) appear after running <code>./icons/download-assets.sh</code>.</p>
+</body>
+</html>
