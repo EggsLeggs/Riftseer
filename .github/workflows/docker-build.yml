@@ -1,0 +1,13 @@
+name: Docker Build
+
+on:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t riftseer:pr-${{ github.event.pull_request.number }} .
