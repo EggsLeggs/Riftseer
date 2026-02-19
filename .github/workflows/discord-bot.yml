@@ -1,0 +1,52 @@
+name: Deploy Discord Bot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/discord-bot/**"
+      - "packages/core/src/icons.ts"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/discord-bot
+          command: deploy
+
+  upload-emojis:
+    runs-on: ubuntu-latest
+    # Only runs when icon files change
+    if: |
+      contains(join(github.event.commits.*.modified, ' '), 'packages/frontend/public/icons') ||
+      contains(join(github.event.commits.*.added, ' '), 'packages/frontend/public/icons')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Upload icons as Discord application emojis
+        working-directory: packages/discord-bot
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+        run: bun run setup-emojis
