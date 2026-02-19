@@ -1,18 +1,19 @@
 # RiftSeer — Project Context for Claude
 
 ## Overview
-RiftSeer is a Riftbound TCG card data platform. It exposes a REST API, a React frontend, and a Reddit bot that all share a common card data model.
+RiftSeer is a Riftbound TCG card data platform. It exposes a REST API, a React frontend, a Discord bot, and a Reddit bot that all share a common card data model.
 
 ## Monorepo Structure
 ```
 riftseer/
-├── packages/core/       # Shared types, provider interface, parser, SQLite DB
-├── packages/api/        # ElysiaJS REST API (port 3000)
-├── packages/frontend/   # React 19 + Vite SPA
-└── packages/bot/        # Devvit Reddit bot (NOT a Bun workspace member)
+├── packages/core/           # Shared types, provider interface, parser, SQLite DB
+├── packages/api/            # ElysiaJS REST API (port 3000)
+├── packages/frontend/       # React 19 + Vite SPA
+├── packages/discord-bot/    # Discord bot on Cloudflare Workers (Bun workspace member)
+└── packages/reddit-bot/     # Devvit Reddit bot (NOT a Bun workspace member)
 ```
 
-`packages/bot` is a standalone npm project excluded from the root Bun workspace (`packages/core`, `packages/api`, `packages/frontend` are workspace members).
+`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/core`, `packages/api`, `packages/frontend`, and `packages/discord-bot` are workspace members.
 
 ## Stack
 | Layer | Technology |
@@ -24,7 +25,8 @@ riftseer/
 | Fuzzy search | fuse.js v7 |
 | API client | @elysiajs/eden (type-safe, Eden Treaty) |
 | Testing | bun test (Jest-compatible) |
-| Bot | Devvit (Reddit platform) |
+| Discord bot | Cloudflare Workers + discord-api-types |
+| Reddit bot | Devvit (Reddit platform) |
 
 ## Running the Project
 ```bash
@@ -34,8 +36,14 @@ bun dev:frontend    # Frontend only
 bun test            # All tests (51 across 3 files)
 bun typecheck       # Type-check all workspace packages
 
-# Bot (separate project)
-cd packages/bot
+# Discord bot (workspace member, Cloudflare Workers)
+cd packages/discord-bot
+bun run dev         # wrangler dev (local)
+bun run deploy      # wrangler deploy (production)
+bun run register    # Register slash commands with Discord (run once after changes)
+
+# Reddit bot (separate standalone project)
+cd packages/reddit-bot
 npx devvit upload   # Deploy to Reddit
 npx devvit settings set apiBaseUrl   # Set per-install config
 npx devvit settings set siteBaseUrl
@@ -53,13 +61,14 @@ npx devvit settings set siteBaseUrl
 
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core` is the only coupling point between the API and data sources. Swap providers by changing `CARD_PROVIDER` — only the factory (`packages/core/src/providers/index.ts`) changes.
-- **Bot delegates to API**: The bot calls the external `/api/resolve` endpoint — it does NOT embed a provider or SQLite connection.
+- **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/resolve` endpoint — neither embeds a provider or SQLite connection.
 - **SQLite cache**: RiftCodexProvider fetches all cards on startup, caches to SQLite, builds an in-memory Fuse.js index. Cache refreshes on a configurable interval.
 - **Fuzzy search**: Fuse.js index is built from `name` + `clean_name` fields. Exact match is tried first; fuzzy search is used as fallback.
 
 ## Deployment
 - **API + Frontend**: Docker (Alpine + Bun 1.3) or Railway (`railway.toml`). The Dockerfile serves the API and the built static frontend from the same container.
-- **Bot**: Devvit upload (`npx devvit upload`). The bot's HTTP fetch domain must be registered in `devvit.yaml`.
+- **Discord bot**: Cloudflare Workers via `wrangler deploy`. Secrets set with `wrangler secret put`.
+- **Reddit bot**: Devvit upload (`npx devvit upload`). The bot's HTTP fetch domain must be registered in `devvit.yaml`.
 
 ## RiftCodex API
 - Base URL: `https://api.riftcodex.com`

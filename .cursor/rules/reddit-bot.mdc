@@ -1,13 +1,13 @@
 ---
-description: Rules for packages/bot — Devvit Reddit app
-globs: ["packages/bot/**/*.ts", "packages/bot/devvit.yaml"]
+description: Rules for packages/reddit-bot — Devvit Reddit app
+globs: ["packages/reddit-bot/**/*.ts", "packages/reddit-bot/devvit.yaml"]
 alwaysApply: false
 ---
 
-# packages/bot Rules
+# packages/reddit-bot Rules
 
 ## Standalone Project
-`packages/bot` is NOT part of the Bun workspace. Use `npm` for dependency management and `npx devvit` for all Devvit operations.
+`packages/reddit-bot` is NOT part of the Bun workspace. Use `npm` for dependency management and `npx devvit` for all Devvit operations.
 
 ```bash
 npm install

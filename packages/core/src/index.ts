@@ -25,3 +25,14 @@ export {
 
 // Logger
 export { logger } from "./logger.ts";
+
+// Icon system
+export {
+  TOKEN_REGEX,
+  TOKEN_ICON_MAP,
+  EMOJI_PREFIX,
+  EMOJI_FILES,
+  TOKEN_DISCORD_FALLBACK,
+  renderTextForDiscord,
+} from "./icons.ts";
+export type { EmojiFile } from "./icons.ts";
