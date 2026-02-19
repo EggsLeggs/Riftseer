@@ -35,10 +35,7 @@ Devvit.configure({
   redditAPI: true, // post comment replies
   kvStore: true, // track replied IDs
   http: {
-    domains: [
-      "riftseerapi-production.up.railway.app",
-      "riftseer.thinkhuman.dev",
-    ],
+    domains: ["riftseerapi-production.up.railway.app"],
   },
 });
 
