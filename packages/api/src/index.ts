@@ -48,6 +48,7 @@ const CardSchema = t.Object({
   collectorNumber: t.Optional(t.String()),
   imageUrl: t.Optional(t.String()),
   text: t.Optional(t.String()),
+  effect: t.Optional(t.String({ description: "Effect text (e.g. for Equipment while equipped)" })),
   cost: t.Optional(t.Number()),
   typeLine: t.Optional(t.String()),
   supertype: t.Optional(t.Nullable(t.String())),
@@ -57,6 +58,10 @@ const CardSchema = t.Object({
   power: t.Optional(t.Nullable(t.Number())),
   tags: t.Optional(t.Array(t.String())),
   artist: t.Optional(t.String()),
+  alternateArt: t.Optional(t.Boolean()),
+  overnumbered: t.Optional(t.Boolean()),
+  signature: t.Optional(t.Boolean()),
+  orientation: t.Optional(t.String({ description: "portrait (vertical) or landscape (horizontal)" })),
 });
 
 const CardRequestSchema = t.Object({
@@ -84,10 +89,26 @@ const ErrorSchema = t.Object({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Strip the `raw` field before sending cards to clients. */
+/** Strip the `raw` field and ensure variant flags are always present (default false for old cache). */
 function sanitiseCard(card: Card): Omit<Card, "raw"> {
   const { raw: _raw, ...rest } = card;
-  return rest;
+  const out = { ...rest } as Omit<Card, "raw">;
+  out.alternateArt = rest.alternateArt === true;
+  out.overnumbered = rest.overnumbered === true;
+  out.signature = rest.signature === true;
+  return out;
+}
+
+/** Scryfall-style copyable text: name, type line, then rules text. */
+function cardCopyableText(card: Card): string {
+  const lines: string[] = [card.name];
+  const typePart = [card.typeLine, card.supertype].filter(Boolean).join(" — ");
+  if (typePart) lines.push(typePart);
+  if (card.text?.trim()) {
+    if (lines.length > 1) lines.push("");
+    lines.push(card.text.trim());
+  }
+  return lines.join("\n");
 }
 
 // ─── App ──────────────────────────────────────────────────────────────────────
@@ -224,14 +245,52 @@ const app = new Elysia()
         },
       )
 
+      // ── GET /cards/:id/text ──────────────────────────────────────────────
+      .get(
+        "/cards/:id/text",
+        async ({ params }) => {
+          const card = await provider.getCardById(params.id);
+          if (!card) {
+            return new Response(
+              JSON.stringify({ error: "Card not found", code: "NOT_FOUND" }),
+              { status: 404, headers: { "content-type": "application/json" } }
+            );
+          }
+          return new Response(cardCopyableText(card), {
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          });
+        },
+        {
+          params: t.Object({ id: t.String({ description: "Card UUID" }) }),
+          detail: {
+            tags: ["Cards"],
+            summary: "Get card as plain text",
+            description: "Returns Scryfall-style copy-pasteable text (name, type line, rules).",
+          },
+        },
+      )
+
       // ── GET /cards ───────────────────────────────────────────────────────
       .get(
         "/cards",
         async ({ query, set }) => {
-          if (!query.name) {
+          const limit = query.limit ? parseInt(query.limit, 10) : undefined;
+
+          // Browse set: GET /cards?set=OGN — return all cards in set, ordered by collector number
+          if (query.set && !query.name?.trim()) {
+            const cards = await provider.getCardsBySet(query.set, {
+              limit: limit ?? 2000,
+            });
+            return {
+              count: cards.length,
+              cards: cards.map(sanitiseCard),
+            };
+          }
+
+          if (!query.name?.trim()) {
             set.status = 400;
             return {
-              error: "Query parameter `name` is required",
+              error: "Query parameter `name` is required (or use `set` alone to list cards in a set)",
               code: "MISSING_PARAM",
             };
           }
@@ -240,7 +299,7 @@ const app = new Elysia()
             set: query.set,
             collector: query.collector,
             fuzzy: query.fuzzy === "1" || query.fuzzy === "true",
-            limit: query.limit ? parseInt(query.limit, 10) : 10,
+            limit: limit ?? 10,
           });
 
           return {

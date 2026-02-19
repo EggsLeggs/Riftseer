@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme {
   --color-background: #f4f2ef;
   --color-foreground: #1a1a2e;
@@ -30,6 +32,31 @@
   --radius-xl: 0.75rem;
 }
 
+[data-theme="dark"] {
+  --color-background: #16141f;
+  --color-foreground: #e4e1da;
+  --color-card: #1e1c2a;
+  --color-card-foreground: #e4e1da;
+  --color-primary: #8b7fd4;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #252336;
+  --color-secondary-foreground: #e4e1da;
+  --color-muted: #222033;
+  --color-muted-foreground: #8a8a9a;
+  --color-accent: #252336;
+  --color-accent-foreground: #e4e1da;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #332f45;
+  --color-input: #332f45;
+  --color-ring: #8b7fd4;
+
+  --color-nav-bg: #110f1a;
+  --color-nav-fg: #e0ddd6;
+  --color-nav-input-bg: #1e1c2a;
+  --color-nav-input-border: #332f45;
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
@@ -38,6 +65,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 a {
@@ -56,4 +84,8 @@ a:hover {
 .card-grid-item:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .card-grid-item:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
 }
