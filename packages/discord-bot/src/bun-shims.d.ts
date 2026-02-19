@@ -7,14 +7,18 @@
 // Bun extends ImportMeta with `dir` (directory of the current file).
 // setup-emojis.ts is a Bun CLI script (not a CF Worker) so this is valid at runtime.
 interface ImportMeta {
-  dir: string;
+  readonly dir: string;
 }
 declare module "bun:sqlite" {
+  export interface Changes {
+    changes: number;
+    lastInsertRowid: number | undefined;
+  }
   export interface Statement<T = unknown, P = unknown[]> {
     get(...params: P extends unknown[] ? P : [P]): T | null;
     all(...params: P extends unknown[] ? P : [P]): T[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    run(...params: any[]): void;
+    run(...params: any[]): Changes;
   }
 
   export class Database {

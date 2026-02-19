@@ -65,7 +65,16 @@ for (const entry of EMOJI_FILES) {
   const filePath = join(publicDir, entry.file);
   const ext = extname(entry.file).toLowerCase();
 
-  let pngBuffer: Buffer;
+  const EXT_TO_MIME: Record<string, string> = {
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+  };
+
+  let buffer: Buffer;
+  let mime: string;
 
   if (ext === ".svg") {
     // Convert SVG → 128×128 PNG
@@ -73,13 +82,14 @@ for (const entry of EMOJI_FILES) {
     const resvg = new Resvg(svg, {
       fitTo: { mode: "width", value: 128 },
     });
-    pngBuffer = Buffer.from(resvg.render().asPng());
+    buffer = Buffer.from(resvg.render().asPng());
+    mime = "image/png";
   } else {
-    // PNG / WebP / etc — upload directly
-    pngBuffer = readFileSync(filePath);
+    buffer = readFileSync(filePath);
+    mime = EXT_TO_MIME[ext] ?? "image/png";
   }
 
-  const imageData = `data:image/png;base64,${pngBuffer.toString("base64")}`;
+  const imageData = `data:${mime};base64,${buffer.toString("base64")}`;
 
   const res = await fetch(
     `https://discord.com/api/v10/applications/${appId}/emojis`,

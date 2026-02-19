@@ -29,6 +29,7 @@ import type {
   APIChatInputApplicationCommandInteraction,
 } from "discord-api-types/v10";
 import { verifySignature } from "./verify.ts";
+import { patchResponse } from "./response.ts";
 import { handleCard } from "./handlers/card.ts";
 import { handleRandom } from "./handlers/random.ts";
 import { handleSets } from "./handlers/sets.ts";
@@ -96,6 +97,7 @@ async function dispatch(
       return handleSets(interaction, env);
     default:
       console.warn(`[RiftSeer] Unknown command: ${name}`);
+      await patchResponse(interaction, env, { content: "Unknown command." });
   }
 }
 

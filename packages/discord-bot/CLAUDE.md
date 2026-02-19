@@ -16,7 +16,7 @@ Discord bot running on Cloudflare Workers. Responds to slash commands by looking
 | `src/handlers/card.ts` | `/card` handler |
 | `src/handlers/random.ts` | `/random` handler |
 | `src/handlers/sets.ts` | `/sets` handler |
-| `wrangler.toml` | Cloudflare Workers config + public vars |
+| `wrangler.jsonc` | Cloudflare Workers config + public vars (env-specific) |
 
 ## Workspace Membership
 `packages/discord-bot` **is** part of the root Bun workspace. Use Bun for dependency management, Wrangler for dev/deploy.
@@ -54,7 +54,7 @@ Set once with `wrangler secret put`:
 | `DISCORD_BOT_TOKEN` | Bot token from Discord Developer Portal → Bot |
 | `DISCORD_APPLICATION_ID` | App ID from Discord Developer Portal → General Information |
 
-Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.toml`.
+Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.jsonc`. CI deploys with `wrangler deploy --env production`. Override at deploy time with `--var API_BASE_URL:...` if needed.
 
 ## Eden Client
 `src/api.ts` uses Eden Treaty typed against `App` from `@riftseer/api`. The `import type { App }` is erased at bundle time — wrangler never includes any server-side code. `elysia` is also a devDep (type-only). Only `@elysiajs/eden` ships in the bundle.
