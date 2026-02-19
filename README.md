@@ -1,8 +1,8 @@
 # RiftSeer
 
-MTGCardFetcher-style Reddit bot + card data API for the **Riftbound** TCG.
+Card data API, web app, and Reddit integration for the **Riftbound** TCG.
 
-```
+```text
 [[Sun Disc]]         → bot replies with card image, API link, site link
 [[Sun Disc|OGN]]     → specific set
 [[Sun Disc|OGN-021]] → specific printing by collector number
@@ -10,36 +10,53 @@ MTGCardFetcher-style Reddit bot + card data API for the **Riftbound** TCG.
 
 ---
 
+## What’s included
+
+|Part|Description|
+|------|--------------|
+|**Site**|React (Vite) app: search, card pages, sets browser, syntax guide, light/dark theme|
+|**API**|Elysia HTTP server under `/api`: cards, sets, resolve, Swagger at `/api/swagger`|
+|**Bot**|Reddit integration (see `packages/bot`) — uses [Devvit](https://devvit.dev) for Reddit apps|
+|**Core**|Shared types, `CardDataProvider`, parser, RiftCodex provider, SQLite cache|
+
+---
+
+## Site features
+
+The frontend (`packages/frontend`) is a single-page app that talks to the API:
+
+- **Home** — Search box and links to Sets and Syntax
+- **Search** — Fuzzy card search by name; filter by set (`?set=OGN`); single-result redirects to card page
+- **Card page** — Image (with rotate for landscape cards), name, cost, type, domains, ability/effect (with inline icons), might, artist, rarity, tags; **Tokens** (parsed from text); **Printings** (all versions, click to switch); **Extra tools** — download image, copy-paste text, JSON link, report (placeholder)
+- **Sets** — List of sets with codes and card counts; links to browse cards in set
+- **Syntax** — Bracket syntax for Reddit/bot and API, search tips, set codes, API overview with link to Swagger
+- **Nav** — Global search, Advanced (search), Syntax, Sets, **Random card**, light/dark theme toggle
+
+The site uses Eden (typed API client), React Router, Tailwind, and domain/stat icons (e.g. runes, energy, might). Card text is rendered with `CardTextRenderer` (replaces `:rb_*:` tokens with icons).
+
+---
+
 ## Architecture
 
-```
+```text
 packages/
-  core/   ← shared types, CardDataProvider interface, parser, SQLite helpers
-  api/    ← Elysia HTTP server (OpenAPI + Swagger)
-  bot/    ← Reddit polling bot
+  core/     ← shared types, CardDataProvider, parser, SQLite, RiftCodex provider
+  api/      ← Elysia server (all routes under /api)
+  frontend/ ← React + Vite SPA (Eden client → API)
+  bot/      ← Reddit app (Devvit)
 ```
 
-**Key design decision — bot calls provider directly:**
-The bot imports `@riftseer/core` and calls `provider.resolveRequest()` in-process
-rather than going over HTTP to the API.  Both share the same SQLite file and card
-cache.  Benefit: lower latency, no dependency on the API being up, single point of
-config.  Trade-off: both processes run the same provider logic (acceptable for MVP).
-
-**Swapping data sources:**
-Change only `packages/core/src/providers/index.ts` (the factory) + add a new
-class that satisfies `CardDataProvider`.  Nothing else changes.
+**Design:** The API and bot both use `@riftseer/core` and the same provider interface. The bot calls the provider in-process (no dependency on the API being up). Data source is swappable via `CARD_PROVIDER` and a new provider implementation; the API and site are unchanged.
 
 ---
 
 ## Requirements
 
-| Tool | Version |
-|------|---------|
-| [Bun](https://bun.sh) | ≥ 1.2 |
+| Tool                    | Version |
+| ----------------------- | ------- |
+| [Bun](https://bun.sh)   | ≥ 1.2   |
 
-> **Why Bun?** [Elysia](https://elysiajs.com) is a Bun-first framework and uses
-> `Bun.serve()` under the hood.  Bun also provides built-in SQLite (`bun:sqlite`)
-> and a Jest-compatible test runner — no extra deps needed.
+Elysia is Bun-first and uses `Bun.serve()`; Bun also provides SQLite and a Jest-compatible test runner.
 
 ---
 
@@ -53,220 +70,103 @@ bun install
 
 # 2. Configure
 cp .env.example .env
-# Fill in REDDIT_* credentials (see section below)
+# Set API_BASE_URL, SITE_BASE_URL, and REDDIT_* if using the bot
 
-# 3. Run the API
-bun dev:api
-# → http://localhost:3000
-# → Swagger UI at http://localhost:3000/swagger
+# 3. Run API + site together
+bun dev
+# → API: http://localhost:3000
+# → Site: Vite dev server (port in frontend package, often 5173)
+# → Swagger: http://localhost:3000/api/swagger
 
-# 4. Run the bot (separate terminal)
-bun dev:bot
+# Or run separately:
+bun dev:api      # API only
+bun dev:frontend # Frontend only (expects API at VITE_API_URL or same origin)
 ```
+
+The bot lives in `packages/bot` and uses Devvit; see that package’s README for run/deploy.
 
 ---
 
 ## Environment Variables
 
-All variables are in `.env.example`.  Key ones:
+See `.env.example`. Summary:
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `CARD_PROVIDER` | `riftcodex` | `riftcodex` or `riot` (riot not yet implemented) |
-| `DB_PATH` | `./data/riftseer.db` | SQLite database path |
-| `API_PORT` | `3000` | Port for the Elysia server |
-| `API_BASE_URL` | `http://localhost:3000` | Used in bot reply links |
-| `SITE_BASE_URL` | `https://example.com` | Future React site URL in bot replies |
-| `REDDIT_CLIENT_ID` | *(required)* | Reddit OAuth app client ID |
-| `REDDIT_CLIENT_SECRET` | *(required)* | Reddit OAuth app secret |
-| `REDDIT_USERNAME` | *(required)* | Bot's Reddit username |
-| `REDDIT_PASSWORD` | *(required)* | Bot's Reddit password |
-| `REDDIT_SUBREDDITS` | `riftbound` | Comma-separated subreddits to watch |
-| `CACHE_REFRESH_INTERVAL_MS` | `21600000` | Card cache TTL (default 6 hours) |
-| `FUZZY_THRESHOLD` | `0.4` | Fuse.js threshold (0=exact, 1=anything) |
+| ---------- | --------- | ------------- |
+| `CARD_PROVIDER` | `riftcodex` | `riftcodex` or `riot` (riot stub only) |
+| `DB_PATH` | `./data/riftseer.db` | SQLite path |
+| `API_PORT` | `3000` | Elysia port |
+| `API_BASE_URL` | `http://localhost:3000` | Public API URL (bot/site links) |
+| `SITE_BASE_URL` | `https://example.com` | Public site URL (bot reply links) |
+| `CACHE_REFRESH_INTERVAL_MS` | `21600000` | Card cache TTL (6h) |
+| `FUZZY_THRESHOLD` | `0.4` | Fuse.js fuzzy match (0=exact, 1=loose) |
+| `REDDIT_*` | — | Required for Reddit bot (see Reddit setup below) |
 
 ---
 
-## Creating a Reddit Script App
+## Reddit app setup (for the bot)
 
-1. Log in as your bot account at reddit.com.
-2. Go to **https://www.reddit.com/prefs/apps** → **"create another app"**.
-3. Select **"script"**.
-4. Fill in name + redirect URI (`http://localhost` is fine for scripts).
-5. Copy **client ID** (under the app name) and **secret** into your `.env`.
-6. Set `REDDIT_USERNAME` / `REDDIT_PASSWORD` to the bot account credentials.
+1. Log in as the bot account → [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) → create app, type **script**.
+2. Set redirect URI (e.g. `http://localhost`); copy client ID and secret into `.env`.
+3. Set `REDDIT_USERNAME` / `REDDIT_PASSWORD` and a unique **User-Agent**, e.g.  
+   `REDDIT_USER_AGENT=RiftSeer/0.1.0 by u/YourBotUsername`
 
-**User-Agent** must be unique and descriptive per Reddit's rules:
-```
-REDDIT_USER_AGENT=RiftSeer/0.1.0 by u/YourBotUsername
-```
+Bot implementation and deployment are in `packages/bot` (Devvit).
 
 ---
 
 ## API Reference
 
-Swagger UI is auto-generated at `/swagger` when the API is running.
+When the API is running, OpenAPI UI is at **`/api/swagger`**.
 
-### Endpoints
+All endpoints are under **`/api`**:
 
-```
-GET  /health                       → { status, uptimeMs }
-GET  /meta                         → { provider, cardCount, lastRefresh, cacheAgeSeconds }
-GET  /cards?name=Sun+Disc          → { count, cards[] }
-GET  /cards?name=Sun+Disc&set=OGN  → filtered by set
-GET  /cards?name=Sun+Disc&fuzzy=1  → fuzzy matching
-GET  /cards/:id                    → single card by UUID
-POST /resolve                      → batch resolve
-```
+| Method | Path | Description |
+| ------ | ---- | ----------- |
+| GET | `/api/health` | `{ status, uptimeMs }` |
+| GET | `/api/meta` | Provider name, card count, last refresh, cache age |
+| GET | `/api/cards` | Search: `?name=...` (required unless browsing set), optional `?set=`, `?fuzzy=1`, `?limit=` |
+| GET | `/api/cards?set=OGN` | List cards in set (no `name` required) |
+| GET | `/api/cards/random` | One random card |
+| GET | `/api/cards/:id` | Card by UUID |
+| GET | `/api/cards/:id/text` | Plain text (name, type line, rules) for copy-paste |
+| POST | `/api/resolve` | Batch resolve: `{ "requests": ["Sun Disc", "Stalwart Poro\|OGN", ...] }` (max 20) |
+| GET | `/api/sets` | List sets with codes and card counts |
 
-### POST /resolve — example
+### POST /api/resolve example
 
 ```bash
-curl -X POST http://localhost:3000/resolve \
+curl -X POST http://localhost:3000/api/resolve \
   -H 'Content-Type: application/json' \
   -d '{"requests":["Sun Disc","Stalwart Poro|OGN","NonExistentCard"]}'
 ```
 
-Response:
-```json
-{
-  "count": 3,
-  "results": [
-    { "request": { "raw": "Sun Disc", "name": "Sun Disc" },
-      "card": { "id": "bf1bafd...", "name": "Sun Disc", ... },
-      "matchType": "exact" },
-    { "request": { "raw": "Stalwart Poro|OGN", "name": "Stalwart Poro", "set": "OGN" },
-      "card": { ... },
-      "matchType": "exact" },
-    { "request": { "raw": "NonExistentCard", "name": "NonExistentCard" },
-      "card": null,
-      "matchType": "not-found" }
-  ]
-}
-```
+Response shape: `{ count, results: [{ request, card | null, matchType }] }`.
 
 ---
 
-## React Client Integration Notes
-
-The API is designed for React consumption:
-
-```typescript
-// Example typed fetch helper (add to your React app)
-const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
-
-export async function resolveCards(names: string[]) {
-  const res = await fetch(`${API}/resolve`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ requests: names }),
-  });
-  if (!res.ok) throw new Error(`API error ${res.status}`);
-  return res.json() as Promise<ResolveResponse>;
-}
-
-// Types live in packages/core/src/types.ts — copy or re-export as needed.
-// The API never returns the internal `raw` field, so the client shape is clean.
-```
-
-**Recommendations for the React frontend:**
-- Use the `Card` type from `@riftseer/core` (or copy it) for type safety.
-- `/cards/:id` is suitable as a detail page data source.
-- `/resolve` is ideal for batch lookups (e.g. a deck list).
-- The `imageUrl` field points directly to Riot's CDN — usable in `<img>` tags.
-- All API errors return `{ error: string, code: string }` for consistent handling.
-
----
-
-## Running Tests
+## Running tests
 
 ```bash
-bun test                    # all tests
-bun test:core               # parser + provider tests
-bun test:api                # API route tests
+bun test         # all
+bun test:core    # core (parser, provider)
+bun test:api     # API routes
 ```
 
-The tests use Bun's built-in test runner (Jest-compatible API).  No test server
-is started — Elysia's `.handle()` method is used for route testing.
+Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server).
 
 ---
 
 ## Deployment
 
-### Railway
-
-Deploy **only the API** as a single service. The repo root has a `Dockerfile` and
-`railway.toml` so Railway uses Docker + `bun` (not npm). `@riftseer/core` is a
-library bundled into the API — do **not** create a separate Railway service for
-`packages/core`; it has no start command and is not a runnable app.
-
-1. Create one service from this repo (no root directory).
-2. Railway will detect the Dockerfile and use `railway.toml` for the start command
-   and healthcheck (`/health`).
-3. Set `PORT` (Railway sets this automatically), and optionally `CARD_PROVIDER`,
-   `API_BASE_URL`, `SITE_BASE_URL`, etc.
-
-### Docker Compose (recommended)
-
-```bash
-cp .env.example .env
-# fill in credentials
-docker compose up -d
-```
-
-Both services share a named volume (`riftseer_data`) for the SQLite DB.
-
-### Fly.io / Render
-
-1. Build two services from `Dockerfile.api` and `Dockerfile.bot`.
-2. Mount a persistent volume at `/app/data` so the DB survives deploys.
-3. Set all `REDDIT_*` and `SITE_BASE_URL` / `API_BASE_URL` env vars in the dashboard.
-
-### systemd (bare metal)
-
-```ini
-# /etc/systemd/system/riftseer-api.service
-[Unit]
-Description=RiftSeer API
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/opt/riftseer
-EnvironmentFile=/opt/riftseer/.env
-ExecStart=/usr/local/bin/bun packages/api/src/index.ts
-Restart=on-failure
-RestartSec=5s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Create an equivalent `riftseer-bot.service` pointing at `packages/bot/src/index.ts`.
+- **API:** Use the root `Dockerfile` and `railway.toml` (or any Node/Bun host). Set `PORT`, `API_BASE_URL`, `SITE_BASE_URL`, and optionally `CARD_PROVIDER`, `DB_PATH`, etc.
+- **Frontend:** Build with `bun run build:frontend`; deploy the `packages/frontend/dist` output (e.g. Cloudflare Pages via `wrangler`, or any static host). Set `VITE_API_URL` at build time if the API is on another origin.
+- **Bot:** See `packages/bot` (Devvit deploy).
+- **Docker Compose:** From repo root, `docker compose up -d` runs API (and optionally bot) with a shared volume for SQLite.
 
 ---
 
-## Card Data Source
+## Card data
 
-**Current:** [RiftCodex](https://riftcodex.com) — free community API.
-- Base URL: `https://api.riftcodex.com`
-- Cards fetched at startup + every 6 hours (configurable).
-- All 656+ cards (~7 pages at 100/page) are fetched and stored in SQLite.
-- In-memory [Fuse.js](https://fusejs.io) index for fast fuzzy search.
-
-**Future:** Riot Games official API — stub provider is in
-`packages/core/src/providers/riot.ts`.  Once available, set `CARD_PROVIDER=riot`.
-
----
-
-## Assumptions & Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Bun runtime | Elysia requires Bun; also provides free SQLite + test runner |
-| Bot calls provider directly | Simpler, no HTTP hop, bot resilient to API downtime |
-| SQLite for replied IDs | Zero-config, sufficient for single-bot workload |
-| All cards cached in memory | 656 cards ≈ <5 MB RAM; instant lookups without per-request DB query |
-| Polling (not streaming) | Reddit's push APIs (PRAW async, websockets) are more complex; polling is reliable for MVP |
-| No rate limit middleware | Provider handles upstream rate limits; API doesn't need per-IP limiting for MVP |
-| Ignore edited content | Safe default; avoids re-processing significantly changed posts |
+- **Current:** [RiftCodex](https://riftcodex.com) — community API (`https://api.riftcodex.com`). Cards are loaded at startup and on an interval (default 6h), stored in SQLite and in-memory Fuse.js for fuzzy search.
+- **Future:** Riot official API — stub in `packages/core/src/providers/riot.ts`; set `CARD_PROVIDER=riot` when implemented.
