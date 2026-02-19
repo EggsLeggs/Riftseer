@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { BookOpen } from "lucide-react";
+import { apiUrl } from "../api";
 
 export function SyntaxPage() {
   return (
@@ -113,34 +114,34 @@ export function SyntaxPage() {
           <div className="space-y-2">
             <ApiEndpoint
               method="GET"
-              path="/cards?name=Sun Disc"
+              path="/api/cards?name=Sun Disc"
               description="Search cards by name"
             />
             <ApiEndpoint
               method="GET"
-              path="/cards/:id"
+              path="/api/cards/:id"
               description="Get a specific card by UUID"
             />
             <ApiEndpoint
               method="GET"
-              path="/cards/random"
+              path="/api/cards/random"
               description="Get a random card"
             />
             <ApiEndpoint
               method="GET"
-              path="/sets"
+              path="/api/sets"
               description="List all card sets"
             />
             <ApiEndpoint
               method="POST"
-              path="/resolve"
+              path="/api/resolve"
               description="Batch resolve card names to cards"
             />
           </div>
           <p className="text-sm text-muted-foreground mt-3">
             Full API documentation is available at{" "}
-            <a href="/swagger" className="text-primary hover:underline" target="_blank" rel="noreferrer">
-              /swagger
+            <a href={apiUrl("/api/swagger")} className="text-primary hover:underline" target="_blank" rel="noreferrer">
+              /api/swagger
             </a>.
           </p>
         </section>

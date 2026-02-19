@@ -1,0 +1,275 @@
+/*
+ * Riftbound icon system
+ *
+ * Uses real assets from cmsassets.rgpub.io where known.
+ * See repo root /icons/ICONS_NEEDED.md for mapping and missing URLs.
+ */
+
+/* Base inline icon style — used in card text via CardTextRenderer */
+.inline-icon {
+  display: inline-block;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.15em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* ─── Energy (mana cost) ─────────────────────────────────────────────────────── */
+.icon-energy {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* TODO: add URL from cmsassets when known */
+}
+
+/* Numbered energy costs — Riftbound style: white circle, dark teal number */
+.icon-energy-1,
+.icon-energy-2,
+.icon-energy-3,
+.icon-energy-4,
+.icon-energy-5 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  min-width: 24px;
+  min-height: 24px;
+  vertical-align: -0.25em;
+  border-radius: 50%;
+  background-color: #fff;
+  color: #013951;
+  font-size: 0.75em;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+.icon-energy-1::before { content: "1"; }
+.icon-energy-2::before { content: "2"; }
+.icon-energy-3::before { content: "3"; }
+.icon-energy-4::before { content: "4"; }
+.icon-energy-5::before { content: "5"; }
+
+/* ─── Might (defense stat) ───────────────────────────────────────────────────── */
+.icon-might {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/might.svg");
+}
+
+/* ─── Power (attack stat) ────────────────────────────────────────────────────── */
+.icon-power {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/card_type_rune.svg");
+}
+
+/* ─── Exhaust (tap) ──────────────────────────────────────────────────────────── */
+.icon-exhaust {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.2em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/exhaust.svg");
+}
+
+/* ─── Artist ─────────────────────────────────────────────────────────────────── */
+.icon-artist {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/artist.svg");
+}
+
+/* ─── Battlefield ────────────────────────────────────────────────────────────── */
+.icon-battlefield {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/1f37eb1bed2605bdaab8270a9dc4396cad746522-64x64.png?accountingTag=RB");
+}
+
+/* ─── Unit ──────────────────────────────────────────────────────────────────── */
+.icon-unit {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/cb0caf49361546ece0c25d65b7fbf57c0eee57f0-64x64.png?accountingTag=RB");
+}
+
+/* ─── Champion ───────────────────────────────────────────────────────────────── */
+.icon-champion {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/c56f1df327f53562a56b493d3d38c3cee5780c5a-64x64.png?accountingTag=RB&auto=format&fit=fill&q=80&w=48");
+}
+
+/* ─── Rarity icons ───────────────────────────────────────────────────────────── */
+.icon-rarity {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.icon-rarity-common {
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/59e98d14f83125c88880af1d61213e3aef941370-64x64.png?accountingTag=RB&auto=format&fit=fill&q=80&w=48");
+}
+
+.icon-rarity-showcase {
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/a0e92b9edf3291fa62c9b35ffd6363de0d7947c0-376x426.png?accountingTag=RB&auto=format&fit=fill&q=80&w=48");
+}
+
+.icon-rarity-uncommon,
+.icon-rarity-rare,
+.icon-rarity-epic,
+.icon-rarity-legendary {
+  /* TODO: add URLs from cmsassets when known */
+}
+
+/* ─── Rune domain icons (6: Fury, Calm, Mind, Body, Chaos, Order) ─────────────
+ * Glyph style: coloured circle + white icon from assetcdn rune_*.svg
+ */
+.icon-rune-fury {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/rune_fury.svg");
+}
+
+.icon-rune-calm {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/rune_calm.svg");
+}
+
+.icon-rune-mind {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/rune_mind.svg");
+}
+
+.icon-rune-body {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/rune_body.svg");
+}
+
+.icon-rune-chaos {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/rune_chaos.svg");
+}
+
+.icon-rune-order {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/rune_order.svg");
+}
+
+/* Rainbow (any) domain — generic rune glyph */
+.icon-rune-rainbow {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://assetcdn.rgpub.io/public/live/riot-shared/player-experiences/riot-glyphs/rb/latest/rune_rainbow.svg");
+}
+
+/* ─── Card type icons (gear, legend, spell, token) ────────────────────────────── */
+.icon-gear,
+.icon-legend,
+.icon-token {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* TODO: add URLs from cmsassets when known */
+}
+
+.icon-spell {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/73c26354435212281d3f1cefe7cdbd7c803fe18f-64x64.png?accountingTag=RB&auto=format&fit=fill&q=80&w=48");
+}

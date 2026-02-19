@@ -111,8 +111,14 @@ export function CardPage() {
                     <span className="font-bold text-lg">{card.name}</span>
                     {card.cost != null && (
                       <span className="inline-flex items-center gap-1">
-                        <span className="icon-energy" />
-                        <span className="font-semibold">{card.cost}</span>
+                        {card.cost >= 1 && card.cost <= 5 ? (
+                          <span className={`icon-energy-${card.cost}`} aria-label={`${card.cost} energy`} />
+                        ) : (
+                          <>
+                            <span className="icon-energy" aria-hidden />
+                            <span className="font-semibold">{card.cost}</span>
+                          </>
+                        )}
                       </span>
                     )}
                   </div>
@@ -130,9 +136,12 @@ export function CardPage() {
                   )}
                   {card.typeLine ?? "—"}
                   {card.domains && card.domains.length > 0 && (
-                    <span className="text-muted-foreground">
-                      {" — "}
-                      {card.domains.join(", ")}
+                    <span className="inline-flex items-center gap-1 ml-1" title={card.domains.join(", ")}>
+                      {card.domains.map((d) => {
+                        const key = d.toLowerCase();
+                        const cls = `icon-rune-${key}`;
+                        return <span key={d} className={cls} aria-label={d} style={{ width: "1.25em", height: "1.25em" }} />;
+                      })}
                     </span>
                   )}
                 </TableCell>

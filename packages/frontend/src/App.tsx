@@ -1,5 +1,4 @@
 import React from "react";
-import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Nav } from "./components/Nav";
 import { Home } from "./components/Home";
@@ -8,12 +7,9 @@ import { CardPage } from "./components/CardPage";
 import { SetsPage } from "./components/SetsPage";
 import { SyntaxPage } from "./components/SyntaxPage";
 
-// In dev, Bun serves static files at /public/; in production, at /
-const basename = window.location.pathname.startsWith("/public") ? "/public" : "/";
-
-function App() {
+export function App() {
   return (
-    <BrowserRouter basename={basename}>
+    <BrowserRouter>
       <div className="min-h-screen flex flex-col">
         <Nav />
         <main className="flex-1">
@@ -33,9 +29,4 @@ function App() {
       </div>
     </BrowserRouter>
   );
-}
-
-const root = document.getElementById("root");
-if (root) {
-  createRoot(root).render(<App />);
 }
