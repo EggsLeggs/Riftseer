@@ -360,7 +360,8 @@
 [data-theme="dark"] .icon-champion,
 [data-theme="dark"] .icon-rune,
 [data-theme="dark"] .icon-spell,
-[data-theme="dark"] .icon-gear {
+[data-theme="dark"] .icon-gear,
+[data-theme="dark"] .icon-legend {
   filter: none;
 }
 
@@ -381,7 +382,11 @@
   background-image: url("/icons/types/gear.png");
 }
 
-.icon-legend,
+.icon-legend {
+  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/59e98d14f83125c88880af1d61213e3aef941370-64x64.png?auto=format&fit=fill&q=80&w=48");
+  filter: brightness(0);
+}
+
 .icon-token {
   /* TODO: add local assets when available */
 }
