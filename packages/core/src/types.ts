@@ -19,6 +19,8 @@ export interface Card {
   imageUrl?: string;
   /** Plain-text card rules text (symbols replaced with tokens like :rb_exhaust:). */
   text?: string;
+  /** Optional effect text (e.g. for Equipment/Gear: bonus while equipped). */
+  effect?: string;
   /** Energy cost to play the card. */
   cost?: number;
   /** Card type line, e.g. "Unit", "Gear", "Spell". */
@@ -37,6 +39,14 @@ export interface Card {
   tags?: string[];
   /** Artist who illustrated the card. */
   artist?: string;
+  /** Whether this is an alternate art printing. */
+  alternateArt?: boolean;
+  /** Whether this is an overnumbered printing (collector number beyond the base set count). */
+  overnumbered?: boolean;
+  /** Whether this is a signed/autographed printing. */
+  signature?: boolean;
+  /** Display orientation: "portrait" (vertical) or "landscape" (horizontal, e.g. Battlefields). */
+  orientation?: string;
   /** Provider-specific raw data (for debugging; not sent to clients by default). */
   raw?: Record<string, unknown>;
 }

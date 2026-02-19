@@ -7,6 +7,7 @@ export function SearchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const q = searchParams.get("q") ?? "";
+  const setParam = searchParams.get("set") ?? "";
 
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(false);
@@ -17,16 +18,39 @@ export function SearchPage() {
     setLocalQuery(q);
   }, [q]);
 
+  // Name search: GET /search?q=...
   useEffect(() => {
-    if (!q) return;
-    setLoading(true);
-    searchCards(q, { limit: 60, fuzzy: true })
-      .then((res) => {
-        setCards(res.cards);
-        setTotal(res.count);
-      })
-      .finally(() => setLoading(false));
-  }, [q]);
+    if (q) {
+      setLoading(true);
+      searchCards(q, { limit: 60, fuzzy: true })
+        .then((res) => {
+          setCards(res.cards);
+          setTotal(res.count);
+        })
+        .finally(() => setLoading(false));
+      return;
+    }
+    // Browse set: GET /search?set=OGN — list all cards in set, number-ordered
+    if (setParam) {
+      setLoading(true);
+      searchCards("", { set: setParam, limit: 2000 })
+        .then((res) => {
+          setCards(res.cards);
+          setTotal(res.count);
+        })
+        .finally(() => setLoading(false));
+      return;
+    }
+    setCards([]);
+    setTotal(0);
+  }, [q, setParam]);
+
+  // If exactly one result, go straight to that card's page
+  useEffect(() => {
+    if (!loading && cards.length === 1 && (q || setParam)) {
+      navigate(`/card/${cards[0].id}`, { replace: true });
+    }
+  }, [loading, cards, q, setParam, navigate]);
 
   const handleSearch = useCallback(
     (e: React.FormEvent) => {
@@ -63,6 +87,14 @@ export function SearchPage() {
         </p>
       )}
 
+      {setParam && !q && (
+        <p className="text-sm text-muted-foreground mb-4">
+          {loading
+            ? "Loading set..."
+            : `Set ${setParam} — ${total} card${total !== 1 ? "s" : ""}`}
+        </p>
+      )}
+
       {!loading && cards.length === 0 && q && (
         <div className="text-center py-16">
           <p className="text-lg text-muted-foreground">No cards found for "{q}"</p>
@@ -75,34 +107,59 @@ export function SearchPage() {
         </div>
       )}
 
-      {/* Card grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {cards.map((card) => (
-          <Link
-            key={card.id}
-            to={`/card/${card.id}`}
-            className="card-grid-item block overflow-hidden hover:no-underline"
-          >
-            {card.imageUrl ? (
-              <img
-                src={card.imageUrl}
-                alt={card.name}
-                className="w-full rounded-lg"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full aspect-2/3 bg-muted rounded-lg flex items-center justify-center">
-                <span className="text-xs text-muted-foreground text-center px-2">
+      {!loading && cards.length === 0 && setParam && !q && (
+        <div className="text-center py-16">
+          <p className="text-lg text-muted-foreground">No cards found in set {setParam}</p>
+        </div>
+      )}
+
+      {/* Card grid: all cards shown vertical (landscape cards rotated into vertical slot) */}
+      {cards.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {cards.map((card) => {
+            const isLandscape =
+              card.orientation === "landscape" || card.orientation === "horizontal";
+            return (
+              <Link
+                key={card.id}
+                to={`/card/${card.id}`}
+                className="card-grid-item block overflow-hidden hover:no-underline"
+              >
+                {card.imageUrl ? (
+                  <div className="w-full aspect-2/3 overflow-hidden relative rounded-lg">
+                    {isLandscape ? (
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-2/3 -rotate-90 origin-center">
+                        <img
+                          src={card.imageUrl}
+                          alt={card.name}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ) : (
+                      <img
+                        src={card.imageUrl}
+                        alt={card.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="w-full aspect-2/3 bg-muted rounded-lg flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground text-center px-2">
+                      {card.name}
+                    </span>
+                  </div>
+                )}
+                <p className="text-xs text-center mt-1 text-foreground truncate">
                   {card.name}
-                </span>
-              </div>
-            )}
-            <p className="text-xs text-center mt-1 text-foreground truncate">
-              {card.name}
-            </p>
-          </Link>
-        ))}
-      </div>
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

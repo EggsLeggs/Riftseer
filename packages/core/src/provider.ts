@@ -55,6 +55,12 @@ export interface CardDataProvider {
   getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>>;
 
   /**
+   * Return cards in a set, ordered by collector number.
+   * Used when browsing a set without a name search.
+   */
+  getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<Card[]>;
+
+  /**
    * Return a single random card from the provider's index.
    * Returns null if the index is empty.
    */

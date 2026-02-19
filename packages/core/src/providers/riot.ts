@@ -46,6 +46,10 @@ export class RiotProvider implements CardDataProvider {
     return [];
   }
 
+  async getCardsBySet(_setCode: string, _opts?: { limit?: number }): Promise<Card[]> {
+    return [];
+  }
+
   async getRandomCard(): Promise<Card | null> {
     return null;
   }

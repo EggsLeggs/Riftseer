@@ -1,10 +1,12 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { getRandomCard } from "../api";
-import { Search, Shuffle, BookOpen, Layers, SlidersHorizontal } from "lucide-react";
+import { useTheme } from "../hooks/useTheme";
+import { Search, Shuffle, BookOpen, Layers, SlidersHorizontal, Sun, Moon } from "lucide-react";
 
 export function Nav() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [query, setQuery] = useState("");
   const [loadingRandom, setLoadingRandom] = useState(false);
 
@@ -84,6 +86,13 @@ export function Nav() {
           >
             <Shuffle className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Random</span>
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="flex items-center justify-center w-8 h-8 rounded-md text-nav-fg hover:bg-white/10 transition-colors cursor-pointer"
+            aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+          >
+            {theme === "light" ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
         </div>
       </div>
