@@ -1,0 +1,76 @@
+---
+description: Rules for packages/bot — Devvit Reddit app
+globs: ["packages/bot/**/*.ts", "packages/bot/devvit.yaml"]
+alwaysApply: false
+---
+
+# packages/bot Rules
+
+## Standalone Project
+`packages/bot` is NOT part of the Bun workspace. Use `npm` for dependency management and `npx devvit` for all Devvit operations.
+
+```bash
+npm install
+npx devvit upload
+npx devvit settings set apiBaseUrl
+npx devvit settings set siteBaseUrl
+```
+
+## Devvit API — Non-obvious Patterns
+These differ from standard Node APIs; always use these exact forms:
+
+```typescript
+// KV Store (not .set / .del)
+await kvStore.put(key, value)
+await kvStore.get(key)         // returns string | undefined
+await kvStore.delete(key)
+
+// Submitting replies
+await reddit.submitComment({
+  id: 't1_' + commentId,   // reply to comment
+  text: markdownString,
+})
+await reddit.submitComment({
+  id: 't3_' + postId,      // top-level reply on a post
+  text: markdownString,
+})
+```
+
+## CommentV2 / PostV2 Field Reference
+```typescript
+// CommentV2
+comment.id              // string
+comment.body            // string
+comment.author          // string (username directly)
+comment.spam            // boolean
+comment.deleted         // boolean
+comment.lastModifiedAt  // Date
+
+// PostV2
+post.id                 // string
+post.title              // string
+post.selftext           // string
+post.isSelf             // boolean
+post.authorId           // string ID — NOT the username
+// For post username: event.author?.name
+```
+
+## Architecture
+- The bot calls `/api/resolve` on the external RiftSeer API — it does **not** embed a provider or database
+- If the API domain changes, update `devvit.yaml` under `permissions.http` and redeploy
+- Settings (`apiBaseUrl`, `siteBaseUrl`) are per-install and set by the subreddit mod
+
+## Deduplication
+- Replied IDs stored in KV with key pattern `replied:<type>:<id>`
+- Always check before replying; always write after a successful reply
+
+## TypeScript Config
+- `tsconfig.json` overrides `"types": []` to suppress a vitest/globals conflict from Devvit's base tsconfig
+- Do NOT remove this override
+
+## Privacy
+If the bot begins storing new KV keys or logging additional fields (user IDs, subreddit names, card text, etc.), update `packages/frontend/src/components/PrivacyPage.tsx` to reflect what is collected, why, and for how long.
+
+Current bot data footprint:
+- **KV store**: Only replied comment/post IDs (deduplication)
+- **API logs**: Card requests logged server-side (not by the bot itself)
