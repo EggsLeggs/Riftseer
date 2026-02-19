@@ -5,9 +5,10 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json bun.lock* ./
+RUN sed -i 's/, "packages\/frontend"//' package.json
 COPY packages/core/package.json ./packages/core/package.json
 COPY packages/api/package.json ./packages/api/package.json
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Copy source
 COPY tsconfig.base.json ./
