@@ -106,6 +106,7 @@ export function normalizeCardName(name: string): string {
 // ─── Raw → normalised Card mapping ────────────────────────────────────────────
 
 function toCard(raw: RawCard): Card {
+  const rawEffect = (raw as { effect?: string }).effect;
   return {
     id: raw.id,
     name: raw.name,
@@ -115,7 +116,7 @@ function toCard(raw: RawCard): Card {
     collectorNumber: String(raw.collector_number),
     imageUrl: raw.media?.image_url,
     text: raw.text?.plain,
-    effect: typeof (raw as { effect?: string }).effect === "string" ? (raw as { effect: string }).effect : undefined,
+    effect: typeof rawEffect === "string" ? rawEffect : undefined,
     cost: raw.attributes?.energy ?? undefined,
     typeLine: raw.classification?.type,
     supertype: raw.classification?.supertype,
