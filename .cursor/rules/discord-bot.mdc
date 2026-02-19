@@ -1,0 +1,62 @@
+---
+description: Rules for packages/discord-bot — Cloudflare Workers Discord bot
+globs: ["packages/discord-bot/**/*.ts", "packages/discord-bot/wrangler.toml"]
+alwaysApply: false
+---
+
+# packages/discord-bot Rules
+
+## Cloudflare Workers Constraints
+- **No long-running processes** — the worker is stateless and request-scoped
+- **No Node.js APIs** — use Web APIs only (`fetch`, `crypto.subtle`, `TextEncoder`, etc.)
+- **3-second response deadline** — Discord requires a response within 3 s; always defer async work
+- Type target is `@cloudflare/workers-types`, NOT `lib: ["DOM"]`
+
+## Interaction Pattern — Always Defer
+```typescript
+// In fetch handler: respond immediately with DEFERRED
+ctx.waitUntil(handleMyCommand(interaction, env));
+return json({ type: InteractionResponseType.DeferredChannelMessageWithSource });
+
+// In the handler: PATCH the webhook after your async work
+await patchResponse(interaction, env, { embeds: [embed] });
+```
+Never call the RiftSeer API before returning the deferred response.
+
+## Eden Client
+Use the `createClient(env.API_BASE_URL)` helper from `src/api.ts`. It's typed against `App` from `@riftseer/api` (type-only import — erased at bundle time).
+
+```typescript
+const client = createClient(env.API_BASE_URL);
+const { data, error } = await client.api.resolve.post({ requests: ["Card Name"] });
+```
+
+## Adding a New Command
+1. Add the command definition to `src/commands.ts`
+2. Create `src/handlers/<command>.ts` with the handler function
+3. Add a `case` in `dispatch()` in `src/index.ts`
+4. Run `bun run register` to register the new command with Discord
+
+## Env Interface
+All secrets and vars come from `Env` (defined in `src/index.ts`):
+```typescript
+env.DISCORD_PUBLIC_KEY     // Ed25519 public key for signature verification
+env.DISCORD_BOT_TOKEN      // Bot token for REST API calls
+env.DISCORD_APPLICATION_ID // Application ID for webhook patching
+env.API_BASE_URL           // RiftSeer API base URL
+env.SITE_BASE_URL          // RiftSeer site URL (used in embed links)
+```
+Public vars are in `wrangler.toml`; secrets are set with `wrangler secret put`.
+
+## Signature Verification
+`src/verify.ts` uses `crypto.subtle` (Web Crypto API, available in CF Workers). Never use Node.js `crypto` module.
+
+## Deployment
+```bash
+wrangler dev      # Local dev (uses Miniflare, requires Node.js)
+wrangler deploy   # Deploy to Cloudflare
+bun run register  # Re-register commands after changes to src/commands.ts
+```
+
+## Privacy
+The bot does not persist data. If any logging or storage is added, update `packages/frontend/src/components/PrivacyPage.tsx`.

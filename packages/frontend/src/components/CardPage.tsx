@@ -121,7 +121,7 @@ export function CardPage() {
 
       {/* Main layout: image + info + printings */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Card image: natural orientation by default, with rotate button (Scryfall-style) */}
+        {/* Card image: natural orientation by default, with rotate button */}
         <div className="lg:col-span-3">
           {(() => {
             const isLandscape =

@@ -1,4 +1,4 @@
-# packages/bot — Context for Claude
+# packages/reddit-bot — Context for Claude
 
 ## Purpose
 Devvit Reddit app that listens for `[[Card Name]]` mentions in comments and posts, resolves them via the RiftSeer API, and replies with a formatted Markdown card summary.
@@ -7,7 +7,7 @@ Devvit Reddit app that listens for `[[Card Name]]` mentions in comments and post
 This is **NOT** part of the root Bun workspace. It is a separate npm project managed with `npx devvit` tooling.
 
 ```bash
-cd packages/bot
+cd packages/reddit-bot
 npm install                          # Install deps (not bun install)
 npx devvit upload                    # Deploy to Reddit
 npx devvit settings set apiBaseUrl   # Set API base URL for the subreddit
