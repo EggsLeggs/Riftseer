@@ -1,11 +1,19 @@
 # RiftSeer
 
-Card data API, web app, and Reddit integration for the **Riftbound** TCG.
+Card data API, web app, and Reddit + Discord integration for the **Riftbound** TCG.
 
 ```text
+# Reddit bot (bracket syntax)
 [[Sun Disc]]         → bot replies with card image, API link, site link
 [[Sun Disc|OGN]]     → specific set
 [[Sun Disc|OGN-021]] → specific printing by collector number
+
+# Discord bot (slash commands)
+/card name:Sun Disc          → embed with stats, rules text, and icons
+/card name:Sun Disc set:OGN  → scoped to set
+/card name:Sun Disc image:true → image-only embed
+/random                      → random card
+/sets                        → list all sets
 ```
 
 ---
@@ -16,8 +24,9 @@ Card data API, web app, and Reddit integration for the **Riftbound** TCG.
 |------|--------------|
 |**Site**|React (Vite) app: search, card pages, sets browser, syntax guide, light/dark theme|
 |**API**|Elysia HTTP server under `/api`: cards, sets, resolve, Swagger at `/api/swagger`|
-|**Bot**|Reddit integration (see `packages/bot`) — uses [Devvit](https://devvit.dev) for Reddit apps|
-|**Core**|Shared types, `CardDataProvider`, parser, RiftCodex provider, SQLite cache|
+|**Discord bot**|Slash-command bot on Cloudflare Workers — see `packages/discord-bot`|
+|**Reddit bot**|Bracket-syntax bot on Reddit — uses [Devvit](https://devvit.dev), see `packages/reddit-bot`|
+|**Core**|Shared types, `CardDataProvider`, parser, icon definitions, RiftCodex provider, SQLite cache|
 
 ---
 
@@ -40,13 +49,14 @@ The site uses Eden (typed API client), React Router, Tailwind, and domain/stat i
 
 ```text
 packages/
-  core/     ← shared types, CardDataProvider, parser, SQLite, RiftCodex provider
-  api/      ← Elysia server (all routes under /api)
-  frontend/ ← React + Vite SPA (Eden client → API)
-  bot/      ← Reddit app (Devvit)
+  core/         ← shared types, CardDataProvider, parser, icon defs, SQLite, RiftCodex provider
+  api/          ← Elysia server (all routes under /api)
+  frontend/     ← React + Vite SPA (Eden client → API)
+  discord-bot/  ← Discord slash-command bot (Cloudflare Workers + Wrangler)
+  reddit-bot/   ← Reddit bracket-syntax bot (Devvit)
 ```
 
-**Design:** The API and bot both use `@riftseer/core` and the same provider interface. The bot calls the provider in-process (no dependency on the API being up). Data source is swappable via `CARD_PROVIDER` and a new provider implementation; the API and site are unchanged.
+**Design:** The API and Reddit bot both use `@riftseer/core`. The Reddit bot calls the provider in-process; the Discord bot calls the deployed API over HTTP. Data source is swappable via `CARD_PROVIDER`; the API and site are unchanged. Icon definitions live in `@riftseer/core/icons` — a subpath export that is safe to import in both browser (Vite) and Cloudflare Workers (no `bun:sqlite` pulled in).
 
 ---
 
@@ -83,7 +93,8 @@ bun dev:api      # API only
 bun dev:frontend # Frontend only (expects API at VITE_API_URL or same origin)
 ```
 
-The bot lives in `packages/bot` and uses Devvit; see that package’s README for run/deploy.
+The Reddit bot lives in `packages/reddit-bot` and uses Devvit; see that package’s README for run/deploy.
+The Discord bot lives in `packages/discord-bot` and uses Cloudflare Workers; see the Discord bot setup section below.
 
 ---
 
@@ -104,14 +115,46 @@ See `.env.example`. Summary:
 
 ---
 
-## Reddit app setup (for the bot)
+## Discord bot setup
+
+The Discord bot runs on Cloudflare Workers. Secrets are set once via `wrangler secret put` (not `.env`).
+
+```bash
+cd packages/discord-bot
+
+# 1. Set secrets (one-time)
+wrangler secret put DISCORD_PUBLIC_KEY
+wrangler secret put DISCORD_BOT_TOKEN
+wrangler secret put DISCORD_APPLICATION_ID
+
+# 2. Register slash commands (re-run when commands.ts changes)
+bun run register
+
+# 3. Upload card icons as application emojis (one-time, re-run after new icons are added)
+#    Reads DISCORD_BOT_TOKEN and DISCORD_APPLICATION_ID from .dev.vars
+bun run setup-emojis
+
+# 4. Run locally (requires a tunnel — ngrok or cloudflared — to receive Discord webhooks)
+bun run dev
+
+# 5. Deploy to Cloudflare
+bun run deploy
+```
+
+Set the **Interactions Endpoint URL** in the Discord Developer Portal to your worker URL (or tunnel URL during dev).
+
+Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.toml`.
+
+---
+
+## Reddit app setup (for the Reddit bot)
 
 1. Log in as the bot account → [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) → create app, type **script**.
 2. Set redirect URI (e.g. `http://localhost`); copy client ID and secret into `.env`.
-3. Set `REDDIT_USERNAME` / `REDDIT_PASSWORD` and a unique **User-Agent**, e.g.  
+3. Set `REDDIT_USERNAME` / `REDDIT_PASSWORD` and a unique **User-Agent**, e.g.
    `REDDIT_USER_AGENT=RiftSeer/0.1.0 by u/YourBotUsername`
 
-Bot implementation and deployment are in `packages/bot` (Devvit).
+Bot implementation and deployment are in `packages/reddit-bot` (Devvit).
 
 ---
 
@@ -161,7 +204,8 @@ Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server)
 
 - **API:** Use the root `Dockerfile` and `railway.toml` (or any Node/Bun host). Set `PORT`, `API_BASE_URL`, `SITE_BASE_URL`, and optionally `CARD_PROVIDER`, `DB_PATH`, etc.
 - **Frontend:** Build with `bun run build:frontend`; deploy the `packages/frontend/dist` output (e.g. Cloudflare Pages via `wrangler`, or any static host). Set `VITE_API_URL` at build time if the API is on another origin.
-- **Bot:** See `packages/bot` (Devvit deploy).
+- **Discord bot:** Deploy with `wrangler deploy` from `packages/discord-bot`. Secrets set via `wrangler secret put`.
+- **Reddit bot:** See `packages/reddit-bot` (Devvit deploy).
 - **Docker Compose:** From repo root, `docker compose up -d` runs API (and optionally bot) with a shared volume for SQLite.
 
 ---

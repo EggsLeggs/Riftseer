@@ -48,7 +48,11 @@ const CardSchema = t.Object({
   collectorNumber: t.Optional(t.String()),
   imageUrl: t.Optional(t.String()),
   text: t.Optional(t.String()),
-  effect: t.Optional(t.String({ description: "Effect text (e.g. for Equipment while equipped)" })),
+  effect: t.Optional(
+    t.String({
+      description: "Effect text (e.g. for Equipment while equipped)",
+    }),
+  ),
   cost: t.Optional(t.Number()),
   typeLine: t.Optional(t.String()),
   supertype: t.Optional(t.Nullable(t.String())),
@@ -61,7 +65,9 @@ const CardSchema = t.Object({
   alternateArt: t.Optional(t.Boolean()),
   overnumbered: t.Optional(t.Boolean()),
   signature: t.Optional(t.Boolean()),
-  orientation: t.Optional(t.String({ description: "portrait (vertical) or landscape (horizontal)" })),
+  orientation: t.Optional(
+    t.String({ description: "portrait (vertical) or landscape (horizontal)" }),
+  ),
 });
 
 const CardRequestSchema = t.Object({
@@ -253,7 +259,7 @@ const app = new Elysia()
           if (!card) {
             return new Response(
               JSON.stringify({ error: "Card not found", code: "NOT_FOUND" }),
-              { status: 404, headers: { "content-type": "application/json" } }
+              { status: 404, headers: { "content-type": "application/json" } },
             );
           }
           return new Response(cardCopyableText(card), {
@@ -265,7 +271,8 @@ const app = new Elysia()
           detail: {
             tags: ["Cards"],
             summary: "Get card as plain text",
-            description: "Returns Scryfall-style copy-pasteable text (name, type line, rules).",
+            description:
+              "Returns copy-pasteable text (name, type line, rules).",
           },
         },
       )
@@ -290,7 +297,8 @@ const app = new Elysia()
           if (!query.name?.trim()) {
             set.status = 400;
             return {
-              error: "Query parameter `name` is required (or use `set` alone to list cards in a set)",
+              error:
+                "Query parameter `name` is required (or use `set` alone to list cards in a set)",
               code: "MISSING_PARAM",
             };
           }

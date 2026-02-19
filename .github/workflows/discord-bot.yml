@@ -1,0 +1,63 @@
+name: Deploy Discord Bot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/discord-bot/**"
+      - "packages/core/src/icons.ts"
+      - "packages/frontend/public/icons/**"
+
+env:
+  BUN_VERSION: "1.2.0"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/discord-bot
+          command: deploy --env production
+
+  upload-emojis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: check-icons
+        run: |
+          if git diff --name-only ${{ github.event.before }}..${{ github.sha }} | grep -q '^packages/frontend/public/icons/'; then
+            echo "icons_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "icons_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Upload icons as Discord application emojis
+        if: steps.check-icons.outputs.icons_changed == 'true'
+        working-directory: packages/discord-bot
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}
+        run: bun run setup-emojis
