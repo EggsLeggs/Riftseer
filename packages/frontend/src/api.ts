@@ -13,7 +13,9 @@ export type Card = NonNullable<RandomCardData>;
 export type CardSet = NonNullable<SetsData>["sets"][number];
 
 export function apiUrl(path: string): string {
-  return `${API_BASE}${path}`;
+  const base = API_BASE.replace(/\/+$/, "");
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${p}`;
 }
 
 export async function getCard(id: string): Promise<Card | null> {
