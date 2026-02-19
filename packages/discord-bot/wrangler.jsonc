@@ -1,0 +1,13 @@
+{
+  "name": "riftseer-discord-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+  "vars": {
+    "API_BASE_URL": "https://riftseerapi-production.up.railway.app",
+    "SITE_BASE_URL": "https://riftseer.com"
+  }
+  // Secrets — set once with:
+  //   wrangler secret put DISCORD_PUBLIC_KEY
+  //   wrangler secret put DISCORD_BOT_TOKEN
+  //   wrangler secret put DISCORD_APPLICATION_ID
+}
