@@ -6,6 +6,13 @@ import { apiUrl } from "../api";
 export function SyntaxPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
+      <title>Search Reference — RiftSeer</title>
+      <meta name="description" content="RiftSeer includes a large set of keywords and expressions used to find Riftbound cards." />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="Search Reference — RiftSeer" />
+      <meta property="og:description" content="RiftSeer includes a large set of keywords and expressions used to find Riftbound cards." />
+      <meta property="og:url" content={window.location.href} />
+
       <div className="flex items-center gap-2 mb-6">
         <BookOpen className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Search Syntax</h1>

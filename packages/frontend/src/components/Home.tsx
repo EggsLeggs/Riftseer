@@ -19,6 +19,12 @@ export function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+      <title>RiftSeer — Riftbound Database</title>
+      <meta name="description" content="The comprehensive Riftbound TCG card database with deck building support and community bots for Discord and Reddit." />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="RiftSeer — Riftbound Database" />
+      <meta property="og:description" content="The comprehensive Riftbound TCG card database with deck building support and community bots for Discord and Reddit." />
+      <meta property="og:url" content={window.location.href} />
       <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-2 tracking-tight">
         RiftSeer
       </h1>

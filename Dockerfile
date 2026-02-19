@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json bun.lock* ./
-RUN sed -i 's/, "packages\/frontend"//' package.json
+RUN sed -i 's/, "packages\/frontend"//; s/, "packages\/discord-bot"//' package.json
 COPY packages/core/package.json ./packages/core/package.json
 COPY packages/api/package.json ./packages/api/package.json
 RUN bun install

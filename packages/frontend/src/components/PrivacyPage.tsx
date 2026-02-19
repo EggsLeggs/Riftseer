@@ -5,10 +5,18 @@ import { Shield } from "lucide-react";
 export function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <div className="flex items-center gap-2 mb-6">
+      <title>Privacy Policy — RiftSeer</title>
+      <meta name="description" content="Privacy Policy for RiftSeer." />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="Privacy Policy — RiftSeer" />
+      <meta property="og:description" content="Privacy Policy for RiftSeer." />
+      <meta property="og:url" content={window.location.href} />
+
+      <div className="flex items-center gap-2 mb-2">
         <Shield className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Privacy Policy</h1>
       </div>
+      <p className="text-sm text-muted-foreground mb-6">Last Updated: 20 February 2026</p>
 
       <p className="text-foreground leading-relaxed mb-8">
         This Privacy Policy describes how RiftSeer collects, uses, and protects information when
