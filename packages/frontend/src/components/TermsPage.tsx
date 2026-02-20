@@ -12,10 +12,11 @@ export function TermsPage() {
       <meta property="og:description" content="Terms of Service for RiftSeer." />
       <meta property="og:url" content={window.location.href} />
 
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-2">
         <FileText className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Terms of Service</h1>
       </div>
+      <p className="text-sm text-muted-foreground mb-6">Last Updated: 20 February 2026</p>
 
       <p className="text-foreground leading-relaxed mb-8">
         These are the Terms of Service for using RiftSeer. By using RiftSeer, you agree to these terms.

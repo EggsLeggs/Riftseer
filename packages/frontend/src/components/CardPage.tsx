@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { getCard, searchCards, apiUrl, type Card } from "../api";
 import { CardTextRenderer } from "./CardTextRenderer";
 import {
@@ -62,6 +62,7 @@ function parseTokenMentions(text: string): string[] {
 export function CardPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [card, setCard] = useState<Card | null>(null);
   const [printings, setPrintings] = useState<Card[]>([]);
   const [tokens, setTokens] = useState<Card[]>([]);
@@ -150,7 +151,7 @@ export function CardPage() {
       <meta name="twitter:title" content={card.name} />
       <meta name="twitter:description" content={seoDescription} />
       {card.imageUrl && <meta name="twitter:image" content={card.imageUrl} />}
-      <meta property="og:url" content={window.location.href} />
+      <meta property="og:url" content={`${window.location.origin}${location.pathname}${location.search}`} />
 
       {/* Breadcrumb */}
       <div className="text-sm text-muted-foreground mb-4">
