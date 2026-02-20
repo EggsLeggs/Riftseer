@@ -47,52 +47,62 @@ type TCGEntry = {
 
 let tcgNameMap = new Map<string, TCGEntry>(); // key: normalizeCardName(cleanName)
 let tcgDataLoadedAt = 0;
+let tcgDataLoadPromise: Promise<void> | null = null;
 
 async function loadTCGData(): Promise<void> {
   if (tcgDataLoadedAt && Date.now() - tcgDataLoadedAt < TCG_PRICE_TTL_MS) return;
-  try {
-    const groupResults = await Promise.all(
-      RIFTBOUND_GROUPS.map(async (groupId) => {
-        const base = `${TCGCSV_BASE}/${TCGCSV_CATEGORY}/${groupId}`;
-        const [productsRes, pricesRes] = await Promise.all([
-          fetch(`${base}/products`),
-          fetch(`${base}/prices`),
-        ]);
-        const products: Array<{ productId: number; cleanName: string; url: string }> =
-          productsRes.ok ? await productsRes.json() : [];
-        const prices: Array<{
-          productId: number;
-          lowPrice: number | null;
-          marketPrice: number | null;
-          subTypeName: string;
-        }> = pricesRes.ok ? await pricesRes.json() : [];
-        return { products, prices };
-      })
-    );
-
-    const map = new Map<string, TCGEntry>();
-    for (const { products, prices } of groupResults) {
-      const priceById = new Map(
-        prices
-          .filter((p) => p.subTypeName === "Normal")
-          .map((p) => [p.productId, { usdMarket: p.marketPrice, usdLow: p.lowPrice }])
-      );
-      for (const product of products) {
-        const price = priceById.get(product.productId);
-        if (!price) continue; // sealed products won't have a Normal price entry
-        map.set(normalizeCardName(product.cleanName), {
-          productId: product.productId,
-          url: product.url,
-          ...price,
-        });
-      }
-    }
-    tcgNameMap = map;
-    tcgDataLoadedAt = Date.now();
-    logger.info("TCGPlayer data loaded", { count: map.size });
-  } catch {
-    // non-fatal — USD prices degrade gracefully
+  if (tcgDataLoadPromise) {
+    await tcgDataLoadPromise;
+    return;
   }
+  tcgDataLoadPromise = (async () => {
+    try {
+      const groupResults = await Promise.all(
+        RIFTBOUND_GROUPS.map(async (groupId) => {
+          const base = `${TCGCSV_BASE}/${TCGCSV_CATEGORY}/${groupId}`;
+          const [productsRes, pricesRes] = await Promise.all([
+            fetch(`${base}/products`),
+            fetch(`${base}/prices`),
+          ]);
+          const products: Array<{ productId: number; cleanName: string; url: string }> =
+            productsRes.ok ? await productsRes.json() : [];
+          const prices: Array<{
+            productId: number;
+            lowPrice: number | null;
+            marketPrice: number | null;
+            subTypeName: string;
+          }> = pricesRes.ok ? await pricesRes.json() : [];
+          return { products, prices };
+        })
+      );
+
+      const map = new Map<string, TCGEntry>();
+      for (const { products, prices } of groupResults) {
+        const priceById = new Map(
+          prices
+            .filter((p) => p.subTypeName === "Normal")
+            .map((p) => [p.productId, { usdMarket: p.marketPrice, usdLow: p.lowPrice }])
+        );
+        for (const product of products) {
+          const price = priceById.get(product.productId);
+          if (!price) continue; // sealed products won't have a Normal price entry
+          map.set(normalizeCardName(product.cleanName), {
+            productId: product.productId,
+            url: product.url,
+            ...price,
+          });
+        }
+      }
+      tcgNameMap = map;
+      tcgDataLoadedAt = Date.now();
+      logger.info("TCGPlayer data loaded", { count: map.size });
+    } catch (error) {
+      logger.error("Failed to load TCG data", { error });
+    } finally {
+      tcgDataLoadPromise = null;
+    }
+  })();
+  await tcgDataLoadPromise;
 }
 
 // ─── Provider singleton ────────────────────────────────────────────────────────
