@@ -5,8 +5,11 @@
  *   GET  /api/v1/health
  *   GET  /api/v1/meta
  *   GET  /api/v1/cards          ?name&set&collector&fuzzy&limit
+ *   GET  /api/v1/cards/random
  *   GET  /api/v1/cards/:id
+ *   GET  /api/v1/cards/:id/text
  *   POST /api/v1/resolve        body: { requests: string[] }
+ *   GET  /api/v1/prices/tcgplayer
  *   GET  /api/v1/sets
  *   GET  /api/swagger           (OpenAPI UI for all versions)
  *   GET  /api/swagger/json      (raw OpenAPI schema)
@@ -328,6 +331,10 @@ const v1 = new Elysia({ prefix: "/api/v1" })
     },
     {
       params: t.Object({ id: t.String({ description: "Card UUID" }) }),
+      response: {
+        200: t.String({ description: "Copy-pasteable plain-text card summary (text/plain; charset=utf-8)" }),
+        404: ErrorSchema,
+      },
       detail: {
         tags: ["Cards"],
         summary: "Get card as plain text",
@@ -340,7 +347,8 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/cards",
     async ({ query, set }) => {
-      const limit = query.limit ? parseInt(query.limit, 10) : undefined;
+      const parsedLimit = parseInt(query.limit ?? "", 10);
+      const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
 
       // Browse set: GET /cards?set=OGN — return all cards in set, ordered by collector number
       if (query.set && !query.name?.trim()) {
@@ -414,8 +422,12 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   // ── POST /resolve ───────────────────────────────────────────────────────────
   .post(
     "/resolve",
-    async ({ body }) => {
-      const requests = body.requests.slice(0, 20).map((r: string) => {
+    async ({ body, set }) => {
+      if (body.requests.length > 20) {
+        set.status = 400;
+        return { error: "Too many requests: maximum is 20", code: "TOO_MANY_REQUESTS" };
+      }
+      const requests = body.requests.map((r: string) => {
         const parsed = parseCardRequests(`[[${r}]]`);
         return parsed[0] ?? { raw: r, name: r };
       });
@@ -440,10 +452,13 @@ const v1 = new Elysia({ prefix: "/api/v1" })
           maxItems: 20,
         }),
       }),
-      response: t.Object({
-        count: t.Number(),
-        results: t.Array(ResolvedCardSchema),
-      }),
+      response: {
+        200: t.Object({
+          count: t.Number(),
+          results: t.Array(ResolvedCardSchema),
+        }),
+        400: ErrorSchema,
+      },
       detail: {
         tags: ["Cards"],
         summary: "Batch resolve card requests",
@@ -482,7 +497,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
     },
     {
       query: t.Object({
-        name: t.Optional(t.String({ description: "Card name to look up on TCGPlayer" })),
+        name: t.String({ description: "Card name to look up on TCGPlayer" }),
       }),
       response: {
         200: t.Object({

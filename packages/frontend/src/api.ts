@@ -30,7 +30,7 @@ export async function searchCards(
 ): Promise<{ count: number; cards: Card[] }> {
   const { data, error } = await client.api.v1.cards.get({
     query: {
-      name,
+      name: name || undefined,
       limit: opts.limit !== undefined ? String(opts.limit) : undefined,
       set: opts.set,
       fuzzy: opts.fuzzy ? "1" : undefined,

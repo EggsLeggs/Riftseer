@@ -35,6 +35,7 @@ The swagger plugin is mounted on the **root app only** — it discovers routes f
 4. For separate per-version Swagger tabs, serve filtered spec JSON endpoints and add them to `scalarConfig.sources`
 
 ## Routes
+
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/api/v1/health` | Liveness probe |
@@ -48,6 +49,7 @@ The swagger plugin is mounted on the **root app only** — it discovers routes f
 | `GET` | `/api/v1/sets` | All sets with card counts |
 
 ### GET /api/v1/cards — Query Parameters
+
 | Param | Type | Notes |
 |-------|------|-------|
 | `name` | string | Name search (fuzzy if `fuzzy=true`) |

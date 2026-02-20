@@ -26,12 +26,12 @@ alwaysApply: false
 ## Testing Routes
 ```typescript
 // Correct pattern — no live server needed
-const res = await app.handle(new Request('http://localhost/api/health'))
+const res = await app.handle(new Request('http://localhost/api/v1/health'))
 const data = await res.json()
 ```
 
 ## Batch Limits
-- `POST /api/resolve` accepts a maximum of 20 `CardRequest` items — validate and return 400 if exceeded
+- `POST /api/v1/resolve` accepts a maximum of 20 `CardRequest` items — validate and return 400 if exceeded
 
 ## New Routes Checklist
 1. Add handler in `src/index.ts` with Elysia schema
