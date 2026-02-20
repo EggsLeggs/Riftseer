@@ -5,6 +5,13 @@ import { FileText } from "lucide-react";
 export function TermsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
+      <title>Terms of Service — RiftSeer</title>
+      <meta name="description" content="Terms of Service for RiftSeer." />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="Terms of Service — RiftSeer" />
+      <meta property="og:description" content="Terms of Service for RiftSeer." />
+      <meta property="og:url" content={window.location.href} />
+
       <div className="flex items-center gap-2 mb-6">
         <FileText className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Terms of Service</h1>

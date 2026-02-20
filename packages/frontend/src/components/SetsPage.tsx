@@ -21,8 +21,19 @@ export function SetsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const setsDescription = sets.length > 0
+    ? `All ${sets.length} Riftbound sets on RiftSeer.`
+    : "All Riftbound sets on RiftSeer.";
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+      <title>All Sets — RiftSeer</title>
+      <meta name="description" content={setsDescription} />
+      <meta property="og:type" content="website" />
+      <meta property="og:title" content="All Sets — RiftSeer" />
+      <meta property="og:description" content={setsDescription} />
+      <meta property="og:url" content={window.location.href} />
+
       <div className="flex items-center gap-2 mb-6">
         <Layers className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Card Sets</h1>

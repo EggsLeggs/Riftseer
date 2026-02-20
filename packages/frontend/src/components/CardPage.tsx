@@ -13,6 +13,40 @@ import {
 import { Badge } from "./ui/badge";
 import { Download, Flag, ExternalLink, RotateCw } from "lucide-react";
 
+/** Build a plain-text SEO description for a card. */
+function buildCardSeoDescription(card: Card): string {
+  const parts: string[] = [];
+
+  if (card.domains && card.domains.length > 0) {
+    parts.push(card.domains.join(", "));
+  }
+
+  const stats: string[] = [];
+  if (card.cost != null) stats.push(`${card.cost} Energy`);
+  if (card.power != null) stats.push(`${card.power} Power`);
+  if (stats.length > 0) parts.push(stats.join(", "));
+
+  if (card.typeLine && card.supertype) {
+    parts.push(`${card.typeLine} — ${card.supertype}`);
+  } else if (card.typeLine) {
+    parts.push(card.typeLine);
+  } else if (card.supertype) {
+    parts.push(card.supertype);
+  }
+
+  const rawEffect = (card.effect ?? card.text ?? "")
+    .replace(/:[a-z_]+:/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (rawEffect) parts.push(rawEffect);
+
+  if (card.artist) parts.push(`Illustrated by ${card.artist}`);
+
+  parts.push("Riftbound TCG");
+
+  return parts.join(" • ");
+}
+
 /** Extract unique token names from ability/effect text (e.g. "3 Sprite unit token" → "Sprite"). */
 function parseTokenMentions(text: string): string[] {
   if (!text?.trim()) return [];
@@ -102,8 +136,22 @@ export function CardPage() {
     );
   }
 
+  const seoDescription = buildCardSeoDescription(card);
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
+      <title>{card.name} — RiftSeer</title>
+      <meta name="description" content={seoDescription} />
+      <meta property="og:title" content={card.name} />
+      <meta property="og:description" content={seoDescription} />
+      <meta property="og:type" content="product" />
+      {card.imageUrl && <meta property="og:image" content={card.imageUrl} />}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={card.name} />
+      <meta name="twitter:description" content={seoDescription} />
+      {card.imageUrl && <meta name="twitter:image" content={card.imageUrl} />}
+      <meta property="og:url" content={window.location.href} />
+
       {/* Breadcrumb */}
       <div className="text-sm text-muted-foreground mb-4">
         <Link to="/" className="hover:underline">Home</Link>
