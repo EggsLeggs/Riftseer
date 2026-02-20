@@ -56,22 +56,30 @@ async function loadTCGData(): Promise<void> {
     return;
   }
   tcgDataLoadPromise = (async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     try {
       const groupResults = await Promise.all(
         RIFTBOUND_GROUPS.map(async (groupId) => {
           const base = `${TCGCSV_BASE}/${TCGCSV_CATEGORY}/${groupId}`;
           const [productsRes, pricesRes] = await Promise.all([
-            fetch(`${base}/products`),
-            fetch(`${base}/prices`),
+            fetch(`${base}/products`, { signal: controller.signal }),
+            fetch(`${base}/prices`, { signal: controller.signal }),
           ]);
+          if (!productsRes.ok) {
+            throw new Error(`TCG products ${productsRes.status} ${productsRes.statusText}`);
+          }
+          if (!pricesRes.ok) {
+            throw new Error(`TCG prices ${pricesRes.status} ${pricesRes.statusText}`);
+          }
           const products: Array<{ productId: number; cleanName: string; url: string }> =
-            productsRes.ok ? await productsRes.json() : [];
+            await productsRes.json();
           const prices: Array<{
             productId: number;
             lowPrice: number | null;
             marketPrice: number | null;
             subTypeName: string;
-          }> = pricesRes.ok ? await pricesRes.json() : [];
+          }> = await pricesRes.json();
           return { products, prices };
         })
       );
@@ -93,12 +101,15 @@ async function loadTCGData(): Promise<void> {
           });
         }
       }
-      tcgNameMap = map;
-      tcgDataLoadedAt = Date.now();
-      logger.info("TCGPlayer data loaded", { count: map.size });
+      if (map.size > 0) {
+        tcgNameMap = map;
+        tcgDataLoadedAt = Date.now();
+        logger.info("TCGPlayer data loaded", { count: map.size });
+      }
     } catch (error) {
       logger.error("Failed to load TCG data", { error });
     } finally {
+      clearTimeout(timeoutId);
       tcgDataLoadPromise = null;
     }
   })();
