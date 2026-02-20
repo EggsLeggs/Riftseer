@@ -121,27 +121,27 @@ export function SyntaxPage() {
           <div className="space-y-2">
             <ApiEndpoint
               method="GET"
-              path="/api/cards?name=Sun Disc"
+              path="/api/v1/cards?name=Sun Disc"
               description="Search cards by name"
             />
             <ApiEndpoint
               method="GET"
-              path="/api/cards/:id"
+              path="/api/v1/cards/:id"
               description="Get a specific card by UUID"
             />
             <ApiEndpoint
               method="GET"
-              path="/api/cards/random"
+              path="/api/v1/cards/random"
               description="Get a random card"
             />
             <ApiEndpoint
               method="GET"
-              path="/api/sets"
+              path="/api/v1/sets"
               description="List all card sets"
             />
             <ApiEndpoint
               method="POST"
-              path="/api/resolve"
+              path="/api/v1/resolve"
               description="Batch resolve card names to cards"
             />
           </div>

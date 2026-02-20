@@ -10,7 +10,7 @@ export async function handleRandom(
   env: Env,
 ): Promise<void> {
   const client = createClient(env.API_BASE_URL);
-  const { data, error } = await client.api.cards.random.get();
+  const { data, error } = await client.api.v1.cards.random.get();
 
   if (error || !data) {
     await patchResponse(interaction, env, { content: "Couldn't fetch a random card. Try again!" });

@@ -11,10 +11,10 @@ export function createClient(baseUrl: string) {
 
 export type ApiClient = ReturnType<typeof createClient>;
 
-// Derive types from the Eden client's return types (mirrors packages/frontend/src/api.ts)
-type RandomCardData = Awaited<ReturnType<ApiClient["api"]["cards"]["random"]["get"]>>["data"];
-type ResolveData = Awaited<ReturnType<ApiClient["api"]["resolve"]["post"]>>["data"];
-type SetsData = Awaited<ReturnType<ApiClient["api"]["sets"]["get"]>>["data"];
+// Derive types from the Eden client's return types (mirrors packages/frontend/src/api.ts). Routes are under /api/v1.
+type RandomCardData = Awaited<ReturnType<ApiClient["api"]["v1"]["cards"]["random"]["get"]>>["data"];
+type ResolveData = Awaited<ReturnType<ApiClient["api"]["v1"]["resolve"]["post"]>>["data"];
+type SetsData = Awaited<ReturnType<ApiClient["api"]["v1"]["sets"]["get"]>>["data"];
 
 export type Card = NonNullable<RandomCardData>;
 export type ResolvedCard = NonNullable<ResolveData>["results"][number];

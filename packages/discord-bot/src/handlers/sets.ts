@@ -9,7 +9,7 @@ export async function handleSets(
   env: Env,
 ): Promise<void> {
   const client = createClient(env.API_BASE_URL);
-  const { data, error } = await client.api.sets.get();
+  const { data, error } = await client.api.v1.sets.get();
 
   if (error || !data) {
     await patchResponse(interaction, env, { content: "Couldn't fetch sets. Try again!" });

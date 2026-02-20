@@ -61,7 +61,7 @@ npx devvit settings set siteBaseUrl
 
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core` is the only coupling point between the API and data sources. Swap providers by changing `CARD_PROVIDER` — only the factory (`packages/core/src/providers/index.ts`) changes.
-- **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/resolve` endpoint — neither embeds a provider nor SQLite connection.
+- **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/resolve` endpoint — neither embeds a provider nor SQLite connection.
 - **SQLite cache**: RiftCodexProvider fetches all cards on startup, caches to SQLite, builds an in-memory Fuse.js index. Cache refreshes on a configurable interval.
 - **Fuzzy search**: Fuse.js index is built from `name` + `clean_name` fields. Exact match is tried first; fuzzy search is used as fallback.
 

@@ -79,66 +79,64 @@ function buildTestApp(provider: CardDataProvider) {
 
   const startTime = Date.now();
 
-  const API_PREFIX = "/api";
-  return new Elysia().group(API_PREFIX, (app) =>
-    app
-      .use(swagger())
-      .get("/health", () => ({
-        status: "ok",
-        uptimeMs: Date.now() - startTime,
-      }))
-      .get("/meta", () => {
+  const v1 = new Elysia({ prefix: "/api/v1" })
+    .get("/health", () => ({
+      status: "ok",
+      uptimeMs: Date.now() - startTime,
+    }))
+    .get("/meta", () => {
+      return {
+        provider: provider.sourceName,
+        cardCount: 1,
+        lastRefresh: null,
+        cacheAgeSeconds: null,
+        uptimeSeconds: 0,
+      };
+    })
+    .get("/cards/:id", async ({ params, set }) => {
+      const card = await provider.getCardById(params.id);
+      if (!card) {
+        set.status = 404;
+        return { error: "Card not found", code: "NOT_FOUND" };
+      }
+      return sanitiseCard(card);
+    })
+    .get("/cards", async ({ query, set }) => {
+      if (!query.name) {
+        set.status = 400;
+        return { error: "name required", code: "MISSING_PARAM" };
+      }
+      const cards = await provider.searchByName(query.name as string, {
+        set: query.set as string | undefined,
+        fuzzy: (query.fuzzy as string) === "1",
+        limit: query.limit ? parseInt(query.limit as string, 10) : 10,
+      });
+      return { count: cards.length, cards: cards.map(sanitiseCard) };
+    })
+    .post(
+      "/resolve",
+      async ({ body }) => {
+        const reqs = (body as { requests: string[] }).requests
+          .slice(0, 20)
+          .map((r) => {
+            const parsed = parseCardRequests(`[[${r}]]`);
+            return parsed[0] ?? { raw: r, name: r };
+          });
+        const results = await Promise.all(
+          reqs.map((req) => provider.resolveRequest(req)),
+        );
         return {
-          provider: provider.sourceName,
-          cardCount: 1,
-          lastRefresh: null,
-          cacheAgeSeconds: null,
-          uptimeSeconds: 0,
+          count: results.length,
+          results: results.map((r) => ({
+            ...r,
+            card: r.card ? sanitiseCard(r.card) : null,
+          })),
         };
-      })
-      .get("/cards/:id", async ({ params, set }) => {
-        const card = await provider.getCardById(params.id);
-        if (!card) {
-          set.status = 404;
-          return { error: "Card not found", code: "NOT_FOUND" };
-        }
-        return sanitiseCard(card);
-      })
-      .get("/cards", async ({ query, set }) => {
-        if (!query.name) {
-          set.status = 400;
-          return { error: "name required", code: "MISSING_PARAM" };
-        }
-        const cards = await provider.searchByName(query.name as string, {
-          set: query.set as string | undefined,
-          fuzzy: (query.fuzzy as string) === "1",
-          limit: query.limit ? parseInt(query.limit as string, 10) : 10,
-        });
-        return { count: cards.length, cards: cards.map(sanitiseCard) };
-      })
-      .post(
-        "/resolve",
-        async ({ body }) => {
-          const reqs = (body as { requests: string[] }).requests
-            .slice(0, 20)
-            .map((r) => {
-              const parsed = parseCardRequests(`[[${r}]]`);
-              return parsed[0] ?? { raw: r, name: r };
-            });
-          const results = await Promise.all(
-            reqs.map((req) => provider.resolveRequest(req)),
-          );
-          return {
-            count: results.length,
-            results: results.map((r) => ({
-              ...r,
-              card: r.card ? sanitiseCard(r.card) : null,
-            })),
-          };
-        },
-        { body: t.Object({ requests: t.Array(t.String()) }) },
-      ),
-  );
+      },
+      { body: t.Object({ requests: t.Array(t.String()) }) },
+    );
+
+  return new Elysia().use(swagger()).use(v1);
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -154,7 +152,7 @@ describe("API routes", () => {
 
   describe("GET /health", () => {
     it("returns 200 with status ok", async () => {
-      const res = await app.handle(new Request("http://localhost/api/health"));
+      const res = await app.handle(new Request("http://localhost/api/v1/health"));
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.status).toBe("ok");
@@ -166,7 +164,7 @@ describe("API routes", () => {
 
   describe("GET /meta", () => {
     it("returns provider name", async () => {
-      const res = await app.handle(new Request("http://localhost/api/meta"));
+      const res = await app.handle(new Request("http://localhost/api/v1/meta"));
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.provider).toBe("stub");
@@ -178,7 +176,7 @@ describe("API routes", () => {
   describe("GET /cards/:id", () => {
     it("returns the card for a known ID", async () => {
       const res = await app.handle(
-        new Request(`http://localhost/api/cards/${STUB_CARD.id}`),
+        new Request(`http://localhost/api/v1/cards/${STUB_CARD.id}`),
       );
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -188,7 +186,7 @@ describe("API routes", () => {
 
     it("returns 404 for unknown ID", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/cards/unknown-id"),
+        new Request("http://localhost/api/v1/cards/unknown-id"),
       );
       expect(res.status).toBe(404);
       const body = await res.json();
@@ -201,7 +199,7 @@ describe("API routes", () => {
   describe("GET /cards", () => {
     it("returns matching cards for a name query", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/cards?name=Sun"),
+        new Request("http://localhost/api/v1/cards?name=Sun"),
       );
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -210,13 +208,13 @@ describe("API routes", () => {
     });
 
     it("returns 400 when name is missing", async () => {
-      const res = await app.handle(new Request("http://localhost/api/cards"));
+      const res = await app.handle(new Request("http://localhost/api/v1/cards"));
       expect(res.status).toBe(400);
     });
 
     it("returns empty array for unknown name", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/cards?name=zzzzz"),
+        new Request("http://localhost/api/v1/cards?name=zzzzz"),
       );
       const body = await res.json();
       expect(body.count).toBe(0);
@@ -228,7 +226,7 @@ describe("API routes", () => {
   describe("POST /resolve", () => {
     it("resolves known cards", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/resolve", {
+        new Request("http://localhost/api/v1/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Sun Disc"] }),
@@ -243,7 +241,7 @@ describe("API routes", () => {
 
     it("returns not-found for unknown cards", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/resolve", {
+        new Request("http://localhost/api/v1/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Nonexistent Card"] }),
@@ -256,7 +254,7 @@ describe("API routes", () => {
 
     it("handles batch requests", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/resolve", {
+        new Request("http://localhost/api/v1/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Sun Disc", "Missing Card"] }),
@@ -269,7 +267,7 @@ describe("API routes", () => {
     it("caps at 20 requests", async () => {
       const requests = Array.from({ length: 25 }, (_, i) => `Card ${i}`);
       const res = await app.handle(
-        new Request("http://localhost/api/resolve", {
+        new Request("http://localhost/api/v1/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests }),
@@ -281,7 +279,7 @@ describe("API routes", () => {
 
     it("accepts [[Name|SET]] format in requests", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/resolve", {
+        new Request("http://localhost/api/v1/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Sun Disc|OGN"] }),

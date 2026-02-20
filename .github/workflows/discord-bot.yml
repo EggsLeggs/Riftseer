@@ -30,7 +30,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: packages/discord-bot
-          command: deploy --env production
+          command: deploy
 
   upload-emojis:
     runs-on: ubuntu-latest
