@@ -15,8 +15,6 @@ export interface Card {
   setName?: string;
   /** Collector/print number within the set. */
   collectorNumber?: string;
-  /** TCGPlayer product ID for pricing/links (from RiftCodex). */
-  tcgplayerId?: string;
   /** Primary card art image URL (hosted by Riot CDN). */
   imageUrl?: string;
   /** Plain-text card rules text (symbols replaced with tokens like :rb_exhaust:). */

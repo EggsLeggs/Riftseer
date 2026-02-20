@@ -100,10 +100,15 @@ function CopyLink({
   const [copied, setCopied] = useState(false);
   const copy = (e: React.MouseEvent) => {
     e.preventDefault();
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.debug("Copy to clipboard failed", err);
+      });
   };
   return (
     <span className="inline-flex items-center gap-1">
@@ -190,11 +195,12 @@ export function CardPage() {
     });
   }, [card?.id, card?.text, card?.effect]);
 
-  // Fetch USD prices from TCGPlayer (via tcgcsv.com) for all unique card names in the tables
+  // Fetch USD prices from TCGPlayer (via tcgcsv.com) for names not already in usdPrices
   useEffect(() => {
     if (!card) return;
     const names = new Set<string>([card.name, ...printings.map((p) => p.name), ...tokens.map((t) => t.name)]);
-    for (const name of names) {
+    const toFetch = [...names].filter((name) => !(name in usdPrices));
+    for (const name of toFetch) {
       getTCGPlayerPrice(name).then((price) => {
         setUsdPrices((prev) => ({ ...prev, [name]: price }));
       });

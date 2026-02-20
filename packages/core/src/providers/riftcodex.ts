@@ -114,7 +114,6 @@ function toCard(raw: RawCard): Card {
     setCode: raw.set?.set_id?.toUpperCase(),
     setName: raw.set?.name ?? raw.set?.label,
     collectorNumber: String(raw.collector_number),
-    tcgplayerId: raw.tcgplayer_id,
     imageUrl: raw.media?.image_url,
     text: raw.text?.plain,
     effect: typeof rawEffect === "string" ? rawEffect : undefined,

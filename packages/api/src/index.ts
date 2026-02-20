@@ -24,6 +24,7 @@ import {
   parseCardRequests,
   logger,
   getCacheMeta,
+  normalizeCardName,
   type CardDataProvider,
   type Card,
   type ResolvedCard,
@@ -44,7 +45,7 @@ type TCGEntry = {
   usdLow: number | null;
 };
 
-let tcgNameMap = new Map<string, TCGEntry>(); // key: cleanName.toLowerCase()
+let tcgNameMap = new Map<string, TCGEntry>(); // key: normalizeCardName(cleanName)
 let tcgDataLoadedAt = 0;
 
 async function loadTCGData(): Promise<void> {
@@ -79,7 +80,7 @@ async function loadTCGData(): Promise<void> {
       for (const product of products) {
         const price = priceById.get(product.productId);
         if (!price) continue; // sealed products won't have a Normal price entry
-        map.set(product.cleanName.toLowerCase(), {
+        map.set(normalizeCardName(product.cleanName), {
           productId: product.productId,
           url: product.url,
           ...price,
@@ -164,12 +165,14 @@ const ErrorSchema = t.Object({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Strip the `raw` field and ensure variant flags are always present (default false for old cache). */
-function sanitiseCard(card: Card): Omit<Card, "raw"> {
-  const { raw: _raw, ...rest } = card;
-  const out = { ...rest } as Omit<Card, "raw">;
+function sanitiseCard(card: Card): Omit<Card, "raw"> & { tcgplayerId?: string } {
+  const { raw, ...rest } = card;
+  const out = { ...rest } as Omit<Card, "raw"> & { tcgplayerId?: string };
   out.alternateArt = rest.alternateArt === true;
   out.overnumbered = rest.overnumbered === true;
   out.signature = rest.signature === true;
+  const tcgplayerId = (raw as { tcgplayer_id?: string } | undefined)?.tcgplayer_id;
+  if (tcgplayerId != null) out.tcgplayerId = String(tcgplayerId);
   return out;
 }
 
@@ -482,7 +485,7 @@ const app = new Elysia()
             return { error: "Query parameter `name` is required", code: "MISSING_PARAM" };
           }
           await loadTCGData();
-          const entry = tcgNameMap.get(query.name.trim().toLowerCase());
+          const entry = tcgNameMap.get(normalizeCardName(query.name.trim()));
           return {
             usdMarket: entry?.usdMarket ?? null,
             usdLow: entry?.usdLow ?? null,

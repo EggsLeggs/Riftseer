@@ -50,9 +50,15 @@ export type TCGPlayerPrice = { usdMarket: number | null; usdLow: number | null; 
 
 export async function getTCGPlayerPrice(name: string): Promise<TCGPlayerPrice> {
   try {
-    const res = await fetch(apiUrl(`/api/prices/tcgplayer?name=${encodeURIComponent(name)}`));
-    if (!res.ok) return { usdMarket: null, usdLow: null, url: null };
-    return (await res.json()) as TCGPlayerPrice;
+    const { data, error } = await client.api.prices.tcgplayer.get({
+      query: { name },
+    });
+    if (error || data == null) return { usdMarket: null, usdLow: null, url: null };
+    return {
+      usdMarket: data.usdMarket ?? null,
+      usdLow: data.usdLow ?? null,
+      url: data.url ?? null,
+    };
   } catch {
     return { usdMarket: null, usdLow: null, url: null };
   }
