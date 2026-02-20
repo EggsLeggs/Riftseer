@@ -62,7 +62,7 @@ Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.jsonc`. CI deploy
 ```typescript
 // Follow the same pattern as packages/frontend/src/api.ts
 const client = createClient(env.API_BASE_URL);
-const { data, error } = await client.api.cards.random.get();
+const { data, error } = await client.api.v1.cards.random.get();
 ```
 
 ## Registering Commands

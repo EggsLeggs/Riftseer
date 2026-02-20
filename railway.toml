@@ -7,4 +7,4 @@ dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "bun src/index.ts"
-healthcheckPath = "/api/health"
+healthcheckPath = "/api/v1/health"
