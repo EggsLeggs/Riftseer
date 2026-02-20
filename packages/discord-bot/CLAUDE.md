@@ -54,7 +54,7 @@ Set once with `wrangler secret put`:
 | `DISCORD_BOT_TOKEN` | Bot token from Discord Developer Portal → Bot |
 | `DISCORD_APPLICATION_ID` | App ID from Discord Developer Portal → General Information |
 
-Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.jsonc`. CI deploys with `wrangler deploy --env production`. Override at deploy time with `--var API_BASE_URL:...` if needed.
+Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.jsonc`. CI deploys with `wrangler deploy`. Override at deploy time with `--var API_BASE_URL:...` if needed.
 
 ## Eden Client
 `src/api.ts` uses Eden Treaty typed against `App` from `@riftseer/api`. The `import type { App }` is erased at bundle time — wrangler never includes any server-side code. `elysia` is also a devDep (type-only). Only `@elysiajs/eden` ships in the bundle.
