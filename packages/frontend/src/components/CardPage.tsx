@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { getCard, searchCards, apiUrl, type Card } from "../api";
+import { getCard, searchCards, apiUrl, getTCGPlayerPrice, type TCGPlayerPrice, type Card } from "../api";
 import { CardTextRenderer } from "./CardTextRenderer";
 import {
   Table,
@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "./ui/table";
 import { Badge } from "./ui/badge";
-import { Download, Flag, ExternalLink, RotateCw } from "lucide-react";
+import { Download, Flag, ExternalLink, RotateCw, Copy } from "lucide-react";
 
 /** Build a plain-text SEO description for a card. */
 function buildCardSeoDescription(card: Card): string {
@@ -47,6 +47,85 @@ function buildCardSeoDescription(card: Card): string {
   return parts.join(" • ");
 }
 
+/** Build a CardMarket exact-match search URL for a Riftbound card. */
+function cardMarketUrl(name: string): string {
+  const params = new URLSearchParams({
+    searchMode: "v2",
+    idCategory: "0",
+    idExpansion: "0",
+    searchString: `[${name}]`,
+    exactMatch: "on",
+    idRarity: "0",
+    perSite: "30",
+  });
+  return `https://www.cardmarket.com/en/Riftbound/Products/Search?${params.toString()}`;
+}
+
+const TCGPLAYER_PRODUCT_LINE = "riftbound-league-of-legends-trading-card-game";
+
+function tcgPlayerSearchUrl(name: string): string {
+  const params = new URLSearchParams({
+    q: name,
+    view: "grid",
+    direct: "true",
+    productLineName: TCGPLAYER_PRODUCT_LINE,
+    setName: "product",
+  });
+  return `https://www.tcgplayer.com/search/riftbound/product?${params.toString()}`;
+}
+
+/** Direct TCGPlayer product page when we have the product ID. */
+function tcgPlayerProductUrl(tcgplayerId: string): string {
+  return `https://www.tcgplayer.com/product/${tcgplayerId}`;
+}
+
+function tcgPlayerUrlForCard(
+  card: Card,
+  usdPrices: Record<string, TCGPlayerPrice>,
+): string {
+  if (card.tcgplayerId) return tcgPlayerProductUrl(card.tcgplayerId);
+  return usdPrices[card.name]?.url ?? tcgPlayerSearchUrl(card.name);
+}
+
+/** Copy URL to clipboard; show "Copied" feedback. */
+function CopyLink({
+  url,
+  title = "Copy link",
+  ariaLabel = "Copy link",
+}: {
+  url: string;
+  title?: string;
+  ariaLabel?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const copy = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch((err) => {
+        console.debug("Copy to clipboard failed", err);
+      });
+  };
+  return (
+    <span className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        onClick={copy}
+        className="p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+        title={title}
+        aria-label={ariaLabel}
+      >
+        <Copy className="w-3 h-3" />
+      </button>
+      {copied && <span className="text-xs text-muted-foreground">Copied</span>}
+    </span>
+  );
+}
+
 /** Extract unique token names from ability/effect text (e.g. "3 Sprite unit token" → "Sprite"). */
 function parseTokenMentions(text: string): string[] {
   if (!text?.trim()) return [];
@@ -68,6 +147,7 @@ export function CardPage() {
   const [tokens, setTokens] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [rotated, setRotated] = useState(false);
+  const [usdPrices, setUsdPrices] = useState<Record<string, TCGPlayerPrice>>({});
 
   useEffect(() => {
     setRotated(false);
@@ -114,6 +194,18 @@ export function CardPage() {
       setTokens(Array.from(byId.values()));
     });
   }, [card?.id, card?.text, card?.effect]);
+
+  // Fetch USD prices from TCGPlayer (via tcgcsv.com) for names not already in usdPrices
+  useEffect(() => {
+    if (!card) return;
+    const names = new Set<string>([card.name, ...printings.map((p) => p.name), ...tokens.map((t) => t.name)]);
+    const toFetch = [...names].filter((name) => !(name in usdPrices));
+    for (const name of toFetch) {
+      getTCGPlayerPrice(name).then((price) => {
+        setUsdPrices((prev) => ({ ...prev, [name]: price }));
+      });
+    }
+  }, [card?.name, printings, tokens]);
 
   if (loading) {
     return (
@@ -253,17 +345,11 @@ export function CardPage() {
                     <span className="font-bold text-lg">{card.name}</span>
                     <span className="inline-flex items-center gap-1">
                       {card.cost != null && (
-                        card.cost >= 1 && card.cost <= 5 ? (
-                          <span
-                            className={`icon-energy-${card.cost}${card.typeLine?.toLowerCase() === "gear" ? " icon-energy-gear" : ""}`}
-                            aria-label={`${card.cost} energy`}
-                          />
-                        ) : (
-                          <>
-                            <span className="icon-energy" aria-hidden />
-                            <span className="font-semibold">{card.cost}</span>
-                          </>
-                        )
+                        <span
+                          className={`icon-energy-value${card.typeLine?.toLowerCase() === "gear" ? " icon-energy-gear" : ""}`}
+                          data-value={card.cost}
+                          aria-label={`${card.cost} energy`}
+                        />
                       )}
                       {card.power != null && (
                         <span className="flex items-center gap-0.5">
@@ -465,27 +551,64 @@ export function CardPage() {
                       const fullSetName = t.setName ?? t.setCode ?? "Unknown";
                       const setLabel = t.setCode && fullSetName !== t.setCode ? `${fullSetName} (${t.setCode})` : fullSetName;
                       return (
-                        <TableRow key={t.id}>
-                          <TableCell colSpan={5} className="p-0">
-                            <Link
-                              to={`/card/${t.id}`}
-                              className="grid w-full grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] cursor-pointer items-center hover:bg-muted/50 [&>span]:px-2 [&>span]:py-2 [&>span]:text-xs [&>span:nth-child(4)]:text-right [&>span:nth-child(5)]:text-right"
-                            >
-                              <span className="font-semibold text-foreground">{setLabel}</span>
-                              <span className="text-muted-foreground">{displayNumber}</span>
-                              <span className="text-muted-foreground">
-                                {t.rarity ? (
-                                  <span className="inline-flex items-center gap-1">
-                                    <span className={`icon-rarity icon-rarity-${t.rarity.toLowerCase()}`} />
-                                    {t.rarity}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
+                        <TableRow
+                          key={t.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => navigate(`/card/${t.id}`)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              navigate(`/card/${t.id}`);
+                            }
+                          }}
+                        >
+                          <TableCell className="text-xs font-semibold text-foreground">
+                            {setLabel}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {displayNumber}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {t.rarity ? (
+                              <span className="inline-flex items-center gap-1">
+                                <span className={`icon-rarity icon-rarity-${t.rarity.toLowerCase()}`} />
+                                {t.rarity}
                               </span>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-xs">
+                            {!(t.name in usdPrices) ? (
+                              <span className="text-muted-foreground">…</span>
+                            ) : usdPrices[t.name].usdMarket != null ? (
+                              <a
+                                href={tcgPlayerUrlForCard(t, usdPrices)}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-primary hover:underline"
+                              >
+                                ${usdPrices[t.name].usdMarket!.toFixed(2)}
+                              </a>
+                            ) : (
                               <span className="text-muted-foreground">—</span>
-                              <span className="text-muted-foreground">—</span>
-                            </Link>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <a
+                              href={cardMarketUrl(t.name)}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              title="View on CardMarket"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              CM
+                            </a>
                           </TableCell>
                         </TableRow>
                       );
@@ -557,11 +680,35 @@ export function CardPage() {
                             "—"
                           )}
                         </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">
-                          —
+                        <TableCell className="text-right text-xs">
+                          {!(p.name in usdPrices) ? (
+                            <span className="text-muted-foreground">…</span>
+                          ) : usdPrices[p.name].usdMarket != null ? (
+                            <a
+                              href={tcgPlayerUrlForCard(p, usdPrices)}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-primary hover:underline"
+                            >
+                              ${usdPrices[p.name].usdMarket!.toFixed(2)}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground">
-                          —
+                        <TableCell className="text-right">
+                          <a
+                            href={cardMarketUrl(p.name)}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            title="View on CardMarket"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            CM
+                          </a>
                         </TableCell>
                       </TableRow>
                     );
@@ -589,17 +736,38 @@ export function CardPage() {
           <div>
             <h4 className="text-sm font-semibold mb-2">Buy This Card</h4>
             <ul className="space-y-1">
-              {["TCGplayer", "CardMarket"].map((shop) => (
-                <li key={shop}>
-                  <a
-                    href="#"
-                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    Buy on {shop}
-                  </a>
-                </li>
-              ))}
+              <li className="flex items-center gap-1">
+                <a
+                  href={tcgPlayerUrlForCard(card, usdPrices)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Buy on TCGplayer
+                </a>
+                <CopyLink
+                  url={tcgPlayerUrlForCard(card, usdPrices)}
+                  title="Copy TCGplayer link"
+                  ariaLabel="Copy TCGplayer link"
+                />
+              </li>
+              <li className="flex items-center gap-1">
+                <a
+                  href={cardMarketUrl(card.name)}
+                  target="_blank"
+                  rel="noopener"
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Buy on CardMarket
+                </a>
+                <CopyLink
+                  url={cardMarketUrl(card.name)}
+                  title="Copy link (paste in address bar if Card Market rate-limits)"
+                  ariaLabel="Copy Card Market link"
+                />
+              </li>
             </ul>
           </div>
 
