@@ -26,13 +26,8 @@
   background-position: center;
 }
 
-/* Numbered energy costs — Riftbound style: white circle, dark teal number */
-.icon-energy-0,
-.icon-energy-1,
-.icon-energy-2,
-.icon-energy-3,
-.icon-energy-4,
-.icon-energy-5 {
+/* Universal energy cost — any number via data-value (circle, Riftbound style) */
+.icon-energy-value {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -52,41 +47,23 @@
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-[data-theme="dark"] .icon-energy-0,
-[data-theme="dark"] .icon-energy-1,
-[data-theme="dark"] .icon-energy-2,
-[data-theme="dark"] .icon-energy-3,
-[data-theme="dark"] .icon-energy-4,
-[data-theme="dark"] .icon-energy-5 {
+[data-theme="dark"] .icon-energy-value {
   background-color: #fff;
   color: #013951;
 }
 
-.icon-energy-0::before { content: "0"; }
-.icon-energy-1::before { content: "1"; }
-.icon-energy-2::before { content: "2"; }
-.icon-energy-3::before { content: "3"; }
-.icon-energy-4::before { content: "4"; }
-.icon-energy-5::before { content: "5"; }
+.icon-energy-value::before {
+  content: attr(data-value);
+}
 
 /* Gear cards: energy cost as diamond instead of circle */
-.icon-energy-gear.icon-energy-0,
-.icon-energy-gear.icon-energy-1,
-.icon-energy-gear.icon-energy-2,
-.icon-energy-gear.icon-energy-3,
-.icon-energy-gear.icon-energy-4,
-.icon-energy-gear.icon-energy-5 {
+.icon-energy-gear.icon-energy-value {
   border-radius: 0;
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }
 
 /* Inline energy icons in card text — match line height, don’t disrupt it */
-.inline-icon.icon-energy-0,
-.inline-icon.icon-energy-1,
-.inline-icon.icon-energy-2,
-.inline-icon.icon-energy-3,
-.inline-icon.icon-energy-4,
-.inline-icon.icon-energy-5 {
+.inline-icon.icon-energy-value {
   width: 1.25em;
   height: 1.25em;
   min-width: 0;

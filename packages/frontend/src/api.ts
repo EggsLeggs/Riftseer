@@ -46,6 +46,24 @@ export async function getSets(): Promise<{ count: number; sets: CardSet[] }> {
   return data;
 }
 
+export type TCGPlayerPrice = { usdMarket: number | null; usdLow: number | null; url: string | null };
+
+export async function getTCGPlayerPrice(name: string): Promise<TCGPlayerPrice> {
+  try {
+    const { data, error } = await client.api.prices.tcgplayer.get({
+      query: { name },
+    });
+    if (error || data == null) return { usdMarket: null, usdLow: null, url: null };
+    return {
+      usdMarket: data.usdMarket ?? null,
+      usdLow: data.usdLow ?? null,
+      url: data.url ?? null,
+    };
+  } catch {
+    return { usdMarket: null, usdLow: null, url: null };
+  }
+}
+
 export async function getRandomCard(): Promise<Card | null> {
   const { data, error } = await client.api.cards.random.get();
   if (error) return null;
