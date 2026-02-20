@@ -30,10 +30,75 @@ import {
   RiftCodexProvider,
 } from "@riftseer/core";
 
+// ─── TCGPlayer price cache (via tcgcsv.com) ────────────────────────────────────
+
+const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
+const TCGCSV_CATEGORY = 89; // Riftbound League of Legends Trading Card Game
+const RIFTBOUND_GROUPS = [24344, 24439, 24502, 24519, 24528, 24552, 24560]; // all known groups
+const TCG_PRICE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+type TCGEntry = {
+  productId: number;
+  url: string;
+  usdMarket: number | null;
+  usdLow: number | null;
+};
+
+let tcgNameMap = new Map<string, TCGEntry>(); // key: cleanName.toLowerCase()
+let tcgDataLoadedAt = 0;
+
+async function loadTCGData(): Promise<void> {
+  if (tcgDataLoadedAt && Date.now() - tcgDataLoadedAt < TCG_PRICE_TTL_MS) return;
+  try {
+    const groupResults = await Promise.all(
+      RIFTBOUND_GROUPS.map(async (groupId) => {
+        const base = `${TCGCSV_BASE}/${TCGCSV_CATEGORY}/${groupId}`;
+        const [productsRes, pricesRes] = await Promise.all([
+          fetch(`${base}/products`),
+          fetch(`${base}/prices`),
+        ]);
+        const products: Array<{ productId: number; cleanName: string; url: string }> =
+          productsRes.ok ? await productsRes.json() : [];
+        const prices: Array<{
+          productId: number;
+          lowPrice: number | null;
+          marketPrice: number | null;
+          subTypeName: string;
+        }> = pricesRes.ok ? await pricesRes.json() : [];
+        return { products, prices };
+      })
+    );
+
+    const map = new Map<string, TCGEntry>();
+    for (const { products, prices } of groupResults) {
+      const priceById = new Map(
+        prices
+          .filter((p) => p.subTypeName === "Normal")
+          .map((p) => [p.productId, { usdMarket: p.marketPrice, usdLow: p.lowPrice }])
+      );
+      for (const product of products) {
+        const price = priceById.get(product.productId);
+        if (!price) continue; // sealed products won't have a Normal price entry
+        map.set(product.cleanName.toLowerCase(), {
+          productId: product.productId,
+          url: product.url,
+          ...price,
+        });
+      }
+    }
+    tcgNameMap = map;
+    tcgDataLoadedAt = Date.now();
+    logger.info("TCGPlayer data loaded", { count: map.size });
+  } catch {
+    // non-fatal — USD prices degrade gracefully
+  }
+}
+
 // ─── Provider singleton ────────────────────────────────────────────────────────
 
 const provider: CardDataProvider = createProvider();
 await provider.warmup();
+loadTCGData(); // fire-and-forget
 
 const startTime = Date.now();
 
@@ -46,6 +111,9 @@ const CardSchema = t.Object({
   setCode: t.Optional(t.String()),
   setName: t.Optional(t.String()),
   collectorNumber: t.Optional(t.String()),
+  tcgplayerId: t.Optional(
+    t.String({ description: "TCGPlayer product ID for pricing/links" }),
+  ),
   imageUrl: t.Optional(t.String()),
   text: t.Optional(t.String()),
   effect: t.Optional(
@@ -401,6 +469,43 @@ const app = new Elysia()
                 },
               },
             },
+          },
+        },
+      )
+
+      // ── GET /prices/tcgplayer ─────────────────────────────────────────────
+      .get(
+        "/prices/tcgplayer",
+        async ({ query, set }) => {
+          if (!query.name?.trim()) {
+            set.status = 400;
+            return { error: "Query parameter `name` is required", code: "MISSING_PARAM" };
+          }
+          await loadTCGData();
+          const entry = tcgNameMap.get(query.name.trim().toLowerCase());
+          return {
+            usdMarket: entry?.usdMarket ?? null,
+            usdLow: entry?.usdLow ?? null,
+            url: entry?.url ?? null,
+          };
+        },
+        {
+          query: t.Object({
+            name: t.Optional(t.String({ description: "Card name to look up on TCGPlayer" })),
+          }),
+          response: {
+            200: t.Object({
+              usdMarket: t.Nullable(t.Number()),
+              usdLow: t.Nullable(t.Number()),
+              url: t.Nullable(t.String()),
+            }),
+            400: ErrorSchema,
+          },
+          detail: {
+            tags: ["Cards"],
+            summary: "TCGPlayer USD price",
+            description:
+              "Returns market/low USD prices and direct product URL for a card by name. Data from tcgcsv.com, cached for 1 hour.",
           },
         },
       )
