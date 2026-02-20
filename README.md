@@ -23,7 +23,7 @@ Card data API, web app, and Reddit + Discord integration for the **Riftbound** T
 |Part|Description|
 |------|--------------|
 |**Site**|React (Vite) app: search, card pages, sets browser, syntax guide, light/dark theme|
-|**API**|Elysia HTTP server under `/api`: cards, sets, resolve, Swagger at `/api/swagger`|
+|**API**|Elysia HTTP server under `/api/v1`: cards, sets, resolve; Swagger UI at `/api/swagger`|
 |**Discord bot**|Slash-command bot on Cloudflare Workers — see `packages/discord-bot`|
 |**Reddit bot**|Bracket-syntax bot on Reddit — uses [Devvit](https://devvit.dev), see `packages/reddit-bot`|
 |**Core**|Shared types, `CardDataProvider`, parser, icon definitions, RiftCodex provider, SQLite cache|
@@ -50,7 +50,7 @@ The site uses Eden (typed API client), React Router, Tailwind, and domain/stat i
 ```text
 packages/
   core/         ← shared types, CardDataProvider, parser, icon defs, SQLite, RiftCodex provider
-  api/          ← Elysia server (all routes under /api)
+  api/          ← Elysia server (all routes under /api/v1)
   frontend/     ← React + Vite SPA (Eden client → API)
   discord-bot/  ← Discord slash-command bot (Cloudflare Workers + Wrangler)
   reddit-bot/   ← Reddit bracket-syntax bot (Devvit)
@@ -160,26 +160,26 @@ Bot implementation and deployment are in `packages/reddit-bot` (Devvit).
 
 ## API Reference
 
-When the API is running, OpenAPI UI is at **`/api/swagger`**.
+When the API is running, OpenAPI UI is at **`/api/swagger`** (documents all API versions).
 
-All endpoints are under **`/api`**:
+All endpoints are under **`/api/v1`**:
 
 | Method | Path | Description |
 | ------ | ---- | ----------- |
-| GET | `/api/health` | `{ status, uptimeMs }` |
-| GET | `/api/meta` | Provider name, card count, last refresh, cache age |
-| GET | `/api/cards` | Search: `?name=...` (required unless browsing set), optional `?set=`, `?fuzzy=1`, `?limit=` |
-| GET | `/api/cards?set=OGN` | List cards in set (no `name` required) |
-| GET | `/api/cards/random` | One random card |
-| GET | `/api/cards/:id` | Card by UUID |
-| GET | `/api/cards/:id/text` | Plain text (name, type line, rules) for copy-paste |
-| POST | `/api/resolve` | Batch resolve: `{ "requests": ["Sun Disc", "Stalwart Poro\|OGN", ...] }` (max 20) |
-| GET | `/api/sets` | List sets with codes and card counts |
+| GET | `/api/v1/health` | `{ status, uptimeMs }` |
+| GET | `/api/v1/meta` | Provider name, card count, last refresh, cache age |
+| GET | `/api/v1/cards` | Search: `?name=...` (required unless browsing set), optional `?set=`, `?fuzzy=1`, `?limit=` |
+| GET | `/api/v1/cards?set=OGN` | List cards in set (no `name` required) |
+| GET | `/api/v1/cards/random` | One random card |
+| GET | `/api/v1/cards/:id` | Card by UUID |
+| GET | `/api/v1/cards/:id/text` | Plain text (name, type line, rules) for copy-paste |
+| POST | `/api/v1/resolve` | Batch resolve: `{ "requests": ["Sun Disc", "Stalwart Poro\|OGN", ...] }` (max 20) |
+| GET | `/api/v1/sets` | List sets with codes and card counts |
 
-### POST /api/resolve example
+### POST /api/v1/resolve example
 
 ```bash
-curl -X POST http://localhost:3000/api/resolve \
+curl -X POST http://localhost:3000/api/v1/resolve \
   -H 'Content-Type: application/json' \
   -d '{"requests":["Sun Disc","Stalwart Poro|OGN","NonExistentCard"]}'
 ```

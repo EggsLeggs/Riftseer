@@ -30,7 +30,7 @@ export async function handleCard(
   const client = createClient(env.API_BASE_URL);
   const request = setCode ? `${cardName}|${setCode}` : cardName;
 
-  const { data, error } = await client.api.resolve.post({ requests: [request] });
+  const { data, error } = await client.api.v1.resolve.post({ requests: [request] });
 
   if (error || !data || data.results.length === 0 || !data.results[0].card) {
     await patchResponse(interaction, env, {

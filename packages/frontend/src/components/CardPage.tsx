@@ -788,7 +788,7 @@ export function CardPage() {
               </li>
               <li>
                 <a
-                  href={apiUrl(`/api/cards/${card.id}/text`)}
+                  href={apiUrl(`/api/v1/cards/${card.id}/text`)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
@@ -799,7 +799,7 @@ export function CardPage() {
               </li>
               <li>
                 <a
-                  href={apiUrl(`/api/cards/${card.id}`)}
+                  href={apiUrl(`/api/v1/cards/${card.id}`)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"

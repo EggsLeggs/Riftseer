@@ -5,9 +5,9 @@ const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? window.
 const client = treaty<App>(API_BASE);
 
 // Derive types from the Eden client's route signatures (not from wrapper
-// functions) to avoid circular references.
-type RandomCardData = Awaited<ReturnType<typeof client.api.cards.random.get>>["data"];
-type SetsData = Awaited<ReturnType<typeof client.api.sets.get>>["data"];
+// functions) to avoid circular references. Routes are under /api/v1.
+type RandomCardData = Awaited<ReturnType<typeof client.api.v1.cards.random.get>>["data"];
+type SetsData = Awaited<ReturnType<typeof client.api.v1.sets.get>>["data"];
 
 export type Card = NonNullable<RandomCardData>;
 export type CardSet = NonNullable<SetsData>["sets"][number];
@@ -19,7 +19,7 @@ export function apiUrl(path: string): string {
 }
 
 export async function getCard(id: string): Promise<Card | null> {
-  const { data, error } = await client.api.cards({ id }).get();
+  const { data, error } = await client.api.v1.cards({ id }).get();
   if (error) return null;
   return data;
 }
@@ -28,9 +28,9 @@ export async function searchCards(
   name: string,
   opts: { limit?: number; set?: string; fuzzy?: boolean } = {}
 ): Promise<{ count: number; cards: Card[] }> {
-  const { data, error } = await client.api.cards.get({
+  const { data, error } = await client.api.v1.cards.get({
     query: {
-      name,
+      name: name || undefined,
       limit: opts.limit !== undefined ? String(opts.limit) : undefined,
       set: opts.set,
       fuzzy: opts.fuzzy ? "1" : undefined,
@@ -41,7 +41,7 @@ export async function searchCards(
 }
 
 export async function getSets(): Promise<{ count: number; sets: CardSet[] }> {
-  const { data, error } = await client.api.sets.get();
+  const { data, error } = await client.api.v1.sets.get();
   if (error || !data) return { count: 0, sets: [] };
   return data;
 }
@@ -50,7 +50,7 @@ export type TCGPlayerPrice = { usdMarket: number | null; usdLow: number | null; 
 
 export async function getTCGPlayerPrice(name: string): Promise<TCGPlayerPrice> {
   try {
-    const { data, error } = await client.api.prices.tcgplayer.get({
+    const { data, error } = await client.api.v1.prices.tcgplayer.get({
       query: { name },
     });
     if (error || data == null) return { usdMarket: null, usdLow: null, url: null };
@@ -65,7 +65,7 @@ export async function getTCGPlayerPrice(name: string): Promise<TCGPlayerPrice> {
 }
 
 export async function getRandomCard(): Promise<Card | null> {
-  const { data, error } = await client.api.cards.random.get();
+  const { data, error } = await client.api.v1.cards.random.get();
   if (error) return null;
   return data;
 }

@@ -72,7 +72,7 @@ await reddit.submitComment({
 Settings are accessed via `context.settings.get('apiBaseUrl')`.
 
 ## HTTP Fetch
-The bot calls `/api/resolve` on the external API. The fetch domain must be listed in `devvit.yaml` under `permissions.http`. If the API domain changes, update `devvit.yaml` **and** redeploy.
+The bot calls `/api/v1/resolve` on the external API. The fetch domain must be listed in `devvit.yaml` under `permissions.http`. If the API domain changes, update `devvit.yaml` **and** redeploy.
 
 ## Deduplication
 Replied comment/post IDs are stored in the KV store to prevent duplicate replies across restarts and re-deploys. The KV key pattern is `replied:<type>:<id>`.

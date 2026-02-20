@@ -7,8 +7,15 @@ alwaysApply: false
 # packages/api Rules
 
 ## Elysia Conventions
-- Define all routes in `src/index.ts` directly on the app instance
-- Use `.get()`, `.post()` etc. with Elysia's schema annotations (`.query()`, `.body()`, `.response()`) for automatic Swagger generation
+- Each API version is a standalone Elysia sub-app with a `prefix` — **never use `.group()`**:
+  ```typescript
+  // ✅ Correct
+  const v1 = new Elysia({ prefix: "/api/v1" }).get("/health", ...)
+  const app = new Elysia().use(cors(...)).use(v1).use(swagger(...)).listen(...)
+  ```
+- Add new routes to the appropriate versioned sub-app (`v1`, `v2`, …), not to the root app
+- The swagger plugin goes on the **root app only** — it auto-discovers routes from all mounted sub-apps
+- Use `.get()`, `.post()` etc. with Elysia's schema annotations for automatic Swagger generation
 - Do not create a separate Express-style router pattern — Elysia handles composition natively
 
 ## Response Hygiene
@@ -19,12 +26,12 @@ alwaysApply: false
 ## Testing Routes
 ```typescript
 // Correct pattern — no live server needed
-const res = await app.handle(new Request('http://localhost/api/health'))
+const res = await app.handle(new Request('http://localhost/api/v1/health'))
 const data = await res.json()
 ```
 
 ## Batch Limits
-- `POST /api/resolve` accepts a maximum of 20 `CardRequest` items — validate and return 400 if exceeded
+- `POST /api/v1/resolve` accepts a maximum of 20 `CardRequest` items — validate and return 400 if exceeded
 
 ## New Routes Checklist
 1. Add handler in `src/index.ts` with Elysia schema
