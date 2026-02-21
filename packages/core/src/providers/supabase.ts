@@ -14,7 +14,7 @@
 import Fuse from "fuse.js";
 import type { CardDataProvider } from "../provider.ts";
 import type {
-  Card,
+  CardV2,
   CardRequest,
   CardSearchOptions,
   ResolvedCard,
@@ -31,6 +31,7 @@ import type {
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { getRedisClient } from "../redis/client.ts";
+import { normalizeCardName } from "./riftcodex.ts";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -80,31 +81,39 @@ interface DBCardRow {
   artists: { name: string } | null;
 }
 
-// ─── DB row → flat Card bridge (MR7 will replace with CardV2 responses) ──────
+// ─── DB row → CardV2 ─────────────────────────────────────────────────────────
 
-function dbRowToCard(row: DBCardRow): Card {
+function dbRowToCardV2(row: DBCardRow): CardV2 {
   return {
+    object: "card",
     id: row.id,
     name: row.name,
-    normalizedName: row.name_normalized,
-    setCode: row.sets?.set_code,
-    setName: row.sets?.set_name,
-    collectorNumber: row.collector_number ?? undefined,
-    imageUrl: row.media?.media_urls?.normal,
-    text: row.text?.plain,
-    cost: row.attributes?.energy ?? undefined,
-    typeLine: row.classification?.type,
-    supertype: row.classification?.supertype,
-    rarity: row.classification?.rarity,
-    domains: row.classification?.domains,
-    might: row.attributes?.might,
-    power: row.attributes?.power,
-    tags: row.classification?.tags,
+    name_normalized: row.name_normalized,
+    collector_number: row.collector_number ?? undefined,
+    released_at: row.released_at ?? undefined,
+    external_ids: row.external_ids,
+    set: row.sets
+      ? {
+          set_code: row.sets.set_code,
+          set_id: row.set_id ?? undefined,
+          set_name: row.sets.set_name,
+        }
+      : undefined,
+    rulings: row.rulings_id ? { rulings_id: row.rulings_id } : undefined,
+    attributes: row.attributes,
+    classification: row.classification,
+    text: row.text,
     artist: row.artists?.name,
-    alternateArt: row.metadata?.alternate_art ?? false,
-    overnumbered: row.metadata?.overnumbered ?? false,
-    signature: row.metadata?.signature ?? false,
-    orientation: row.media?.orientation,
+    artist_id: row.artist_id ?? undefined,
+    metadata: row.metadata,
+    media: row.media,
+    purchase_uris: row.purchase_uris,
+    prices: row.prices,
+    is_token: row.is_token,
+    all_parts: row.all_parts ?? [],
+    used_by: row.used_by ?? [],
+    updated_at: row.updated_at,
+    ingested_at: row.ingested_at,
   };
 }
 
@@ -164,10 +173,10 @@ async function loadAllCardsFromDB(): Promise<DBCardRow[]> {
 
 // ─── Filter helper (shared with index queries) ────────────────────────────────
 
-function applyFilters(cards: Card[], opts: CardSearchOptions): Card[] {
+function applyFilters(cards: CardV2[], opts: CardSearchOptions): CardV2[] {
   return cards.filter((c) => {
-    if (opts.set && c.setCode !== opts.set.toUpperCase()) return false;
-    if (opts.collector && c.collectorNumber !== String(opts.collector)) return false;
+    if (opts.set && c.set?.set_code !== opts.set.toUpperCase()) return false;
+    if (opts.collector && c.collector_number !== String(opts.collector)) return false;
     return true;
   });
 }
@@ -177,9 +186,9 @@ function applyFilters(cards: Card[], opts: CardSearchOptions): Card[] {
 export class SupabaseCardProvider implements CardDataProvider {
   readonly sourceName = "supabase";
 
-  private byId = new Map<string, Card>();
-  private byNorm = new Map<string, Card[]>();
-  private fuse: Fuse<Card> | null = null;
+  private byId = new Map<string, CardV2>();
+  private byNorm = new Map<string, CardV2[]>();
+  private fuse: Fuse<CardV2> | null = null;
   private lastRefresh = 0;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -209,16 +218,6 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
   }
 
-  // ── Metadata (used by API /meta — updated to read from provider in MR7) ──────
-
-  getLastRefresh(): number {
-    return this.lastRefresh;
-  }
-
-  getCacheSize(): number {
-    return this.byId.size;
-  }
-
   // ── Load + index ─────────────────────────────────────────────────────────────
 
   private async loadAndIndex(): Promise<void> {
@@ -245,7 +244,7 @@ export class SupabaseCardProvider implements CardDataProvider {
         await redisSafeSet(snapshotKey(ingestedAt), JSON.stringify(rows), REDIS_SNAPSHOT_TTL);
       }
 
-      const cards = rows.map(dbRowToCard);
+      const cards = rows.map(dbRowToCardV2);
       this.buildIndex(cards);
       this.lastRefresh = Math.floor(Date.now() / 1000);
 
@@ -264,13 +263,13 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
   }
 
-  private buildIndex(cards: Card[]): void {
+  private buildIndex(cards: CardV2[]): void {
     this.byId.clear();
     this.byNorm.clear();
 
     for (const card of cards) {
       this.byId.set(card.id, card);
-      const key = card.normalizedName;
+      const key = card.name_normalized;
       if (!this.byNorm.has(key)) this.byNorm.set(key, []);
       this.byNorm.get(key)!.push(card);
     }
@@ -278,7 +277,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     this.fuse = new Fuse(cards, {
       keys: [
         { name: "name", weight: 0.7 },
-        { name: "normalizedName", weight: 0.3 },
+        { name: "name_normalized", weight: 0.3 },
       ],
       threshold: FUZZY_THRESHOLD,
       includeScore: true,
@@ -291,13 +290,13 @@ export class SupabaseCardProvider implements CardDataProvider {
 
   // ── CardDataProvider implementation ──────────────────────────────────────────
 
-  async getCardById(id: string): Promise<Card | null> {
+  async getCardById(id: string): Promise<CardV2 | null> {
     return this.byId.get(id) ?? null;
   }
 
-  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<Card[]> {
+  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<CardV2[]> {
     const limit = opts.limit ?? 10;
-    const norm = q.toLowerCase().trim();
+    const norm = normalizeCardName(q);
 
     let results = this.byNorm.get(norm) ?? [];
 
@@ -319,18 +318,18 @@ export class SupabaseCardProvider implements CardDataProvider {
   }
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {
-    const norm = req.name.toLowerCase().trim();
+    const norm = normalizeCardName(req.name);
     const candidates = this.byNorm.get(norm) ?? [];
 
     if (req.set && req.collector) {
       const exact = candidates.find(
-        (c) => c.setCode === req.set!.toUpperCase() && c.collectorNumber === req.collector,
+        (c) => c.set?.set_code === req.set!.toUpperCase() && c.collector_number === req.collector,
       );
       if (exact) return { request: req, card: exact, matchType: "exact" };
     }
 
     if (req.set) {
-      const withSet = candidates.filter((c) => c.setCode === req.set!.toUpperCase());
+      const withSet = candidates.filter((c) => c.set?.set_code === req.set!.toUpperCase());
       if (withSet.length > 0) return { request: req, card: withSet[0], matchType: "exact" };
       if (candidates.length > 0) {
         logger.debug("Requested set not found; falling back to default printing", {
@@ -357,14 +356,14 @@ export class SupabaseCardProvider implements CardDataProvider {
   async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
     const setMap = new Map<string, { setCode: string; setName: string; cardCount: number }>();
     for (const card of this.byId.values()) {
-      if (!card.setCode) continue;
-      const existing = setMap.get(card.setCode);
+      if (!card.set?.set_code) continue;
+      const existing = setMap.get(card.set.set_code);
       if (existing) {
         existing.cardCount++;
       } else {
-        setMap.set(card.setCode, {
-          setCode: card.setCode,
-          setName: card.setName ?? card.setCode,
+        setMap.set(card.set.set_code, {
+          setCode: card.set.set_code,
+          setName: card.set.set_name ?? card.set.set_code,
           cardCount: 1,
         });
       }
@@ -372,13 +371,13 @@ export class SupabaseCardProvider implements CardDataProvider {
     return Array.from(setMap.values()).sort((a, b) => a.setName.localeCompare(b.setName));
   }
 
-  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<Card[]> {
+  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<CardV2[]> {
     const limit = opts.limit ?? 1000;
     const upper = setCode.toUpperCase();
-    const cards = Array.from(this.byId.values()).filter((c) => c.setCode === upper);
+    const cards = Array.from(this.byId.values()).filter((c) => c.set?.set_code === upper);
     cards.sort((a, b) => {
-      const na = a.collectorNumber ?? "";
-      const nb = b.collectorNumber ?? "";
+      const na = a.collector_number ?? "";
+      const nb = b.collector_number ?? "";
       const numA = parseInt(na, 10);
       const numB = parseInt(nb, 10);
       if (!Number.isNaN(numA) && !Number.isNaN(numB)) return numA - numB;
@@ -387,9 +386,23 @@ export class SupabaseCardProvider implements CardDataProvider {
     return cards.slice(0, limit);
   }
 
-  async getRandomCard(): Promise<Card | null> {
+  async getRandomCard(): Promise<CardV2 | null> {
     const keys = Array.from(this.byId.keys());
     if (keys.length === 0) return null;
     return this.byId.get(keys[Math.floor(Math.random() * keys.length)]) ?? null;
+  }
+
+  getStats(): { lastRefresh: number; cardCount: number } {
+    return { lastRefresh: this.lastRefresh, cardCount: this.byId.size };
+  }
+
+  /** @deprecated Use getStats() */
+  getLastRefresh(): number {
+    return this.lastRefresh;
+  }
+
+  /** @deprecated Use getStats() */
+  getCacheSize(): number {
+    return this.byId.size;
   }
 }

@@ -30,46 +30,58 @@ export function buildCardEmbed(
 ): APIEmbed {
   const fields: APIEmbedField[] = [];
 
-  const typeParts = [card.supertype, card.typeLine].filter(Boolean);
+  const supertype = card.classification?.supertype;
+  const typeLine = card.classification?.type;
+  const domains = card.classification?.domains;
+  const tags = card.classification?.tags;
+  const rarity = card.classification?.rarity;
+  const energy = card.attributes?.energy;
+  const might = card.attributes?.might;
+  const power = card.attributes?.power;
+  const imageUrl = card.media?.media_urls?.normal;
+  const setCode = card.set?.set_code;
+  const collectorNumber = card.collector_number;
+  const plainText = card.text?.plain;
+
+  const typeParts = [supertype, typeLine].filter(Boolean);
   if (typeParts.length) {
     fields.push({ name: "Type", value: typeParts.join(" — "), inline: true });
   }
 
-  if (card.cost != null) {
-    fields.push({ name: "Cost", value: `⚡ ${card.cost}`, inline: true });
+  if (energy != null) {
+    fields.push({ name: "Cost", value: `⚡ ${energy}`, inline: true });
   }
 
-  if (card.rarity) {
-    fields.push({ name: "Rarity", value: card.rarity, inline: true });
+  if (rarity) {
+    fields.push({ name: "Rarity", value: rarity, inline: true });
   }
 
-  if (card.domains?.length) {
-    fields.push({ name: "Domain", value: card.domains.join(", "), inline: true });
+  if (domains?.length) {
+    fields.push({ name: "Domain", value: domains.join(", "), inline: true });
   }
 
   // Unit stats
-  if (card.might != null || card.power != null) {
+  if (might != null || power != null) {
     const parts = [
-      card.might != null ? `Might ${card.might}` : null,
-      card.power != null ? `Power ${card.power}` : null,
+      might != null ? `Might ${might}` : null,
+      power != null ? `Power ${power}` : null,
     ].filter(Boolean);
     fields.push({ name: "Stats", value: parts.join(" · "), inline: true });
   }
 
-  if (card.tags?.length) {
-    fields.push({ name: "Tags", value: card.tags.join(", "), inline: true });
+  if (tags?.length) {
+    fields.push({ name: "Tags", value: tags.join(", "), inline: true });
   }
 
   if (card.artist) {
     fields.push({ name: "Artist", value: card.artist, inline: false });
   }
 
-  const description =
-    [card.text, card.effect]
-      .filter(Boolean)
-      .map((t) => renderTextForDiscord(t!, emojiMap))
-      .join("\n\n") || undefined;
-  const footerText = [card.setCode, card.setName, card.collectorNumber]
+  const description = plainText
+    ? renderTextForDiscord(plainText, emojiMap)
+    : undefined;
+
+  const footerText = [setCode, card.set?.set_name, collectorNumber]
     .filter(Boolean)
     .join(" · ");
 
@@ -77,8 +89,8 @@ export function buildCardEmbed(
     title: card.name,
     url: `${siteBaseUrl}/card/${card.id}`,
     description,
-    color: domainColor(card.domains),
-    image: card.imageUrl ? { url: card.imageUrl } : undefined,
+    color: domainColor(domains),
+    image: imageUrl ? { url: imageUrl } : undefined,
     fields,
     footer: { text: footerText || "RiftSeer" },
   };
@@ -86,12 +98,14 @@ export function buildCardEmbed(
 
 /** Compact card embed — image only, minimal fields. Mirrors Scryfall's [[!Name]] mode. */
 export function buildCardImageEmbed(card: Card, siteBaseUrl: string): APIEmbed {
+  const imageUrl = card.media?.media_urls?.normal;
+  const domains = card.classification?.domains;
   return {
     title: card.name,
     url: `${siteBaseUrl}/card/${card.id}`,
-    color: domainColor(card.domains),
-    image: card.imageUrl ? { url: card.imageUrl } : undefined,
-    footer: { text: [card.setCode, card.collectorNumber].filter(Boolean).join(" · ") || "RiftSeer" },
+    color: domainColor(domains),
+    image: imageUrl ? { url: imageUrl } : undefined,
+    footer: { text: [card.set?.set_code, card.collector_number].filter(Boolean).join(" · ") || "RiftSeer" },
   };
 }
 

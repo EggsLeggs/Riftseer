@@ -1,4 +1,4 @@
-import type { Card, CardRequest, CardSearchOptions, ResolvedCard } from "./types.ts";
+import type { CardV2, CardRequest, CardSearchOptions, ResolvedCard } from "./types.ts";
 
 /**
  * The canonical provider interface.
@@ -33,13 +33,13 @@ export interface CardDataProvider {
    * Look up a single card by its provider-assigned stable ID.
    * Returns null if not found.
    */
-  getCardById(id: string): Promise<Card | null>;
+  getCardById(id: string): Promise<CardV2 | null>;
 
   /**
    * Full-text + optional set/collector search.
    * Performs exact match first; fuzzy fallback if opts.fuzzy !== false.
    */
-  searchByName(q: string, opts?: CardSearchOptions): Promise<Card[]>;
+  searchByName(q: string, opts?: CardSearchOptions): Promise<CardV2[]>;
 
   /**
    * Resolve a structured CardRequest to the single best matching printing.
@@ -58,11 +58,17 @@ export interface CardDataProvider {
    * Return cards in a set, ordered by collector number.
    * Used when browsing a set without a name search.
    */
-  getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<Card[]>;
+  getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<CardV2[]>;
 
   /**
    * Return a single random card from the provider's index.
    * Returns null if the index is empty.
    */
-  getRandomCard(): Promise<Card | null>;
+  getRandomCard(): Promise<CardV2 | null>;
+
+  /**
+   * Return provider stats for the /meta endpoint.
+   * lastRefresh is a Unix timestamp (seconds); cardCount is the index size.
+   */
+  getStats(): { lastRefresh: number; cardCount: number };
 }

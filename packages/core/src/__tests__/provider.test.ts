@@ -158,7 +158,7 @@ describe("RiftCodexProvider", () => {
     it("filters by set code", async () => {
       const results = await provider.searchByName("Sun Disc", { set: "SFD" });
       expect(results.length).toBe(1);
-      expect(results[0].setCode).toBe("SFD");
+      expect(results[0].set?.set_code).toBe("SFD");
     });
 
     it("fuzzy matches near-miss names", async () => {
@@ -195,7 +195,7 @@ describe("RiftCodexProvider", () => {
         set: "SFD",
       });
       expect(res.matchType).toBe("exact");
-      expect(res.card!.setCode).toBe("SFD");
+      expect(res.card!.set?.set_code).toBe("SFD");
     });
 
     it("falls back to default printing when set not found", async () => {
@@ -217,7 +217,7 @@ describe("RiftCodexProvider", () => {
         collector: "21",
       });
       expect(res.matchType).toBe("exact");
-      expect(res.card!.collectorNumber).toBe("21");
+      expect(res.card!.collector_number).toBe("21");
     });
 
     it("returns not-found for completely unknown card", async () => {

@@ -9,7 +9,7 @@ import { Elysia, t } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import type {
   CardDataProvider,
-  Card,
+  CardV2,
   CardRequest,
   ResolvedCard,
   CardSearchOptions,
@@ -17,19 +17,26 @@ import type {
 
 // ─── Stub provider ────────────────────────────────────────────────────────────
 
-const STUB_CARD: Card = {
+const STUB_CARD: CardV2 = {
+  object: "card",
   id: "bf1bafdc-2739-469b-bde6-c24a868f4979",
   name: "Sun Disc",
-  normalizedName: "sun disc",
-  setCode: "OGN",
-  setName: "Origins",
-  collectorNumber: "21",
-  imageUrl: "https://cdn.example.com/sun-disc.png",
-  text: ":rb_exhaust:: Next unit ready.",
-  cost: 2,
-  typeLine: "Gear",
-  rarity: "Uncommon",
-  domains: ["Fury"],
+  name_normalized: "sun disc",
+  collector_number: "21",
+  external_ids: { riftcodex_id: "bf1bafdc-2739-469b-bde6-c24a868f4979" },
+  set: { set_code: "OGN", set_name: "Origins" },
+  attributes: { energy: 2, might: null, power: 1 },
+  classification: { type: "Gear", supertype: null, rarity: "Uncommon", domains: ["Fury"] },
+  text: { plain: ":rb_exhaust:: Next unit ready." },
+  artist: "Envar Studio",
+  media: {
+    orientation: "portrait",
+    media_urls: { normal: "https://cdn.example.com/sun-disc.png" },
+  },
+  metadata: { alternate_art: false, overnumbered: false, signature: false },
+  is_token: false,
+  all_parts: [],
+  used_by: [],
 };
 
 class StubProvider implements CardDataProvider {
@@ -38,11 +45,11 @@ class StubProvider implements CardDataProvider {
   async warmup() {}
   async refresh() {}
 
-  async getCardById(id: string): Promise<Card | null> {
+  async getCardById(id: string): Promise<CardV2 | null> {
     return id === STUB_CARD.id ? STUB_CARD : null;
   }
 
-  async searchByName(q: string, _opts?: CardSearchOptions): Promise<Card[]> {
+  async searchByName(q: string, _opts?: CardSearchOptions): Promise<CardV2[]> {
     if (q.toLowerCase().includes("sun")) return [STUB_CARD];
     return [];
   }
@@ -63,12 +70,16 @@ class StubProvider implements CardDataProvider {
   async getCardsBySet(
     setCode: string,
     _opts?: { limit?: number }
-  ): Promise<Card[]> {
+  ): Promise<CardV2[]> {
     return setCode === "OGN" ? [STUB_CARD] : [];
   }
 
-  async getRandomCard(): Promise<Card | null> {
+  async getRandomCard(): Promise<CardV2 | null> {
     return STUB_CARD;
+  }
+
+  getStats() {
+    return { lastRefresh: 0, cardCount: 1 };
   }
 }
 
@@ -76,14 +87,9 @@ class StubProvider implements CardDataProvider {
 // We inline a minimal copy of the app wiring so the test doesn't need to
 // import the real index.ts (which calls provider.warmup() at module level).
 
-import { parseCardRequests, getCacheMeta } from "@riftseer/core";
+import { parseCardRequests } from "@riftseer/core";
 
 function buildTestApp(provider: CardDataProvider) {
-  function sanitiseCard(card: Card) {
-    const { raw: _raw, ...rest } = card;
-    return rest;
-  }
-
   const startTime = Date.now();
 
   const v1 = new Elysia({ prefix: "/api/v1" })
@@ -92,10 +98,11 @@ function buildTestApp(provider: CardDataProvider) {
       uptimeMs: Date.now() - startTime,
     }))
     .get("/meta", () => {
+      const { lastRefresh, cardCount } = provider.getStats();
       return {
         provider: provider.sourceName,
-        cardCount: 1,
-        lastRefresh: null,
+        cardCount,
+        lastRefresh: lastRefresh ? new Date(lastRefresh * 1000).toISOString() : null,
         cacheAgeSeconds: null,
         uptimeSeconds: 0,
       };
@@ -106,7 +113,7 @@ function buildTestApp(provider: CardDataProvider) {
         set.status = 404;
         return { error: "Card not found", code: "NOT_FOUND" };
       }
-      return sanitiseCard(card);
+      return card;
     })
     .get("/cards", async ({ query, set }) => {
       if (!query.name) {
@@ -118,7 +125,7 @@ function buildTestApp(provider: CardDataProvider) {
         fuzzy: (query.fuzzy as string) === "1",
         limit: query.limit ? parseInt(query.limit as string, 10) : 10,
       });
-      return { count: cards.length, cards: cards.map(sanitiseCard) };
+      return { count: cards.length, cards };
     })
     .post(
       "/resolve",
@@ -134,10 +141,7 @@ function buildTestApp(provider: CardDataProvider) {
         );
         return {
           count: results.length,
-          results: results.map((r) => ({
-            ...r,
-            card: r.card ? sanitiseCard(r.card) : null,
-          })),
+          results,
         };
       },
       { body: t.Object({ requests: t.Array(t.String()) }) },
@@ -188,7 +192,9 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.name).toBe("Sun Disc");
-      expect(body.raw).toBeUndefined(); // raw field stripped
+      expect(body.object).toBe("card");
+      expect(body.set.set_code).toBe("OGN");
+      expect(body.raw).toBeUndefined(); // no raw field in CardV2
     });
 
     it("returns 404 for unknown ID", async () => {
@@ -212,6 +218,7 @@ describe("API routes", () => {
       const body = await res.json();
       expect(body.count).toBe(1);
       expect(body.cards[0].name).toBe("Sun Disc");
+      expect(body.cards[0].set.set_code).toBe("OGN");
     });
 
     it("returns 400 when name is missing", async () => {
@@ -244,6 +251,7 @@ describe("API routes", () => {
       expect(body.count).toBe(1);
       expect(body.results[0].matchType).toBe("exact");
       expect(body.results[0].card.name).toBe("Sun Disc");
+      expect(body.results[0].card.object).toBe("card");
     });
 
     it("returns not-found for unknown cards", async () => {

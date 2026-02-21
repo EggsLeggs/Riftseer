@@ -9,14 +9,14 @@
 
 import type { CardRequest } from "./parser.js";
 
-// ─── API response types (mirror of packages/core/src/types.ts, without raw) ──
+// ─── API response types (mirror of CardV2 shape from packages/core/src/types.ts) ──
 
 interface ApiCard {
   id: string;
   name: string;
-  setCode?: string;
-  collectorNumber?: string;
-  imageUrl?: string;
+  set?: { set_code?: string };
+  collector_number?: string;
+  media?: { media_urls?: { normal?: string } };
 }
 
 interface ApiResolvedCard {
@@ -97,8 +97,8 @@ function formatCard(result: ApiResolvedCard, apiBase: string, siteBase: string):
     return `**${esc(displayName)}** — not found.`;
   }
 
-  const { id, name: cardName, imageUrl } = result.card;
-  const img = imageUrl ?? "";
+  const { id, name: cardName } = result.card;
+  const img = result.card.media?.media_urls?.normal ?? "";
   const apiUrl = `${apiBase}/api/v1/cards/${id}`;
   const siteUrl = `${siteBase}/card/${id}`;
   const txtUrl = `${siteBase}/card/${id}/text`;
