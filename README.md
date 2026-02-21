@@ -26,7 +26,7 @@ Card data API, web app, and Reddit + Discord integration for the **Riftbound** T
 |**API**|Elysia HTTP server under `/api/v1`: cards, sets, resolve; Swagger UI at `/api/swagger`|
 |**Discord bot**|Slash-command bot on Cloudflare Workers — see `packages/discord-bot`|
 |**Reddit bot**|Bracket-syntax bot on Reddit — uses [Devvit](https://devvit.dev), see `packages/reddit-bot`|
-|**Core**|Shared types, `CardDataProvider`, parser, icon definitions, RiftCodex provider, SQLite cache|
+|**Core**|Shared types, `CardDataProvider`, parser, icon definitions, RiftCodex + Supabase providers|
 
 ---
 
@@ -49,14 +49,14 @@ The site uses Eden (typed API client), React Router, Tailwind, and domain/stat i
 
 ```text
 packages/
-  core/         ← shared types, CardDataProvider, parser, icon defs, SQLite, RiftCodex provider
-  api/          ← Elysia server (all routes under /api/v1)
+  core/         ← shared types, CardDataProvider, parser, icon defs, RiftCodex + Supabase providers
+  api/          ← Elysia server (all routes under /api/v1) + ingest pipeline (src/ingest.ts)
   frontend/     ← React + Vite SPA (Eden client → API)
   discord-bot/  ← Discord slash-command bot (Cloudflare Workers + Wrangler)
   reddit-bot/   ← Reddit bracket-syntax bot (Devvit)
 ```
 
-**Design:** The API and Reddit bot both use `@riftseer/core`. The Reddit bot calls the provider in-process; the Discord bot calls the deployed API over HTTP. Data source is swappable via `CARD_PROVIDER`; the API and site are unchanged. Icon definitions live in `@riftseer/core/icons` — a subpath export that is safe to import in both browser (Vite) and Cloudflare Workers (no `bun:sqlite` pulled in).
+**Design:** The API and Reddit bot both use `@riftseer/core`. The Reddit bot calls the provider in-process; the Discord bot calls the deployed API over HTTP. Data source is swappable via `CARD_PROVIDER`; the API and site are unchanged. Icon definitions live in `@riftseer/core/icons` — a subpath export that is safe to import in both browser (Vite) and Cloudflare Workers (no `bun:sqlite` pulled in). Supabase/Redis clients live in `@riftseer/core/server` (server-only subpath, never imported in browser/Workers builds).
 
 ---
 
@@ -98,19 +98,82 @@ The Discord bot lives in `packages/discord-bot` and uses Cloudflare Workers; see
 
 ---
 
+## Local Services (Supabase + Redis)
+
+Only needed when `CARD_PROVIDER=supabase`. Both require **Docker Desktop** to be running.
+
+### Supabase
+
+**Option A — use production Supabase for local dev** (easiest; ingest is idempotent):
+
+In `.env`, set:
+```
+SUPABASE_URL=https://zsummtaaaftymjhnapyo.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<your production service role key>
+```
+
+**Option B — full local stack** (isolated; good for testing ingest changes):
+
+```bash
+# Install CLI (macOS)
+brew install supabase/tap/supabase
+
+# Start local Postgres + REST API (Docker)
+npx supabase start
+
+# Apply migrations
+npx supabase db push
+```
+
+In `.env`, uncomment the local block. The local service_role key is the well-known Supabase
+default (all local instances use this key):
+```
+SUPABASE_URL=http://127.0.0.1:54321
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hj04zWl196z2-SBc0
+```
+
+Then populate the local database:
+```bash
+bun packages/api/src/ingest.ts
+```
+
+Studio UI (local): `http://127.0.0.1:54323`. To stop: `npx supabase stop`.
+
+> **Note:** Bun reads `.env` from the directory where it is invoked. The API scripts use
+> `--env-file ../../.env` so the root `.env` is always picked up regardless of working directory.
+
+### Redis
+
+Redis is used as a warmup cache for the Supabase provider (fast restarts without re-querying Postgres). It is optional — if unavailable, the provider falls back to Supabase on every restart.
+
+```bash
+# Docker (recommended — also available via docker-compose)
+docker run -d -p 6379:6379 redis:7-alpine
+
+# Or via Homebrew
+brew install redis && brew services start redis
+```
+
+The default `REDIS_URL=redis://localhost:6379` works for both options.
+
+---
+
 ## Environment Variables
 
 See `.env.example`. Summary:
 
 | Variable | Default | Description |
 | ---------- | --------- | ------------- |
-| `CARD_PROVIDER` | `riftcodex` | `riftcodex` or `riot` (riot stub only) |
+| `CARD_PROVIDER` | `riftcodex` | `riftcodex`, `supabase`, or `riot` (riot stub only) |
 | `DB_PATH` | `./data/riftseer.db` | SQLite path |
 | `API_PORT` | `3000` | Elysia port |
 | `API_BASE_URL` | `http://localhost:3000` | Public API URL (bot/site links) |
 | `SITE_BASE_URL` | `https://example.com` | Public site URL (bot reply links) |
 | `CACHE_REFRESH_INTERVAL_MS` | `21600000` | Card cache TTL (6h) |
 | `FUZZY_THRESHOLD` | `0.4` | Fuse.js fuzzy match (0=exact, 1=loose) |
+| `SUPABASE_URL` | — | Required when `CARD_PROVIDER=supabase` |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | Required when `CARD_PROVIDER=supabase` |
+| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
 | `REDDIT_*` | — | Required for Reddit bot (see Reddit setup below) |
 
 ---
@@ -212,5 +275,18 @@ Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server)
 
 ## Card data
 
-- **Current:** [RiftCodex](https://riftcodex.com) — community API (`https://api.riftcodex.com`). Cards are loaded at startup and on an interval (default 6h), stored in SQLite and in-memory Fuse.js for fuzzy search.
-- **Future:** Riot official API — stub in `packages/core/src/providers/riot.ts`; set `CARD_PROVIDER=riot` when implemented.
+Card data is sourced from [RiftCodex](https://riftcodex.com) (`https://api.riftcodex.com`). The ingestion pipeline (`bun packages/api/src/ingest.ts`) fetches all cards, enriches them with TCGPlayer prices, derives token relationships, and upserts everything into Supabase Postgres.
+
+The API serves cards from whichever provider is set in `CARD_PROVIDER`:
+
+| Provider | Description |
+|----------|-------------|
+| `supabase` | Reads from Postgres (Supabase). Recommended for production. Requires ingest to have run. |
+| `riftcodex` | Fetches directly from RiftCodex API at startup. No DB required. Good for quick local dev. |
+| `riot` | Stub only — reserved for a future official Riot Games API. |
+
+Run the ingest pipeline any time card data changes:
+```bash
+bun packages/api/src/ingest.ts          # production Supabase
+bun packages/api/src/ingest.ts --dry-run  # fetch + transform only, no writes
+```
