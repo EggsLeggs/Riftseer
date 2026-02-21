@@ -26,14 +26,10 @@ import {
   createProvider,
   parseCardRequests,
   logger,
-  getCacheMeta,
   normalizeCardName,
   type CardDataProvider,
   type Card,
-  type ResolvedCard,
-  RiftCodexProvider,
 } from "@riftseer/core";
-
 // ─── TCGPlayer price cache (via tcgcsv.com) ────────────────────────────────────
 
 const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
@@ -129,38 +125,87 @@ const startTime = Date.now();
 
 // ─── Shared schemas (referenced in route detail for OpenAPI) ──────────────────
 
-const CardSchema = t.Object({
-  id: t.String({ description: "Stable unique identifier" }),
+const RelatedCardSchema = t.Object({
+  object: t.Literal("related_card"),
+  id: t.String({ description: "UUID of the referenced card" }),
   name: t.String(),
-  normalizedName: t.String(),
-  setCode: t.Optional(t.String()),
-  setName: t.Optional(t.String()),
-  collectorNumber: t.Optional(t.String()),
-  tcgplayerId: t.Optional(
-    t.String({ description: "TCGPlayer product ID for pricing/links" }),
-  ),
-  imageUrl: t.Optional(t.String()),
-  text: t.Optional(t.String()),
-  effect: t.Optional(
-    t.String({
-      description: "Effect text (e.g. for Equipment while equipped)",
-    }),
-  ),
-  cost: t.Optional(t.Number()),
-  typeLine: t.Optional(t.String()),
-  supertype: t.Optional(t.Nullable(t.String())),
-  rarity: t.Optional(t.String()),
-  domains: t.Optional(t.Array(t.String())),
-  might: t.Optional(t.Nullable(t.Number())),
-  power: t.Optional(t.Nullable(t.Number())),
-  tags: t.Optional(t.Array(t.String())),
+  component: t.String({ description: "Relationship role, e.g. 'token', 'meld_part'" }),
+  uri: t.Optional(t.String({ description: "API URI for the referenced card" })),
+});
+
+const CardSchema = t.Object({
+  object: t.Literal("card"),
+  id: t.String({ description: "Stable UUID" }),
+  name: t.String(),
+  name_normalized: t.String({ description: "Lowercased, punctuation-stripped name used for search" }),
+  released_at: t.Optional(t.String({ description: "ISO date string, e.g. 2024-01-15" })),
+  collector_number: t.Optional(t.String()),
+  external_ids: t.Optional(t.Object({
+    riftcodex_id: t.Optional(t.String()),
+    riftbound_id: t.Optional(t.String()),
+    tcgplayer_id: t.Optional(t.String()),
+  })),
+  set: t.Optional(t.Object({
+    set_code: t.String({ description: "Short set code, e.g. 'OGN'" }),
+    set_id: t.Optional(t.String()),
+    set_name: t.String({ description: "Human-readable set name, e.g. 'Origins'" }),
+    set_uri: t.Optional(t.String()),
+    set_search_uri: t.Optional(t.String()),
+  })),
+  rulings: t.Optional(t.Object({
+    rulings_id: t.Optional(t.String()),
+    rulings_uri: t.Optional(t.String()),
+  })),
+  attributes: t.Optional(t.Object({
+    energy: t.Optional(t.Nullable(t.Number({ description: "Energy cost to play" }))),
+    might: t.Optional(t.Nullable(t.Number({ description: "Defense-side stat" }))),
+    power: t.Optional(t.Nullable(t.Number({ description: "Attack-side stat" }))),
+  })),
+  classification: t.Optional(t.Object({
+    type: t.Optional(t.String({ description: "Card type, e.g. 'Unit', 'Gear', 'Spell'" })),
+    supertype: t.Optional(t.Nullable(t.String({ description: "e.g. 'Champion'" }))),
+    rarity: t.Optional(t.String({ description: "e.g. 'Common', 'Rare', 'Legendary'" })),
+    tags: t.Optional(t.Array(t.String())),
+    domains: t.Optional(t.Array(t.String({ description: "Domains/regions, e.g. ['Fury']" }))),
+  })),
+  text: t.Optional(t.Object({
+    rich: t.Optional(t.String({ description: "Rules text with inline symbol tokens" })),
+    plain: t.Optional(t.String({ description: "Plain-text rules text" })),
+    flavour: t.Optional(t.String({ description: "Flavour/lore text" })),
+  })),
   artist: t.Optional(t.String()),
-  alternateArt: t.Optional(t.Boolean()),
-  overnumbered: t.Optional(t.Boolean()),
-  signature: t.Optional(t.Boolean()),
-  orientation: t.Optional(
-    t.String({ description: "portrait (vertical) or landscape (horizontal)" }),
-  ),
+  artist_id: t.Optional(t.String({ description: "UUID of the artist row" })),
+  metadata: t.Optional(t.Object({
+    finishes: t.Optional(t.Array(t.String({ description: "e.g. ['Normal', 'Foil']" }))),
+    signature: t.Optional(t.Boolean()),
+    overnumbered: t.Optional(t.Boolean()),
+    alternate_art: t.Optional(t.Boolean()),
+  })),
+  media: t.Optional(t.Object({
+    orientation: t.Optional(t.String({ description: "'portrait' or 'landscape'" })),
+    accessibility_text: t.Optional(t.String()),
+    media_urls: t.Optional(t.Object({
+      small: t.Optional(t.String()),
+      normal: t.Optional(t.String()),
+      large: t.Optional(t.String()),
+      png: t.Optional(t.String()),
+    })),
+  })),
+  purchase_uris: t.Optional(t.Object({
+    cardmarket: t.Optional(t.String()),
+    tcgplayer: t.Optional(t.String()),
+  })),
+  prices: t.Optional(t.Object({
+    usd: t.Optional(t.Nullable(t.Number())),
+    usd_foil: t.Optional(t.Nullable(t.Number())),
+    eur: t.Optional(t.Nullable(t.Number())),
+    eur_foil: t.Optional(t.Nullable(t.Number())),
+  })),
+  is_token: t.Boolean(),
+  all_parts: t.Array(RelatedCardSchema, { description: "Related token/part cards" }),
+  used_by: t.Array(RelatedCardSchema, { description: "Cards that create or reference this card (tokens only)" }),
+  updated_at: t.Optional(t.String({ description: "ISO datetime of last update" })),
+  ingested_at: t.Optional(t.String({ description: "ISO datetime of last ingest" })),
 });
 
 const CardRequestSchema = t.Object({
@@ -188,26 +233,16 @@ const ErrorSchema = t.Object({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Strip the `raw` field and ensure variant flags are always present (default false for old cache). */
-function sanitiseCard(card: Card): Omit<Card, "raw"> & { tcgplayerId?: string } {
-  const { raw, ...rest } = card;
-  const out = { ...rest } as Omit<Card, "raw"> & { tcgplayerId?: string };
-  out.alternateArt = rest.alternateArt === true;
-  out.overnumbered = rest.overnumbered === true;
-  out.signature = rest.signature === true;
-  const tcgplayerId = (raw as { tcgplayer_id?: string } | undefined)?.tcgplayer_id;
-  if (tcgplayerId != null) out.tcgplayerId = String(tcgplayerId);
-  return out;
-}
-
 /** Scryfall-style copyable text: name, type line, then rules text. */
 function cardCopyableText(card: Card): string {
   const lines: string[] = [card.name];
-  const typePart = [card.typeLine, card.supertype].filter(Boolean).join(" — ");
+  const typePart = [card.classification?.type, card.classification?.supertype]
+    .filter(Boolean)
+    .join(" — ");
   if (typePart) lines.push(typePart);
-  if (card.text?.trim()) {
+  if (card.text?.plain?.trim()) {
     if (lines.length > 1) lines.push("");
-    lines.push(card.text.trim());
+    lines.push(card.text.plain.trim());
   }
   return lines.join("\n");
 }
@@ -233,7 +268,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/meta",
     () => {
-      const { lastRefresh, cardCount } = getCacheMeta(provider.sourceName);
+      const { lastRefresh, cardCount } = provider.getStats();
       const cacheAgeSeconds = lastRefresh
         ? Math.floor(Date.now() / 1000 - lastRefresh)
         : null;
@@ -274,7 +309,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         set.status = 404;
         return { error: "No cards available", code: "NOT_FOUND" };
       }
-      return sanitiseCard(card);
+      return card;
     },
     {
       response: {
@@ -298,7 +333,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         set.status = 404;
         return { error: "Card not found", code: "NOT_FOUND" };
       }
-      return sanitiseCard(card);
+      return card;
     },
     {
       params: t.Object({ id: t.String({ description: "Card UUID" }) }),
@@ -357,7 +392,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         });
         return {
           count: cards.length,
-          cards: cards.map(sanitiseCard),
+          cards,
         };
       }
 
@@ -379,7 +414,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
 
       return {
         count: cards.length,
-        cards: cards.map(sanitiseCard),
+        cards,
       };
     },
     {
@@ -438,10 +473,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
 
       return {
         count: results.length,
-        results: results.map((r) => ({
-          ...r,
-          card: r.card ? sanitiseCard(r.card) : null,
-        })),
+        results,
       };
     },
     {
@@ -540,7 +572,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         description: "Returns all known card sets with card counts.",
       },
     },
-  );
+  )
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -568,10 +600,14 @@ const app = new Elysia()
           title: "RiftSeer API",
           version: "0.1.0",
           description:
-            "Riftbound card data API. Backed by RiftCodex (swappable via provider module). " +
-            "Swap to Riot's official API by setting `CARD_PROVIDER=riot` once implemented. " +
+            "Riftbound card data API. Data from Supabase (populated by the ingest pipeline). " +
             "All versioned routes (e.g. /api/v1/*) are documented here.",
         },
+        servers: [
+          {
+            url: process.env.BASE_URL ?? process.env.SWAGGER_BASE_URL ?? "/",
+          },
+        ],
         tags: [
           { name: "Meta", description: "Server health and metadata" },
           { name: "Cards", description: "Card lookup and search" },

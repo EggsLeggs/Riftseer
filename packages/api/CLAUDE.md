@@ -67,7 +67,6 @@ The swagger plugin is mounted on the **root app only** — it discovers routes f
 - Define routes on the versioned sub-app (`v1`, `v2`, …), not directly on the root app
 - Use `.use(swagger())` and `.use(cors())` on the **root app only**
 - Response types are inferred — avoid casting when possible
-- The `raw` field on cards is stripped before sending responses (`sanitiseCard` helper)
 - **Testing**: Use `app.handle(new Request(...))` — no live server needed
 
 ```typescript

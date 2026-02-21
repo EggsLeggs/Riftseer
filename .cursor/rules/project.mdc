@@ -6,16 +6,17 @@ alwaysApply: true
 # RiftSeer Project Rules
 
 ## Runtime & Package Manager
-- **Always use Bun** as the runtime and package manager for workspace packages (`packages/core`, `packages/api`, `packages/frontend`, `packages/discord-bot`)
+- **Always use Bun** as the runtime and package manager for workspace packages (`packages/core`, `packages/api`, `packages/frontend`, `packages/discord-bot`, `packages/ingest-worker`)
 - `packages/reddit-bot` is a standalone npm project — use `npm` and `npx devvit` there, not `bun`
 - Minimum Bun version: 1.2
 
 ## Monorepo Layout
 ```
-packages/core           → types, CardDataProvider interface, parser, DB, providers
-packages/api            → ElysiaJS REST server
+packages/core           → types, CardDataProvider interface, parser, Supabase provider
+packages/api            → ElysiaJS REST server + ingest pipeline
 packages/frontend       → React 19 + Vite SPA
 packages/discord-bot    → Discord bot on Cloudflare Workers (Bun workspace member)
+packages/ingest-worker  → Cloudflare Worker — scheduled ingest (no Elysia API)
 packages/reddit-bot     → Devvit Reddit bot (NOT a Bun workspace member)
 ```
 

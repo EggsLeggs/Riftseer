@@ -1,0 +1,15 @@
+# RiftSeer ingest worker — runs full ingestion pipeline on a schedule (no Elysia API).
+# Set secrets: wrangler secret put SUPABASE_URL, wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+# Optional: RIFTCODEX_BASE_URL, RIFTCODEX_API_KEY in vars or secrets.
+
+name = "riftseer-ingest-worker"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Scheduled events: run every 6 hours (see Miniflare /cdn-cgi/mf/scheduled for local testing)
+[triggers]
+crons = ["0 */6 * * *"]
+
+# Optional vars (override in dashboard or wrangler deploy --var)
+[vars]
+RIFTCODEX_BASE_URL = "https://api.riftcodex.com"

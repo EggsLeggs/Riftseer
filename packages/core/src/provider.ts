@@ -4,9 +4,8 @@ import type { Card, CardRequest, CardSearchOptions, ResolvedCard } from "./types
  * The canonical provider interface.
  *
  * The rest of the app (API, bot) ONLY depends on this interface — not on any
- * concrete provider.  To swap RiftCodex for Riot's API, change only
- * packages/core/src/providers/index.ts (the factory) and add a new
- * RiotProvider class that satisfies this interface.
+ * concrete provider. The only implementation is SupabaseCardProvider
+ * (data populated by the ingest pipeline).
  */
 export interface CardDataProvider {
   /**
@@ -65,4 +64,10 @@ export interface CardDataProvider {
    * Returns null if the index is empty.
    */
   getRandomCard(): Promise<Card | null>;
+
+  /**
+   * Return provider stats for the /meta endpoint.
+   * lastRefresh is a Unix timestamp (seconds); cardCount is the index size.
+   */
+  getStats(): { lastRefresh: number; cardCount: number };
 }
