@@ -25,6 +25,11 @@ bun.lock
 # npm
 package-lock.json
 
+# Supabase
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
 # macOS
 .DS_Store
 
