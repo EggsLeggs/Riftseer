@@ -60,7 +60,7 @@ CREATE TABLE cards (
   -- See packages/core/src/types.ts for shape documentation.
   external_ids     jsonb       NOT NULL DEFAULT '{}',  -- { riftcodex_id, riftbound_id, tcgplayer_id }
   attributes       jsonb       NOT NULL DEFAULT '{}',  -- { energy, might, power }
-  classification   jsonb       NOT NULL DEFAULT '{}',  -- { type, supertype, rarity, tags, domain }
+  classification   jsonb       NOT NULL DEFAULT '{}',  -- { type, supertype, rarity, tags, domains }
   text             jsonb       NOT NULL DEFAULT '{}',  -- { rich, plain, flavour }
   metadata         jsonb       NOT NULL DEFAULT '{}',  -- { finishes, signature, overnumbered, alternate_art }
   media            jsonb       NOT NULL DEFAULT '{}',  -- { orientation, accessibility_text, media_urls }

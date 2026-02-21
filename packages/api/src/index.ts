@@ -206,7 +206,7 @@ const CardV2Schema = t.Object({
     supertype: t.Optional(t.Nullable(t.String({ description: "e.g. 'Champion'" }))),
     rarity: t.Optional(t.String({ description: "e.g. 'Common', 'Rare', 'Legendary'" })),
     tags: t.Optional(t.Array(t.String())),
-    domain: t.Optional(t.Array(t.String({ description: "Domains/regions, e.g. ['Fury']" }))),
+    domains: t.Optional(t.Array(t.String({ description: "Domains/regions, e.g. ['Fury']" }))),
   })),
   text: t.Optional(t.Object({
     rich: t.Optional(t.String({ description: "Rules text with inline symbol tokens" })),

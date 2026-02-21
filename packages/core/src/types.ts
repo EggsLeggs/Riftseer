@@ -106,7 +106,7 @@ export interface CardV2Classification {
   /** Card tags, e.g. ["Poro"]. */
   tags?: string[];
   /** Domains/regions the card belongs to, e.g. ["Fury"]. */
-  domain?: string[];
+  domains?: string[];
 }
 
 export interface CardV2Text {
