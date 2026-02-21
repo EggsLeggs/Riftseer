@@ -13,7 +13,9 @@
     "test": "bun test src/__tests__"
   },
   "dependencies": {
-    "fuse.js": "^7.0.0"
+    "@supabase/supabase-js": "^2.49.1",
+    "fuse.js": "^7.0.0",
+    "ioredis": "^5.4.2"
   },
   "devDependencies": {
     "bun-types": "^1.2.0"
