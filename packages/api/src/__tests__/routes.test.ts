@@ -9,7 +9,7 @@ import { Elysia, t } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import type {
   CardDataProvider,
-  CardV2,
+  Card,
   CardRequest,
   ResolvedCard,
   CardSearchOptions,
@@ -17,7 +17,7 @@ import type {
 
 // ─── Stub provider ────────────────────────────────────────────────────────────
 
-const STUB_CARD: CardV2 = {
+const STUB_CARD: Card = {
   object: "card",
   id: "bf1bafdc-2739-469b-bde6-c24a868f4979",
   name: "Sun Disc",
@@ -45,11 +45,11 @@ class StubProvider implements CardDataProvider {
   async warmup() {}
   async refresh() {}
 
-  async getCardById(id: string): Promise<CardV2 | null> {
+  async getCardById(id: string): Promise<Card | null> {
     return id === STUB_CARD.id ? STUB_CARD : null;
   }
 
-  async searchByName(q: string, _opts?: CardSearchOptions): Promise<CardV2[]> {
+  async searchByName(q: string, _opts?: CardSearchOptions): Promise<Card[]> {
     if (q.toLowerCase().includes("sun")) return [STUB_CARD];
     return [];
   }
@@ -70,11 +70,11 @@ class StubProvider implements CardDataProvider {
   async getCardsBySet(
     setCode: string,
     _opts?: { limit?: number }
-  ): Promise<CardV2[]> {
+  ): Promise<Card[]> {
     return setCode === "OGN" ? [STUB_CARD] : [];
   }
 
-  async getRandomCard(): Promise<CardV2 | null> {
+  async getRandomCard(): Promise<Card | null> {
     return STUB_CARD;
   }
 
@@ -200,7 +200,7 @@ describe("API routes", () => {
       expect(body.name).toBe("Sun Disc");
       expect(body.object).toBe("card");
       expect(body.set.set_code).toBe("OGN");
-      expect(body.raw).toBeUndefined(); // no raw field in CardV2
+      expect(body.raw).toBeUndefined(); // no raw field in Card
     });
 
     it("returns 404 for unknown ID", async () => {

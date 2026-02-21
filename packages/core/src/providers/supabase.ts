@@ -14,18 +14,18 @@
 import Fuse from "fuse.js";
 import type { CardDataProvider } from "../provider.ts";
 import type {
-  CardV2,
+  Card,
   CardRequest,
   CardSearchOptions,
   ResolvedCard,
-  CardV2Attributes,
-  CardV2Classification,
-  CardV2Text,
-  CardV2Media,
-  CardV2Metadata,
-  CardV2Prices,
-  CardV2PurchaseUris,
-  CardV2ExternalIds,
+  CardAttributes,
+  CardClassification,
+  CardText,
+  CardMedia,
+  CardMetadata,
+  CardPrices,
+  CardPurchaseUris,
+  CardExternalIds,
   RelatedCard,
 } from "../types.ts";
 import { logger } from "../logger.ts";
@@ -62,14 +62,14 @@ interface DBCardRow {
   released_at: string | null;
   set_id: string | null;
   artist_id: string | null;
-  external_ids: CardV2ExternalIds;
-  attributes: CardV2Attributes;
-  classification: CardV2Classification;
-  text: CardV2Text;
-  metadata: CardV2Metadata;
-  media: CardV2Media;
-  purchase_uris: CardV2PurchaseUris;
-  prices: CardV2Prices;
+  external_ids: CardExternalIds;
+  attributes: CardAttributes;
+  classification: CardClassification;
+  text: CardText;
+  metadata: CardMetadata;
+  media: CardMedia;
+  purchase_uris: CardPurchaseUris;
+  prices: CardPrices;
   all_parts: RelatedCard[];
   used_by: RelatedCard[];
   is_token: boolean;
@@ -81,9 +81,9 @@ interface DBCardRow {
   artists: { name: string } | null;
 }
 
-// ─── DB row → CardV2 ─────────────────────────────────────────────────────────
+// ─── DB row → Card ───────────────────────────────────────────────────────────
 
-function dbRowToCardV2(row: DBCardRow): CardV2 {
+function dbRowToCard(row: DBCardRow): Card {
   return {
     object: "card",
     id: row.id,
@@ -173,7 +173,7 @@ async function loadAllCardsFromDB(): Promise<DBCardRow[]> {
 
 // ─── Filter helper (shared with index queries) ────────────────────────────────
 
-function applyFilters(cards: CardV2[], opts: CardSearchOptions): CardV2[] {
+function applyFilters(cards: Card[], opts: CardSearchOptions): Card[] {
   return cards.filter((c) => {
     if (opts.set && c.set?.set_code !== opts.set.toUpperCase()) return false;
     if (opts.collector && c.collector_number !== String(opts.collector)) return false;
@@ -186,9 +186,9 @@ function applyFilters(cards: CardV2[], opts: CardSearchOptions): CardV2[] {
 export class SupabaseCardProvider implements CardDataProvider {
   readonly sourceName = "supabase";
 
-  private byId = new Map<string, CardV2>();
-  private byNorm = new Map<string, CardV2[]>();
-  private fuse: Fuse<CardV2> | null = null;
+  private byId = new Map<string, Card>();
+  private byNorm = new Map<string, Card[]>();
+  private fuse: Fuse<Card> | null = null;
   private lastRefresh = 0;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -244,7 +244,7 @@ export class SupabaseCardProvider implements CardDataProvider {
         await redisSafeSet(snapshotKey(ingestedAt), JSON.stringify(rows), REDIS_SNAPSHOT_TTL);
       }
 
-      const cards = rows.map(dbRowToCardV2);
+      const cards = rows.map(dbRowToCard);
       this.buildIndex(cards);
       this.lastRefresh = Math.floor(Date.now() / 1000);
 
@@ -263,7 +263,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
   }
 
-  private buildIndex(cards: CardV2[]): void {
+  private buildIndex(cards: Card[]): void {
     this.byId.clear();
     this.byNorm.clear();
 
@@ -290,11 +290,11 @@ export class SupabaseCardProvider implements CardDataProvider {
 
   // ── CardDataProvider implementation ──────────────────────────────────────────
 
-  async getCardById(id: string): Promise<CardV2 | null> {
+  async getCardById(id: string): Promise<Card | null> {
     return this.byId.get(id) ?? null;
   }
 
-  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<CardV2[]> {
+  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<Card[]> {
     const limit = opts.limit ?? 10;
     const norm = normalizeCardName(q);
 
@@ -371,7 +371,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     return Array.from(setMap.values()).sort((a, b) => a.setName.localeCompare(b.setName));
   }
 
-  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<CardV2[]> {
+  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<Card[]> {
     const limit = opts.limit ?? 1000;
     const upper = setCode.toUpperCase();
     const cards = Array.from(this.byId.values()).filter((c) => c.set?.set_code === upper);
@@ -386,7 +386,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     return cards.slice(0, limit);
   }
 
-  async getRandomCard(): Promise<CardV2 | null> {
+  async getRandomCard(): Promise<Card | null> {
     const keys = Array.from(this.byId.keys());
     if (keys.length === 0) return null;
     return this.byId.get(keys[Math.floor(Math.random() * keys.length)]) ?? null;

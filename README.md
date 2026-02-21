@@ -26,7 +26,7 @@ Card data API, web app, and Reddit + Discord integration for the **Riftbound** T
 |**API**|Elysia HTTP server under `/api/v1`: cards, sets, resolve; Swagger UI at `/api/swagger`|
 |**Discord bot**|Slash-command bot on Cloudflare Workers — see `packages/discord-bot`|
 |**Reddit bot**|Bracket-syntax bot on Reddit — uses [Devvit](https://devvit.dev), see `packages/reddit-bot`|
-|**Core**|Shared types, `CardDataProvider`, parser, icon definitions, RiftCodex + Supabase providers|
+|**Core**|Shared types, `CardDataProvider`, parser, icon definitions, Supabase provider|
 
 ---
 
@@ -49,10 +49,11 @@ The site uses Eden (typed API client), React Router, Tailwind, and domain/stat i
 
 ```text
 packages/
-  core/         ← shared types, CardDataProvider, parser, icon defs, RiftCodex + Supabase providers
+  core/         ← shared types, CardDataProvider, parser, icon defs, Supabase provider
   api/          ← Elysia server (all routes under /api/v1) + ingest pipeline (src/ingest.ts)
   frontend/     ← React + Vite SPA (Eden client → API)
   discord-bot/  ← Discord slash-command bot (Cloudflare Workers + Wrangler)
+  ingest-cron/  ← Cloudflare Worker — cron trigger for ingest (POST /api/v1/admin/ingest)
   reddit-bot/   ← Reddit bracket-syntax bot (Devvit)
 ```
 
@@ -268,8 +269,9 @@ Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server)
 - **API:** Use the root `Dockerfile` and `railway.toml` (or any Node/Bun host). Set `PORT`, `API_BASE_URL`, `SITE_BASE_URL`, and optionally `CARD_PROVIDER`, `DB_PATH`, etc.
 - **Frontend:** Build with `bun run build:frontend`; deploy the `packages/frontend/dist` output (e.g. Cloudflare Pages via `wrangler`, or any static host). Set `VITE_API_URL` at build time if the API is on another origin.
 - **Discord bot:** Deploy with `wrangler deploy` from `packages/discord-bot`. Secrets set via `wrangler secret put`.
+- **Ingest cron:** Deploy with `wrangler deploy` from `packages/ingest-cron`. Set secret `INGEST_CRON_SECRET` (same value as the API’s `INGEST_CRON_SECRET`). Optionally set `INGEST_API_URL` in vars.
 - **Reddit bot:** See `packages/reddit-bot` (Devvit deploy).
-- **Docker Compose:** From repo root, `docker compose up -d` runs API (and optionally bot) with a shared volume for SQLite.
+- **Docker Compose:** From repo root, `docker compose up -d` runs API (and optionally bot).
 
 ---
 
@@ -277,16 +279,13 @@ Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server)
 
 Card data is sourced from [RiftCodex](https://riftcodex.com) (`https://api.riftcodex.com`). The ingestion pipeline (`bun packages/api/src/ingest.ts`) fetches all cards, enriches them with TCGPlayer prices, derives token relationships, and upserts everything into Supabase Postgres.
 
-The API serves cards from whichever provider is set in `CARD_PROVIDER`:
+The API uses the Supabase provider (`CARD_PROVIDER=supabase`): it reads from Postgres, with data populated by the ingest pipeline.
 
-| Provider | Description |
-|----------|-------------|
-| `supabase` | Reads from Postgres (Supabase). Recommended for production. Requires ingest to have run. |
-| `riftcodex` | Fetches directly from RiftCodex API at startup. No DB required. Good for quick local dev. |
-| `riot` | Stub only — reserved for a future official Riot Games API. |
+Run the ingest pipeline manually or via the cron worker:
 
-Run the ingest pipeline any time card data changes:
 ```bash
-bun packages/api/src/ingest.ts          # production Supabase
-bun packages/api/src/ingest.ts --dry-run  # fetch + transform only, no writes
+bun packages/api/src/ingest.ts           # full ingest → Supabase
+bun packages/api/src/ingest.ts --dry-run # fetch + transform only, no writes
 ```
+
+The **ingest cron worker** (`packages/ingest-cron`) is a Cloudflare Worker that runs on a schedule (default: every 6 hours) and calls `POST /api/v1/admin/ingest` to run the pipeline and refresh the API’s in-memory index. Deploy it with `wrangler deploy` from `packages/ingest-cron` and set `INGEST_CRON_SECRET` to match the API.

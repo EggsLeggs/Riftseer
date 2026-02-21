@@ -28,10 +28,8 @@ import {
   logger,
   normalizeCardName,
   type CardDataProvider,
-  type CardV2,
-  RiftCodexProvider,
+  type Card,
 } from "@riftseer/core";
-
 // ─── TCGPlayer price cache (via tcgcsv.com) ────────────────────────────────────
 
 const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
@@ -236,7 +234,7 @@ const ErrorSchema = t.Object({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Scryfall-style copyable text: name, type line, then rules text. */
-function cardCopyableText(card: CardV2): string {
+function cardCopyableText(card: Card): string {
   const lines: string[] = [card.name];
   const typePart = [card.classification?.type, card.classification?.supertype]
     .filter(Boolean)
@@ -574,7 +572,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         description: "Returns all known card sets with card counts.",
       },
     },
-  );
+  )
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -602,8 +600,7 @@ const app = new Elysia()
           title: "RiftSeer API",
           version: "0.1.0",
           description:
-            "Riftbound card data API. Backed by RiftCodex (swappable via provider module). " +
-            "Swap to Riot's official API by setting `CARD_PROVIDER=riot` once implemented. " +
+            "Riftbound card data API. Data from Supabase (populated by the ingest pipeline). " +
             "All versioned routes (e.g. /api/v1/*) are documented here.",
         },
         servers: [

@@ -1,7 +1,7 @@
 {
   "name": "riftseer",
   "private": true,
-  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot"],
+  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot","packages/ingest-worker"],
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
     "dev:api": "cd packages/api && bun --env-file ../../.env --watch src/index.ts",

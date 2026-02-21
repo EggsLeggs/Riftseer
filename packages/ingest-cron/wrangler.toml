@@ -1,0 +1,17 @@
+# RiftSeer ingest cron worker — calls POST /api/v1/admin/ingest on a schedule.
+# Set secrets: wrangler secret put INGEST_CRON_SECRET
+# Optional: set INGEST_API_URL in vars (defaults to production API).
+
+name = "riftseer-ingest-cron"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# Run every 6 hours (ingest can be long; adjust as needed)
+[triggers]
+crons = ["0 */6 * * *"]
+
+# Vars (override in dashboard or via wrangler deploy --var)
+[vars]
+INGEST_API_URL = "https://riftseerapi-production.up.railway.app"
+
+# INGEST_CRON_SECRET must match API's INGEST_CRON_SECRET (set via wrangler secret put)

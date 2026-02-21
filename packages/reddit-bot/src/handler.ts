@@ -9,7 +9,7 @@
 
 import type { CardRequest } from "./parser.js";
 
-// ─── API response types (mirror of CardV2 shape from packages/core/src/types.ts) ──
+// ─── API response types (mirror of Card shape from packages/core/src/types.ts) ──
 
 interface ApiCard {
   id: string;
