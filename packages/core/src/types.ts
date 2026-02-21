@@ -51,6 +51,138 @@ export interface Card {
   raw?: Record<string, unknown>;
 }
 
+// ─── V2 nested Card schema ─────────────────────────────────────────────────────
+// Introduced in MR4 alongside the existing flat Card type.
+// API responses will flip to CardV2 in MR7 once the Supabase provider (MR6) is live.
+// Mirrors the Postgres schema in supabase/migrations/20260221000000_initial_schema.sql.
+
+/** A card referenced inside all_parts or used_by (e.g. a token). */
+export interface RelatedCard {
+  object: "related_card";
+  /** UUID of the referenced card. */
+  id: string;
+  name: string;
+  /** Relationship role, e.g. "token", "meld_part". */
+  component: string;
+  /** API URI for the referenced card, e.g. /api/v1/cards/:id */
+  uri?: string;
+}
+
+export interface CardV2ExternalIds {
+  riftcodex_id?: string;
+  riftbound_id?: string;
+  tcgplayer_id?: string;
+}
+
+export interface CardV2Set {
+  set_code: string;
+  set_id?: string;
+  set_name: string;
+  set_uri?: string;
+  set_search_uri?: string;
+}
+
+export interface CardV2Rulings {
+  rulings_id?: string;
+  rulings_uri?: string;
+}
+
+export interface CardV2Attributes {
+  /** Energy cost to play the card. */
+  energy?: number | null;
+  /** Might stat (unit's defense-side). */
+  might?: number | null;
+  /** Power stat (unit's attack-side). */
+  power?: number | null;
+}
+
+export interface CardV2Classification {
+  /** Card type line, e.g. "Unit", "Gear", "Spell". */
+  type?: string;
+  /** Optional supertype, e.g. "Champion". */
+  supertype?: string | null;
+  /** Rarity string, e.g. "Common", "Rare", "Legendary". */
+  rarity?: string;
+  /** Card tags, e.g. ["Poro"]. */
+  tags?: string[];
+  /** Domains/regions the card belongs to, e.g. ["Fury"]. */
+  domain?: string[];
+}
+
+export interface CardV2Text {
+  /** Rich text with inline symbol tokens (e.g. :rb_exhaust:). */
+  rich?: string;
+  /** Plain-text rules text with symbols replaced by readable tokens. */
+  plain?: string;
+  /** Flavour / lore text if available. */
+  flavour?: string;
+}
+
+export interface CardV2Metadata {
+  /** Print finishes available, e.g. ["Normal", "Foil"]. */
+  finishes?: string[];
+  signature?: boolean;
+  overnumbered?: boolean;
+  alternate_art?: boolean;
+}
+
+export interface CardV2MediaUrls {
+  small?: string;
+  normal?: string;
+  large?: string;
+  png?: string;
+}
+
+export interface CardV2Media {
+  /** Display orientation: "portrait" (vertical) or "landscape" (horizontal). */
+  orientation?: string;
+  accessibility_text?: string;
+  media_urls?: CardV2MediaUrls;
+}
+
+export interface CardV2PurchaseUris {
+  cardmarket?: string;
+  tcgplayer?: string;
+}
+
+export interface CardV2Prices {
+  usd?: number | null;
+  usd_foil?: number | null;
+  eur?: number | null;
+  eur_foil?: number | null;
+}
+
+/** Nested card shape used by the Supabase provider (MR6+) and the ingestion pipeline (MR5+). */
+export interface CardV2 {
+  object: "card";
+  /** Stable UUID (matches Postgres cards.id). */
+  id: string;
+  name: string;
+  /** Lowercased, punctuation-stripped name — used for in-memory index lookups. */
+  name_normalized: string;
+  released_at?: string;
+  collector_number?: string;
+  external_ids?: CardV2ExternalIds;
+  set?: CardV2Set;
+  rulings?: CardV2Rulings;
+  attributes?: CardV2Attributes;
+  classification?: CardV2Classification;
+  text?: CardV2Text;
+  artist?: string;
+  artist_id?: string;
+  metadata?: CardV2Metadata;
+  media?: CardV2Media;
+  purchase_uris?: CardV2PurchaseUris;
+  prices?: CardV2Prices;
+  is_token: boolean;
+  /** Related token/part cards produced or referenced by this card. */
+  all_parts: RelatedCard[];
+  /** Non-token cards that create or reference this card (populated on tokens). */
+  used_by: RelatedCard[];
+  updated_at?: string;
+  ingested_at?: string;
+}
+
 // ─── Request / resolution types ───────────────────────────────────────────────
 
 /** A parsed request from a [[Name|SET-123]] token. */

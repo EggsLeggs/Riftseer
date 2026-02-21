@@ -1,5 +1,20 @@
 // Types
 export type { Card, CardRequest, ResolvedCard, CardSearchOptions } from "./types.ts";
+export type {
+  CardV2,
+  CardV2ExternalIds,
+  CardV2Set,
+  CardV2Rulings,
+  CardV2Attributes,
+  CardV2Classification,
+  CardV2Text,
+  CardV2Metadata,
+  CardV2MediaUrls,
+  CardV2Media,
+  CardV2PurchaseUris,
+  CardV2Prices,
+  RelatedCard,
+} from "./types.ts";
 
 // Provider interface + factory
 export type { CardDataProvider } from "./provider.ts";
