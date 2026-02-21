@@ -3,6 +3,8 @@
 -- │  Apply via: supabase db push  (or paste into the Supabase SQL editor)   │
 -- └─────────────────────────────────────────────────────────────────────────┘
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Helper: auto-update updated_at on any table that has the column.
 CREATE OR REPLACE FUNCTION trigger_set_updated_at()
 RETURNS TRIGGER AS $$
@@ -42,7 +44,6 @@ CREATE TABLE artists (
 ALTER TABLE artists ENABLE ROW LEVEL SECURITY;
 
 -- ── cards ─────────────────────────────────────────────────────────────────────
--- rulings_id is added after the rulings table to avoid a circular FK dependency.
 
 CREATE TABLE cards (
   id               uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -90,9 +91,9 @@ CREATE TABLE rulings (
 
 ALTER TABLE rulings ENABLE ROW LEVEL SECURITY;
 
--- Back-reference: nullable because most cards will have no rulings entry.
-ALTER TABLE cards
-  ADD COLUMN rulings_id uuid REFERENCES rulings(id) ON DELETE SET NULL;
+-- RLS is enabled with no per-table policies: all client access must use the
+-- service role. Anon/auth roles have no SELECT/INSERT/UPDATE/DELETE and will
+-- see no rows. See project README for service-role-only rationale.
 
 -- ── indexes ───────────────────────────────────────────────────────────────────
 

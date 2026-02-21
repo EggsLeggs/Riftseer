@@ -16,6 +16,9 @@ export function getRedisClient(): Redis {
       enableOfflineQueue: false,
       maxRetriesPerRequest: 3,
     });
+    _client.on("error", (err) => {
+      console.error("[redis] client error:", err);
+    });
   }
   return _client;
 }

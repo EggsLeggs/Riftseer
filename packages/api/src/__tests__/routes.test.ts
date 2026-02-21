@@ -60,6 +60,13 @@ class StubProvider implements CardDataProvider {
     return [{ setCode: "OGN", setName: "Origins", cardCount: 1 }];
   }
 
+  async getCardsBySet(
+    setCode: string,
+    _opts?: { limit?: number }
+  ): Promise<Card[]> {
+    return setCode === "OGN" ? [STUB_CARD] : [];
+  }
+
   async getRandomCard(): Promise<Card | null> {
     return STUB_CARD;
   }

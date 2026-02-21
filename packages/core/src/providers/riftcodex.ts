@@ -186,7 +186,7 @@ async function fetchAllPages(): Promise<RawCard[]> {
       throw new Error(`Upstream returned ${res.status} ${res.statusText} for ${url}`);
     }
 
-    const body: PagedResponse = await res.json();
+    const body = (await res.json()) as PagedResponse;
     all.push(...(body.items ?? []));
 
     totalPages = body.pages ?? 1;
@@ -308,7 +308,7 @@ export class RiftCodexProvider implements CardDataProvider {
     try {
       const res = await timedFetch(`${BASE_URL}/cards/${encodeURIComponent(id)}`);
       if (!res.ok) return null;
-      const raw: RawCard = await res.json();
+      const raw = (await res.json()) as RawCard;
       const card = toCard(raw);
       // Warm the index so subsequent hits are fast
       this.byId.set(card.id, card);
