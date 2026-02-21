@@ -134,6 +134,66 @@ function toCard(raw: RawCard): Card {
   };
 }
 
+// ─── Raw → CardV2 mapping ──────────────────────────────────────────────────────
+
+export function toCardV2(raw: RawCard): import("../types.ts").CardV2 {
+  const setCode = raw.set?.set_id?.toUpperCase();
+  return {
+    object: "card",
+    id: raw.id,
+    name: raw.name,
+    name_normalized: normalizeCardName(raw.name),
+    collector_number: String(raw.collector_number),
+    external_ids: {
+      riftcodex_id: raw.id,
+      riftbound_id: raw.riftbound_id || undefined,
+      tcgplayer_id: raw.tcgplayer_id || undefined,
+    },
+    set: setCode
+      ? {
+          set_code: setCode,
+          set_id: raw.set?.set_id,
+          set_name: raw.set?.name ?? raw.set?.label ?? setCode,
+        }
+      : undefined,
+    attributes: {
+      energy: raw.attributes?.energy ?? null,
+      might: raw.attributes?.might ?? null,
+      power: raw.attributes?.power ?? null,
+    },
+    classification: {
+      type: raw.classification?.type,
+      supertype: raw.classification?.supertype,
+      rarity: raw.classification?.rarity,
+      tags: raw.tags?.length ? raw.tags : undefined,
+      domains: raw.classification?.domain?.length ? raw.classification.domain : undefined,
+    },
+    text: {
+      rich: raw.text?.rich || undefined,
+      plain: raw.text?.plain || undefined,
+    },
+    artist: raw.media?.artist || undefined,
+    metadata: {
+      alternate_art: raw.metadata?.alternate_art ?? false,
+      overnumbered: raw.metadata?.overnumbered ?? false,
+      signature: raw.metadata?.signature ?? false,
+    },
+    media: {
+      orientation: raw.orientation || undefined,
+      accessibility_text: raw.media?.accessibility_text || undefined,
+      media_urls: raw.media?.image_url
+        ? { normal: raw.media.image_url }
+        : undefined,
+    },
+    is_token:
+      raw.classification?.type?.toLowerCase() === "token" ||
+      raw.classification?.supertype?.toLowerCase() === "token" ||
+      false,
+    all_parts: [],
+    used_by: [],
+  };
+}
+
 // ─── Fetch helpers ─────────────────────────────────────────────────────────────
 
 async function timedFetch(url: string): Promise<Response> {
@@ -159,7 +219,7 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function fetchAllPages(): Promise<RawCard[]> {
+export async function fetchAllPages(): Promise<RawCard[]> {
   const all: RawCard[] = [];
   let page = 1;
   let totalPages = 1;
