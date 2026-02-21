@@ -9,11 +9,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@riftseer/core": "workspace:*",
     "@supabase/supabase-js": "^2.97.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260219.0",
+    "@riftseer/core": "workspace:*",
     "typescript": "~5.8.0",
     "wrangler": "^4.67.0"
   }

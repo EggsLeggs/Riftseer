@@ -3,7 +3,7 @@
  * Upstream: https://api.riftcodex.com — GET /cards?page=N&size=100
  */
 
-import { normalizeCardName, logger } from "@riftseer/core";
+import { normalizeCardName, logger } from "./utils.ts";
 import type { Card } from "@riftseer/core";
 
 const PAGE_SIZE = 100;
@@ -137,12 +137,15 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+const MAX_429_RETRIES = 5;
+
 export async function fetchAllPages(config: RiftCodexConfig): Promise<RawCard[]> {
   const { baseUrl, apiKey, timeoutMs } = config;
   const base = baseUrl.replace(/\/$/, "");
   const all: RawCard[] = [];
   let page = 1;
   let totalPages = 1;
+  let retry429Count = 0;
 
   while (page <= totalPages) {
     const url = `${base}/cards?page=${page}&size=${PAGE_SIZE}`;
@@ -167,8 +170,13 @@ export async function fetchAllPages(config: RiftCodexConfig): Promise<RawCard[]>
     clearTimeout(t);
 
     if (res.status === 429) {
+      retry429Count++;
+      if (retry429Count > MAX_429_RETRIES) {
+        logger.error("Too many 429 responses, aborting page fetch", { page, retry429Count });
+        throw new Error(`Rate limited too many times fetching page ${page} (${retry429Count} retries)`);
+      }
       const retryAfter = parseInt(res.headers.get("Retry-After") ?? "5", 10);
-      logger.warn("Rate limited by upstream, waiting", { retryAfterSec: retryAfter });
+      logger.warn("Rate limited by upstream, waiting", { retryAfterSec: retryAfter, retry429Count });
       await sleep(retryAfter * 1000);
       continue;
     }
@@ -182,6 +190,7 @@ export async function fetchAllPages(config: RiftCodexConfig): Promise<RawCard[]>
 
     totalPages = body.pages ?? 1;
     logger.debug("Fetched page", { page, total: body.total, pages: body.pages });
+    retry429Count = 0;
     page++;
   }
 

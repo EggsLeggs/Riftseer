@@ -10,6 +10,6 @@
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
     "test:api": "bun test ./packages/api/src/__tests__/*.test.ts",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json"
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/ingest-worker/tsconfig.json"
   }
 }

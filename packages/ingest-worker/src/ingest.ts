@@ -4,7 +4,7 @@
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { normalizeCardName, logger } from "@riftseer/core";
+import { normalizeCardName, logger } from "./utils.ts";
 import type { Card, RelatedCard } from "@riftseer/core";
 import { fetchAllPages, rawToCard } from "./riftcodex.ts";
 
@@ -21,6 +21,7 @@ export interface Env {
   RIFTCODEX_BASE_URL?: string;
   RIFTCODEX_API_KEY?: string;
   UPSTREAM_TIMEOUT_MS?: string;
+  INGEST_SECRET?: string;
 }
 
 interface TCGProduct {
@@ -39,7 +40,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
 }
 
 function getTimeoutMs(env: Env): number {
-  return parseInt(env.UPSTREAM_TIMEOUT_MS ?? "30000", 10);
+  const parsed = parseInt(env.UPSTREAM_TIMEOUT_MS ?? "30000", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 }
 
 function createSupabase(env: Env): SupabaseClient {

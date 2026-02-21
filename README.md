@@ -53,11 +53,11 @@ packages/
   api/          ← Elysia server (all routes under /api/v1) + ingest pipeline (src/ingest.ts)
   frontend/     ← React + Vite SPA (Eden client → API)
   discord-bot/  ← Discord slash-command bot (Cloudflare Workers + Wrangler)
-  ingest-cron/  ← Cloudflare Worker — cron trigger for ingest (POST /api/v1/admin/ingest)
+  ingest-worker/  ← Cloudflare Worker — cron trigger for ingest (POST /api/v1/admin/ingest)
   reddit-bot/   ← Reddit bracket-syntax bot (Devvit)
 ```
 
-**Design:** The API and Reddit bot both use `@riftseer/core`. The Reddit bot calls the provider in-process; the Discord bot calls the deployed API over HTTP. Data source is swappable via `CARD_PROVIDER`; the API and site are unchanged. Icon definitions live in `@riftseer/core/icons` — a subpath export that is safe to import in both browser (Vite) and Cloudflare Workers (no `bun:sqlite` pulled in). Supabase/Redis clients live in `@riftseer/core/server` (server-only subpath, never imported in browser/Workers builds).
+**Design:** The API and Reddit bot both use `@riftseer/core`. Both the Reddit bot and the Discord bot call the deployed API over HTTP. Data source is swappable via `CARD_PROVIDER`; the API and site are unchanged. Icon definitions live in `@riftseer/core/icons` — a subpath export that is safe to import in both browser (Vite) and Cloudflare Workers (no `bun:sqlite` pulled in). Supabase/Redis clients live in `@riftseer/core/server` (server-only subpath, never imported in browser/Workers builds).
 
 ---
 
@@ -165,8 +165,7 @@ See `.env.example`. Summary:
 
 | Variable | Default | Description |
 | ---------- | --------- | ------------- |
-| `CARD_PROVIDER` | `riftcodex` | `riftcodex`, `supabase`, or `riot` (riot stub only) |
-| `DB_PATH` | `./data/riftseer.db` | SQLite path |
+| `CARD_PROVIDER` | `supabase` | `supabase` |
 | `API_PORT` | `3000` | Elysia port |
 | `API_BASE_URL` | `http://localhost:3000` | Public API URL (bot/site links) |
 | `SITE_BASE_URL` | `https://example.com` | Public site URL (bot reply links) |
@@ -269,7 +268,7 @@ Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server)
 - **API:** Use the root `Dockerfile` and `railway.toml` (or any Node/Bun host). Set `PORT`, `API_BASE_URL`, `SITE_BASE_URL`, and optionally `CARD_PROVIDER`, `DB_PATH`, etc.
 - **Frontend:** Build with `bun run build:frontend`; deploy the `packages/frontend/dist` output (e.g. Cloudflare Pages via `wrangler`, or any static host). Set `VITE_API_URL` at build time if the API is on another origin.
 - **Discord bot:** Deploy with `wrangler deploy` from `packages/discord-bot`. Secrets set via `wrangler secret put`.
-- **Ingest cron:** Deploy with `wrangler deploy` from `packages/ingest-cron`. Set secret `INGEST_CRON_SECRET` (same value as the API’s `INGEST_CRON_SECRET`). Optionally set `INGEST_API_URL` in vars.
+- **Ingest worker:** Deploy with `wrangler deploy` from `packages/ingest-worker`. Set secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` via `wrangler secret put`. Optionally set `INGEST_SECRET` to guard the manual POST `/ingest` trigger.
 - **Reddit bot:** See `packages/reddit-bot` (Devvit deploy).
 - **Docker Compose:** From repo root, `docker compose up -d` runs API (and optionally bot).
 
@@ -288,4 +287,4 @@ bun packages/api/src/ingest.ts           # full ingest → Supabase
 bun packages/api/src/ingest.ts --dry-run # fetch + transform only, no writes
 ```
 
-The **ingest cron worker** (`packages/ingest-cron`) is a Cloudflare Worker that runs on a schedule (default: every 6 hours) and calls `POST /api/v1/admin/ingest` to run the pipeline and refresh the API’s in-memory index. Deploy it with `wrangler deploy` from `packages/ingest-cron` and set `INGEST_CRON_SECRET` to match the API.
+The **ingest worker** (`packages/ingest-worker`) is a Cloudflare Worker that runs on a schedule (default: every 6 hours) and upserts card data directly to Supabase. Deploy it with `wrangler deploy` from `packages/ingest-worker` and set the required secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) via `wrangler secret put`.

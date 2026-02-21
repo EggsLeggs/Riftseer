@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install dependencies (strip workspace members not needed in the image)
 COPY package.json bun.lock* ./
-RUN sed -i 's/, "packages\/frontend"//; s/, "packages\/discord-bot"//; s/, "packages\/ingest-worker"//' package.json
+RUN sed -i 's/, *"packages\/frontend"//g; s/, *"packages\/discord-bot"//g; s/, *"packages\/ingest-worker"//g' package.json
 COPY packages/core/package.json ./packages/core/package.json
 COPY packages/api/package.json ./packages/api/package.json
 RUN bun install
@@ -21,6 +21,10 @@ EXPOSE 3000
 
 ENV NODE_ENV=production
 ENV CARD_PROVIDER=supabase
+
+RUN addgroup -S appuser && adduser -S -G appuser appuser && \
+    chown -R appuser:appuser /app
+USER appuser
 
 WORKDIR /app/packages/api
 CMD ["bun", "src/index.ts"]

@@ -43,6 +43,11 @@ bun run dev         # wrangler dev (local)
 bun run deploy      # wrangler deploy (production)
 bun run register    # Register slash commands with Discord (run once after changes)
 
+# Ingest worker (workspace member, Cloudflare Workers — scheduled events)
+cd packages/ingest-worker
+bun run dev         # wrangler dev; trigger scheduled run: GET /cdn-cgi/mf/scheduled
+bun run deploy      # wrangler deploy (set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY via wrangler secret put)
+
 # Reddit bot (separate standalone project)
 cd packages/reddit-bot
 npx devvit upload   # Deploy to Reddit

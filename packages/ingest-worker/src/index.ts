@@ -47,6 +47,12 @@ export default {
     }
 
     if (request.method === "POST" && new URL(request.url).pathname === "/ingest") {
+      if (env.INGEST_SECRET) {
+        const auth = request.headers.get("Authorization");
+        if (!auth || auth !== `Bearer ${env.INGEST_SECRET}`) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+      }
       const result = await runIngest(env);
       return new Response(
         JSON.stringify({
