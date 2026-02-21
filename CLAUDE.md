@@ -58,6 +58,9 @@ npx devvit settings set siteBaseUrl
 | `RIFTCODEX_BASE_URL` | `https://api.riftcodex.com` |
 | `CACHE_REFRESH_INTERVAL_MS` | Cache TTL in ms (default 6h) |
 | `FUZZY_THRESHOLD` | Fuse.js threshold 0–1 (default `0.4`) |
+| `SUPABASE_URL` | Supabase project URL — required when `CARD_PROVIDER=supabase` (MR6+) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required when `CARD_PROVIDER=supabase` |
+| `REDIS_URL` | Redis connection URL (default `redis://localhost:6379`) |
 
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core` is the only coupling point between the API and data sources. Swap providers by changing `CARD_PROVIDER` — only the factory (`packages/core/src/providers/index.ts`) changes.
