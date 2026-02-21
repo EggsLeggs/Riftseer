@@ -308,6 +308,8 @@ export function CardPage() {
                       <img
                         src={imageUrl}
                         alt={card.name}
+                        fetchPriority="high"
+                        decoding="async"
                         className="absolute inset-0 w-full h-full object-contain"
                       />
                     ) : (
@@ -318,6 +320,8 @@ export function CardPage() {
                         <img
                           src={imageUrl}
                           alt={card.name}
+                          fetchPriority="high"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -326,6 +330,8 @@ export function CardPage() {
                     <img
                       src={imageUrl}
                       alt={card.name}
+                      fetchPriority="high"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   )}

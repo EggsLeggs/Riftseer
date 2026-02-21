@@ -1,7 +1,7 @@
 {
   "name": "riftseer",
   "private": true,
-  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot"],
+  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot","packages/ingest-worker"],
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
     "dev:api": "cd packages/api && bun --env-file ../../.env --watch src/index.ts",
@@ -10,6 +10,6 @@
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
     "test:api": "bun test ./packages/api/src/__tests__/*.test.ts",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json"
+    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/ingest-worker/tsconfig.json"
   }
 }

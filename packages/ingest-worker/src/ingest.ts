@@ -1,37 +1,28 @@
 /**
- * RiftSeer ingestion pipeline
- *
- * Run:
- *   bun packages/api/src/ingest.ts            # full ingest + write to Supabase
- *   bun packages/api/src/ingest.ts --dry-run   # fetch + transform, log only — no writes
- *
- * Pipeline:
- *   1. Fetch all cards from RiftCodex (reuses fetchAllPages + toCardV2 from core)
- *   2. Enrich with TCGPlayer prices via tcgcsv.com (match by normalized name)
- *   3. Derive all_parts / used_by from card ability text (token linking)
- *   4. Upsert sets, artists, cards into Supabase Postgres
- *
- * Requires env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Optional env: RIFTCODEX_BASE_URL, UPSTREAM_TIMEOUT_MS
+ * Ingestion pipeline for the ingest worker (no Elysia dependency).
+ * Pipeline: RiftCodex → TCG enrich → token linking → Supabase upsert.
  */
 
-import { normalizeCardName, logger, fetchAllPages, toCardV2 } from "@riftseer/core";
-import { getSupabaseClient } from "@riftseer/core/server";
-import type { CardV2, RelatedCard } from "@riftseer/core";
-
-const DRY_RUN = process.argv.includes("--dry-run");
-
-if (DRY_RUN) logger.info("DRY RUN — no data will be written to Supabase");
-
-// ─── TCGPlayer config ─────────────────────────────────────────────────────────
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { normalizeCardName, logger } from "./utils.ts";
+import type { Card, RelatedCard } from "@riftseer/core";
+import { fetchAllPages, rawToCard } from "./riftcodex.ts";
 
 const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
-const TCGCSV_CATEGORY = 89; // Riftbound League of Legends Trading Card Game
+const TCGCSV_CATEGORY = 89;
 const RIFTBOUND_GROUPS = [24344, 24439, 24502, 24519, 24528, 24552, 24560];
-const TIMEOUT_MS = parseInt(process.env.UPSTREAM_TIMEOUT_MS ?? "30000", 10);
 const CHUNK_SIZE = 100;
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+const TOKEN_REF_RE = /\b([A-Z][A-Za-z\s]+?)\s+[Tt]okens?\b/g;
+
+export interface Env {
+  SUPABASE_URL: string;
+  SUPABASE_SERVICE_ROLE_KEY: string;
+  RIFTCODEX_BASE_URL?: string;
+  RIFTCODEX_API_KEY?: string;
+  UPSTREAM_TIMEOUT_MS?: string;
+  INGEST_SECRET?: string;
+}
 
 interface TCGProduct {
   productId: number;
@@ -42,40 +33,42 @@ interface TCGProduct {
   usdFoilLow: number | null;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 }
 
-async function timedFetch(url: string): Promise<Response> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  try {
-    return await fetch(url, { signal: ctrl.signal });
-  } finally {
-    clearTimeout(t);
-  }
+function getTimeoutMs(env: Env): number {
+  const parsed = parseInt(env.UPSTREAM_TIMEOUT_MS ?? "30000", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 }
 
-// ─── Step 1: Fetch RiftCodex ──────────────────────────────────────────────────
+function createSupabase(env: Env): SupabaseClient {
+  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
+  }
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+}
 
-async function fetchRiftCodexCards(): Promise<CardV2[]> {
+async function fetchRiftCodexCards(env: Env): Promise<Card[]> {
   logger.info("Fetching cards from RiftCodex...");
-  const rawCards = await fetchAllPages();
-  const cards = rawCards.map(toCardV2);
+  const rawCards = await fetchAllPages({
+    baseUrl: env.RIFTCODEX_BASE_URL ?? "https://api.riftcodex.com",
+    apiKey: env.RIFTCODEX_API_KEY,
+    timeoutMs: getTimeoutMs(env),
+  });
+  const cards = rawCards.map(rawToCard);
   logger.info("Fetched from RiftCodex", { count: cards.length });
   return cards;
 }
 
-// ─── Step 2: TCGPlayer enrichment ────────────────────────────────────────────
-
-async function loadTCGProducts(): Promise<Map<string, TCGProduct>> {
+async function loadTCGProducts(timeoutMs: number): Promise<Map<string, TCGProduct>> {
   logger.info("Loading TCGPlayer products from tcgcsv.com...");
   const ctrl = new AbortController();
-  const timeout = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
     const groupResults = await Promise.all(
@@ -91,7 +84,6 @@ async function loadTCGProducts(): Promise<Map<string, TCGProduct>> {
         }
         const productsRaw: unknown = await productsRes.json();
         const pricesRaw: unknown = await pricesRes.json();
-        // tcgcsv returns plain arrays; guard against unexpected shapes
         const products = Array.isArray(productsRaw)
           ? (productsRaw as Array<{ productId: number; cleanName: string; url: string }>)
           : [];
@@ -120,17 +112,18 @@ async function loadTCGProducts(): Promise<Map<string, TCGProduct>> {
           .map((p) => [p.productId, { usdMarket: p.marketPrice, usdLow: p.lowPrice }]),
       );
       for (const product of products) {
-        // Guard against malformed rows from external API
         if (
           !Number.isFinite(product.productId) ||
-          typeof product.cleanName !== "string" || !product.cleanName.trim() ||
-          typeof product.url !== "string" || !product.url.trim()
+          typeof product.cleanName !== "string" ||
+          !product.cleanName.trim() ||
+          typeof product.url !== "string" ||
+          !product.url.trim()
         ) {
           logger.warn("Skipping malformed TCGPlayer product", { product });
           continue;
         }
         const normal = normalById.get(product.productId);
-        if (!normal) continue; // skip sealed products (no Normal price)
+        if (!normal) continue;
         const foil = foilById.get(product.productId);
         const key = normalizeCardName(product.cleanName);
         if (!map.has(key)) {
@@ -154,7 +147,7 @@ async function loadTCGProducts(): Promise<Map<string, TCGProduct>> {
 }
 
 function enrichWithTCG(
-  cards: CardV2[],
+  cards: Card[],
   tcgMap: Map<string, TCGProduct>,
 ): { enriched: number; unmatchedCount: number } {
   let enriched = 0;
@@ -176,22 +169,13 @@ function enrichWithTCG(
 
   const unmatchedCount = Array.from(tcgMap.keys()).filter((k) => !matchedKeys.has(k)).length;
   if (unmatchedCount > 0) {
-    logger.debug("Unmatched TCGPlayer products (not in RiftCodex; may be tokens or promos)", {
-      unmatchedCount,
-    });
+    logger.debug("Unmatched TCGPlayer products", { unmatchedCount });
   }
   return { enriched, unmatchedCount };
 }
 
-// ─── Step 3: Token linking ────────────────────────────────────────────────────
-
-// Matches capitalized phrases directly before "Token" / "Tokens", e.g.:
-//   "create a Poro Token"  →  "Poro"
-//   "summon a Radiant Guardian Token"  →  "Radiant Guardian"
-const TOKEN_REF_RE = /\b([A-Z][A-Za-z\s]+?)\s+[Tt]okens?\b/g;
-
-function linkTokens(cards: CardV2[]): void {
-  const tokenByNorm = new Map<string, CardV2>();
+function linkTokens(cards: Card[]): void {
+  const tokenByNorm = new Map<string, Card>();
   for (const card of cards) {
     if (card.is_token) tokenByNorm.set(card.name_normalized, card);
   }
@@ -201,7 +185,6 @@ function linkTokens(cards: CardV2[]): void {
     return;
   }
 
-  // tokenId → list of non-token cards that reference it
   const usedByAccum = new Map<string, RelatedCard[]>();
 
   for (const card of cards) {
@@ -247,9 +230,7 @@ function linkTokens(cards: CardV2[]): void {
   });
 }
 
-// ─── Step 4: Upsert to Supabase ───────────────────────────────────────────────
-
-async function upsertSets(cards: CardV2[]): Promise<Map<string, string>> {
+async function upsertSets(supabase: SupabaseClient, cards: Card[]): Promise<Map<string, string>> {
   const deduped = new Map<string, { set_code: string; set_name: string }>();
   for (const card of cards) {
     if (card.set?.set_code && !deduped.has(card.set.set_code)) {
@@ -263,12 +244,7 @@ async function upsertSets(cards: CardV2[]): Promise<Map<string, string>> {
   const rows = Array.from(deduped.values());
   logger.info("Upserting sets", { count: rows.length });
 
-  if (DRY_RUN) {
-    logger.info("[DRY RUN] Sets", { sets: rows.map((r) => r.set_code) });
-    return new Map(rows.map((r, i) => [r.set_code, `dry-set-${i}`]));
-  }
-
-  const { data, error } = await getSupabaseClient()
+  const { data, error } = await supabase
     .from("sets")
     .upsert(rows, { onConflict: "set_code" })
     .select("id, set_code");
@@ -277,7 +253,7 @@ async function upsertSets(cards: CardV2[]): Promise<Map<string, string>> {
   return new Map((data ?? []).map((r: { id: string; set_code: string }) => [r.set_code, r.id]));
 }
 
-async function upsertArtists(cards: CardV2[]): Promise<Map<string, string>> {
+async function upsertArtists(supabase: SupabaseClient, cards: Card[]): Promise<Map<string, string>> {
   const names = new Set<string>();
   for (const card of cards) {
     if (card.artist) names.add(card.artist);
@@ -286,12 +262,7 @@ async function upsertArtists(cards: CardV2[]): Promise<Map<string, string>> {
   const rows = Array.from(names).map((name) => ({ name }));
   logger.info("Upserting artists", { count: rows.length });
 
-  if (DRY_RUN) {
-    logger.info("[DRY RUN] Artists", { count: rows.length });
-    return new Map(rows.map((r, i) => [r.name, `dry-artist-${i}`]));
-  }
-
-  const { data, error } = await getSupabaseClient()
+  const { data, error } = await supabase
     .from("artists")
     .upsert(rows, { onConflict: "name" })
     .select("id, name");
@@ -301,7 +272,8 @@ async function upsertArtists(cards: CardV2[]): Promise<Map<string, string>> {
 }
 
 async function upsertCards(
-  cards: CardV2[],
+  supabase: SupabaseClient,
+  cards: Card[],
   setIds: Map<string, string>,
   artistIds: Map<string, string>,
 ): Promise<void> {
@@ -331,52 +303,51 @@ async function upsertCards(
 
   logger.info("Upserting cards", { count: rows.length });
 
-  if (DRY_RUN) {
-    logger.info("[DRY RUN] Cards", { count: rows.length, sample: rows[0] });
-    return;
-  }
-
   for (const batch of chunk(rows, CHUNK_SIZE)) {
-    const { error } = await getSupabaseClient()
-      .from("cards")
-      .upsert(batch, { onConflict: "id" });
+    const { error } = await supabase.from("cards").upsert(batch, { onConflict: "id" });
     if (error) throw new Error(`upsertCards batch: ${error.message}`);
     logger.debug("Upserted card batch", { count: batch.length });
   }
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
-
-async function main(): Promise<void> {
-  logger.info("Ingestion pipeline starting", { dryRun: DRY_RUN });
-  const t0 = Date.now();
-
-  // 1. RiftCodex
-  const cards = await fetchRiftCodexCards();
-
-  // 2. TCGPlayer enrichment (non-fatal — continue without prices if it fails)
-  try {
-    const tcgMap = await loadTCGProducts();
-    const { enriched, unmatchedCount } = enrichWithTCG(cards, tcgMap);
-    logger.info("TCGPlayer enrichment done", { enriched, unmatchedCount });
-  } catch (err) {
-    logger.warn("TCGPlayer enrichment failed — continuing without prices", {
-      error: String(err),
-    });
-  }
-
-  // 3. Token linking
-  linkTokens(cards);
-
-  // 4. Upsert to Supabase
-  const setIds = await upsertSets(cards);
-  const artistIds = await upsertArtists(cards);
-  await upsertCards(cards, setIds, artistIds);
-
-  logger.info("Ingestion complete", { cards: cards.length, elapsedMs: Date.now() - t0 });
+export interface IngestResult {
+  cardsCount: number;
+  elapsedMs: number;
+  ok: boolean;
+  error?: string;
 }
 
-main().catch((err) => {
-  logger.error("Ingestion pipeline failed", { error: String(err) });
-  process.exit(1);
-});
+export async function runIngest(env: Env): Promise<IngestResult> {
+  const t0 = Date.now();
+  logger.info("Ingestion pipeline starting");
+
+  try {
+    const cards = await fetchRiftCodexCards(env);
+
+    try {
+      const tcgMap = await loadTCGProducts(getTimeoutMs(env));
+      const { enriched, unmatchedCount } = enrichWithTCG(cards, tcgMap);
+      logger.info("TCGPlayer enrichment done", { enriched, unmatchedCount });
+    } catch (err) {
+      logger.warn("TCGPlayer enrichment failed — continuing without prices", {
+        error: String(err),
+      });
+    }
+
+    linkTokens(cards);
+
+    const supabase = createSupabase(env);
+    const setIds = await upsertSets(supabase, cards);
+    const artistIds = await upsertArtists(supabase, cards);
+    await upsertCards(supabase, cards, setIds, artistIds);
+
+    const elapsedMs = Date.now() - t0;
+    logger.info("Ingestion complete", { cards: cards.length, elapsedMs });
+    return { cardsCount: cards.length, elapsedMs, ok: true };
+  } catch (err) {
+    const elapsedMs = Date.now() - t0;
+    const error = err instanceof Error ? err.message : String(err);
+    logger.error("Ingestion pipeline failed", { error });
+    return { cardsCount: 0, elapsedMs, ok: false, error };
+  }
+}

@@ -6,14 +6,15 @@ RiftSeer is a Riftbound TCG card data platform. It exposes a REST API, a React f
 ## Monorepo Structure
 ```
 riftseer/
-├── packages/core/           # Shared types, provider interface, parser, SQLite DB
-├── packages/api/            # ElysiaJS REST API (port 3000)
+├── packages/core/           # Shared types, provider interface, parser, Supabase provider
+├── packages/api/            # ElysiaJS REST API (port 3000) + ingest pipeline
 ├── packages/frontend/       # React 19 + Vite SPA
 ├── packages/discord-bot/    # Discord bot on Cloudflare Workers (Bun workspace member)
+├── packages/ingest-worker/  # Cloudflare Worker — scheduled ingest (RiftCodex → Supabase, no API)
 └── packages/reddit-bot/     # Devvit Reddit bot (NOT a Bun workspace member)
 ```
 
-`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/core`, `packages/api`, `packages/frontend`, and `packages/discord-bot` are workspace members.
+`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/core`, `packages/api`, `packages/frontend`, `packages/discord-bot`, and `packages/ingest-worker` are workspace members.
 
 ## Stack
 | Layer | Technology |
@@ -42,6 +43,11 @@ bun run dev         # wrangler dev (local)
 bun run deploy      # wrangler deploy (production)
 bun run register    # Register slash commands with Discord (run once after changes)
 
+# Ingest worker (workspace member, Cloudflare Workers — scheduled events)
+cd packages/ingest-worker
+bun run dev         # wrangler dev; trigger scheduled run: GET /cdn-cgi/mf/scheduled
+bun run deploy      # wrangler deploy (set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY via wrangler secret put)
+
 # Reddit bot (separate standalone project)
 cd packages/reddit-bot
 npx devvit upload   # Deploy to Reddit
@@ -52,8 +58,7 @@ npx devvit settings set siteBaseUrl
 ## Environment Variables (see .env.example)
 | Variable | Purpose |
 |----------|---------|
-| `CARD_PROVIDER` | `riftcodex` (default) or `riot` |
-| `DB_PATH` | SQLite file path (default `./data/riftseer.db`) |
+| `CARD_PROVIDER` | `supabase` (only; data from ingest pipeline) |
 | `API_PORT` | Server port (default `3000`) |
 | `BASE_URL` / `SWAGGER_BASE_URL` | Base URL for Swagger/OpenAPI servers (default `"/"`); use behind reverse proxy or non-root base path |
 | `RIFTCODEX_BASE_URL` | `https://api.riftcodex.com` |
@@ -62,12 +67,13 @@ npx devvit settings set siteBaseUrl
 | `SUPABASE_URL` | Supabase project URL — required when `CARD_PROVIDER=supabase` (MR6+) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required when `CARD_PROVIDER=supabase` |
 | `REDIS_URL` | Redis connection URL (default `redis://localhost:6379`) |
+| `INGEST_CRON_SECRET` | Secret for POST /api/v1/admin/ingest (optional; ingest-worker runs independently) |
 
 ## Key Architecture Decisions
-- **Provider pattern**: `CardDataProvider` interface in `packages/core` is the only coupling point between the API and data sources. Swap providers by changing `CARD_PROVIDER` — only the factory (`packages/core/src/providers/index.ts`) changes.
-- **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/resolve` endpoint — neither embeds a provider nor SQLite connection.
-- **SQLite cache**: RiftCodexProvider fetches all cards on startup, caches to SQLite, builds an in-memory Fuse.js index. Cache refreshes on a configurable interval.
-- **Fuzzy search**: Fuse.js index is built from `name` + `clean_name` fields. Exact match is tried first; fuzzy search is used as fallback.
+- **Provider pattern**: `CardDataProvider` interface in `packages/core`; the only implementation is `SupabaseCardProvider` (data from the ingest pipeline).
+- **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/resolve` endpoint.
+- **Ingest**: Pipeline (RiftCodex → TCG enrich → token linking → Supabase upsert) runs via the standalone Cloudflare Worker `packages/ingest-worker` on a schedule (scheduled events). Same pipeline can be run locally via `bun packages/api/src/ingest.ts` or POST /api/v1/admin/ingest.
+- **Fuzzy search**: Fuse.js index is built from `name` + `name_normalized`. Exact match is tried first; fuzzy search is used as fallback.
 
 ## Deployment
 - **API + Frontend**: Docker (Alpine + Bun 1.3) or Railway (`railway.toml`). The Dockerfile serves the API and the built static frontend from the same container.

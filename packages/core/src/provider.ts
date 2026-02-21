@@ -1,12 +1,11 @@
-import type { CardV2, CardRequest, CardSearchOptions, ResolvedCard } from "./types.ts";
+import type { Card, CardRequest, CardSearchOptions, ResolvedCard } from "./types.ts";
 
 /**
  * The canonical provider interface.
  *
  * The rest of the app (API, bot) ONLY depends on this interface — not on any
- * concrete provider.  To swap RiftCodex for Riot's API, change only
- * packages/core/src/providers/index.ts (the factory) and add a new
- * RiotProvider class that satisfies this interface.
+ * concrete provider. The only implementation is SupabaseCardProvider
+ * (data populated by the ingest pipeline).
  */
 export interface CardDataProvider {
   /**
@@ -33,13 +32,13 @@ export interface CardDataProvider {
    * Look up a single card by its provider-assigned stable ID.
    * Returns null if not found.
    */
-  getCardById(id: string): Promise<CardV2 | null>;
+  getCardById(id: string): Promise<Card | null>;
 
   /**
    * Full-text + optional set/collector search.
    * Performs exact match first; fuzzy fallback if opts.fuzzy !== false.
    */
-  searchByName(q: string, opts?: CardSearchOptions): Promise<CardV2[]>;
+  searchByName(q: string, opts?: CardSearchOptions): Promise<Card[]>;
 
   /**
    * Resolve a structured CardRequest to the single best matching printing.
@@ -58,13 +57,13 @@ export interface CardDataProvider {
    * Return cards in a set, ordered by collector number.
    * Used when browsing a set without a name search.
    */
-  getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<CardV2[]>;
+  getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<Card[]>;
 
   /**
    * Return a single random card from the provider's index.
    * Returns null if the index is empty.
    */
-  getRandomCard(): Promise<CardV2 | null>;
+  getRandomCard(): Promise<Card | null>;
 
   /**
    * Return provider stats for the /meta endpoint.

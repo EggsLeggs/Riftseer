@@ -141,6 +141,7 @@ export function SearchPage() {
                           alt={card.name}
                           className="w-full h-full object-cover"
                           loading="lazy"
+                          decoding="async"
                         />
                       </div>
                     ) : (
@@ -149,6 +150,7 @@ export function SearchPage() {
                         alt={card.name}
                         className="w-full h-full object-cover"
                         loading="lazy"
+                        decoding="async"
                       />
                     )}
                   </div>
