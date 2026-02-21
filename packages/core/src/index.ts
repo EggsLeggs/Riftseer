@@ -23,10 +23,6 @@ export {
   getCacheMeta,
 } from "./db.ts";
 
-// Infrastructure clients (lazy singletons — only throw when called without env vars)
-export { getSupabaseClient } from "./supabase/client.ts";
-export { getRedisClient } from "./redis/client.ts";
-
 // Logger
 export { logger } from "./logger.ts";
 
