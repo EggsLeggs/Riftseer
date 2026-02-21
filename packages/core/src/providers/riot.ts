@@ -15,7 +15,7 @@
  */
 
 import type { CardDataProvider } from "../provider.ts";
-import type { Card, CardRequest, CardSearchOptions, ResolvedCard } from "../types.ts";
+import type { CardV2, CardRequest, CardSearchOptions, ResolvedCard } from "../types.ts";
 
 export class RiotProvider implements CardDataProvider {
   readonly sourceName = "riot";
@@ -30,11 +30,11 @@ export class RiotProvider implements CardDataProvider {
     throw new Error("RiotProvider is not yet implemented.");
   }
 
-  async getCardById(_id: string): Promise<Card | null> {
+  async getCardById(_id: string): Promise<CardV2 | null> {
     throw new Error("RiotProvider is not yet implemented.");
   }
 
-  async searchByName(_q: string, _opts?: CardSearchOptions): Promise<Card[]> {
+  async searchByName(_q: string, _opts?: CardSearchOptions): Promise<CardV2[]> {
     throw new Error("RiotProvider is not yet implemented.");
   }
 
@@ -46,11 +46,15 @@ export class RiotProvider implements CardDataProvider {
     return [];
   }
 
-  async getCardsBySet(_setCode: string, _opts?: { limit?: number }): Promise<Card[]> {
+  async getCardsBySet(_setCode: string, _opts?: { limit?: number }): Promise<CardV2[]> {
     return [];
   }
 
-  async getRandomCard(): Promise<Card | null> {
+  async getRandomCard(): Promise<CardV2 | null> {
     return null;
+  }
+
+  getStats(): { lastRefresh: number; cardCount: number } {
+    return { lastRefresh: 0, cardCount: 0 };
   }
 }

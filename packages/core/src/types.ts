@@ -201,7 +201,7 @@ export interface CardRequest {
 export interface ResolvedCard {
   request: CardRequest;
   /** The matched card, or null if not found. */
-  card: Card | null;
+  card: CardV2 | null;
   /** How the card was matched. */
   matchType: "exact" | "fuzzy" | "not-found";
   /** Fuse.js score when matchType === "fuzzy" (lower = better, 0 = perfect). */

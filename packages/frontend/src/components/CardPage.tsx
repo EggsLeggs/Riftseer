@@ -17,24 +17,26 @@ import { Download, Flag, ExternalLink, RotateCw, Copy } from "lucide-react";
 function buildCardSeoDescription(card: Card): string {
   const parts: string[] = [];
 
-  if (card.domains && card.domains.length > 0) {
-    parts.push(card.domains.join(", "));
+  if (card.classification?.domains && card.classification.domains.length > 0) {
+    parts.push(card.classification.domains.join(", "));
   }
 
   const stats: string[] = [];
-  if (card.cost != null) stats.push(`${card.cost} Energy`);
-  if (card.power != null) stats.push(`${card.power} Power`);
+  if (card.attributes?.energy != null) stats.push(`${card.attributes.energy} Energy`);
+  if (card.attributes?.power != null) stats.push(`${card.attributes.power} Power`);
   if (stats.length > 0) parts.push(stats.join(", "));
 
-  if (card.typeLine && card.supertype) {
-    parts.push(`${card.typeLine} — ${card.supertype}`);
-  } else if (card.typeLine) {
-    parts.push(card.typeLine);
-  } else if (card.supertype) {
-    parts.push(card.supertype);
+  const typeLine = card.classification?.type;
+  const supertype = card.classification?.supertype;
+  if (typeLine && supertype) {
+    parts.push(`${typeLine} — ${supertype}`);
+  } else if (typeLine) {
+    parts.push(typeLine);
+  } else if (supertype) {
+    parts.push(supertype);
   }
 
-  const rawEffect = (card.effect ?? card.text ?? "")
+  const rawEffect = (card.text?.plain ?? "")
     .replace(/:[a-z_]+:/gi, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -83,7 +85,8 @@ function tcgPlayerUrlForCard(
   card: Card,
   usdPrices: Record<string, TCGPlayerPrice>,
 ): string {
-  if (card.tcgplayerId) return tcgPlayerProductUrl(card.tcgplayerId);
+  const tcgplayerId = card.external_ids?.tcgplayer_id;
+  if (tcgplayerId) return tcgPlayerProductUrl(tcgplayerId);
   return usdPrices[card.name]?.url ?? tcgPlayerSearchUrl(card.name);
 }
 
@@ -126,7 +129,7 @@ function CopyLink({
   );
 }
 
-/** Extract unique token names from ability/effect text (e.g. "3 Sprite unit token" → "Sprite"). */
+/** Extract unique token names from ability text (e.g. "3 Sprite unit token" → "Sprite"). */
 function parseTokenMentions(text: string): string[] {
   if (!text?.trim()) return [];
   const names = new Set<string>();
@@ -173,7 +176,7 @@ export function CardPage() {
       setTokens([]);
       return;
     }
-    const combined = [card.text, card.effect].filter(Boolean).join("\n");
+    const combined = [card.text?.plain].filter(Boolean).join("\n");
     const names = parseTokenMentions(combined);
     if (names.length === 0) {
       setTokens([]);
@@ -183,7 +186,7 @@ export function CardPage() {
       names.map((name) =>
         searchCards(name, { limit: 5, fuzzy: true }).then((res) => {
           const tokenCard =
-            res.cards.find((c) => c.supertype?.toLowerCase() === "token") ??
+            res.cards.find((c) => c.is_token) ??
             res.cards[0];
           return tokenCard ?? null;
         })
@@ -193,7 +196,7 @@ export function CardPage() {
       const byId = new Map(list.map((c) => [c.id, c]));
       setTokens(Array.from(byId.values()));
     });
-  }, [card?.id, card?.text, card?.effect]);
+  }, [card?.id, card?.text?.plain]);
 
   // Fetch USD prices from TCGPlayer (via tcgcsv.com) for names not already in usdPrices
   useEffect(() => {
@@ -229,6 +232,22 @@ export function CardPage() {
     );
   }
 
+  const imageUrl = card.media?.media_urls?.normal;
+  const orientation = card.media?.orientation;
+  const typeLine = card.classification?.type;
+  const supertype = card.classification?.supertype;
+  const rarity = card.classification?.rarity;
+  const domains = card.classification?.domains;
+  const tags = card.classification?.tags;
+  const energy = card.attributes?.energy;
+  const might = card.attributes?.might;
+  const power = card.attributes?.power;
+  const setCode = card.set?.set_code;
+  const setName = card.set?.set_name;
+  const collectorNumber = card.collector_number;
+  const alternateArt = card.metadata?.alternate_art;
+  const signature = card.metadata?.signature;
+
   const seoDescription = buildCardSeoDescription(card);
 
   return (
@@ -238,21 +257,21 @@ export function CardPage() {
       <meta property="og:title" content={card.name} />
       <meta property="og:description" content={seoDescription} />
       <meta property="og:type" content="product" />
-      {card.imageUrl && <meta property="og:image" content={card.imageUrl} />}
+      {imageUrl && <meta property="og:image" content={imageUrl} />}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={card.name} />
       <meta name="twitter:description" content={seoDescription} />
-      {card.imageUrl && <meta name="twitter:image" content={card.imageUrl} />}
+      {imageUrl && <meta name="twitter:image" content={imageUrl} />}
       <meta property="og:url" content={`${window.location.origin}${location.pathname}${location.search}`} />
 
       {/* Breadcrumb */}
       <div className="text-sm text-muted-foreground mb-4">
         <Link to="/" className="hover:underline">Home</Link>
-        {card.setName && (
+        {setName && (
           <>
             {" › "}
-            <Link to={`/search?q=&set=${card.setCode}`} className="hover:underline">
-              {card.setName}
+            <Link to={`/search?q=&set=${setCode}`} className="hover:underline">
+              {setName}
             </Link>
           </>
         )}
@@ -266,7 +285,7 @@ export function CardPage() {
         <div className="lg:col-span-3">
           {(() => {
             const isLandscape =
-              card.orientation === "landscape" || card.orientation === "horizontal";
+              orientation === "landscape" || orientation === "horizontal";
             const showAsLandscape = isLandscape !== rotated;
             const containerAspect = showAsLandscape ? "aspect-3/2" : "aspect-2/3";
             const needsRotate =
@@ -278,7 +297,7 @@ export function CardPage() {
               : "";
             const wrapperSizeClass = showAsLandscape ? "w-2/3 h-[150%]" : "w-[150%] h-2/3";
             const transitionClass = "transition-transform duration-300 ease-in-out";
-            return card.imageUrl ? (
+            return imageUrl ? (
               <div className="space-y-2">
                 <div
                   className={`w-full max-w-[300px] ${containerAspect} overflow-hidden relative rounded-xl shadow-lg mx-auto lg:mx-0 transition-[aspect-ratio] duration-300 ease-in-out`}
@@ -287,7 +306,7 @@ export function CardPage() {
                     showAsLandscape ? (
                       /* Landscape card in landscape view: show image directly so full art fits, no crop */
                       <img
-                        src={card.imageUrl}
+                        src={imageUrl}
                         alt={card.name}
                         className="absolute inset-0 w-full h-full object-contain"
                       />
@@ -297,7 +316,7 @@ export function CardPage() {
                         className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 origin-center flex items-center justify-center ${wrapperSizeClass} ${rotateClass} ${transitionClass}`}
                       >
                         <img
-                          src={card.imageUrl}
+                          src={imageUrl}
                           alt={card.name}
                           className="w-full h-full object-cover"
                         />
@@ -305,7 +324,7 @@ export function CardPage() {
                     )
                   ) : (
                     <img
-                      src={card.imageUrl}
+                      src={imageUrl}
                       alt={card.name}
                       className="w-full h-full object-cover"
                     />
@@ -344,17 +363,17 @@ export function CardPage() {
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-lg">{card.name}</span>
                     <span className="inline-flex items-center gap-1">
-                      {card.cost != null && (
+                      {energy != null && (
                         <span
-                          className={`icon-energy-value${card.typeLine?.toLowerCase() === "gear" ? " icon-energy-gear" : ""}`}
-                          data-value={card.cost}
-                          aria-label={`${card.cost} energy`}
+                          className={`icon-energy-value${typeLine?.toLowerCase() === "gear" ? " icon-energy-gear" : ""}`}
+                          data-value={energy}
+                          aria-label={`${energy} energy`}
                         />
                       )}
-                      {card.power != null && (
+                      {power != null && (
                         <span className="flex items-center gap-0.5">
                           <span className="icon-power" />
-                          <span className="font-semibold">{card.power}</span>
+                          <span className="font-semibold">{power}</span>
                         </span>
                       )}
                     </span>
@@ -370,52 +389,52 @@ export function CardPage() {
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5 flex-wrap">
                     {(() => {
-                      const tl = card.typeLine?.toLowerCase();
-                      const st = card.supertype?.toLowerCase();
-                      const typePrefixesSubtype = (tl === "unit" || tl === "basic") && card.supertype;
-                      const supertypePrefixesSubtype = (st === "token" || st === "basic") && card.typeLine;
-                      if (supertypePrefixesSubtype && card.typeLine) {
-                        const subtypeIcon = card.typeLine.toLowerCase() === "token" ? "unit" : card.typeLine.toLowerCase();
+                      const tl = typeLine?.toLowerCase();
+                      const st = supertype?.toLowerCase();
+                      const typePrefixesSubtype = (tl === "unit" || tl === "basic") && supertype;
+                      const supertypePrefixesSubtype = (st === "token" || st === "basic") && typeLine;
+                      if (supertypePrefixesSubtype && typeLine) {
+                        const subtypeIcon = typeLine.toLowerCase() === "token" ? "unit" : typeLine.toLowerCase();
                         return (
                           <>
                             <span className={`icon-${subtypeIcon}`} aria-hidden style={{ width: "1.1em", height: "1.1em" }} />
-                            <span>{card.supertype} {card.typeLine}</span>
+                            <span>{supertype} {typeLine}</span>
                           </>
                         );
                       }
-                      if (typePrefixesSubtype && card.typeLine) {
+                      if (typePrefixesSubtype && typeLine) {
                         return (
                           <>
                             <span className={`icon-${tl}`} aria-hidden style={{ width: "1.1em", height: "1.1em" }} />
-                            <span>{card.typeLine} — {card.supertype}</span>
+                            <span>{typeLine} — {supertype}</span>
                           </>
                         );
                       }
                       return (
                         <>
-                          {card.supertype && (
+                          {supertype && (
                             <>
-                              <span className={`icon-${card.supertype.toLowerCase()}`} aria-hidden style={{ width: "1.1em", height: "1.1em" }} />
-                              <span className="text-primary font-medium">{card.supertype}</span>
+                              <span className={`icon-${supertype.toLowerCase()}`} aria-hidden style={{ width: "1.1em", height: "1.1em" }} />
+                              <span className="text-primary font-medium">{supertype}</span>
                             </>
                           )}
-                          {card.typeLine && (
+                          {typeLine && (
                             <>
                               <span
-                                className={`icon-${card.typeLine.toLowerCase() === "token" ? "unit" : card.typeLine.toLowerCase()}`}
+                                className={`icon-${typeLine.toLowerCase() === "token" ? "unit" : typeLine.toLowerCase()}`}
                                 aria-hidden
                                 style={{ width: "1.1em", height: "1.1em" }}
                               />
-                              <span>{card.typeLine.toLowerCase() === "token" ? "Token Unit" : card.typeLine}</span>
+                              <span>{typeLine.toLowerCase() === "token" ? "Token Unit" : typeLine}</span>
                             </>
                           )}
                         </>
                       );
                     })()}
-                    {!card.supertype && !card.typeLine && "—"}
-                    {card.domains && card.domains.length > 0 && (
-                      <span className="inline-flex items-center gap-1 ml-0.5" title={card.domains.join(", ")}>
-                        {card.domains.map((d) => {
+                    {!supertype && !typeLine && "—"}
+                    {domains && domains.length > 0 && (
+                      <span className="inline-flex items-center gap-1 ml-0.5" title={domains.join(", ")}>
+                        {domains.map((d) => {
                           const key = d.toLowerCase();
                           const cls = `icon-rune-${key}-glyph`;
                           return <span key={d} className={cls} aria-label={d} style={{ width: "1.25em", height: "1.25em" }} />;
@@ -427,14 +446,14 @@ export function CardPage() {
               </TableRow>
 
               {/* Tags — only show when card has tags */}
-              {card.tags && card.tags.length > 0 && (
+              {tags && tags.length > 0 && (
                 <TableRow>
                   <TableCell className="font-semibold text-muted-foreground">
                     Tags
                   </TableCell>
                   <TableCell>
                     <span className="inline-flex flex-wrap gap-1">
-                      {card.tags.map((tag) => (
+                      {tags.map((tag) => (
                         <Badge key={tag} variant="outline" className="font-normal">
                           {tag}
                         </Badge>
@@ -445,31 +464,19 @@ export function CardPage() {
               )}
 
               {/* Ability / Rules text — only show when there is ability text */}
-              {card.text?.trim() && (
+              {card.text?.plain?.trim() && (
                 <TableRow>
                   <TableCell className="font-semibold text-muted-foreground align-top">
                     Ability
                   </TableCell>
                   <TableCell>
-                    <CardTextRenderer text={card.text} />
-                  </TableCell>
-                </TableRow>
-              )}
-
-              {/* Effect (e.g. Equipment bonus while equipped) */}
-              {"effect" in card && card.effect != null && card.effect !== "" && (
-                <TableRow>
-                  <TableCell className="font-semibold text-muted-foreground align-top">
-                    Effect
-                  </TableCell>
-                  <TableCell>
-                    <CardTextRenderer text={card.effect} />
+                    <CardTextRenderer text={card.text.plain} />
                   </TableCell>
                 </TableRow>
               )}
 
               {/* Might — only show when card has might */}
-              {card.might != null && (
+              {might != null && (
                 <TableRow>
                   <TableCell className="font-semibold text-muted-foreground">
                     Might
@@ -477,7 +484,7 @@ export function CardPage() {
                   <TableCell>
                     <span className="flex items-center gap-1">
                       <span className="icon-might" />
-                      {card.might}
+                      {might}
                     </span>
                   </TableCell>
                 </TableRow>
@@ -506,10 +513,10 @@ export function CardPage() {
                   Rarity
                 </TableCell>
                 <TableCell>
-                  {card.rarity ? (
+                  {rarity ? (
                     <Badge variant="secondary" className="gap-1">
-                      <span className={`icon-rarity icon-rarity-${card.rarity?.toLowerCase()}`} />
-                      {card.rarity}
+                      <span className={`icon-rarity icon-rarity-${rarity?.toLowerCase()}`} />
+                      {rarity}
                     </Badge>
                   ) : (
                     "—"
@@ -523,7 +530,7 @@ export function CardPage() {
 
         {/* Tokens + Prints in same column */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Tokens table — tokens mentioned in this card’s ability/effect */}
+          {/* Tokens table — tokens mentioned in this card's ability text */}
           {tokens.length > 0 && (
             <>
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
@@ -542,14 +549,19 @@ export function CardPage() {
                   </TableHeader>
                   <TableBody>
                     {tokens.map((t) => {
-                      let displayNumber = t.collectorNumber ?? "—";
-                      if (t.collectorNumber && (t.signature || t.alternateArt)) {
-                        displayNumber = t.signature
-                          ? `${t.collectorNumber}★`
-                          : `${t.collectorNumber}a`;
+                      const tCollector = t.collector_number;
+                      const tSig = t.metadata?.signature;
+                      const tAlt = t.metadata?.alternate_art;
+                      let displayNumber = tCollector ?? "—";
+                      if (tCollector && (tSig || tAlt)) {
+                        displayNumber = tSig
+                          ? `${tCollector}★`
+                          : `${tCollector}a`;
                       }
-                      const fullSetName = t.setName ?? t.setCode ?? "Unknown";
-                      const setLabel = t.setCode && fullSetName !== t.setCode ? `${fullSetName} (${t.setCode})` : fullSetName;
+                      const fullSetName = t.set?.set_name ?? t.set?.set_code ?? "Unknown";
+                      const tSetCode = t.set?.set_code;
+                      const setLabel = tSetCode && fullSetName !== tSetCode ? `${fullSetName} (${tSetCode})` : fullSetName;
+                      const tRarity = t.classification?.rarity;
                       return (
                         <TableRow
                           key={t.id}
@@ -571,10 +583,10 @@ export function CardPage() {
                             {displayNumber}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {t.rarity ? (
+                            {tRarity ? (
                               <span className="inline-flex items-center gap-1">
-                                <span className={`icon-rarity icon-rarity-${t.rarity.toLowerCase()}`} />
-                                {t.rarity}
+                                <span className={`icon-rarity icon-rarity-${tRarity.toLowerCase()}`} />
+                                {tRarity}
                               </span>
                             ) : (
                               "—"
@@ -638,14 +650,19 @@ export function CardPage() {
                 {printings.length > 0 ? (
                   printings.map((p) => {
                     const isCurrent = p.id === id;
-                    let displayNumber = p.collectorNumber ?? "—";
-                    if (p.collectorNumber && (p.signature || p.alternateArt)) {
-                      displayNumber = p.signature
-                        ? `${p.collectorNumber}★`
-                        : `${p.collectorNumber}a`;
+                    const pCollector = p.collector_number;
+                    const pSig = p.metadata?.signature;
+                    const pAlt = p.metadata?.alternate_art;
+                    let displayNumber = pCollector ?? "—";
+                    if (pCollector && (pSig || pAlt)) {
+                      displayNumber = pSig
+                        ? `${pCollector}★`
+                        : `${pCollector}a`;
                     }
-                    const fullSetName = p.setName ?? p.setCode ?? "Unknown";
-                    const setLabel = p.setCode && fullSetName !== p.setCode ? `${fullSetName} (${p.setCode})` : fullSetName;
+                    const fullSetName = p.set?.set_name ?? p.set?.set_code ?? "Unknown";
+                    const pSetCode = p.set?.set_code;
+                    const setLabel = pSetCode && fullSetName !== pSetCode ? `${fullSetName} (${pSetCode})` : fullSetName;
+                    const pRarity = p.classification?.rarity;
                     return (
                       <TableRow
                         key={p.id}
@@ -671,10 +688,10 @@ export function CardPage() {
                           {displayNumber}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {p.rarity ? (
+                          {pRarity ? (
                             <span className="inline-flex items-center gap-1">
-                              <span className={`icon-rarity icon-rarity-${p.rarity.toLowerCase()}`} />
-                              {p.rarity}
+                              <span className={`icon-rarity icon-rarity-${pRarity.toLowerCase()}`} />
+                              {pRarity}
                             </span>
                           ) : (
                             "—"
@@ -777,7 +794,7 @@ export function CardPage() {
             <ul className="space-y-1">
               <li>
                 <a
-                  href={card.imageUrl ?? "#"}
+                  href={imageUrl ?? "#"}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"

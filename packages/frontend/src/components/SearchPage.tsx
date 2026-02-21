@@ -125,19 +125,19 @@ export function SearchPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {cards.map((card) => {
             const isLandscape =
-              card.orientation === "landscape" || card.orientation === "horizontal";
+              card.media?.orientation === "landscape" || card.media?.orientation === "horizontal";
             return (
               <Link
                 key={card.id}
                 to={`/card/${card.id}`}
                 className="card-grid-item block overflow-hidden hover:no-underline"
               >
-                {card.imageUrl ? (
+                {card.media?.media_urls?.normal ? (
                   <div className="w-full aspect-2/3 overflow-hidden relative rounded-lg">
                     {isLandscape ? (
                       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-2/3 -rotate-90 origin-center">
                         <img
-                          src={card.imageUrl}
+                          src={card.media.media_urls.normal}
                           alt={card.name}
                           className="w-full h-full object-cover"
                           loading="lazy"
@@ -145,7 +145,7 @@ export function SearchPage() {
                       </div>
                     ) : (
                       <img
-                        src={card.imageUrl}
+                        src={card.media.media_urls.normal}
                         alt={card.name}
                         className="w-full h-full object-cover"
                         loading="lazy"

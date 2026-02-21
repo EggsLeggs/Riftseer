@@ -26,11 +26,9 @@ import {
   createProvider,
   parseCardRequests,
   logger,
-  getCacheMeta,
   normalizeCardName,
   type CardDataProvider,
-  type Card,
-  type ResolvedCard,
+  type CardV2,
   RiftCodexProvider,
 } from "@riftseer/core";
 
@@ -129,42 +127,6 @@ const startTime = Date.now();
 
 // ─── Shared schemas (referenced in route detail for OpenAPI) ──────────────────
 
-const CardSchema = t.Object({
-  id: t.String({ description: "Stable unique identifier" }),
-  name: t.String(),
-  normalizedName: t.String(),
-  setCode: t.Optional(t.String()),
-  setName: t.Optional(t.String()),
-  collectorNumber: t.Optional(t.String()),
-  tcgplayerId: t.Optional(
-    t.String({ description: "TCGPlayer product ID for pricing/links" }),
-  ),
-  imageUrl: t.Optional(t.String()),
-  text: t.Optional(t.String()),
-  effect: t.Optional(
-    t.String({
-      description: "Effect text (e.g. for Equipment while equipped)",
-    }),
-  ),
-  cost: t.Optional(t.Number()),
-  typeLine: t.Optional(t.String()),
-  supertype: t.Optional(t.Nullable(t.String())),
-  rarity: t.Optional(t.String()),
-  domains: t.Optional(t.Array(t.String())),
-  might: t.Optional(t.Nullable(t.Number())),
-  power: t.Optional(t.Nullable(t.Number())),
-  tags: t.Optional(t.Array(t.String())),
-  artist: t.Optional(t.String()),
-  alternateArt: t.Optional(t.Boolean()),
-  overnumbered: t.Optional(t.Boolean()),
-  signature: t.Optional(t.Boolean()),
-  orientation: t.Optional(
-    t.String({ description: "portrait (vertical) or landscape (horizontal)" }),
-  ),
-});
-
-// ─── V2 schemas (MR4 — used by SupabaseCardProvider in MR6+) ─────────────────
-
 const RelatedCardSchema = t.Object({
   object: t.Literal("related_card"),
   id: t.String({ description: "UUID of the referenced card" }),
@@ -173,7 +135,7 @@ const RelatedCardSchema = t.Object({
   uri: t.Optional(t.String({ description: "API URI for the referenced card" })),
 });
 
-const CardV2Schema = t.Object({
+const CardSchema = t.Object({
   object: t.Literal("card"),
   id: t.String({ description: "Stable UUID" }),
   name: t.String(),
@@ -273,26 +235,16 @@ const ErrorSchema = t.Object({
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Strip the `raw` field and ensure variant flags are always present (default false for old cache). */
-function sanitiseCard(card: Card): Omit<Card, "raw"> & { tcgplayerId?: string } {
-  const { raw, ...rest } = card;
-  const out = { ...rest } as Omit<Card, "raw"> & { tcgplayerId?: string };
-  out.alternateArt = rest.alternateArt === true;
-  out.overnumbered = rest.overnumbered === true;
-  out.signature = rest.signature === true;
-  const tcgplayerId = (raw as { tcgplayer_id?: string } | undefined)?.tcgplayer_id;
-  if (tcgplayerId != null) out.tcgplayerId = String(tcgplayerId);
-  return out;
-}
-
 /** Scryfall-style copyable text: name, type line, then rules text. */
-function cardCopyableText(card: Card): string {
+function cardCopyableText(card: CardV2): string {
   const lines: string[] = [card.name];
-  const typePart = [card.typeLine, card.supertype].filter(Boolean).join(" — ");
+  const typePart = [card.classification?.type, card.classification?.supertype]
+    .filter(Boolean)
+    .join(" — ");
   if (typePart) lines.push(typePart);
-  if (card.text?.trim()) {
+  if (card.text?.plain?.trim()) {
     if (lines.length > 1) lines.push("");
-    lines.push(card.text.trim());
+    lines.push(card.text.plain.trim());
   }
   return lines.join("\n");
 }
@@ -318,7 +270,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/meta",
     () => {
-      const { lastRefresh, cardCount } = getCacheMeta(provider.sourceName);
+      const { lastRefresh, cardCount } = provider.getStats();
       const cacheAgeSeconds = lastRefresh
         ? Math.floor(Date.now() / 1000 - lastRefresh)
         : null;
@@ -359,7 +311,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         set.status = 404;
         return { error: "No cards available", code: "NOT_FOUND" };
       }
-      return sanitiseCard(card);
+      return card;
     },
     {
       response: {
@@ -383,7 +335,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         set.status = 404;
         return { error: "Card not found", code: "NOT_FOUND" };
       }
-      return sanitiseCard(card);
+      return card;
     },
     {
       params: t.Object({ id: t.String({ description: "Card UUID" }) }),
@@ -442,7 +394,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         });
         return {
           count: cards.length,
-          cards: cards.map(sanitiseCard),
+          cards,
         };
       }
 
@@ -464,7 +416,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
 
       return {
         count: cards.length,
-        cards: cards.map(sanitiseCard),
+        cards,
       };
     },
     {
@@ -523,10 +475,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
 
       return {
         count: results.length,
-        results: results.map((r) => ({
-          ...r,
-          card: r.card ? sanitiseCard(r.card) : null,
-        })),
+        results,
       };
     },
     {
@@ -657,6 +606,11 @@ const app = new Elysia()
             "Swap to Riot's official API by setting `CARD_PROVIDER=riot` once implemented. " +
             "All versioned routes (e.g. /api/v1/*) are documented here.",
         },
+        servers: [
+          {
+            url: process.env.BASE_URL ?? process.env.SWAGGER_BASE_URL ?? "/",
+          },
+        ],
         tags: [
           { name: "Meta", description: "Server health and metadata" },
           { name: "Cards", description: "Card lookup and search" },

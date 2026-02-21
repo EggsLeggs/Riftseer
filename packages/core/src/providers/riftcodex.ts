@@ -13,8 +13,9 @@
 
 import Fuse from "fuse.js";
 import type { CardDataProvider } from "../provider.ts";
-import type { Card, CardRequest, CardSearchOptions, ResolvedCard } from "../types.ts";
-import { getCachedCards, getCacheMeta, setCachedCards } from "../db.ts";
+import type { CardV2, CardRequest, CardSearchOptions, ResolvedCard } from "../types.ts";
+import { normalizeCardName } from "../normalize.ts";
+import { getCachedCards, setCachedCards } from "../db.ts";
 import { logger } from "../logger.ts";
 
 // ─── Configuration ─────────────────────────────────────────────────────────────
@@ -92,57 +93,18 @@ interface PagedResponse {
   pages: number;
 }
 
-// ─── Name normalisation ────────────────────────────────────────────────────────
-
-export function normalizeCardName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/['\u2019-]/g, "") // apostrophes, right-single-quote, hyphens
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// ─── Raw → normalised Card mapping ────────────────────────────────────────────
-
-function toCard(raw: RawCard): Card {
-  const rawEffect = (raw as { effect?: string }).effect;
-  return {
-    id: raw.id,
-    name: raw.name,
-    normalizedName: normalizeCardName(raw.name),
-    setCode: raw.set?.set_id?.toUpperCase(),
-    setName: raw.set?.name ?? raw.set?.label,
-    collectorNumber: String(raw.collector_number),
-    imageUrl: raw.media?.image_url,
-    text: raw.text?.plain,
-    effect: typeof rawEffect === "string" ? rawEffect : undefined,
-    cost: raw.attributes?.energy ?? undefined,
-    typeLine: raw.classification?.type,
-    supertype: raw.classification?.supertype,
-    rarity: raw.classification?.rarity,
-    domains: raw.classification?.domain,
-    might: raw.attributes?.might,
-    power: raw.attributes?.power,
-    tags: raw.tags,
-    artist: raw.media?.artist,
-    alternateArt: raw.metadata?.alternate_art ?? false,
-    overnumbered: raw.metadata?.overnumbered ?? false,
-    signature: raw.metadata?.signature ?? false,
-    orientation: raw.orientation,
-    raw: raw as Record<string, unknown>,
-  };
-}
+export { normalizeCardName } from "../normalize.ts";
 
 // ─── Raw → CardV2 mapping ──────────────────────────────────────────────────────
 
-export function toCardV2(raw: RawCard): import("../types.ts").CardV2 {
+export function toCardV2(raw: RawCard): CardV2 {
   const setCode = raw.set?.set_id?.toUpperCase();
   return {
     object: "card",
     id: raw.id,
     name: raw.name,
-    name_normalized: raw.metadata?.clean_name || normalizeCardName(raw.name),
+    // Always normalise through normalizeCardName so the in-memory index key matches
+    name_normalized: normalizeCardName(raw.metadata?.clean_name || raw.name),
     collector_number: String(raw.collector_number),
     external_ids: {
       riftcodex_id: raw.id,
@@ -262,9 +224,9 @@ export async function fetchAllPages(): Promise<RawCard[]> {
 export class RiftCodexProvider implements CardDataProvider {
   readonly sourceName = "riftcodex";
 
-  private byId = new Map<string, Card>();
-  private byNorm = new Map<string, Card[]>(); // normalizedName → cards
-  private fuse: Fuse<Card> | null = null;
+  private byId = new Map<string, CardV2>();
+  private byNorm = new Map<string, CardV2[]>(); // name_normalized → cards
+  private fuse: Fuse<CardV2> | null = null;
   private lastRefresh = 0;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -273,14 +235,21 @@ export class RiftCodexProvider implements CardDataProvider {
   async warmup(): Promise<void> {
     logger.info("RiftCodex provider warming up");
 
-    const { cards, lastRefresh } = getCachedCards(this.sourceName);
+    const { cards: rawCards, lastRefresh } = getCachedCards(this.sourceName);
     const ageMs = Date.now() - lastRefresh * 1000;
 
-    if (cards.length > 0 && ageMs < REFRESH_INTERVAL_MS) {
-      logger.info("Loaded cards from cache", { count: cards.length, ageMs });
-      this.buildIndex(cards.map((c) => c as unknown as Card));
+    // Detect pre-MR7 cache (flat Card format — missing name_normalized)
+    const firstCard = rawCards[0] as { name_normalized?: unknown } | undefined;
+    const isCardV2 = !firstCard || typeof firstCard.name_normalized === "string";
+
+    if (rawCards.length > 0 && isCardV2 && ageMs < REFRESH_INTERVAL_MS) {
+      logger.info("Loaded cards from cache", { count: rawCards.length, ageMs });
+      this.buildIndex(rawCards as unknown as CardV2[]);
       this.lastRefresh = lastRefresh;
     } else {
+      if (rawCards.length > 0 && !isCardV2) {
+        logger.info("Cache format outdated (pre-MR7 flat shape) — refreshing");
+      }
       await this.refresh();
     }
 
@@ -298,7 +267,7 @@ export class RiftCodexProvider implements CardDataProvider {
     logger.info("Refreshing card data from RiftCodex");
     try {
       const rawCards = await fetchAllPages();
-      const cards = rawCards.map(toCard);
+      const cards = rawCards.map(toCardV2);
 
       setCachedCards(this.sourceName, cards as unknown as Record<string, unknown>[]);
       this.buildIndex(cards);
@@ -310,10 +279,10 @@ export class RiftCodexProvider implements CardDataProvider {
         error: String(err),
       });
 
-      const { cards } = getCachedCards(this.sourceName);
-      if (cards.length > 0) {
-        logger.warn("Using stale cache as fallback", { count: cards.length });
-        this.buildIndex(cards.map((c) => c as unknown as Card));
+      const { cards: rawCards } = getCachedCards(this.sourceName);
+      if (rawCards.length > 0) {
+        logger.warn("Using stale cache as fallback", { count: rawCards.length });
+        this.buildIndex(rawCards as unknown as CardV2[]);
       } else {
         logger.error("No cache available — provider has no data");
       }
@@ -329,14 +298,14 @@ export class RiftCodexProvider implements CardDataProvider {
 
   // ── Index ────────────────────────────────────────────────────────────────────
 
-  private buildIndex(cards: Card[]): void {
+  private buildIndex(cards: CardV2[]): void {
     this.byId.clear();
     this.byNorm.clear();
 
     for (const card of cards) {
       this.byId.set(card.id, card);
 
-      const key = card.normalizedName;
+      const key = card.name_normalized;
       if (!this.byNorm.has(key)) this.byNorm.set(key, []);
       this.byNorm.get(key)!.push(card);
     }
@@ -344,7 +313,7 @@ export class RiftCodexProvider implements CardDataProvider {
     this.fuse = new Fuse(cards, {
       keys: [
         { name: "name", weight: 0.7 },
-        { name: "normalizedName", weight: 0.3 },
+        { name: "name_normalized", weight: 0.3 },
       ],
       threshold: FUZZY_THRESHOLD,
       includeScore: true,
@@ -360,7 +329,7 @@ export class RiftCodexProvider implements CardDataProvider {
 
   // ── CardDataProvider implementation ──────────────────────────────────────────
 
-  async getCardById(id: string): Promise<Card | null> {
+  async getCardById(id: string): Promise<CardV2 | null> {
     const cached = this.byId.get(id);
     if (cached) return cached;
 
@@ -369,7 +338,7 @@ export class RiftCodexProvider implements CardDataProvider {
       const res = await timedFetch(`${BASE_URL}/cards/${encodeURIComponent(id)}`);
       if (!res.ok) return null;
       const raw = (await res.json()) as RawCard;
-      const card = toCard(raw);
+      const card = toCardV2(raw);
       // Warm the index so subsequent hits are fast
       this.byId.set(card.id, card);
       return card;
@@ -378,7 +347,7 @@ export class RiftCodexProvider implements CardDataProvider {
     }
   }
 
-  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<Card[]> {
+  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<CardV2[]> {
     const limit = opts.limit ?? 10;
     const norm = normalizeCardName(q);
 
@@ -413,8 +382,8 @@ export class RiftCodexProvider implements CardDataProvider {
     if (req.set && req.collector) {
       const exact = candidates.find(
         (c) =>
-          c.setCode === req.set!.toUpperCase() &&
-          c.collectorNumber === req.collector
+          c.set?.set_code === req.set!.toUpperCase() &&
+          c.collector_number === req.collector
       );
       if (exact) return { request: req, card: exact, matchType: "exact" };
     }
@@ -422,7 +391,7 @@ export class RiftCodexProvider implements CardDataProvider {
     // 2. Exact name + set
     if (req.set) {
       const withSet = candidates.filter(
-        (c) => c.setCode === req.set!.toUpperCase()
+        (c) => c.set?.set_code === req.set!.toUpperCase()
       );
       if (withSet.length > 0)
         return { request: req, card: withSet[0], matchType: "exact" };
@@ -460,14 +429,14 @@ export class RiftCodexProvider implements CardDataProvider {
   async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
     const setMap = new Map<string, { setCode: string; setName: string; cardCount: number }>();
     for (const card of this.byId.values()) {
-      if (!card.setCode) continue;
-      const existing = setMap.get(card.setCode);
+      if (!card.set?.set_code) continue;
+      const existing = setMap.get(card.set.set_code);
       if (existing) {
         existing.cardCount++;
       } else {
-        setMap.set(card.setCode, {
-          setCode: card.setCode,
-          setName: card.setName ?? card.setCode,
+        setMap.set(card.set.set_code, {
+          setCode: card.set.set_code,
+          setName: card.set.set_name ?? card.set.set_code,
           cardCount: 1,
         });
       }
@@ -475,15 +444,15 @@ export class RiftCodexProvider implements CardDataProvider {
     return Array.from(setMap.values()).sort((a, b) => a.setName.localeCompare(b.setName));
   }
 
-  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<Card[]> {
+  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<CardV2[]> {
     const limit = opts.limit ?? 1000;
     const upper = setCode.toUpperCase();
     const cards = Array.from(this.byId.values()).filter(
-      (c) => c.setCode === upper
+      (c) => c.set?.set_code === upper
     );
     cards.sort((a, b) => {
-      const na = a.collectorNumber ?? "";
-      const nb = b.collectorNumber ?? "";
+      const na = a.collector_number ?? "";
+      const nb = b.collector_number ?? "";
       const numA = parseInt(na, 10);
       const numB = parseInt(nb, 10);
       if (!Number.isNaN(numA) && !Number.isNaN(numB)) return numA - numB;
@@ -492,19 +461,25 @@ export class RiftCodexProvider implements CardDataProvider {
     return cards.slice(0, limit);
   }
 
-  async getRandomCard(): Promise<Card | null> {
+  async getRandomCard(): Promise<CardV2 | null> {
     const keys = Array.from(this.byId.keys());
     if (keys.length === 0) return null;
     const randomKey = keys[Math.floor(Math.random() * keys.length)];
     return this.byId.get(randomKey) ?? null;
   }
 
-  // ── Metadata (used by API /meta) ─────────────────────────────────────────────
+  // ── Metadata (used by API /meta via getStats()) ───────────────────────────────
 
+  getStats(): { lastRefresh: number; cardCount: number } {
+    return { lastRefresh: this.lastRefresh, cardCount: this.byId.size };
+  }
+
+  /** @deprecated Use getStats() */
   getLastRefresh(): number {
     return this.lastRefresh;
   }
 
+  /** @deprecated Use getStats() */
   getCacheSize(): number {
     return this.byId.size;
   }
@@ -512,10 +487,10 @@ export class RiftCodexProvider implements CardDataProvider {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function applyFilters(cards: Card[], opts: CardSearchOptions): Card[] {
+function applyFilters(cards: CardV2[], opts: CardSearchOptions): CardV2[] {
   return cards.filter((c) => {
-    if (opts.set && c.setCode !== opts.set.toUpperCase()) return false;
-    if (opts.collector && c.collectorNumber !== String(opts.collector)) return false;
+    if (opts.set && c.set?.set_code !== opts.set.toUpperCase()) return false;
+    if (opts.collector && c.collector_number !== String(opts.collector)) return false;
     return true;
   });
 }
