@@ -606,7 +606,11 @@ const app = new Elysia()
             "Swap to Riot's official API by setting `CARD_PROVIDER=riot` once implemented. " +
             "All versioned routes (e.g. /api/v1/*) are documented here.",
         },
-        servers: [{ url: "/" }],
+        servers: [
+          {
+            url: process.env.BASE_URL ?? process.env.SWAGGER_BASE_URL ?? "/",
+          },
+        ],
         tags: [
           { name: "Meta", description: "Server health and metadata" },
           { name: "Cards", description: "Card lookup and search" },

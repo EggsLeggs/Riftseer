@@ -129,13 +129,19 @@ function buildTestApp(provider: CardDataProvider) {
     })
     .post(
       "/resolve",
-      async ({ body }) => {
-        const reqs = (body as { requests: string[] }).requests
-          .slice(0, 20)
-          .map((r) => {
-            const parsed = parseCardRequests(`[[${r}]]`);
-            return parsed[0] ?? { raw: r, name: r };
-          });
+      async ({ body, set }) => {
+        const requests = (body as { requests: string[] }).requests;
+        if (requests.length > 20) {
+          set.status = 400;
+          return {
+            error: "Too many requests: maximum is 20",
+            code: "TOO_MANY_REQUESTS",
+          };
+        }
+        const reqs = requests.map((r) => {
+          const parsed = parseCardRequests(`[[${r}]]`);
+          return parsed[0] ?? { raw: r, name: r };
+        });
         const results = await Promise.all(
           reqs.map((req) => provider.resolveRequest(req)),
         );
@@ -288,8 +294,10 @@ describe("API routes", () => {
           body: JSON.stringify({ requests }),
         }),
       );
+      expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.count).toBe(20);
+      expect(body.error).toBe("Too many requests: maximum is 20");
+      expect(body.code).toBe("TOO_MANY_REQUESTS");
     });
 
     it("accepts [[Name|SET]] format in requests", async () => {

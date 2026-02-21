@@ -55,6 +55,7 @@ npx devvit settings set siteBaseUrl
 | `CARD_PROVIDER` | `riftcodex` (default) or `riot` |
 | `DB_PATH` | SQLite file path (default `./data/riftseer.db`) |
 | `API_PORT` | Server port (default `3000`) |
+| `BASE_URL` / `SWAGGER_BASE_URL` | Base URL for Swagger/OpenAPI servers (default `"/"`); use behind reverse proxy or non-root base path |
 | `RIFTCODEX_BASE_URL` | `https://api.riftcodex.com` |
 | `CACHE_REFRESH_INTERVAL_MS` | Cache TTL in ms (default 6h) |
 | `FUZZY_THRESHOLD` | Fuse.js threshold 0–1 (default `0.4`) |

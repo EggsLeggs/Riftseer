@@ -31,7 +31,7 @@ import type {
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { getRedisClient } from "../redis/client.ts";
-import { normalizeCardName } from "./riftcodex.ts";
+import { normalizeCardName } from "../normalize.ts";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 

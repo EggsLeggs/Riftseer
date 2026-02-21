@@ -14,6 +14,7 @@
 import Fuse from "fuse.js";
 import type { CardDataProvider } from "../provider.ts";
 import type { CardV2, CardRequest, CardSearchOptions, ResolvedCard } from "../types.ts";
+import { normalizeCardName } from "../normalize.ts";
 import { getCachedCards, setCachedCards } from "../db.ts";
 import { logger } from "../logger.ts";
 
@@ -92,16 +93,7 @@ interface PagedResponse {
   pages: number;
 }
 
-// ─── Name normalisation ────────────────────────────────────────────────────────
-
-export function normalizeCardName(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/['\u2019-]/g, "") // apostrophes, right-single-quote, hyphens
-    .replace(/[^\w\s]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+export { normalizeCardName } from "../normalize.ts";
 
 // ─── Raw → CardV2 mapping ──────────────────────────────────────────────────────
 
