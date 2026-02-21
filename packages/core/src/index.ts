@@ -24,6 +24,7 @@ export type { ProviderName } from "./providers/index.ts";
 // Concrete providers (for instanceof checks + typing metadata methods)
 export { RiftCodexProvider, normalizeCardName, fetchAllPages, toCardV2 } from "./providers/riftcodex.ts";
 export { RiotProvider } from "./providers/riot.ts";
+export { SupabaseCardProvider } from "./providers/supabase.ts";
 
 // Parser
 export { parseCardRequests } from "./parser.ts";

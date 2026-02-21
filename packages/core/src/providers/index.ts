@@ -11,9 +11,10 @@
 
 import { RiftCodexProvider } from "./riftcodex.ts";
 import { RiotProvider } from "./riot.ts";
+import { SupabaseCardProvider } from "./supabase.ts";
 import type { CardDataProvider } from "../provider.ts";
 
-export type ProviderName = "riftcodex" | "riot";
+export type ProviderName = "riftcodex" | "riot" | "supabase";
 
 export function createProvider(name?: ProviderName): CardDataProvider {
   const p = (name ?? (process.env.CARD_PROVIDER as ProviderName | undefined) ?? "riftcodex");
@@ -23,12 +24,15 @@ export function createProvider(name?: ProviderName): CardDataProvider {
       return new RiftCodexProvider();
     case "riot":
       return new RiotProvider();
+    case "supabase":
+      return new SupabaseCardProvider();
     default:
       throw new Error(
-        `Unknown CARD_PROVIDER "${p}". Valid values: riftcodex, riot`
+        `Unknown CARD_PROVIDER "${p}". Valid values: riftcodex, riot, supabase`
       );
   }
 }
 
 export { RiftCodexProvider } from "./riftcodex.ts";
 export { RiotProvider } from "./riot.ts";
+export { SupabaseCardProvider } from "./supabase.ts";
