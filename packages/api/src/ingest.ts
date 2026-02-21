@@ -120,6 +120,15 @@ async function loadTCGProducts(): Promise<Map<string, TCGProduct>> {
           .map((p) => [p.productId, { usdMarket: p.marketPrice, usdLow: p.lowPrice }]),
       );
       for (const product of products) {
+        // Guard against malformed rows from external API
+        if (
+          !Number.isFinite(product.productId) ||
+          typeof product.cleanName !== "string" || !product.cleanName.trim() ||
+          typeof product.url !== "string" || !product.url.trim()
+        ) {
+          logger.warn("Skipping malformed TCGPlayer product", { product });
+          continue;
+        }
         const normal = normalById.get(product.productId);
         if (!normal) continue; // skip sealed products (no Normal price)
         const foil = foilById.get(product.productId);

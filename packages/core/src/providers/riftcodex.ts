@@ -142,7 +142,7 @@ export function toCardV2(raw: RawCard): import("../types.ts").CardV2 {
     object: "card",
     id: raw.id,
     name: raw.name,
-    name_normalized: normalizeCardName(raw.name),
+    name_normalized: raw.metadata?.clean_name || normalizeCardName(raw.name),
     collector_number: String(raw.collector_number),
     external_ids: {
       riftcodex_id: raw.id,
