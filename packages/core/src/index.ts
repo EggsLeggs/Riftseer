@@ -22,7 +22,7 @@ export { createProvider } from "./providers/index.ts";
 export type { ProviderName } from "./providers/index.ts";
 
 // Concrete providers (for instanceof checks + typing metadata methods)
-export { RiftCodexProvider, normalizeCardName } from "./providers/riftcodex.ts";
+export { RiftCodexProvider, normalizeCardName, fetchAllPages, toCardV2 } from "./providers/riftcodex.ts";
 export { RiotProvider } from "./providers/riot.ts";
 
 // Parser
