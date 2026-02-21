@@ -73,6 +73,26 @@ npx devvit settings set siteBaseUrl
 - **Discord bot**: Cloudflare Workers via `wrangler deploy`. Secrets set with `wrangler secret put`.
 - **Reddit bot**: Devvit upload (`npx devvit upload`). The bot's HTTP fetch domain must be registered in `devvit.yaml`.
 
+## Database Migrations (Supabase)
+Migrations live in `supabase/migrations/`. Apply them in one of three ways:
+
+```bash
+# 1. Supabase CLI (recommended — install from https://supabase.com/docs/guides/cli)
+supabase login
+supabase db push          # pushes all pending migrations to the linked project
+
+# 2. Supabase dashboard SQL editor
+#    Open https://supabase.com/dashboard → your project → SQL Editor,
+#    paste the contents of each migration file and run.
+
+# 3. psql (direct connection)
+psql "$SUPABASE_URL" -f supabase/migrations/20260221000000_initial_schema.sql
+```
+
+When adding a new migration, create a new file in `supabase/migrations/` with a
+timestamp prefix (`YYYYMMDDHHmmss_description.sql`) and never edit existing
+migration files.
+
 ## RiftCodex API
 - Base URL: `https://api.riftcodex.com`
 - Pagination: `GET /cards?page=N&size=100` → `{ items: Card[], total, page, size, pages }`

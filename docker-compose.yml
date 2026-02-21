@@ -8,7 +8,15 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   api:
     build:
@@ -26,7 +34,8 @@ services:
       - SITE_BASE_URL=${SITE_BASE_URL:-https://example.com}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
@@ -36,3 +45,4 @@ services:
 
 volumes:
   riftseer_data:
+  redis_data:
