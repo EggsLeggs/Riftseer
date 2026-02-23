@@ -1,47 +1,46 @@
-# RiftSeer Bot (Devvit)
+# RiftSeer Bot
 
-Reddit app that replies to comments and posts with Riftbound TCG card data when users write `[[Card Name]]` (or `[[Card Name|SET]]` / `[[Card Name|SET-NUM]]`).
+A Reddit bot that replies to comments and posts with **Riftbound TCG card data** when users write `[[Card Name]]`.
 
-## Triggers
+## Usage
 
-- **CommentCreate** — Detects `[[...]]` tokens in new comments, replies with card image and links.
-- **PostCreate** — Same for new self-posts (title + selftext).
+Type a card name inside double brackets anywhere in a comment or post:
 
-Deduplication is handled via Devvit KV store so the bot never double-replies, even across re-deploys.
+```
+[[Sun Disc]]             → card image, links, and stats
+[[Sun Disc|OGN]]         → specific set
+[[Sun Disc|OGN-021]]     → specific printing by collector number
+```
+
+The bot replies with the card image, a link to the full card page, and API/text links. Up to 20 cards per comment are supported. Fuzzy matching handles typos and partial names.
 
 ## Card data
 
-The bot does **not** run card resolution or data fetching inside Devvit. It delegates to the external **RiftSeer Elysia API** (`packages/api`). That keeps the Devvit bundle small and the API as the single source of truth for card data, fuzzy matching, and caching.
-
-URLs are app-level settings (shared across subreddits). Set them once:
-
-```bash
-npx devvit settings set apiBaseUrl   # e.g. https://riftseerapi-production.up.railway.app
-npx devvit settings set siteBaseUrl   # e.g. https://riftseer.thinkhuman.dev
-```
-
-## Run & deploy
-
-```bash
-cd packages/bot
-npm install
-npx devvit login        # one-time auth
-npx devvit upload       # deploys to your Devvit app
-npx devvit playtest r/yoursubreddit  # local live testing
-```
+Card data is sourced from [RiftCodex](https://riftcodex.com) and kept continuously up to date. The bot resolves card names via the **RiftSeer API** — the same backend that powers the [RiftSeer](https://riftseer.thinkhuman.dev) card browser.
 
 ---
 
 ## Fetch Domains
 
-The following domains are requested for this app (for [Reddit’s HTTP Fetch Policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy) approval):
+The following external domains are required by this app (submitted for [Reddit's HTTP Fetch Policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy) approval):
 
-- **`riftseerapi-production.up.railway.app`** — Host for the RiftSeer Elysia API. The bot uses `fetch` to POST card requests to `/api/v1/resolve` on this host. The API returns resolved card data (name, image, links) so the bot can build the reply. This is the app’s own backend, not a third-party API. The use case is analogous to the globally allowed **`api.scryfall.com`** (card data API for Magic: The Gathering): same pattern of “look up card by name → return image and links,” but for the Riftbound TCG.
+### `riftseerapi-production.up.railway.app`
 
-**Why this is required (justification for custom-domain allowlist):**  
-Devvit’s server does not support this use case. The bot must call the **same RiftSeer API** that powers the public site and API: it relies on that service for card resolution, fuzzy search, SQLite cache, and RiftCodex-backed data. Reimplementing that logic or data pipeline inside the Devvit app would duplicate the codebase, break a single source of truth, and exceed what’s practical in the Devvit environment. The only supported approach is to allow the app to fetch its own deployed API host.
+This is the **only domain** the app fetches, and it is the app's own backend — not a third-party service.
 
-If you run the API on another host (e.g. a custom domain), request that host as an additional fetch domain and add it to `http.domains` in `src/main.ts`.
+**What it does:**
+When a user writes `[[Card Name]]`, the bot POSTs the token to `/api/v1/resolve` on this host. The API performs:
 
-**Compliance:**  
-Only these exact hostnames are used; no wildcards, protocols, or paths in domain requests. Fetch is used only to call the app’s own API for card resolution.
+- **Name resolution** against a live database of all Riftbound TCG cards, continuously updated from [RiftCodex](https://riftcodex.com) and [TCGPlayer](https://tcgplayer.com) via a scheduled ingest pipeline. Card data changes with every set release, balance patch, and errata — there is no static snapshot that stays correct.
+- **Fuzzy search** to handle typos, partial names, and alternate spellings. The search index is maintained server-side and is not feasible to ship inside a Devvit bundle.
+- **Cross-card relationship resolution** — tokens, champion cards, and legend cards are linked at ingest time and returned together in a single response. The bot cannot compute these relationships without access to the full card graph.
+- **Image URLs and metadata** — the API returns direct image URLs, set codes, collector numbers, and page links used to build the Reddit reply.
+
+**Why it cannot be replaced with a built-in or globally-allowed source:**
+Riftbound TCG is not served by any globally-approved card API. The globally-approved `api.scryfall.com` covers Magic: The Gathering only. This app is the analogous community-built infrastructure for Riftbound — identical use case, different game. Without this single fetch, the bot has no card data at all and is entirely non-functional.
+
+**Compliance:**
+- Only the exact hostname above is used; no wildcards.
+- The single endpoint called is `POST /api/v1/resolve`.
+- No user data is forwarded — only the card name string extracted from the comment.
+- The domain is the app developer's own production deployment (Railway).
