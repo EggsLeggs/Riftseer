@@ -203,6 +203,10 @@ describe("API routes", () => {
       expect(body.object).toBe("card");
       expect(body.set.set_code).toBe("OGN");
       expect(body.raw).toBeUndefined(); // no raw field in Card
+      expect(Array.isArray(body.related_champions)).toBe(true);
+      expect(body.related_champions).toHaveLength(0);
+      expect(Array.isArray(body.related_legends)).toBe(true);
+      expect(body.related_legends).toHaveLength(0);
     });
 
     it("returns 404 for unknown ID", async () => {

@@ -34,7 +34,7 @@ riftseer/
 bun dev             # API + frontend together
 bun dev:api         # API only (port 3000, swagger at /api/swagger)
 bun dev:frontend    # Frontend only
-bun test            # All tests (35 across 3 files)
+bun test            # Run all tests
 bun typecheck       # Type-check all workspace packages
 
 # Discord bot (workspace member, Cloudflare Workers)
@@ -47,8 +47,9 @@ bun run register    # Register slash commands with Discord (run once after chang
 cd packages/ingest-worker
 bun run dev         # wrangler dev; requires packages/ingest-worker/.dev.vars with SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
 # Trigger ingest locally (while wrangler dev is running):
-curl "http://localhost:8787/cdn-cgi/mf/scheduled"   # scheduled event trigger
-curl -X POST "http://localhost:8787/ingest"          # HTTP POST trigger
+curl "http://localhost:8787/cdn-cgi/mf/scheduled"                              # scheduled event trigger
+curl -X POST "http://localhost:8787/ingest"                                    # HTTP POST (no INGEST_SECRET set)
+curl -X POST -H "Authorization: Bearer <INGEST_SECRET>" "http://localhost:8787/ingest"  # with INGEST_SECRET
 bun run deploy      # wrangler deploy (set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY via wrangler secret put)
 
 # Reddit bot (separate standalone project)

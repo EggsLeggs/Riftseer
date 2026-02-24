@@ -550,7 +550,7 @@ export function CardPage() {
               type === "legend"
                 ? "Champions"
                 : supertype === "champion"
-                  ? "Legend"
+                  ? "Legends"
                   : null;
             // One entry per unique name — keep the first encountered printing
             const dedupedCards = Array.from(

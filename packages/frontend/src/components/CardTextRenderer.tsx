@@ -38,6 +38,7 @@ function renderLine(line: string): React.ReactNode[] {
           className="inline-icon icon-energy-value"
           data-value={energyMatch[1]}
           aria-label={`${energyMatch[1]} energy`}
+          title={`energy ${energyMatch[1]}`}
         />
       );
     } else {

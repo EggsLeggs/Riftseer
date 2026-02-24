@@ -19,12 +19,6 @@ export const TOKEN_REGEX = /:rb_(\w+):/g;
 export const TOKEN_ICON_MAP: Record<string, string> = {
   exhaust: "icon-exhaust",
   energy: "icon-energy",
-  energy_0: "icon-energy-0",
-  energy_1: "icon-energy-1",
-  energy_2: "icon-energy-2",
-  energy_3: "icon-energy-3",
-  energy_4: "icon-energy-4",
-  energy_5: "icon-energy-5",
   might: "icon-might",
   power: "icon-power",
   rune_fury: "icon-rune-fury",
