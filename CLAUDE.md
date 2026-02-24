@@ -7,7 +7,7 @@ RiftSeer is a Riftbound TCG card data platform. It exposes a REST API, a React f
 ```
 riftseer/
 ├── packages/core/           # Shared types, provider interface, parser, Supabase provider
-├── packages/api/            # ElysiaJS REST API (port 3000) + ingest pipeline
+├── packages/api/            # ElysiaJS REST API (port 3000)
 ├── packages/frontend/       # React 19 + Vite SPA
 ├── packages/discord-bot/    # Discord bot on Cloudflare Workers (Bun workspace member)
 ├── packages/ingest-worker/  # Cloudflare Worker — scheduled ingest (RiftCodex → Supabase, no API)
@@ -34,7 +34,7 @@ riftseer/
 bun dev             # API + frontend together
 bun dev:api         # API only (port 3000, swagger at /api/swagger)
 bun dev:frontend    # Frontend only
-bun test            # All tests (51 across 3 files)
+bun test            # All tests (35 across 3 files)
 bun typecheck       # Type-check all workspace packages
 
 # Discord bot (workspace member, Cloudflare Workers)
@@ -45,7 +45,10 @@ bun run register    # Register slash commands with Discord (run once after chang
 
 # Ingest worker (workspace member, Cloudflare Workers — scheduled events)
 cd packages/ingest-worker
-bun run dev         # wrangler dev; trigger scheduled run: GET /cdn-cgi/mf/scheduled
+bun run dev         # wrangler dev; requires packages/ingest-worker/.dev.vars with SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+# Trigger ingest locally (while wrangler dev is running):
+curl "http://localhost:8787/cdn-cgi/mf/scheduled"   # scheduled event trigger
+curl -X POST "http://localhost:8787/ingest"          # HTTP POST trigger
 bun run deploy      # wrangler deploy (set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY via wrangler secret put)
 
 # Reddit bot (separate standalone project)
@@ -67,12 +70,12 @@ npx devvit settings set siteBaseUrl
 | `SUPABASE_URL` | Supabase project URL — required when `CARD_PROVIDER=supabase` (MR6+) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required when `CARD_PROVIDER=supabase` |
 | `REDIS_URL` | Redis connection URL (default `redis://localhost:6379`) |
-| `INGEST_CRON_SECRET` | Secret for POST /api/v1/admin/ingest (optional; ingest-worker runs independently) |
+| `INGEST_SECRET` | Bearer token for POST /ingest on the ingest-worker (optional) |
 
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core`; the only implementation is `SupabaseCardProvider` (data from the ingest pipeline).
 - **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/resolve` endpoint.
-- **Ingest**: Pipeline (RiftCodex → TCG enrich → token linking → Supabase upsert) runs via the standalone Cloudflare Worker `packages/ingest-worker` on a schedule (scheduled events). Same pipeline can be run locally via `bun packages/api/src/ingest.ts` or POST /api/v1/admin/ingest.
+- **Ingest**: Pipeline (RiftCodex → TCG enrich → token linking → champion/legend linking → Supabase upsert) runs via the standalone Cloudflare Worker `packages/ingest-worker` on a schedule. Locally: `cd packages/ingest-worker && bun run dev`, then `curl -X POST http://localhost:8787/ingest`. There is no ingest endpoint in the API.
 - **Fuzzy search**: Fuse.js index is built from `name` + `name_normalized`. Exact match is tried first; fuzzy search is used as fallback.
 
 ## Deployment

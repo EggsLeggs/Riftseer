@@ -17,6 +17,8 @@ export function CardTextRenderer({ text }: Props) {
   );
 }
 
+const ENERGY_VALUE_RE = /^energy_(\d+)$/;
+
 function renderLine(line: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   let lastIndex = 0;
@@ -28,10 +30,22 @@ function renderLine(line: string): React.ReactNode[] {
       parts.push(line.slice(lastIndex, match.index));
     }
     const tokenKey = match[1];
-    const iconClass = TOKEN_ICON_MAP[tokenKey] ?? `icon-${tokenKey}`;
-    parts.push(
-      <span key={match.index} className={`inline-icon ${iconClass}`} title={tokenKey} />
-    );
+    const energyMatch = ENERGY_VALUE_RE.exec(tokenKey);
+    if (energyMatch) {
+      parts.push(
+        <span
+          key={match.index}
+          className="inline-icon icon-energy-value"
+          data-value={energyMatch[1]}
+          aria-label={`${energyMatch[1]} energy`}
+        />
+      );
+    } else {
+      const iconClass = TOKEN_ICON_MAP[tokenKey] ?? `icon-${tokenKey}`;
+      parts.push(
+        <span key={match.index} className={`inline-icon ${iconClass}`} title={tokenKey} />
+      );
+    }
     lastIndex = regex.lastIndex;
   }
 

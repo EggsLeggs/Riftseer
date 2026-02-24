@@ -37,6 +37,8 @@ const STUB_CARD: Card = {
   is_token: false,
   all_parts: [],
   used_by: [],
+  related_champions: [],
+  related_legends: [],
 };
 
 class StubProvider implements CardDataProvider {
