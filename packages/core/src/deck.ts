@@ -65,7 +65,10 @@ export class Deck {
         && this.chosenChampion === null 
         && this.legend?.related_champions?.some(c => c.id === card.id)) {
       this.chosenChampion = card;
-      return;
+      quantity -= 1;
+        if (quantity <= 0) {
+            return;
+        }
     }
 
     if (this.getTotalMainCardCount() + quantity > 40) {
@@ -113,8 +116,8 @@ export class Deck {
       throw new Error(`${card.name} does not match all domains of the legend. Legend domains: ${this.getLegendDomains()?.join(", ")}. Card domains: ${cardDomains.join(", ")}`);
     }
 
-    const currentRuneCount = this.runes.reduce((count, c) => count + (c.card.id === card.id ? c.quantity : 0), 0);
-    if (currentRuneCount === 12) {
+    const totalRunes = this.runes.reduce((count, c) => count + c.quantity, 0);
+    if (totalRunes + quantity > 12) {
       throw new Error("Cannot have more than 12 runes in a deck.");
     }
     const existingEntry = this.runes.find(c => c.card.id === card.id);

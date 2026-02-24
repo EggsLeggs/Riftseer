@@ -203,6 +203,51 @@ describe("Deck", () => {
       expect(deck.chosenChampion).toBeNull();
       expect(deck.cards[0]).toMatchObject({ card: champion, quantity: 1 });
     });
+
+    it("sets chosenChampion and adds remaining copies to the main deck when quantity > 1", () => {
+      const champion = makeChampion("c1", ["Fury"]);
+      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      deck.addLegend(legend);
+      deck.addMainCard(champion, 2);
+      expect(deck.chosenChampion).toBe(champion);
+      expect(deck.cards).toHaveLength(1);
+      expect(deck.cards[0]).toMatchObject({ card: champion, quantity: 1 });
+    });
+
+    it("sets chosenChampion and adds remaining 2 copies to main deck when quantity is 3", () => {
+      const champion = makeChampion("c1", ["Fury"]);
+      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      deck.addLegend(legend);
+      deck.addMainCard(champion, 3);
+      expect(deck.chosenChampion).toBe(champion);
+      expect(deck.cards[0]).toMatchObject({ card: champion, quantity: 2 });
+    });
+
+    it("counts chosenChampion slot toward the 3-copy limit on subsequent adds", () => {
+      const champion = makeChampion("c1", ["Fury"]);
+      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      deck.addLegend(legend);
+      deck.addMainCard(champion); // 1 → chosenChampion
+      deck.addMainCard(champion, 2); // 2 more → total 3, should be fine
+      expect(deck.cards[0]).toMatchObject({ card: champion, quantity: 2 });
+      // Adding a 4th copy must fail
+      expect(() => deck.addMainCard(champion)).toThrow("Cannot have more than 3 copies");
+    });
+
+    it("applies the 40-card cap to overflow copies after the champion slot is filled", () => {
+      const champion = makeChampion("c1", ["Fury"]);
+      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      deck.addLegend(legend);
+      // Fill the deck: chosenChampion (1) + 13×3 = 40 total
+      deck.addMainCard(champion); // chosenChampion (1 main card count)
+      for (let i = 0; i < 13; i++) {
+        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+      }
+      // At 40 cards — any overflow from a batch champion add that exceeds cap must fail
+      const champion2 = makeChampion("c2", ["Fury"]);
+      // champion2 is not in related_champions, so it goes straight to main deck
+      expect(() => deck.addMainCard(champion2)).toThrow("Cannot have more than 40 total cards");
+    });
   });
 
   // ── addBattleground ─────────────────────────────────────────────────────────
@@ -266,6 +311,22 @@ describe("Deck", () => {
       const rune = makeRune("r1", ["Fury"]);
       deck.addRune(rune, 12);
       expect(() => deck.addRune(rune)).toThrow("Cannot have more than 12 runes");
+    });
+
+    it("throws when runes across different cards would exceed 12 total", () => {
+      deck.addRune(makeRune("r1", ["Fury"]), 10);
+      expect(() => deck.addRune(makeRune("r2", ["Fury"]), 3)).toThrow("Cannot have more than 12 runes");
+    });
+
+    it("allows mixing rune cards up to exactly 12 total", () => {
+      deck.addRune(makeRune("r1", ["Fury"]), 6);
+      deck.addRune(makeRune("r2", ["Fury"]), 6);
+      expect(deck.runes.reduce((sum, c) => sum + c.quantity, 0)).toBe(12);
+    });
+
+    it("throws when a single batch add would push multiple rune types past 12 total", () => {
+      deck.addRune(makeRune("r1", ["Fury"]), 12);
+      expect(() => deck.addRune(makeRune("r2", ["Fury"]), 1)).toThrow("Cannot have more than 12 runes");
     });
   });
 
