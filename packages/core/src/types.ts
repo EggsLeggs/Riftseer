@@ -123,6 +123,10 @@ export interface Card {
   all_parts: RelatedCard[];
   /** Non-token cards that create or reference this card (populated on tokens). */
   used_by: RelatedCard[];
+  /** Champion cards linked to this legend by a shared tag (populated on legends). */
+  related_champions: RelatedCard[];
+  /** Legend cards linked to this champion by a shared tag (populated on champions). */
+  related_legends: RelatedCard[];
   updated_at?: string;
   ingested_at?: string;
 }

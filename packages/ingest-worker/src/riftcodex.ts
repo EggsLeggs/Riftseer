@@ -130,6 +130,8 @@ export function rawToCard(raw: RawCard): Card {
       false,
     all_parts: [],
     used_by: [],
+    related_champions: [],
+    related_legends: [],
   };
 }
 

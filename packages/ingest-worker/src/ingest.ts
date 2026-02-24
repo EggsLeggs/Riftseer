@@ -230,6 +230,76 @@ function linkTokens(cards: Card[]): void {
   });
 }
 
+function linkChampionsAndLegends(cards: Card[]): void {
+  const legendsByTag = new Map<string, Card[]>();
+  const championsByTag = new Map<string, Card[]>();
+
+  for (const card of cards) {
+    const type = card.classification?.type?.toLowerCase();
+    const supertype = card.classification?.supertype?.toLowerCase();
+    const tags = card.classification?.tags;
+    if (!tags?.length) continue;
+
+    if (type === "legend") {
+      for (const tag of tags) {
+        if (!legendsByTag.has(tag)) legendsByTag.set(tag, []);
+        legendsByTag.get(tag)!.push(card);
+      }
+    } else if (supertype === "champion") {
+      for (const tag of tags) {
+        if (!championsByTag.has(tag)) championsByTag.set(tag, []);
+        championsByTag.get(tag)!.push(card);
+      }
+    }
+  }
+
+  let linkedLegends = 0;
+  let linkedChampions = 0;
+
+  for (const card of cards) {
+    const type = card.classification?.type?.toLowerCase();
+    const supertype = card.classification?.supertype?.toLowerCase();
+    const tags = card.classification?.tags;
+    if (!tags?.length) continue;
+
+    if (type === "legend") {
+      const seen = new Set<string>();
+      for (const tag of tags) {
+        for (const champion of championsByTag.get(tag) ?? []) {
+          if (seen.has(champion.id)) continue;
+          seen.add(champion.id);
+          card.related_champions.push({
+            object: "related_card",
+            id: champion.id,
+            name: champion.name,
+            component: "champion",
+            uri: `/api/v1/cards/${champion.id}`,
+          });
+          linkedChampions++;
+        }
+      }
+    } else if (supertype === "champion") {
+      const seen = new Set<string>();
+      for (const tag of tags) {
+        for (const legend of legendsByTag.get(tag) ?? []) {
+          if (seen.has(legend.id)) continue;
+          seen.add(legend.id);
+          card.related_legends.push({
+            object: "related_card",
+            id: legend.id,
+            name: legend.name,
+            component: "legend",
+            uri: `/api/v1/cards/${legend.id}`,
+          });
+          linkedLegends++;
+        }
+      }
+    }
+  }
+
+  logger.info("Champion/legend linking complete", { linkedChampions, linkedLegends });
+}
+
 async function upsertSets(supabase: SupabaseClient, cards: Card[]): Promise<Map<string, string>> {
   const deduped = new Map<string, { set_code: string; set_name: string }>();
   for (const card of cards) {
@@ -297,6 +367,8 @@ async function upsertCards(
     prices: card.prices ?? {},
     all_parts: card.all_parts,
     used_by: card.used_by,
+    related_champions: card.related_champions,
+    related_legends: card.related_legends,
     is_token: card.is_token,
     ingested_at: now,
   }));
@@ -335,6 +407,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     }
 
     linkTokens(cards);
+    linkChampionsAndLegends(cards);
 
     const supabase = createSupabase(env);
     const setIds = await upsertSets(supabase, cards);

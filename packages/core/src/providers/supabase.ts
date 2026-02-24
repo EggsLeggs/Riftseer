@@ -72,6 +72,8 @@ interface DBCardRow {
   prices: CardPrices;
   all_parts: RelatedCard[];
   used_by: RelatedCard[];
+  related_champions: RelatedCard[];
+  related_legends: RelatedCard[];
   is_token: boolean;
   updated_at: string;
   ingested_at: string;
@@ -112,6 +114,8 @@ function dbRowToCard(row: DBCardRow): Card {
     is_token: row.is_token,
     all_parts: row.all_parts ?? [],
     used_by: row.used_by ?? [],
+    related_champions: row.related_champions ?? [],
+    related_legends: row.related_legends ?? [],
     updated_at: row.updated_at,
     ingested_at: row.ingested_at,
   };
@@ -195,7 +199,7 @@ export class SupabaseCardProvider implements CardDataProvider {
   // ── Lifecycle ────────────────────────────────────────────────────────────────
 
   async warmup(): Promise<void> {
-    logger.info("Supabase provider warming up");
+    logger.info("Supabase provider warming up", { url: process.env.SUPABASE_URL });
     await this.loadAndIndex();
 
     this.refreshTimer = setInterval(() => {
