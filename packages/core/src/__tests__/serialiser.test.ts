@@ -15,7 +15,7 @@ const EMPTY_DECK: SimplifiedDeck = {
 };
 
 const SHORT_ID_DECK: SimplifiedDeck = {
-    id: "deck-1",
+    id: null,
     legendId: "l1",
     chosenChampionId: "c1",
     mainDeck: ["u1:3", "u2:2", "u3:1"],
@@ -25,7 +25,7 @@ const SHORT_ID_DECK: SimplifiedDeck = {
 };
 
 const UUID_DECK: SimplifiedDeck = {
-    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    id: null,
     legendId: "11111111-2222-3333-4444-555555555555",
     chosenChampionId: "aaaabbbb-cccc-dddd-eeee-ffffffffffff",
     mainDeck: [
@@ -58,13 +58,8 @@ describe("DeckSerializerV1", () => {
             expect(result).toEqual(UUID_DECK);
         });
 
-        it("deck with null optional fields", () => {
-            const deck: SimplifiedDeck = {
-                ...SHORT_ID_DECK,
-                id: null,
-                legendId: null,
-                chosenChampionId: null,
-            };
+        it("deck with null legendId and chosenChampionId", () => {
+            const deck: SimplifiedDeck = { ...SHORT_ID_DECK, legendId: null, chosenChampionId: null };
             const result = serializer.deserializeDeck(serializer.serializeDeck(deck));
             expect(result).toEqual(deck);
         });
