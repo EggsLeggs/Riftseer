@@ -204,6 +204,8 @@ const CardSchema = t.Object({
   is_token: t.Boolean(),
   all_parts: t.Array(RelatedCardSchema, { description: "Related token/part cards" }),
   used_by: t.Array(RelatedCardSchema, { description: "Cards that create or reference this card (tokens only)" }),
+  related_champions: t.Array(RelatedCardSchema, { description: "Champion cards linked to this legend by a shared tag" }),
+  related_legends: t.Array(RelatedCardSchema, { description: "Legend cards linked to this champion by a shared tag" }),
   updated_at: t.Optional(t.String({ description: "ISO datetime of last update" })),
   ingested_at: t.Optional(t.String({ description: "ISO datetime of last ingest" })),
 });

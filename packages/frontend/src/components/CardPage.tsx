@@ -536,6 +536,66 @@ export function CardPage() {
 
         {/* Tokens + Prints in same column */}
         <div className="lg:col-span-4 space-y-4">
+          {/* Champion / Legend links */}
+          {(() => {
+            const type = card.classification?.type?.toLowerCase();
+            const supertype = card.classification?.supertype?.toLowerCase();
+            const relatedCards =
+              type === "legend"
+                ? card.related_champions
+                : supertype === "champion"
+                  ? card.related_legends
+                  : [];
+            const header =
+              type === "legend"
+                ? "Champions"
+                : supertype === "champion"
+                  ? "Legends"
+                  : null;
+            // One entry per unique name — keep the first encountered printing
+            const dedupedCards = Array.from(
+              new Map(relatedCards.map((rc) => [rc.name, rc])).values()
+            );
+            if (!dedupedCards.length || !header) return null;
+            return (
+              <>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  {header}
+                </h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dedupedCards.map((rc) => (
+                        <TableRow
+                          key={rc.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => navigate(`/card/${rc.id}`)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              navigate(`/card/${rc.id}`);
+                            }
+                          }}
+                        >
+                          <TableCell className="text-xs font-semibold text-foreground">
+                            {rc.name}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
+
           {/* Tokens table — tokens mentioned in this card's ability text */}
           {tokens.length > 0 && (
             <>
@@ -546,7 +606,7 @@ export function CardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Set</TableHead>
+                      <TableHead>Name</TableHead>
                       <TableHead>#</TableHead>
                       <TableHead>Rarity</TableHead>
                       <TableHead className="text-right">USD</TableHead>
@@ -564,9 +624,6 @@ export function CardPage() {
                           ? `${tCollector}★`
                           : `${tCollector}a`;
                       }
-                      const fullSetName = t.set?.set_name ?? t.set?.set_code ?? "Unknown";
-                      const tSetCode = t.set?.set_code;
-                      const setLabel = tSetCode && fullSetName !== tSetCode ? `${fullSetName} (${tSetCode})` : fullSetName;
                       const tRarity = t.classification?.rarity;
                       return (
                         <TableRow
@@ -583,7 +640,7 @@ export function CardPage() {
                           }}
                         >
                           <TableCell className="text-xs font-semibold text-foreground">
-                            {setLabel}
+                            {t.name}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
                             {displayNumber}
