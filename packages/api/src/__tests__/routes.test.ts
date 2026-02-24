@@ -37,7 +37,15 @@ const STUB_CARD: Card = {
   is_token: false,
   all_parts: [],
   used_by: [],
-  related_champions: [],
+  related_champions: [
+    {
+      object: "related_card",
+      id: "aaaaaaaa-0000-0000-0000-000000000001",
+      name: "Sun Disc, Champion",
+      component: "champion",
+      uri: "/api/v1/cards/aaaaaaaa-0000-0000-0000-000000000001",
+    },
+  ],
   related_legends: [],
 };
 
@@ -204,7 +212,10 @@ describe("API routes", () => {
       expect(body.set.set_code).toBe("OGN");
       expect(body.raw).toBeUndefined(); // no raw field in Card
       expect(Array.isArray(body.related_champions)).toBe(true);
-      expect(body.related_champions).toHaveLength(0);
+      expect(body.related_champions).toHaveLength(1);
+      expect(body.related_champions[0].object).toBe("related_card");
+      expect(body.related_champions[0].id).toBe("aaaaaaaa-0000-0000-0000-000000000001");
+      expect(body.related_champions[0].component).toBe("champion");
       expect(Array.isArray(body.related_legends)).toBe(true);
       expect(body.related_legends).toHaveLength(0);
     });
@@ -231,6 +242,9 @@ describe("API routes", () => {
       expect(body.count).toBe(1);
       expect(body.cards[0].name).toBe("Sun Disc");
       expect(body.cards[0].set.set_code).toBe("OGN");
+      expect(Array.isArray(body.cards[0].related_champions)).toBe(true);
+      expect(body.cards[0].related_champions[0].object).toBe("related_card");
+      expect(Array.isArray(body.cards[0].related_legends)).toBe(true);
     });
 
     it("returns 400 when name is missing", async () => {
@@ -264,6 +278,9 @@ describe("API routes", () => {
       expect(body.results[0].matchType).toBe("exact");
       expect(body.results[0].card.name).toBe("Sun Disc");
       expect(body.results[0].card.object).toBe("card");
+      expect(Array.isArray(body.results[0].card.related_champions)).toBe(true);
+      expect(body.results[0].card.related_champions[0].object).toBe("related_card");
+      expect(Array.isArray(body.results[0].card.related_legends)).toBe(true);
     });
 
     it("returns not-found for unknown cards", async () => {
