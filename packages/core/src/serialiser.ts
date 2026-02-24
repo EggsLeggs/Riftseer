@@ -21,10 +21,9 @@ export interface DeckSerializer {
 //
 // Layout:
 //   [1 byte]  FORMAT_VERSION
-//   [1 byte]  flags  (bit 0 = hasId, bit 1 = hasLegendId, bit 2 = hasChampionId)
-//   [string]  deck id          (omitted when flag bit 0 is clear)
-//   [string]  legendId         (omitted when flag bit 1 is clear)
-//   [string]  chosenChampionId (omitted when flag bit 2 is clear)
+//   [1 byte]  flags  (bit 0 = hasLegendId, bit 1 = hasChampionId)
+//   [string]  legendId         (omitted when flag bit 0 is clear)
+//   [string]  chosenChampionId (omitted when flag bit 1 is clear)
 //   [1 byte]  mainDeck entry count
 //     per entry: [string id][1 byte qty]
 //   [1 byte]  sideboard entry count
@@ -87,7 +86,6 @@ export class DeckSerializerV1 implements DeckSerializer {
         };
 
         // Encode optional header fields
-        const idEnc = deck.id !== null ? encodeId(deck.id) : null;
         const legendEnc = deck.legendId !== null ? encodeId(deck.legendId) : null;
         const champEnc = deck.chosenChampionId !== null ? encodeId(deck.chosenChampionId) : null;
 
@@ -107,7 +105,6 @@ export class DeckSerializerV1 implements DeckSerializer {
         // Pre-compute exact buffer size
         const strLen = (b: Uint8Array) => 1 + b.length; // length prefix + data
         let size = 2; // version + flags
-        if (idEnc) size += strLen(idEnc);
         if (legendEnc) size += strLen(legendEnc);
         if (champEnc) size += strLen(champEnc);
         size += 1 + mainEnc.reduce((s, [b]) => s + strLen(b) + 1, 0);
@@ -120,9 +117,8 @@ export class DeckSerializerV1 implements DeckSerializer {
 
         buf[pos++] = FORMAT_VERSION;
         buf[pos++] =
-            (idEnc ? 0x01 : 0) |
-            (legendEnc ? 0x02 : 0) |
-            (champEnc ? 0x04 : 0);
+            (legendEnc ? 0x01 : 0) |
+            (champEnc ? 0x02 : 0);
 
         const writeStr = (bytes: Uint8Array) => {
             buf[pos++] = bytes.length;
@@ -130,7 +126,6 @@ export class DeckSerializerV1 implements DeckSerializer {
             pos += bytes.length;
         };
 
-        if (idEnc) writeStr(idEnc);
         if (legendEnc) writeStr(legendEnc);
         if (champEnc) writeStr(champEnc);
 
@@ -185,9 +180,8 @@ export class DeckSerializerV1 implements DeckSerializer {
         }
 
         const flags = readByte();
-        const id = (flags & 0x01) ? readStr() : null;
-        const legendId = (flags & 0x02) ? readStr() : null;
-        const chosenChampionId = (flags & 0x04) ? readStr() : null;
+        const legendId = (flags & 0x01) ? readStr() : null;
+        const chosenChampionId = (flags & 0x02) ? readStr() : null;
 
         const readQtySection = (): string[] => {
             const count = readByte();
@@ -212,6 +206,6 @@ export class DeckSerializerV1 implements DeckSerializer {
         const runes = readQtySection();
         const battlegrounds = readBareSection();
 
-        return { id, legendId, chosenChampionId, mainDeck, sideboard, runes, battlegrounds };
+        return { id: null, legendId, chosenChampionId, mainDeck, sideboard, runes, battlegrounds };
     }
 }
