@@ -1,7 +1,7 @@
-import { Card } from "./types";
+import { Card, SimplifiedDeck } from "./types";
 
 export class Deck {
-  id: string;
+  id: string | null;
   legend: Card | null;
   chosenChampion: Card | null;
   cards: { card: Card; quantity: number }[];
@@ -10,7 +10,7 @@ export class Deck {
   battlegrounds: Card[];
 
   constructor() {
-    this.id = crypto.randomUUID();
+    this.id = null;
     this.legend = null;
     this.cards = [];
     this.sideboard = [];
@@ -256,6 +256,40 @@ export class Deck {
   private getLegendDomains(): string[] | null {
     if (!this.legend) return null;
     return this.legend.classification?.domains || null;
+  }
+
+  // Methods for serializing/deserializing the deck to/from the simplified format in types.ts
+  toSimplifiedDeck(): SimplifiedDeck {
+    return {
+        id: this.id,
+        legendId: this.legend?.id || null,
+        chosenChampionId: this.chosenChampion?.id || null,
+        mainDeck: this.cards.map(c => `${c.card.id}:${c.quantity}`),
+        sideboard: this.sideboard.map(c => `${c.card.id}:${c.quantity}`),
+        runes: this.runes.map(c => `${c.card.id}:${c.quantity}`),
+        battlegrounds: this.battlegrounds.map(c => c.id),
+    };
+  }
+
+  static fromSimplifiedDeck(simplified: SimplifiedDeck, cardLookup: (id: string) => Card): Deck {
+    const deck = new Deck();
+    deck.id = simplified.id;
+    deck.legend = simplified.legendId ? cardLookup(simplified.legendId) : null;
+    deck.chosenChampion = simplified.chosenChampionId ? cardLookup(simplified.chosenChampionId) : null;
+    deck.cards = simplified.mainDeck.map(entry => {
+        const [id, qtyStr] = entry.split(":");
+        return { card: cardLookup(id), quantity: parseInt(qtyStr, 10) };
+    });
+    deck.sideboard = simplified.sideboard.map(entry => {
+        const [id, qtyStr] = entry.split(":");
+        return { card: cardLookup(id), quantity: parseInt(qtyStr, 10) };
+    });
+    deck.runes = simplified.runes.map(entry => {
+        const [id, qtyStr] = entry.split(":");
+        return { card: cardLookup(id), quantity: parseInt(qtyStr, 10) };
+    });
+    deck.battlegrounds = simplified.battlegrounds.map(id => cardLookup(id));
+    return deck;
   }
 }
 

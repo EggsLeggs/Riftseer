@@ -442,6 +442,181 @@ describe("Deck", () => {
     });
   });
 
+  // ── toSimplifiedDeck ────────────────────────────────────────────────────────
+
+  describe("toSimplifiedDeck", () => {
+    it("serialises an empty deck with no legend", () => {
+      const simplified = deck.toSimplifiedDeck();
+      expect(simplified.id).toBe(deck.id);
+      expect(simplified.legendId).toBeNull();
+      expect(simplified.chosenChampionId).toBeNull();
+      expect(simplified.mainDeck).toHaveLength(0);
+      expect(simplified.sideboard).toHaveLength(0);
+      expect(simplified.runes).toHaveLength(0);
+      expect(simplified.battlegrounds).toHaveLength(0);
+    });
+
+    it("serialises the legend id", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      expect(deck.toSimplifiedDeck().legendId).toBe("l1");
+    });
+
+    it("serialises chosenChampion id", () => {
+      const champion = makeChampion("c1", ["Fury"]);
+      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      deck.addLegend(legend);
+      deck.addMainCard(champion);
+      expect(deck.toSimplifiedDeck().chosenChampionId).toBe("c1");
+    });
+
+    it("serialises main deck cards as id:quantity strings", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addMainCard(makeUnit("u1", ["Fury"]), 3);
+      deck.addMainCard(makeUnit("u2", ["Fury"]), 1);
+      const { mainDeck } = deck.toSimplifiedDeck();
+      expect(mainDeck).toContain("u1:3");
+      expect(mainDeck).toContain("u2:1");
+    });
+
+    it("serialises sideboard cards as id:quantity strings", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addMainCard(makeUnit("u1", ["Fury"]), 2, true);
+      expect(deck.toSimplifiedDeck().sideboard).toContain("u1:2");
+    });
+
+    it("serialises runes as id:quantity strings", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addRune(makeRune("r1", ["Fury"]), 4);
+      expect(deck.toSimplifiedDeck().runes).toContain("r1:4");
+    });
+
+    it("serialises battleground ids", () => {
+      deck.addBattleground(makeBattleground("b1"));
+      deck.addBattleground(makeBattleground("b2"));
+      const { battlegrounds } = deck.toSimplifiedDeck();
+      expect(battlegrounds).toEqual(["b1", "b2"]);
+    });
+  });
+
+  // ── fromSimplifiedDeck ──────────────────────────────────────────────────────
+
+  describe("fromSimplifiedDeck", () => {
+    function buildCardLookup(...cards: Card[]): (id: string) => Card {
+      const map = new Map(cards.map(c => [c.id, c]));
+      return (id: string) => {
+        const card = map.get(id);
+        if (!card) throw new Error(`Card not found: ${id}`);
+        return card;
+      };
+    }
+
+    it("restores the deck id", () => {
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup());
+      expect(restored.id).toBe(deck.id);
+    });
+
+    it("restores legend as null when legendId is null", () => {
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup());
+      expect(restored.legend).toBeNull();
+    });
+
+    it("restores the legend from legendId", () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      deck.addLegend(legend);
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend));
+      expect(restored.legend?.id).toBe("l1");
+    });
+
+    it("restores chosenChampion from chosenChampionId", () => {
+      const champion = makeChampion("c1", ["Fury"]);
+      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      deck.addLegend(legend);
+      deck.addMainCard(champion);
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend, champion));
+      expect(restored.chosenChampion?.id).toBe("c1");
+    });
+
+    it("restores main deck cards with correct quantities", () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      const unit1 = makeUnit("u1", ["Fury"]);
+      const unit2 = makeUnit("u2", ["Fury"]);
+      deck.addLegend(legend);
+      deck.addMainCard(unit1, 3);
+      deck.addMainCard(unit2, 2);
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend, unit1, unit2));
+      expect(restored.cards).toHaveLength(2);
+      expect(restored.cards.find(c => c.card.id === "u1")?.quantity).toBe(3);
+      expect(restored.cards.find(c => c.card.id === "u2")?.quantity).toBe(2);
+    });
+
+    it("restores sideboard cards with correct quantities", () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      const unit = makeUnit("u1", ["Fury"]);
+      deck.addLegend(legend);
+      deck.addMainCard(unit, 2, true);
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend, unit));
+      expect(restored.sideboard).toHaveLength(1);
+      expect(restored.sideboard[0]).toMatchObject({ card: unit, quantity: 2 });
+    });
+
+    it("restores runes with correct quantities", () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      const rune = makeRune("r1", ["Fury"]);
+      deck.addLegend(legend);
+      deck.addRune(rune, 6);
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend, rune));
+      expect(restored.runes).toHaveLength(1);
+      expect(restored.runes[0]).toMatchObject({ card: rune, quantity: 6 });
+    });
+
+    it("restores battlegrounds", () => {
+      const bg1 = makeBattleground("b1");
+      const bg2 = makeBattleground("b2");
+      deck.addBattleground(bg1);
+      deck.addBattleground(bg2);
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(simplified, buildCardLookup(bg1, bg2));
+      expect(restored.battlegrounds).toHaveLength(2);
+      expect(restored.battlegrounds.map(c => c.id)).toEqual(["b1", "b2"]);
+    });
+
+    it("round-trips a fully populated deck", () => {
+      const champion = makeChampion("c1", ["Fury"]);
+      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const unit = makeUnit("u1", ["Fury"]);
+      const rune = makeRune("r1", ["Fury"]);
+      const bg = makeBattleground("b1");
+
+      deck.addLegend(legend);
+      deck.addMainCard(champion);
+      deck.addMainCard(unit, 2);
+      deck.addMainCard(unit, 1, true);
+      deck.addRune(rune, 3);
+      deck.addBattleground(bg);
+
+      const simplified = deck.toSimplifiedDeck();
+      const restored = Deck.fromSimplifiedDeck(
+        simplified,
+        buildCardLookup(legend, champion, unit, rune, bg),
+      );
+
+      expect(restored.id).toBe(deck.id);
+      expect(restored.legend?.id).toBe("l1");
+      expect(restored.chosenChampion?.id).toBe("c1");
+      expect(restored.cards.find(c => c.card.id === "u1")?.quantity).toBe(2);
+      expect(restored.sideboard.find(c => c.card.id === "u1")?.quantity).toBe(1);
+      expect(restored.runes.find(c => c.card.id === "r1")?.quantity).toBe(3);
+      expect(restored.battlegrounds.map(c => c.id)).toEqual(["b1"]);
+    });
+  });
+
   // ── getFinalisationIssues ───────────────────────────────────────────────────
 
   describe("getFinalisationIssues", () => {
