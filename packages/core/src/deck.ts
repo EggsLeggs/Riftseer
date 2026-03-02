@@ -24,7 +24,7 @@ export class Deck {
    */
   addCard(card: Card, quantity: number = 1) {
     const supertype = card.classification?.supertype;
-    if (supertype === "Legend") {
+    if (card.classification?.type === "Legend") {
       this.addLegend(card);
     } else if (supertype === "Battleground") {
       this.addBattleground(card);
@@ -47,7 +47,7 @@ export class Deck {
    * Throws if the card is not a Legend or a legend is already chosen.
    */
   addLegend(card: Card) {
-    if (card.classification?.supertype !== "Legend") {
+    if (card.classification?.type !== "Legend") {
       throw new Error(`${card.name} is not a legend and cannot be added as the legend.`);
     }
     if (this.legend) {
@@ -64,8 +64,9 @@ export class Deck {
    * - Enforces a 3-copy limit per card and a 40-card main deck cap.
    */
   addMainCard(card: Card, quantity: number = 1, toSideboard: boolean = false) {
+    const cardType = card.classification?.type;
     const cardSupertype = card.classification?.supertype;
-    if (cardSupertype === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
+    if (cardType === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
       throw new Error(`${card.name} can not be added into the main deck or sideboard.`);
     }
 
@@ -175,8 +176,9 @@ export class Deck {
       throw new Error(`Card with id ${cardId} not found in the deck.`);
     }
 
+    const type = card.classification?.type;
     const supertype = card.classification?.supertype;
-    if (supertype === "Legend") {
+    if (type === "Legend") {
       this.removeLegend(cardId);
     } else if (supertype === "Battleground") {
       this.removeBattleground(cardId);
