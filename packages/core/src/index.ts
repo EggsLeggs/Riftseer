@@ -21,7 +21,8 @@ export type {
 
 // Deck and serialiser
 export { Deck } from "./deck.ts";
-export { DeckSerializer, DeckSerializerV1 } from "./serialiser.ts";
+export type { DeckSerializer } from "./serialiser.ts";
+export { DeckSerializerV1 } from "./serialiser.ts";
 
 // Card provider interface + factory
 export type { CardDataProvider } from "./provider.ts";
