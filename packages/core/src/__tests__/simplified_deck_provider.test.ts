@@ -63,9 +63,9 @@ function makeBattleground(id: string): Card {
   });
 }
 
-function buildLookup(...cards: Card[]): (id: string) => Card {
+function buildLookup(...cards: Card[]): (id: string) => Promise<Card> {
   const map = new Map(cards.map(c => [c.id, c]));
-  return (id: string) => {
+  return async (id: string) => {
     const card = map.get(id);
     if (!card) throw new Error(`Card not found: ${id}`);
     return card;
@@ -90,19 +90,19 @@ describe("SimplifieDeckProvider", () => {
   // ── addCards ─────────────────────────────────────────────────────────────────
 
   describe("addCards", () => {
-    it("creates a new deck when no shortForm is provided", () => {
-      const { deck } = provider.addCards([{ id: "l1", quantity: 1 }]);
+    it("creates a new deck when no shortForm is provided", async () => {
+      const { deck } = await provider.addCards([{ id: "l1", quantity: 1 }]);
       expect(deck.legendId).toBe("l1");
     });
 
-    it("returns a serializable shortForm", () => {
-      const { shortForm } = provider.addCards([{ id: "l1", quantity: 1 }]);
+    it("returns a serializable shortForm", async () => {
+      const { shortForm } = await provider.addCards([{ id: "l1", quantity: 1 }]);
       expect(typeof shortForm).toBe("string");
       expect(shortForm.length).toBeGreaterThan(0);
     });
 
-    it("adds multiple cards to a new deck", () => {
-      const { deck } = provider.addCards([
+    it("adds multiple cards to a new deck", async () => {
+      const { deck } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 2 },
       ]);
@@ -110,30 +110,30 @@ describe("SimplifieDeckProvider", () => {
       expect(deck.mainDeck).toContain("u1:2");
     });
 
-    it("adds cards to an existing deck given a shortForm", () => {
-      const { shortForm } = provider.addCards([
+    it("adds cards to an existing deck given a shortForm", async () => {
+      const { shortForm } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 2 },
       ]);
-      const { deck } = provider.addCards([{ id: "u2", quantity: 1 }], shortForm);
+      const { deck } = await provider.addCards([{ id: "u2", quantity: 1 }], shortForm);
       expect(deck.mainDeck).toContain("u1:2");
       expect(deck.mainDeck).toContain("u2:1");
     });
 
-    it("sets chosenChampionId when the legend's related champion is added", () => {
-      const { deck } = provider.addCards([
+    it("sets chosenChampionId when the legend's related champion is added", async () => {
+      const { deck } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "c1", quantity: 1 },
       ]);
       expect(deck.chosenChampionId).toBe("c1");
     });
 
-    it("round-trips the shortForm through serialize/deserialize", () => {
-      const { shortForm, deck } = provider.addCards([
+    it("round-trips the shortForm through serialize/deserialize", async () => {
+      const { shortForm, deck } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 3 },
       ]);
-      const { deck: restored } = provider.getDeckFromShortForm(shortForm);
+      const { deck: restored } = await provider.getDeckFromShortForm(shortForm);
       expect(restored.legendId).toBe(deck.legendId);
       expect(restored.mainDeck).toEqual(deck.mainDeck);
     });
@@ -142,72 +142,72 @@ describe("SimplifieDeckProvider", () => {
   // ── removeCards ──────────────────────────────────────────────────────────────
 
   describe("removeCards", () => {
-    it("removes a card from the deck", () => {
-      const { shortForm } = provider.addCards([
+    it("removes a card from the deck", async () => {
+      const { shortForm } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 2 },
       ]);
-      const { deck } = provider.removeCards([{ id: "u1", quantity: 1 }], shortForm);
+      const { deck } = await provider.removeCards([{ id: "u1", quantity: 1 }], shortForm);
       expect(deck.mainDeck).toContain("u1:1");
     });
 
-    it("removes a card entirely when all copies are removed", () => {
-      const { shortForm } = provider.addCards([
+    it("removes a card entirely when all copies are removed", async () => {
+      const { shortForm } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 2 },
       ]);
-      const { deck } = provider.removeCards([{ id: "u1", quantity: 2 }], shortForm);
+      const { deck } = await provider.removeCards([{ id: "u1", quantity: 2 }], shortForm);
       expect(deck.mainDeck.some(e => e.startsWith("u1:"))).toBe(false);
     });
 
-    it("removes the legend and clears the deck", () => {
-      const { shortForm } = provider.addCards([
+    it("removes the legend and clears the deck", async () => {
+      const { shortForm } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 1 },
       ]);
-      const { deck } = provider.removeCards([{ id: "l1", quantity: 1 }], shortForm);
+      const { deck } = await provider.removeCards([{ id: "l1", quantity: 1 }], shortForm);
       expect(deck.legendId).toBeNull();
       expect(deck.mainDeck).toHaveLength(0);
     });
 
-    it("returns an updated shortForm that reflects the removal", () => {
-      const { shortForm: initial } = provider.addCards([
+    it("returns an updated shortForm that reflects the removal", async () => {
+      const { shortForm: initial } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 2 },
       ]);
-      const { shortForm: updated } = provider.removeCards([{ id: "u1", quantity: 2 }], initial);
+      const { shortForm: updated } = await provider.removeCards([{ id: "u1", quantity: 2 }], initial);
       // The updated shortForm should deserialize without u1
-      const { deck } = provider.getDeckFromShortForm(updated);
+      const { deck } = await provider.getDeckFromShortForm(updated);
       expect(deck.mainDeck.some(e => e.startsWith("u1:"))).toBe(false);
     });
 
-    it("throws when trying to remove a card not in the deck", () => {
-      const { shortForm } = provider.addCards([{ id: "l1", quantity: 1 }]);
-      expect(() => provider.removeCards([{ id: "u2", quantity: 1 }], shortForm)).toThrow();
+    it("throws when trying to remove a card not in the deck", async () => {
+      const { shortForm } = await provider.addCards([{ id: "l1", quantity: 1 }]);
+      expect(provider.removeCards([{ id: "u2", quantity: 1 }], shortForm)).rejects.toThrow();
     });
   });
 
   // ── getDeckFromShortForm ──────────────────────────────────────────────────────
 
   describe("getDeckFromShortForm", () => {
-    it("returns the deck matching the shortForm", () => {
-      const { shortForm } = provider.addCards([
+    it("returns the deck matching the shortForm", async () => {
+      const { shortForm } = await provider.addCards([
         { id: "l1", quantity: 1 },
         { id: "u1", quantity: 2 },
       ]);
-      const { deck } = provider.getDeckFromShortForm(shortForm);
+      const { deck } = await provider.getDeckFromShortForm(shortForm);
       expect(deck.legendId).toBe("l1");
       expect(deck.mainDeck).toContain("u1:2");
     });
 
-    it("returns the same shortForm unchanged", () => {
-      const { shortForm } = provider.addCards([{ id: "l1", quantity: 1 }]);
-      const { shortForm: returned } = provider.getDeckFromShortForm(shortForm);
+    it("returns the same shortForm unchanged", async () => {
+      const { shortForm } = await provider.addCards([{ id: "l1", quantity: 1 }]);
+      const { shortForm: returned } = await provider.getDeckFromShortForm(shortForm);
       expect(returned).toBe(shortForm);
     });
 
-    it("throws on an invalid shortForm string", () => {
-      expect(() => provider.getDeckFromShortForm("not-valid-base64url!!!")).toThrow();
+    it("throws on an invalid shortForm string", async () => {
+      expect(provider.getDeckFromShortForm("not-valid-base64url!!!")).rejects.toThrow();
     });
   });
 });
