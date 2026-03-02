@@ -26,7 +26,7 @@ function makeLegend(id: string, domains: string[], relatedChampions: RelatedCard
   return makeCard({
     id,
     name: `Legend ${id}`,
-    classification: { supertype: "Legend", domains },
+    classification: { type: "Legend", domains },
     related_champions: relatedChampions,
   });
 }
