@@ -330,24 +330,24 @@ export class Deck {
     };
   }
 
-  static fromSimplifiedDeck(simplified: SimplifiedDeck, cardLookup: (id: string) => Card): Deck {
+  static async fromSimplifiedDeck(simplified: SimplifiedDeck, cardLookup: (id: string) => Promise<Card>): Promise<Deck> {
     const deck = new Deck();
     deck.id = simplified.id;
-    deck.legend = simplified.legendId ? cardLookup(simplified.legendId) : null;
-    deck.chosenChampion = simplified.chosenChampionId ? cardLookup(simplified.chosenChampionId) : null;
-    deck.cards = simplified.mainDeck.map(entry => {
+    deck.legend = simplified.legendId ? await cardLookup(simplified.legendId) : null;
+    deck.chosenChampion = simplified.chosenChampionId ? await cardLookup(simplified.chosenChampionId) : null;
+    deck.cards = await Promise.all(simplified.mainDeck.map(async entry => {
         const [id, qtyStr] = entry.split(":");
-        return { card: cardLookup(id), quantity: parseInt(qtyStr, 10) };
-    });
-    deck.sideboard = simplified.sideboard.map(entry => {
+        return { card: await cardLookup(id), quantity: parseInt(qtyStr, 10) };
+    }));
+    deck.sideboard = await Promise.all(simplified.sideboard.map(async entry => {
         const [id, qtyStr] = entry.split(":");
-        return { card: cardLookup(id), quantity: parseInt(qtyStr, 10) };
-    });
-    deck.runes = simplified.runes.map(entry => {
+        return { card: await cardLookup(id), quantity: parseInt(qtyStr, 10) };
+    }));
+    deck.runes = await Promise.all(simplified.runes.map(async entry => {
         const [id, qtyStr] = entry.split(":");
-        return { card: cardLookup(id), quantity: parseInt(qtyStr, 10) };
-    });
-    deck.battlegrounds = simplified.battlegrounds.map(id => cardLookup(id));
+        return { card: await cardLookup(id), quantity: parseInt(qtyStr, 10) };
+    }));
+    deck.battlegrounds = await Promise.all(simplified.battlegrounds.map(async id => await cardLookup(id)));
     return deck;
   }
 }
