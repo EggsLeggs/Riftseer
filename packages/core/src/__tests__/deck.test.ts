@@ -342,7 +342,7 @@ describe("Deck", () => {
       deck.addMainCard(makeUnit("u2", ["Fury"]), 1, true);
       deck.addRune(makeRune("r1", ["Fury"]));
 
-      deck.removeLegend();
+      deck.removeLegend(legend.id);
 
       expect(deck.legend).toBeNull();
       expect(deck.chosenChampion).toBeNull();
@@ -352,7 +352,12 @@ describe("Deck", () => {
     });
 
     it("throws when there is no legend to remove", () => {
-      expect(() => deck.removeLegend()).toThrow("No legend to remove");
+      expect(() => deck.removeLegend("bonk")).toThrow("No legend to remove");
+    });
+
+    it("throws when a legend is set but the wrong id is provided", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      expect(() => deck.removeLegend("wrong-id")).toThrow("No legend to remove");
     });
   });
 
@@ -614,6 +619,101 @@ describe("Deck", () => {
       expect(restored.sideboard.find(c => c.card.id === "u1")?.quantity).toBe(1);
       expect(restored.runes.find(c => c.card.id === "r1")?.quantity).toBe(3);
       expect(restored.battlegrounds.map(c => c.id)).toEqual(["b1"]);
+    });
+  });
+
+  // ── addCard ─────────────────────────────────────────────────────────────────
+
+  describe("addCard", () => {
+    it("routes a Legend card to addLegend", () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      deck.addCard(legend);
+      expect(deck.legend).toBe(legend);
+    });
+
+    it("routes a Battleground card to addBattleground", () => {
+      const bg = makeBattleground("b1");
+      deck.addCard(bg);
+      expect(deck.battlegrounds).toHaveLength(1);
+      expect(deck.battlegrounds[0]).toBe(bg);
+    });
+
+    it("routes a Rune card to addRune with quantity", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      const rune = makeRune("r1", ["Fury"]);
+      deck.addCard(rune, 3);
+      expect(deck.runes[0]).toMatchObject({ card: rune, quantity: 3 });
+    });
+
+    it("routes a Unit card to addMainCard", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      const unit = makeUnit("u1", ["Fury"]);
+      deck.addCard(unit, 2);
+      expect(deck.cards[0]).toMatchObject({ card: unit, quantity: 2 });
+    });
+
+    it("overflows to sideboard when main deck has no remaining capacity", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      // Fill main deck to 39
+      for (let i = 0; i < 13; i++) {
+        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+      }
+      const overflow = makeUnit("uOvf", ["Fury"]);
+      deck.addCard(overflow, 2);
+      expect(deck.cards.find(c => c.card.id === "uOvf")?.quantity).toBe(1);
+      expect(deck.sideboard.find(c => c.card.id === "uOvf")?.quantity).toBe(1);
+    });
+
+    it("sends all copies to sideboard when main deck is already at 40", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      for (let i = 0; i < 13; i++) {
+        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+      }
+      deck.addMainCard(makeUnit("u40", ["Fury"]));
+      const extra = makeUnit("uExtra", ["Fury"]);
+      deck.addCard(extra, 2);
+      expect(deck.cards.find(c => c.card.id === "uExtra")).toBeUndefined();
+      expect(deck.sideboard.find(c => c.card.id === "uExtra")?.quantity).toBe(2);
+    });
+  });
+
+  // ── removeCard ──────────────────────────────────────────────────────────────
+
+  describe("removeCard", () => {
+    it("removes a Legend by id and clears dependent state", () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      deck.addLegend(legend);
+      deck.addMainCard(makeUnit("u1", ["Fury"]));
+      deck.removeCard("l1");
+      expect(deck.legend).toBeNull();
+      expect(deck.cards).toHaveLength(0);
+    });
+
+    it("removes a Battleground by id", () => {
+      const bg = makeBattleground("b1");
+      deck.addBattleground(bg);
+      deck.removeCard("b1");
+      expect(deck.battlegrounds).toHaveLength(0);
+    });
+
+    it("removes a Rune by id with quantity", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      const rune = makeRune("r1", ["Fury"]);
+      deck.addRune(rune, 3);
+      deck.removeCard("r1", 2);
+      expect(deck.runes[0].quantity).toBe(1);
+    });
+
+    it("removes a main deck card by id", () => {
+      deck.addLegend(makeLegend("l1", ["Fury"]));
+      const unit = makeUnit("u1", ["Fury"]);
+      deck.addMainCard(unit, 2);
+      deck.removeCard("u1", 1);
+      expect(deck.cards[0].quantity).toBe(1);
+    });
+
+    it("throws when the card id is not found in any zone", () => {
+      expect(() => deck.removeCard("nonexistent")).toThrow("not found");
     });
   });
 

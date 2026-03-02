@@ -20,6 +20,29 @@ export class Deck {
   }
 
   /**
+   * General card-adding method that differentiates based on supertype.
+   */
+  addCard(card: Card, quantity: number = 1) {
+    const supertype = card.classification?.supertype;
+    if (supertype === "Legend") {
+      this.addLegend(card);
+    } else if (supertype === "Battleground") {
+      this.addBattleground(card);
+    } else if (supertype === "Rune") {
+      this.addRune(card, quantity);
+    } else {
+      const mainAddCount = Math.min(quantity, 40 - this.getTotalMainCardCount());
+      if (mainAddCount > 0) {
+        this.addMainCard(card, mainAddCount);
+      }
+      const sideAddCount = quantity - mainAddCount;
+      if (sideAddCount > 0) {
+          this.addMainCard(card, sideAddCount, true);
+      }
+    }
+  }
+
+  /**
    * Set the legend for this deck.
    * Throws if the card is not a Legend or a legend is already chosen.
    */
@@ -71,8 +94,15 @@ export class Deck {
         }
     }
 
-    if (this.getTotalMainCardCount() + quantity > 40) {
-      throw new Error("Cannot have more than 40 total cards in the main deck.");
+    if (toSideboard) {
+      const totalSideboard = this.sideboard.reduce((sum, c) => sum + c.quantity, 0);
+      if (totalSideboard + quantity > 8) {
+        throw new Error("Cannot have more than 8 total cards in the sideboard.");
+      }
+    } else {
+      if (this.getTotalMainCardCount() + quantity > 40) {
+        throw new Error("Cannot have more than 40 total cards in the main deck.");
+      }
     }
 
     const target = toSideboard ? this.sideboard : this.cards;
@@ -129,10 +159,39 @@ export class Deck {
   }
 
   /**
+   * General card-removal method that differentiates based on supertype and checks all relevant zones.
+   */
+  removeCard(cardId: string, quantity: number = 1) {
+    const allCards = [
+      ...(this.legend ? [this.legend] : []),
+      ...(this.chosenChampion ? [this.chosenChampion] : []),
+      ...this.cards.map(c => c.card),
+      ...this.sideboard.map(c => c.card),
+      ...this.runes.map(c => c.card),
+      ...this.battlegrounds,
+    ];
+    const card = allCards.find(c => c.id === cardId);
+    if (!card) {
+      throw new Error(`Card with id ${cardId} not found in the deck.`);
+    }
+
+    const supertype = card.classification?.supertype;
+    if (supertype === "Legend") {
+      this.removeLegend(cardId);
+    } else if (supertype === "Battleground") {
+      this.removeBattleground(cardId);
+    } else if (supertype === "Rune") {
+      this.removeRune(cardId, quantity);
+    } else {
+      this.removeMainCard(cardId, quantity);
+    }
+  }
+
+  /**
    * Remove the legend and reset all dependent state (cards, sideboard, runes, chosenChampion).
    */
-  removeLegend() {
-    if (!this.legend) {
+  removeLegend(id: string) {
+    if (!this.legend || this.legend.id !== id) {
       throw new Error("No legend to remove.");
     }
     this.legend = null;
