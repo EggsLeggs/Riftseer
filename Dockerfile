@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Install dependencies (strip workspace members not needed in the image)
 COPY package.json bun.lock* ./
-RUN sed -i 's/, *"packages\/frontend"//g; s/, *"packages\/discord-bot"//g; s/, *"packages\/ingest-worker"//g' package.json
+RUN sed -i 's/, *"packages\/frontend"//g; s/, *"packages\/discord-bot"//g; s/, *"packages\/ingest-worker"//g; s/, *"docs"//g' package.json
 COPY packages/core/package.json ./packages/core/package.json
 COPY packages/api/package.json ./packages/api/package.json
 RUN bun install
