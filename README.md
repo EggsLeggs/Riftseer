@@ -94,8 +94,7 @@ bun dev:api      # API only
 bun dev:frontend # Frontend only (expects API at VITE_API_URL or same origin)
 ```
 
-The Reddit bot lives in `packages/reddit-bot` and uses Devvit; see that package’s README for run/deploy.
-The Discord bot lives in `packages/discord-bot` and uses Cloudflare Workers; see the Discord bot setup section below.
+The Reddit bot lives in `packages/reddit-bot` (Devvit) and the Discord bot in `packages/discord-bot` (Cloudflare Workers) — see their respective setup sections below.
 
 ---
 
@@ -210,14 +209,25 @@ Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.toml`.
 
 ---
 
-## Reddit app setup (for the Reddit bot)
+## Reddit bot setup (Devvit)
 
-1. Log in as the bot account → [reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) → create app, type **script**.
-2. Set redirect URI (e.g. `http://localhost`); copy client ID and secret into `.env`.
-3. Set `REDDIT_USERNAME` / `REDDIT_PASSWORD` and a unique **User-Agent**, e.g.
-   `REDDIT_USER_AGENT=RiftSeer/0.1.0 by u/YourBotUsername`
+The Reddit bot (`packages/reddit-bot`) is a standalone [Devvit](https://devvit.dev) app — **not** part of the Bun workspace. It uses `npm`, not `bun`.
 
-Bot implementation and deployment are in `packages/reddit-bot` (Devvit).
+```bash
+cd packages/reddit-bot
+npm install
+
+npx devvit login        # one-time auth with your Reddit account
+
+# Set the API and site URLs (stored as app-level secrets, shared across subreddits)
+npx devvit settings set apiBaseUrl   # e.g. https://riftseerapi-production.up.railway.app
+npx devvit settings set siteBaseUrl  # e.g. https://riftseer.thinkhuman.dev
+
+npx devvit upload       # deploy to Reddit
+npx devvit playtest r/yoursubreddit  # live testing against a real subreddit
+```
+
+After upload, install the app on the subreddit you want to moderate via the Devvit dashboard or `npx devvit install`.
 
 ---
 
