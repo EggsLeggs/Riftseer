@@ -15,10 +15,10 @@ const config: Config = {
   },
 
   url: 'https://eggsleggs.github.io',
-  baseUrl: '/Riftseer/',
+  baseUrl: '/riftseer/',
 
   organizationName: 'EggsLeggs',
-  projectName: 'Riftseer',
+  projectName: 'riftseer',
 
   onBrokenLinks: 'throw',
 
@@ -47,7 +47,7 @@ const config: Config = {
           path: '../packages/ingest-worker/docs',
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
+          editUrl: 'https://github.com/EggsLeggs/riftseer/edit/main/packages/ingest-worker/docs/',
         },
         blog: false,
         theme: {
