@@ -90,33 +90,35 @@ export class Deck {
       throw new Error(`Cannot have more than 3 copies of ${card.name} in the deck.`);
     }
 
-    if (!toSideboard
-        && cardSupertype === "Champion"
-        && this.chosenChampion === null) { // TODO: add legend-champion validation once data is sanitised
-      this.chosenChampion = card;
-      quantity -= 1;
-      if (quantity <= 0) {
-        return;
-      }
-    }
+    // Determine champion candidacy up front but defer state mutation until all checks pass.
+    const isChampionCandidate = !toSideboard && cardSupertype === "Champion" && this.chosenChampion === null; // TODO: add legend-champion validation once data is sanitised
+    const effectiveQuantity = isChampionCandidate ? quantity - 1 : quantity;
 
     if (toSideboard) {
       const totalSideboard = this.sideboard.reduce((sum, c) => sum + c.quantity, 0);
-      if (totalSideboard + quantity > 8) {
+      if (totalSideboard + effectiveQuantity > 8) {
         throw new Error("Cannot have more than 8 total cards in the sideboard.");
       }
     } else {
-      if (this.getTotalMainCardCount() + quantity > 40) {
+      if (this.getTotalMainCardCount() + effectiveQuantity > 40) {
         throw new Error("Cannot have more than 40 total cards in the main deck.");
       }
+    }
+
+    // All validations passed — commit champion assignment
+    if (isChampionCandidate) {
+      this.chosenChampion = card;
+    }
+    if (effectiveQuantity <= 0) {
+      return;
     }
 
     const target = toSideboard ? this.sideboard : this.cards;
     const existingEntry = target.find(c => c.card.id === card.id);
     if (existingEntry) {
-      existingEntry.quantity += quantity;
+      existingEntry.quantity += effectiveQuantity;
     } else {
-      target.push({ card, quantity });
+      target.push({ card, quantity: effectiveQuantity });
     }
   }
 
