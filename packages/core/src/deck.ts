@@ -1,4 +1,5 @@
 import { Card, SimplifiedDeck } from "./types";
+import { BadRequestError } from "./errors";
 
 export class Deck {
   id: string | null;
@@ -26,8 +27,10 @@ export class Deck {
     if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     const supertype = card.classification?.supertype;
     if (card.classification?.type === "Legend") {
+      if (quantity !== 1) throw new Error("Legend cards must be added with quantity 1");
       this.addLegend(card);
     } else if (supertype === "Battleground") {
+      if (quantity !== 1) throw new Error("Battleground cards must be added with quantity 1");
       this.addBattleground(card);
     } else if (supertype === "Rune") {
       this.addRune(card, quantity);
@@ -349,11 +352,11 @@ export class Deck {
     deck.chosenChampion = simplified.chosenChampionId ? await cardLookup(simplified.chosenChampionId) : null;
     const parseEntry = (entry: string): { id: string; quantity: number } => {
         const colon = entry.lastIndexOf(":");
-        if (colon <= 0) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
+        if (colon <= 0) throw new BadRequestError(`Malformed deck entry (expected "id:qty"): "${entry}"`);
         const qtyStr = entry.slice(colon + 1);
-        if (!/^\d+$/.test(qtyStr)) throw new Error(`Invalid quantity in deck entry: "${entry}"`);
+        if (!/^\d+$/.test(qtyStr)) throw new BadRequestError(`Invalid quantity in deck entry: "${entry}"`);
         const quantity = Number(qtyStr);
-        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 255) throw new Error(`Quantity out of bounds in deck entry: "${entry}"`);
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 255) throw new BadRequestError(`Quantity out of bounds in deck entry: "${entry}"`);
         return { id: entry.slice(0, colon), quantity };
     };
     deck.cards = await Promise.all(simplified.mainDeck.map(async entry => {

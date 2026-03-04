@@ -30,6 +30,7 @@ import {
   type CardDataProvider,
   type Card,
   SimplifiedDeck,
+  BadRequestError,
 } from "@riftseer/core";
 // ─── TCGPlayer price cache (via tcgcsv.com) ────────────────────────────────────
 
@@ -150,6 +151,7 @@ function parseCardEntry(entry: string): { id: string; quantity: number } {
 
 /** Map an error to an HTTP status code. */
 function classifyStatus(error: unknown): 400 | 404 | 500 {
+  if (error instanceof BadRequestError) return 400;
   if (error instanceof NotFoundError) return 404;
   return 500;
 }

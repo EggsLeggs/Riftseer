@@ -1,4 +1,5 @@
 import { SimplifiedDeck } from "./types";
+import { BadRequestError } from "./errors";
 
 export interface DeckSerializer {
     /**
@@ -189,12 +190,14 @@ export class DeckSerializerV1 implements DeckSerializer {
         const legendId = (flags & 0x01) ? readStr() : null;
         const chosenChampionId = (flags & 0x02) ? readStr() : null;
 
-        const readQtySection = (): string[] => {
+        const readQtySection = (sectionName: string): string[] => {
             const count = readByte();
             const entries: string[] = [];
             for (let i = 0; i < count; i++) {
                 const cardId = readStr();
                 const qty = readByte();
+                if (cardId === "") throw new BadRequestError(`Invalid deck string: empty card ID in ${sectionName} section`);
+                if (qty === 0) throw new BadRequestError(`Invalid deck string: qty must be ≥ 1 for card "${cardId}" in ${sectionName} section`);
                 entries.push(`${cardId}:${qty}`);
             }
             return entries;
@@ -207,9 +210,9 @@ export class DeckSerializerV1 implements DeckSerializer {
             return ids;
         };
 
-        const mainDeck = readQtySection();
-        const sideboard = readQtySection();
-        const runes = readQtySection();
+        const mainDeck = readQtySection("mainDeck");
+        const sideboard = readQtySection("sideboard");
+        const runes = readQtySection("runes");
         const battlegrounds = readBareSection();
 
         if (pos !== buf.length) throw new Error("Invalid deck string: trailing bytes after decoding");
