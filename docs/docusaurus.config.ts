@@ -14,17 +14,11 @@ const config: Config = {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
   },
 
-  // Set the production url of your site here
-  // Update these values if you host docs under a different domain or path.
-  url: 'https://your-github-username.github.io',
-  // For GitHub Pages deployment under a project site, this is usually '/<repo-name>/'.
-  // Adjust to match how you configure Pages for riftseer.
-  baseUrl: '/riftseer-docs/',
+  url: 'https://eggsleggs.github.io',
+  baseUrl: '/Riftseer/',
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'your-github-username', // Usually your GitHub org/user name.
-  projectName: 'riftseer', // Usually your repo name.
+  organizationName: 'EggsLeggs',
+  projectName: 'Riftseer',
 
   onBrokenLinks: 'throw',
 
@@ -53,10 +47,7 @@ const config: Config = {
           path: '../packages/ingest-worker/docs',
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
         },
         blog: false,
         theme: {
