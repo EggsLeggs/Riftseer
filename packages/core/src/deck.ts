@@ -23,7 +23,7 @@ export class Deck {
    * General card-adding method that differentiates based on supertype.
    */
   addCard(card: Card, quantity: number = 1) {
-    if (quantity <= 0) throw new Error("quantity must be a positive integer");
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     const supertype = card.classification?.supertype;
     if (card.classification?.type === "Legend") {
       this.addLegend(card);
@@ -65,7 +65,7 @@ export class Deck {
    * - Enforces a 3-copy limit per card and a 40-card main deck cap.
    */
   addMainCard(card: Card, quantity: number = 1, toSideboard: boolean = false) {
-    if (quantity <= 0) throw new Error("quantity must be a positive integer");
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     const cardType = card.classification?.type;
     const cardSupertype = card.classification?.supertype;
     if (cardType === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
@@ -87,13 +87,14 @@ export class Deck {
       throw new Error(`Cannot have more than 3 copies of ${card.name} in the deck.`);
     }
 
-    if (cardSupertype === "Champion" 
+    if (!toSideboard
+        && cardSupertype === "Champion"
         && this.chosenChampion === null) { // TODO: add legend-champion validation once data is sanitised
       this.chosenChampion = card;
       quantity -= 1;
-        if (quantity <= 0) {
-            return;
-        }
+      if (quantity <= 0) {
+        return;
+      }
     }
 
     if (toSideboard) {
@@ -139,14 +140,18 @@ export class Deck {
    * Enforces domain matching against the legend and a 12-rune total cap.
    */
   addRune(card: Card, quantity: number = 1) {
-    if (quantity <= 0) throw new Error("quantity must be a positive integer");
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     if (card.classification?.supertype !== "Rune") {
       throw new Error(`${card.name} is not a Rune and cannot be added as a rune.`);
     }
 
+    const legendDomains = this.getLegendDomains();
+    if (!legendDomains || legendDomains.length === 0) {
+      throw new Error("Cannot add runes before a legend is chosen.");
+    }
     const cardDomains = card.classification?.domains || [];
-    if (cardDomains.some(domain => !this.getLegendDomains()?.includes(domain))) {
-      throw new Error(`${card.name} does not match all domains of the legend. Legend domains: ${this.getLegendDomains()?.join(", ")}. Card domains: ${cardDomains.join(", ")}`);
+    if (cardDomains.some(domain => !legendDomains.includes(domain))) {
+      throw new Error(`${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. Card domains: ${cardDomains.join(", ")}`);
     }
 
     const totalRunes = this.runes.reduce((count, c) => count + c.quantity, 0);
@@ -165,7 +170,7 @@ export class Deck {
    * General card-removal method that differentiates based on supertype and checks all relevant zones.
    */
   removeCard(cardId: string, quantity: number = 1) {
-    if (quantity <= 0) throw new Error("quantity must be a positive integer");
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     const allCards = [
       ...(this.legend ? [this.legend] : []),
       ...(this.chosenChampion ? [this.chosenChampion] : []),
@@ -211,7 +216,7 @@ export class Deck {
    * Checks main first, then sideboard, then the champion slot.
    */
   removeMainCard(cardId: string, quantity: number = 1) {
-    if (quantity <= 0) throw new Error("quantity must be a positive integer");
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     let removed = false;
     const mainEntry = this.cards.find(c => c.card.id === cardId);
     if (mainEntry) {
@@ -266,7 +271,7 @@ export class Deck {
    * Throws if the rune is not present.
    */
   removeRune(cardId: string, quantity: number = 1) {
-    if (quantity <= 0) throw new Error("quantity must be a positive integer");
+    if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     const runeEntry = this.runes.find(c => c.card.id === cardId);
     if (!runeEntry) {
       throw new Error(`Rune with id ${cardId} not found.`);
@@ -342,20 +347,26 @@ export class Deck {
     deck.id = simplified.id;
     deck.legend = simplified.legendId ? await cardLookup(simplified.legendId) : null;
     deck.chosenChampion = simplified.chosenChampionId ? await cardLookup(simplified.chosenChampionId) : null;
-    deck.cards = await Promise.all(simplified.mainDeck.map(async entry => {
+    const parseEntry = (entry: string): { id: string; quantity: number } => {
         const colon = entry.lastIndexOf(":");
-        if (colon === -1) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
-        return { card: await cardLookup(entry.slice(0, colon)), quantity: parseInt(entry.slice(colon + 1), 10) };
+        if (colon <= 0) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
+        const qtyStr = entry.slice(colon + 1);
+        if (!/^\d+$/.test(qtyStr)) throw new Error(`Invalid quantity in deck entry: "${entry}"`);
+        const quantity = Number(qtyStr);
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 255) throw new Error(`Quantity out of bounds in deck entry: "${entry}"`);
+        return { id: entry.slice(0, colon), quantity };
+    };
+    deck.cards = await Promise.all(simplified.mainDeck.map(async entry => {
+        const { id, quantity } = parseEntry(entry);
+        return { card: await cardLookup(id), quantity };
     }));
     deck.sideboard = await Promise.all(simplified.sideboard.map(async entry => {
-        const colon = entry.lastIndexOf(":");
-        if (colon === -1) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
-        return { card: await cardLookup(entry.slice(0, colon)), quantity: parseInt(entry.slice(colon + 1), 10) };
+        const { id, quantity } = parseEntry(entry);
+        return { card: await cardLookup(id), quantity };
     }));
     deck.runes = await Promise.all(simplified.runes.map(async entry => {
-        const colon = entry.lastIndexOf(":");
-        if (colon === -1) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
-        return { card: await cardLookup(entry.slice(0, colon)), quantity: parseInt(entry.slice(colon + 1), 10) };
+        const { id, quantity } = parseEntry(entry);
+        return { card: await cardLookup(id), quantity };
     }));
     deck.battlegrounds = await Promise.all(simplified.battlegrounds.map(async id => await cardLookup(id)));
     return deck;

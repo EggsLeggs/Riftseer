@@ -93,7 +93,7 @@ export class DeckSerializerV1 implements DeckSerializer {
         const encodeQtySection = (entries: string[]): Array<[Uint8Array, number]> =>
             entries.map(entry => {
                         const colon = entry.lastIndexOf(":");
-                if (colon === -1) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
+                if (colon <= 0) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
                 const qtyStr = entry.slice(colon + 1);
                 if (!/^\d+$/.test(qtyStr)) throw new Error(`Invalid quantity in deck entry: "${entry}"`);
                 const qty = parseInt(qtyStr, 10);
@@ -134,6 +134,7 @@ export class DeckSerializerV1 implements DeckSerializer {
         if (champEnc) writeStr(champEnc);
 
         const writeQtySection = (entries: Array<[Uint8Array, number]>) => {
+            if (entries.length > 255) throw new RangeError(`Section has ${entries.length} entries, maximum is 255`);
             buf[pos++] = entries.length;
             for (const [idBytes, qty] of entries) {
                 writeStr(idBytes);
@@ -142,6 +143,7 @@ export class DeckSerializerV1 implements DeckSerializer {
         };
 
         const writeBareSection = (ids: Uint8Array[]) => {
+            if (ids.length > 255) throw new RangeError(`Section has ${ids.length} entries, maximum is 255`);
             buf[pos++] = ids.length;
             for (const idBytes of ids) writeStr(idBytes);
         };
@@ -209,6 +211,8 @@ export class DeckSerializerV1 implements DeckSerializer {
         const sideboard = readQtySection();
         const runes = readQtySection();
         const battlegrounds = readBareSection();
+
+        if (pos !== buf.length) throw new Error("Invalid deck string: trailing bytes after decoding");
 
         return { id: null, legendId, chosenChampionId, mainDeck, sideboard, runes, battlegrounds };
     }
