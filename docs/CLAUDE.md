@@ -2,20 +2,23 @@
 
 ## Overview
 
-This is the Docusaurus 3 developer documentation site for RiftSeer. It is a **Node.js project** (not a Bun workspace member) and must be managed with `npm`.
+The docs site is a Bun workspace member. Run `bun install` from the repo root to install all dependencies, or from within `docs/` directly.
 
 ## Running
 
 ```bash
-cd docs
-npm install       # install dependencies (first time / after updates)
-npm start         # dev server at http://localhost:3000 with hot reload
-npm run build     # production build → docs/build/
-npm run serve     # serve the production build locally
-npm run clear     # clear Docusaurus cache — use if pages fail to update
-```
+# From the repo root (preferred):
+bun run --filter docs start   # dev server at http://localhost:3000 with hot reload
+bun run --filter docs build   # production build → docs/build/
 
-Node.js ≥ 20 is required. Do **not** use `bun` here.
+# Or from within docs/:
+cd docs
+bun install       # install dependencies (first time / after updates)
+bun run start     # dev server at http://localhost:3000 with hot reload
+bun run build     # production build → docs/build/
+bun run serve     # serve the production build locally
+bun run clear     # clear Docusaurus cache — use if pages fail to update
+```
 
 ## Where Doc Content Lives
 
@@ -61,14 +64,14 @@ Enabled via `@docusaurus/theme-mermaid`. Use standard fenced code blocks tagged 
 
 ## Deployment
 
-Deployed to GitHub Pages via `.github/workflows/docs.yml`. The workflow runs `npm run build` inside `docs/` and publishes `docs/build/` to the `gh-pages` branch.
+Deployed to GitHub Pages via `.github/workflows/docs.yml`. The workflow runs `bun run build` inside `docs/` and publishes `docs/build/` to the `gh-pages` branch.
 
 To deploy manually:
 
 ```bash
 cd docs
-npm run build
-npm run deploy   # requires GH_TOKEN or SSH access to the repo
+bun run build
+bun run deploy   # requires GH_TOKEN or SSH access to the repo
 ```
 
 Update `url` and `organizationName` in `docusaurus.config.ts` to match your actual GitHub org/username before deploying.

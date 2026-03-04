@@ -37,4 +37,3 @@ Regardless of which environment you point it at, Supabase-backed services in Rif
 1. Read `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the environment.
 2. Perform their reads/writes against that target (for example: the ingest pipeline runs fetch → enrich → link → upsert).
 3. Only change **data** – schema changes still come from migrations under `supabase/migrations/`.
-

@@ -22,4 +22,3 @@ This worker is intended to run on a schedule in production (for example, every f
 - Pipeline helpers: `packages/ingest-worker/src/pipeline/*`
 
 To run ingestion locally, see [Running locally](running-locally.md).
-
