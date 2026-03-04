@@ -151,7 +151,6 @@ function parseCardEntry(entry: string): { id: string; quantity: number } {
 /** Map an error to an HTTP status code. */
 function classifyStatus(error: unknown): 400 | 404 | 500 {
   if (error instanceof NotFoundError) return 404;
-  if (error instanceof Error) return 400;
   return 500;
 }
 
@@ -680,6 +679,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
       response: {
         200: SimplifiedDeckResponseSchema,
         400: ErrorSchema,
+        404: ErrorSchema,
         500: ErrorSchema,
       },
       detail: {
