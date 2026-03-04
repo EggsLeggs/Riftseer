@@ -630,9 +630,9 @@ const v1 = new Elysia({ prefix: "/api/v1" })
     },
   )
 
-  // ── GET /decks/u-:shortForm ─────────────────────────────────────────────────
+  // ── GET /decks/u/:shortForm ─────────────────────────────────────────────────
   .get(
-    "/decks/u-:shortForm",
+    "/decks/u/:shortForm",
     async ({ params, set }) => {
       const originalShortForm = params.shortForm;
       try {
@@ -657,9 +657,9 @@ const v1 = new Elysia({ prefix: "/api/v1" })
     },
   )
 
-  // POST /decks/u-:shortForm ─────────────────────────────────────────────────
+  // POST /decks/u/:shortForm ─────────────────────────────────────────────────
   .post(
-    "/decks/u-:shortForm",
+    "/decks/u/:shortForm",
     async ({ body, params, set }) => {
       const originalShortForm = params.shortForm;
       try {
@@ -728,7 +728,6 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         }
         return { shortForm, deck: simplifiedDeckToSchema(deck) };
       } catch (error) {
-        console.log(error)
         set.status = 400;
         return { error: "Invalid deck short form or card IDs", code: "INVALID_INPUT" };
       }
