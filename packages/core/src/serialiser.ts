@@ -92,9 +92,13 @@ export class DeckSerializerV1 implements DeckSerializer {
         // Parse and encode "cardId:qty" sections
         const encodeQtySection = (entries: string[]): Array<[Uint8Array, number]> =>
             entries.map(entry => {
-                const colon = entry.lastIndexOf(":");
+                        const colon = entry.lastIndexOf(":");
                 if (colon === -1) throw new Error(`Malformed deck entry (expected "id:qty"): "${entry}"`);
-                return [encodeId(entry.slice(0, colon)), parseInt(entry.slice(colon + 1), 10)];
+                const qtyStr = entry.slice(colon + 1);
+                if (!/^\d+$/.test(qtyStr)) throw new Error(`Invalid quantity in deck entry: "${entry}"`);
+                const qty = parseInt(qtyStr, 10);
+                if (qty < 1 || qty > 255) throw new Error(`Invalid quantity ${qty}: must be between 1 and 255`);
+                return [encodeId(entry.slice(0, colon)), qty];
             });
 
         const mainEnc = encodeQtySection(deck.mainDeck);
