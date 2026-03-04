@@ -21,5 +21,5 @@ This worker is intended to run on a schedule in production (for example, every f
 - Data sources: `packages/ingest-worker/src/sources/*`
 - Pipeline helpers: `packages/ingest-worker/src/pipeline/*`
 
-If you just want to **run an ingest locally**, see `running-locally.md`.
+To run ingestion locally, see [Running locally](running-locally.md).
 

@@ -34,7 +34,7 @@ Typical setup (see the root `README.md` for details):
 
 Regardless of which environment you point it at, Supabase-backed services in RiftSeer (API, ingest worker, future microservices):
 
-1. Reads `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the environment.
+1. Read `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the environment.
 2. Perform their reads/writes against that target (for example: the ingest pipeline runs fetch → enrich → link → upsert).
 3. Only change **data** – schema changes still come from migrations under `supabase/migrations/`.
 

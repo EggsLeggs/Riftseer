@@ -28,7 +28,7 @@ The ingest worker expects these environment variables at runtime:
 - `SUPABASE_SERVICE_ROLE_KEY` – service-role key with insert/update permissions
 - `INGEST_SECRET` (optional) – if set, HTTP requests to `/ingest` must include `Authorization: Bearer <INGEST_SECRET>`
 
-When running via `wrangler dev`, you can provide these using `.dev.vars` or `wrangler secret` as usual.
+For local development with `wrangler dev`, set these in `packages/ingest-worker/.dev.vars` (never commit this file). For production deployment, store them with `wrangler secret put SUPABASE_URL` and `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Running wrangler dev
 
