@@ -86,8 +86,7 @@ export class Deck {
     }
 
     if (cardSupertype === "Champion" 
-        && this.chosenChampion === null 
-        && this.legend?.related_champions?.some(c => c.id === card.id)) {
+        && this.chosenChampion === null) { // TODO: add legend-champion validation once data is sanitised
       this.chosenChampion = card;
       quantity -= 1;
         if (quantity <= 0) {
