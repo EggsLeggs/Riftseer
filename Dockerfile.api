@@ -11,6 +11,7 @@ COPY packages/api/package.json ./packages/api/package.json
 COPY packages/frontend/package.json ./packages/frontend/package.json
 COPY packages/discord-bot/package.json ./packages/discord-bot/package.json
 COPY packages/ingest-worker/package.json ./packages/ingest-worker/package.json
+COPY docs/package.json ./docs/package.json
 RUN bun install --frozen-lockfile
 
 # Copy source
