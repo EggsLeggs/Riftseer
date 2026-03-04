@@ -15,7 +15,6 @@ At a high level, you will:
 ## Prerequisites
 
 - Bun (≥ 1.2)
-- Node.js (≥ 20) (for Docusaurus and some tooling)
 - Docker (optional but recommended if you want a local Supabase stack)
 
 You should also have the root `.env` file configured as described in the main `README.md` / `CLAUDE.md`, including the Supabase URL and service role key if you are using Supabase as the backing store.
@@ -68,4 +67,3 @@ curl -X POST \
 ```
 
 The worker will fetch the latest card data from RiftCodex, run the ingest pipeline, and upsert into Supabase using the configured credentials.
-
