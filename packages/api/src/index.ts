@@ -140,12 +140,12 @@ class NotFoundError extends Error {
 /** Validate and parse an "id:qty" entry from the request body. */
 function parseCardEntry(entry: string): { id: string; quantity: number } {
   const colon = entry.lastIndexOf(":");
-  if (colon <= 0) throw new Error(`Invalid entry format (expected "id:qty"): "${entry}"`);
+  if (colon <= 0) throw new BadRequestError(`Invalid entry format (expected "id:qty"): "${entry}"`);
   const id = entry.slice(0, colon);
   const qtyStr = entry.slice(colon + 1);
-  if (!/^\d+$/.test(qtyStr)) throw new Error(`Invalid quantity in entry: "${entry}"`);
+  if (!/^\d+$/.test(qtyStr)) throw new BadRequestError(`Invalid quantity in entry: "${entry}"`);
   const quantity = parseInt(qtyStr, 10);
-  if (quantity < 1) throw new Error(`Quantity must be at least 1 in entry: "${entry}"`);
+  if (quantity < 1 || quantity > 255) throw new BadRequestError(`Quantity must be between 1 and 255 in entry: "${entry}"`);
   return { id, quantity };
 }
 

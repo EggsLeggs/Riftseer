@@ -162,20 +162,20 @@ export class DeckSerializerV1 implements DeckSerializer {
         try {
             buf = xorTransform(base64urlDecode(serialized));
         } catch {
-            throw new Error("Invalid deck string: could not decode");
+            throw new BadRequestError("Invalid deck string: could not decode");
         }
 
         let pos = 0;
         const dec = new TextDecoder();
 
         const readByte = (): number => {
-            if (pos >= buf.length) throw new Error("Invalid deck string: unexpected end of data");
+            if (pos >= buf.length) throw new BadRequestError("Invalid deck string: unexpected end of data");
             return buf[pos++];
         };
 
         const readStr = (): string => {
             const len = readByte();
-            if (pos + len > buf.length) throw new Error("Invalid deck string: unexpected end of data");
+            if (pos + len > buf.length) throw new BadRequestError("Invalid deck string: unexpected end of data");
             const str = dec.decode(buf.slice(pos, pos + len));
             pos += len;
             return str;
@@ -183,7 +183,7 @@ export class DeckSerializerV1 implements DeckSerializer {
 
         const version = readByte();
         if (version !== FORMAT_VERSION) {
-            throw new Error(`Unsupported deck format version: ${version}`);
+            throw new BadRequestError(`Unsupported deck format version: ${version}`);
         }
 
         const flags = readByte();
@@ -215,7 +215,7 @@ export class DeckSerializerV1 implements DeckSerializer {
         const runes = readQtySection("runes");
         const battlegrounds = readBareSection();
 
-        if (pos !== buf.length) throw new Error("Invalid deck string: trailing bytes after decoding");
+        if (pos !== buf.length) throw new BadRequestError("Invalid deck string: trailing bytes after decoding");
 
         return { id: null, legendId, chosenChampionId, mainDeck, sideboard, runes, battlegrounds };
     }
