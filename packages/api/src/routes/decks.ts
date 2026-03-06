@@ -1,6 +1,5 @@
-import { Elysia } from "elysia";
-import { logger, BadRequestError, type SimplifiedDeck } from "@riftseer/core";
-import type { SimplifiedDeckProviderImpl } from "@riftseer/core";
+import { Elysia, t } from "elysia";
+import { logger, BadRequestError, type SimplifiedDeck, type SimplifiedDeckProvider } from "@riftseer/core";
 import {
   ErrorSchema,
   SimplifiedDeckRequestSchema,
@@ -46,7 +45,7 @@ function simplifiedDeckToSchema(deck: SimplifiedDeck): any {
   };
 }
 
-export function decksRoutes(deckProvider: SimplifiedDeckProviderImpl) {
+export function decksRoutes(deckProvider: SimplifiedDeckProvider) {
   return new Elysia()
     // ── GET /decks/u/:shortForm ───────────────────────────────────────────────
     .get(
@@ -66,7 +65,7 @@ export function decksRoutes(deckProvider: SimplifiedDeckProviderImpl) {
         }
       },
       {
-        params: { shortForm: "string" } as any,
+        params: t.Object({ shortForm: t.String({ description: "Deck short form string" }) }),
         response: {
           200: SimplifiedDeckResponseSchema,
           400: ErrorSchema,
@@ -116,7 +115,7 @@ export function decksRoutes(deckProvider: SimplifiedDeckProviderImpl) {
         }
       },
       {
-        params: { shortForm: "string" } as any,
+        params: t.Object({ shortForm: t.String({ description: "Deck short form string" }) }),
         body: SimplifiedDeckRequestSchema,
         response: {
           200: SimplifiedDeckResponseSchema,
