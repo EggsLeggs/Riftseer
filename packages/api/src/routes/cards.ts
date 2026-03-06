@@ -1,0 +1,265 @@
+import { Elysia, t } from "elysia";
+import { parseCardRequests, normalizeCardName, type CardDataProvider, type Card } from "@riftseer/core";
+import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
+import { loadTCGData, getTCGEntry } from "../services/tcgplayer";
+
+/** Scryfall-style copyable text: name, type line, then rules text. */
+function cardCopyableText(card: Card): string {
+  const lines: string[] = [card.name];
+  const typePart = [card.classification?.type, card.classification?.supertype]
+    .filter(Boolean)
+    .join(" — ");
+  if (typePart) lines.push(typePart);
+  if (card.text?.plain?.trim()) {
+    if (lines.length > 1) lines.push("");
+    lines.push(card.text.plain.trim());
+  }
+  return lines.join("\n");
+}
+
+export function cardsRoutes(cardProvider: CardDataProvider) {
+  return new Elysia()
+    // ── GET /cards/random ─────────────────────────────────────────────────────
+    .get(
+      "/cards/random",
+      async ({ set }) => {
+        const card = await cardProvider.getRandomCard();
+        if (!card) {
+          set.status = 404;
+          return { error: "No cards available", code: "NOT_FOUND" };
+        }
+        return card;
+      },
+      {
+        response: {
+          200: CardSchema,
+          404: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "Get a random card",
+          description: "Returns a single random card from the index.",
+        },
+      },
+    )
+
+    // ── GET /cards/:id ────────────────────────────────────────────────────────
+    .get(
+      "/cards/:id",
+      async ({ params, set }) => {
+        const card = await cardProvider.getCardById(params.id);
+        if (!card) {
+          set.status = 404;
+          return { error: "Card not found", code: "NOT_FOUND" };
+        }
+        return card;
+      },
+      {
+        params: t.Object({ id: t.String({ description: "Card UUID" }) }),
+        response: {
+          200: CardSchema,
+          404: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "Get card by ID",
+          description: "Returns a single card by its stable UUID.",
+        },
+      },
+    )
+
+    // ── GET /cards/:id/text ───────────────────────────────────────────────────
+    .get(
+      "/cards/:id/text",
+      async ({ params }) => {
+        const card = await cardProvider.getCardById(params.id);
+        if (!card) {
+          return new Response(
+            JSON.stringify({ error: "Card not found", code: "NOT_FOUND" }),
+            { status: 404, headers: { "content-type": "application/json" } },
+          );
+        }
+        return new Response(cardCopyableText(card), {
+          headers: { "content-type": "text/plain; charset=utf-8" },
+        });
+      },
+      {
+        params: t.Object({ id: t.String({ description: "Card UUID" }) }),
+        response: {
+          200: t.String({ description: "Copy-pasteable plain-text card summary (text/plain; charset=utf-8)" }),
+          404: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "Get card as plain text",
+          description: "Returns copy-pasteable text (name, type line, rules).",
+        },
+      },
+    )
+
+    // ── GET /cards ────────────────────────────────────────────────────────────
+    .get(
+      "/cards",
+      async ({ query, set }) => {
+        const parsedLimit = parseInt(query.limit ?? "", 10);
+        const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
+
+        // Browse set: GET /cards?set=OGN — return all cards in set, ordered by collector number
+        if (query.set && !query.name?.trim()) {
+          const cards = await cardProvider.getCardsBySet(query.set, {
+            limit: limit ?? 2000,
+          });
+          return { count: cards.length, cards };
+        }
+
+        if (!query.name?.trim()) {
+          set.status = 400;
+          return {
+            error:
+              "Query parameter `name` is required (or use `set` alone to list cards in a set)",
+            code: "MISSING_PARAM",
+          };
+        }
+
+        const cards = await cardProvider.searchByName(query.name, {
+          set: query.set,
+          collector: query.collector,
+          fuzzy: query.fuzzy === "1" || query.fuzzy === "true",
+          limit: limit ?? 10,
+        });
+
+        return { count: cards.length, cards };
+      },
+      {
+        query: t.Object({
+          name: t.Optional(t.String({ description: "Card name to search for" })),
+          set: t.Optional(t.String({ description: "Set code filter, e.g. OGN" })),
+          collector: t.Optional(t.String({ description: "Collector number filter" })),
+          fuzzy: t.Optional(t.String({ description: "Set to '1' or 'true' to enable fuzzy matching" })),
+          limit: t.Optional(t.String({ description: "Max results (default 10)" })),
+        }),
+        response: {
+          200: t.Object({ count: t.Number(), cards: t.Array(CardSchema) }),
+          400: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "Search cards by name",
+          description:
+            "Search for cards by name with optional set/collector filters. " +
+            "Supports fuzzy matching for typo tolerance.",
+        },
+      },
+    )
+
+    // ── POST /resolve ─────────────────────────────────────────────────────────
+    .post(
+      "/resolve",
+      async ({ body, set }) => {
+        if (body.requests.length > 20) {
+          set.status = 400;
+          return { error: "Too many requests: maximum is 20", code: "TOO_MANY_REQUESTS" };
+        }
+        const requests = body.requests.map((r: string) => {
+          const parsed = parseCardRequests(`[[${r}]]`);
+          return parsed[0] ?? { raw: r, name: r };
+        });
+
+        const results = await Promise.all(
+          requests.map((req) => cardProvider.resolveRequest(req)),
+        );
+
+        return { count: results.length, results };
+      },
+      {
+        body: t.Object({
+          requests: t.Array(t.String(), {
+            description:
+              "Array of card name strings (plain name OR [[Name|SET]] format, up to 20)."
+          }),
+        }),
+        response: {
+          200: t.Object({ count: t.Number(), results: t.Array(ResolvedCardSchema) }),
+          400: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "Batch resolve card requests",
+          description:
+            "Resolve up to 20 card name strings to their best matching cards. " +
+            "Accepts plain names or [[Name|SET-123]] format. " +
+            "Used by the Reddit bot and can be used by the frontend for batch lookups.",
+          requestBody: {
+            content: {
+              "application/json": {
+                example: { requests: ["Sun Disc", "Stalwart Poro", "NonExistentCard"] },
+              },
+            },
+          },
+        },
+      },
+    )
+
+    // ── GET /prices/tcgplayer ─────────────────────────────────────────────────
+    .get(
+      "/prices/tcgplayer",
+      async ({ query, set }) => {
+        if (!query.name?.trim()) {
+          set.status = 400;
+          return { error: "Query parameter `name` is required", code: "MISSING_PARAM" };
+        }
+        await loadTCGData();
+        const entry = getTCGEntry(normalizeCardName(query.name.trim()));
+        return {
+          usdMarket: entry?.usdMarket ?? null,
+          usdLow: entry?.usdLow ?? null,
+          url: entry?.url ?? null,
+        };
+      },
+      {
+        query: t.Object({
+          name: t.String({ description: "Card name to look up on TCGPlayer" }),
+        }),
+        response: {
+          200: t.Object({
+            usdMarket: t.Nullable(t.Number()),
+            usdLow: t.Nullable(t.Number()),
+            url: t.Nullable(t.String()),
+          }),
+          400: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "TCGPlayer USD price",
+          description:
+            "Returns market/low USD prices and direct product URL for a card by name. Data from tcgcsv.com, cached for 1 hour.",
+        },
+      },
+    )
+
+    // ── GET /sets ─────────────────────────────────────────────────────────────
+    .get(
+      "/sets",
+      async () => {
+        const sets = await cardProvider.getSets();
+        return { count: sets.length, sets };
+      },
+      {
+        response: t.Object({
+          count: t.Number(),
+          sets: t.Array(
+            t.Object({
+              setCode: t.String(),
+              setName: t.String(),
+              cardCount: t.Number(),
+            }),
+          ),
+        }),
+        detail: {
+          tags: ["Cards"],
+          summary: "List all sets",
+          description: "Returns all known card sets with card counts.",
+        },
+      },
+    );
+}
