@@ -29,6 +29,8 @@ import {
   normalizeCardName,
   type CardDataProvider,
   type Card,
+  SimplifiedDeck,
+  BadRequestError,
 } from "@riftseer/core";
 // ─── TCGPlayer price cache (via tcgcsv.com) ────────────────────────────────────
 
@@ -115,13 +117,52 @@ async function loadTCGData(): Promise<void> {
   await tcgDataLoadPromise;
 }
 
-// ─── Provider singleton ────────────────────────────────────────────────────────
+// ───  Card Provider singleton ─────────────────────────────────────────────────
 
-const provider: CardDataProvider = createProvider();
-await provider.warmup();
+const cardProvider: CardDataProvider = createProvider();
+await cardProvider.warmup();
 loadTCGData(); // fire-and-forget
 
 const startTime = Date.now();
+
+// ─── Deck provider singleton ─────────────────────────────────────────────────
+
+import { DeckSerializerV1 } from "@riftseer/core";
+import { SimplifiedDeckProviderImpl } from "@riftseer/core";
+
+class NotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
+
+/** Validate and parse an "id:qty" entry from the request body. */
+function parseCardEntry(entry: string): { id: string; quantity: number } {
+  const colon = entry.lastIndexOf(":");
+  if (colon <= 0) throw new BadRequestError(`Invalid entry format (expected "id:qty"): "${entry}"`);
+  const id = entry.slice(0, colon);
+  const qtyStr = entry.slice(colon + 1);
+  if (!/^\d+$/.test(qtyStr)) throw new BadRequestError(`Invalid quantity in entry: "${entry}"`);
+  const quantity = parseInt(qtyStr, 10);
+  if (quantity < 1 || quantity > 255) throw new BadRequestError(`Quantity must be between 1 and 255 in entry: "${entry}"`);
+  return { id, quantity };
+}
+
+/** Map an error to an HTTP status code. */
+function classifyStatus(error: unknown): 400 | 404 | 500 {
+  if (error instanceof BadRequestError) return 400;
+  if (error instanceof NotFoundError) return 404;
+  return 500;
+}
+
+const deckProvider = new SimplifiedDeckProviderImpl(
+  new DeckSerializerV1(), async (id: string) => {
+    const card = await cardProvider.getCardById(id);
+    if (!card) throw new NotFoundError(`Card not found: ${id}`);
+    return card;
+  }
+);
 
 // ─── Shared schemas (referenced in route detail for OpenAPI) ──────────────────
 
@@ -233,6 +274,35 @@ const ErrorSchema = t.Object({
   code: t.String(),
 });
 
+// ─── Simplified Deck Schemas ──────────────────────────────────────────────────
+
+const SimplifiedDeckSchema = t.Object({
+  legend: t.Nullable(t.String({ description: "Legend card ID" })),
+  mainDeck: t.Array(t.String({ description: "Card ID and quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" })),
+  chosenChampionId: t.Nullable(t.String({ description: "Champion card ID" })),
+  sideboard: t.Array(t.String({ description: "Card ID and quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" })),
+  runes: t.Array(t.String({ description: "Card ID and quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" })),
+  battlegrounds: t.Array(t.String({ description: "Battleground card ID" })),
+}, {description: "Simplified deck format with card IDs and quantities"});
+
+const SimplifiedDeckRequestSchema = t.Object({
+  cardsToAdd: t.Optional(
+    t.Array(
+      t.String({ description: "Cards to add to the shortform deck. Format: ID:quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" }),
+    ),
+  ),
+  cardsToRemove: t.Optional(
+    t.Array(
+      t.String({ description: "Cards to remove from the shortform deck. Format: ID:quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" }),
+    ),
+  )
+});
+
+const SimplifiedDeckResponseSchema = t.Object({
+  deck: SimplifiedDeckSchema,
+  shortForm: t.String({ description: "Short form string for sharing, e.g. 'u:abc123'" }),
+});
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Scryfall-style copyable text: name, type line, then rules text. */
@@ -247,6 +317,18 @@ function cardCopyableText(card: Card): string {
     lines.push(card.text.plain.trim());
   }
   return lines.join("\n");
+}
+
+/** Transformation from a SimplifiedDeck object to an object compliant with SimplifiedDeckSchema */
+function simplifiedDeckToSchema(deck: SimplifiedDeck): any {
+  return {
+    legend: deck.legendId,
+    mainDeck: deck.mainDeck,
+    chosenChampionId: deck.chosenChampionId,
+    sideboard: deck.sideboard,
+    runes: deck.runes,
+    battlegrounds: deck.battlegrounds,
+  };
 }
 
 // ─── V1 routes ────────────────────────────────────────────────────────────────
@@ -270,13 +352,13 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/meta",
     () => {
-      const { lastRefresh, cardCount } = provider.getStats();
+      const { lastRefresh, cardCount } = cardProvider.getStats();
       const cacheAgeSeconds = lastRefresh
         ? Math.floor(Date.now() / 1000 - lastRefresh)
         : null;
 
       return {
-        provider: provider.sourceName,
+        provider: cardProvider.sourceName,
         cardCount,
         lastRefresh: lastRefresh
           ? new Date(lastRefresh * 1000).toISOString()
@@ -306,7 +388,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/cards/random",
     async ({ set }) => {
-      const card = await provider.getRandomCard();
+      const card = await cardProvider.getRandomCard();
       if (!card) {
         set.status = 404;
         return { error: "No cards available", code: "NOT_FOUND" };
@@ -330,7 +412,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/cards/:id",
     async ({ params, set }) => {
-      const card = await provider.getCardById(params.id);
+      const card = await cardProvider.getCardById(params.id);
       if (!card) {
         set.status = 404;
         return { error: "Card not found", code: "NOT_FOUND" };
@@ -355,7 +437,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/cards/:id/text",
     async ({ params }) => {
-      const card = await provider.getCardById(params.id);
+      const card = await cardProvider.getCardById(params.id);
       if (!card) {
         return new Response(
           JSON.stringify({ error: "Card not found", code: "NOT_FOUND" }),
@@ -389,7 +471,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
 
       // Browse set: GET /cards?set=OGN — return all cards in set, ordered by collector number
       if (query.set && !query.name?.trim()) {
-        const cards = await provider.getCardsBySet(query.set, {
+        const cards = await cardProvider.getCardsBySet(query.set, {
           limit: limit ?? 2000,
         });
         return {
@@ -407,7 +489,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
         };
       }
 
-      const cards = await provider.searchByName(query.name, {
+      const cards = await cardProvider.searchByName(query.name, {
         set: query.set,
         collector: query.collector,
         fuzzy: query.fuzzy === "1" || query.fuzzy === "true",
@@ -470,7 +552,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
       });
 
       const results = await Promise.all(
-        requests.map((req) => provider.resolveRequest(req)),
+        requests.map((req) => cardProvider.resolveRequest(req)),
       );
 
       return {
@@ -554,7 +636,7 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .get(
     "/sets",
     async () => {
-      const sets = await provider.getSets();
+      const sets = await cardProvider.getSets();
       return { count: sets.length, sets };
     },
     {
@@ -575,6 +657,137 @@ const v1 = new Elysia({ prefix: "/api/v1" })
       },
     },
   )
+
+  // ── GET /decks/u/:shortForm ─────────────────────────────────────────────────
+  .get(
+    "/decks/u/:shortForm",
+    async ({ params, set }) => {
+      const originalShortForm = params.shortForm;
+      try {
+        const { deck, shortForm } = await deckProvider.getDeckFromShortForm(originalShortForm);
+        return { shortForm, deck: simplifiedDeckToSchema(deck) };
+      } catch (error) {
+        const status = classifyStatus(error);
+        set.status = status;
+        if (status === 500) {
+          logger.error("Unexpected error in GET /decks/u/:shortForm", { error });
+          return { error: "Internal server error", code: "INTERNAL_ERROR" };
+        }
+        return { error: "Invalid deck short form", code: "INVALID_SHORT_FORM" };
+      }
+    },
+    {
+      params: t.Object({ shortForm: t.String() }),
+      response: {
+        200: SimplifiedDeckResponseSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      detail: {
+        tags: ["Decks"],
+        summary: "Get deck from short form",
+        description: "Decode a short form deck string back to full deck data.",
+      },
+    },
+  )
+
+  // POST /decks/u/:shortForm ─────────────────────────────────────────────────
+  .post(
+    "/decks/u/:shortForm",
+    async ({ body, params, set }) => {
+      const originalShortForm = params.shortForm;
+      if( !body.cardsToAdd && !body.cardsToRemove ) {
+        set.status = 400;
+        return { error: "No cards to add or remove specified", code: "MISSING_CARDS" };
+      }
+      try {
+        let {deck, shortForm} = await deckProvider.getDeckFromShortForm(originalShortForm);
+        if( body.cardsToAdd ) {
+          const toAdd = body.cardsToAdd.map(parseCardEntry);
+          const {deck: updatedDeck, shortForm: updatedShortForm} = await deckProvider.addCards(toAdd, shortForm);
+          deck = updatedDeck;
+          shortForm = updatedShortForm;
+        }
+        if( body.cardsToRemove ) {
+          const toRemove = body.cardsToRemove.map(parseCardEntry);
+          const {deck: updatedDeck, shortForm: updatedShortForm} = await deckProvider.removeCards(toRemove, shortForm);
+          deck = updatedDeck;
+          shortForm = updatedShortForm;
+        }
+        return { shortForm, deck: simplifiedDeckToSchema(deck) };
+      } catch (error) {
+        const status = classifyStatus(error);
+        set.status = status;
+        if (status === 500) {
+          logger.error("Unexpected error in POST /decks/u/:shortForm", { error });
+          return { error: "Internal server error", code: "INTERNAL_ERROR" };
+        }
+        if (status === 404) return { error: (error as Error).message, code: "NOT_FOUND" };
+        return { error: (error as Error).message, code: "INVALID_INPUT" };
+      }
+    },
+    {
+      params: t.Object({ shortForm: t.String() }),
+      body: SimplifiedDeckRequestSchema,
+      response: {
+        200: SimplifiedDeckResponseSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      detail: {
+        tags: ["Decks"],
+        summary: "Update deck cards in short form",
+        description:
+          "Decode a short form deck string, replace the main deck cards with the provided ones, and return the updated short form and full deck data. Used for sharing decks with custom card lists.",
+      },
+    },
+  )
+
+  // POST /decks/u ─────────────────────────────────────────────────
+  .post(
+    "/decks/u",
+    async ({ body, set }) => {
+      if( !body.cardsToAdd ) {
+        set.status = 400;
+        return { error: "New deck request has missing card list.", code: "MISSING_CARDS" };
+      }
+      if( body.cardsToRemove ) {
+        set.status = 400;
+        return { error: "New deck request cannot have cards to remove.", code: "INVALID_INPUT" };
+      }
+      try {
+        const toAdd = body.cardsToAdd.map(parseCardEntry);
+        const {deck, shortForm} = await deckProvider.addCards(toAdd, undefined);
+        return { shortForm, deck: simplifiedDeckToSchema(deck) };
+      } catch (error) {
+        const status = classifyStatus(error);
+        set.status = status;
+        if (status === 500) {
+          logger.error("Unexpected error in POST /decks/u", { error });
+          return { error: "Internal server error", code: "INTERNAL_ERROR" };
+        }
+        if (status === 404) return { error: (error as Error).message, code: "NOT_FOUND" };
+        return { error: (error as Error).message, code: "INVALID_INPUT" };
+      }
+    },
+    {
+      body: SimplifiedDeckRequestSchema,
+      response: {
+        200: SimplifiedDeckResponseSchema,
+        400: ErrorSchema,
+        404: ErrorSchema,
+        500: ErrorSchema,
+      },
+      detail: {
+        tags: ["Decks"],
+        summary: "Create new shortform deck with specified cards",
+        description:
+          "Create a new short form deck string from a provided list of card IDs and quantities. Used for sharing decks with custom card lists without needing an initial short form.",
+      },
+    },
+  );
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
@@ -622,7 +835,7 @@ const app = new Elysia()
 const port = process.env.PORT ?? process.env.API_PORT ?? "3000";
 logger.info("RiftSeer API started", {
   port,
-  provider: provider.sourceName,
+  provider: cardProvider.sourceName,
   swagger: `http://localhost:${port}/api/swagger`,
 });
 
