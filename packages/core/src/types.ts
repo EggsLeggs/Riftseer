@@ -207,9 +207,11 @@ export interface SimplifiedDeck {
     id: string | null;
     legendId: string | null;
     chosenChampionId: string | null;
-    /** The following 3 arrays contain strings of form "cardId:quantity" */
+    /** Contains strings of form "cardId:quantity" */
     mainDeck: string[];
+    /** Contains strings of form "cardId:quantity" */
     sideboard: string[];
+    /** Contains strings of form "cardId:quantity" */
     runes: string[];
     /** This one just contains the ids since battlegrounds are unique */
     battlegrounds: string[];
