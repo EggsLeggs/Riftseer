@@ -25,14 +25,14 @@ export class Deck {
    */
   addCard(card: Card, quantity: number = 1) {
     if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
-    const supertype = card.classification?.supertype;
+    const type = card.classification?.type;
     if (card.classification?.type === "Legend") {
       if (quantity !== 1) throw new Error("Legend cards must be added with quantity 1");
       this.addLegend(card);
-    } else if (supertype === "Battleground") {
-      if (quantity !== 1) throw new Error("Battleground cards must be added with quantity 1");
+    } else if (type === "Battlefield") {
+      if (quantity !== 1) throw new Error("Battlefield cards must be added with quantity 1");
       this.addBattleground(card);
-    } else if (supertype === "Rune") {
+    } else if (type === "Rune") {
       this.addRune(card, quantity);
     } else {
       const mainAddCount = Math.min(quantity, 40 - this.getTotalMainCardCount());
@@ -71,7 +71,7 @@ export class Deck {
     if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
     const cardType = card.classification?.type;
     const cardSupertype = card.classification?.supertype;
-    if (cardType === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
+    if (cardType === "Legend" || cardType === "Battlefield" || cardType === "Rune") {
       throw new Error(`${card.name} can not be added into the main deck or sideboard.`);
     }
 
@@ -127,8 +127,8 @@ export class Deck {
    * Enforces a maximum of 3 unique battlegrounds and rejects duplicates.
    */
   addBattleground(card: Card) {
-    if (card.classification?.supertype !== "Battleground") {
-      throw new Error(`${card.name} is not a Battleground and cannot be added as a battleground.`);
+    if (card.classification?.type !== "Battlefield") {
+      throw new Error(`${card.name} is not a Battlefield and cannot be added as a battleground.`);
     }
     if (this.battlegrounds.length === 3) {
       throw new Error("Cannot have more than 3 battlegrounds in a deck.");
@@ -146,7 +146,7 @@ export class Deck {
    */
   addRune(card: Card, quantity: number = 1) {
     if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
-    if (card.classification?.supertype !== "Rune") {
+    if (card.classification?.type !== "Rune") {
       throw new Error(`${card.name} is not a Rune and cannot be added as a rune.`);
     }
 
@@ -190,12 +190,11 @@ export class Deck {
     }
 
     const type = card.classification?.type;
-    const supertype = card.classification?.supertype;
     if (type === "Legend") {
       this.removeLegend(cardId);
-    } else if (supertype === "Battleground") {
+    } else if (type === "Battlefield") {
       this.removeBattleground(cardId);
-    } else if (supertype === "Rune") {
+    } else if (type === "Rune") {
       this.removeRune(cardId, quantity);
     } else {
       this.removeMainCard(cardId, quantity);
@@ -437,7 +436,7 @@ export class Deck {
     const assertMainOrSideCard = (card: Card) => {
       const cardType = card.classification?.type;
       const cardSupertype = card.classification?.supertype;
-      if (cardType === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
+      if (cardType === "Legend" || cardType === "Battlefield" || cardType === "Rune") {
         throw new BadRequestError(`${card.name} can not be added into the main deck or sideboard.`);
       }
 
@@ -492,7 +491,7 @@ export class Deck {
         throw new BadRequestError("Cannot add runes before a legend is chosen.");
       }
       for (const { card } of this.runes) {
-        if (card.classification?.supertype !== "Rune") {
+        if (card.classification?.type !== "Rune") {
           throw new BadRequestError(`${card.name} is not a Rune and cannot be added as a rune.`);
         }
         const cardDomains = card.classification?.domains || [];
@@ -511,8 +510,8 @@ export class Deck {
 
     const seenBg = new Set<string>();
     for (const card of this.battlegrounds) {
-      if (card.classification?.supertype !== "Battleground") {
-        throw new BadRequestError(`${card.name} is not a Battleground and cannot be added as a battleground.`);
+      if (card.classification?.type !== "Battlefield") {
+        throw new BadRequestError(`${card.name} is not a Battlefield and cannot be added as a battleground.`);
       }
       if (seenBg.has(card.id)) {
         throw new BadRequestError(`${card.name} is already in the deck.`);

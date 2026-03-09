@@ -17,3 +17,4 @@ export type {
   CardSearchOptions,
   SimplifiedDeck,
 } from "@riftseer/types";
+export { CardType, CardSupertype, CardRarity, CardDomain } from "@riftseer/types";

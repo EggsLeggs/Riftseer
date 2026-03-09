@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { Deck, DeckIssue } from "../deck.ts";
 import { BadRequestError } from "../errors.ts";
-import { Card, RelatedCard, SimplifiedDeck } from "../types.ts";
+import { Card, CardDomain, CardSupertype, CardType, RelatedCard, SimplifiedDeck } from "../types.ts";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -22,44 +22,44 @@ function relatedCard(id: string, name: string): RelatedCard {
   return { object: "related_card", id, name, component: "champion" };
 }
 
-function makeLegend(id: string, domains: string[], relatedChampions: RelatedCard[] = []): Card {
+function makeLegend(id: string, domains: CardDomain[], relatedChampions: RelatedCard[] = []): Card {
   return makeCard({
     id,
     name: `Legend ${id}`,
-    classification: { type: "Legend", domains },
+    classification: { type: CardType.Legend, domains },
     related_champions: relatedChampions,
   });
 }
 
-function makeChampion(id: string, domains: string[]): Card {
+function makeChampion(id: string, domains: CardDomain[]): Card {
   return makeCard({
     id,
     name: `Champion ${id}`,
-    classification: { supertype: "Champion", domains },
+    classification: { type: CardType.Unit, supertype: CardSupertype.Champion, domains },
   });
 }
 
-function makeUnit(id: string, domains: string[] = []): Card {
+function makeUnit(id: string, domains: CardDomain[] = []): Card {
   return makeCard({
     id,
     name: `Unit ${id}`,
-    classification: { type: "Unit", domains },
+    classification: { type: CardType.Unit, domains },
   });
 }
 
-function makeBattleground(id: string): Card {
+function makeBattlefield(id: string): Card {
   return makeCard({
     id,
     name: `Battleground ${id}`,
-    classification: { supertype: "Battleground" },
+    classification: { type: CardType.Battlefield },
   });
 }
 
-function makeRune(id: string, domains: string[] = []): Card {
+function makeRune(id: string, domains: CardDomain[] = []): Card {
   return makeCard({
     id,
     name: `Rune ${id}`,
-    classification: { supertype: "Rune", domains },
+    classification: { type: CardType.Rune, domains },
   });
 }
 
@@ -76,19 +76,19 @@ describe("Deck", () => {
 
   describe("addLegend", () => {
     it("sets the legend when a valid legend card is provided", () => {
-      const legend = makeLegend("l1", ["Fury"]);
+      const legend = makeLegend("l1", [CardDomain.Fury]);
       deck.addLegend(legend);
       expect(deck.legend).toBe(legend);
     });
 
     it("throws when the card is not a legend", () => {
-      const unit = makeUnit("u1", ["Fury"]);
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       expect(() => deck.addLegend(unit)).toThrow("is not a legend");
     });
 
     it("throws when a legend has already been set", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      expect(() => deck.addLegend(makeLegend("l2", ["Fury"]))).toThrow("A legend has already been chosen");
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      expect(() => deck.addLegend(makeLegend("l2", [CardDomain.Fury]))).toThrow("A legend has already been chosen");
     });
   });
 
@@ -96,42 +96,42 @@ describe("Deck", () => {
 
   describe("addMainCard", () => {
     it("throws when no legend has been chosen", () => {
-      const unit = makeUnit("u1", ["Fury"]);
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       expect(() => deck.addMainCard(unit)).toThrow("Cannot add cards before a legend is chosen");
     });
 
     it("throws when trying to add a Legend card", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      expect(() => deck.addMainCard(makeLegend("l2", ["Fury"]))).toThrow("can not be added into the main deck");
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      expect(() => deck.addMainCard(makeLegend("l2", [CardDomain.Fury]))).toThrow("can not be added into the main deck");
     });
 
     it("throws when trying to add a Battleground card", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      expect(() => deck.addMainCard(makeBattleground("b1"))).toThrow("can not be added into the main deck");
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      expect(() => deck.addMainCard(makeBattlefield("b1"))).toThrow("can not be added into the main deck");
     });
 
     it("throws when trying to add a Rune card", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      expect(() => deck.addMainCard(makeRune("r1", ["Fury"]))).toThrow("can not be added into the main deck");
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      expect(() => deck.addMainCard(makeRune("r1", [CardDomain.Fury]))).toThrow("can not be added into the main deck");
     });
 
     it("throws when card domain is not covered by the legend", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const wrongDomain = makeUnit("u1", ["Arcane"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const wrongDomain = makeUnit("u1", [CardDomain.Calm]);
       expect(() => deck.addMainCard(wrongDomain)).toThrow("does not match all domains of the legend");
     });
 
     it("adds a card to the main deck", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const unit = makeUnit("u1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addMainCard(unit);
       expect(deck.cards).toHaveLength(1);
       expect(deck.cards[0]).toMatchObject({ card: unit, quantity: 1 });
     });
 
     it("increments quantity for duplicate cards", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const unit = makeUnit("u1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addMainCard(unit);
       deck.addMainCard(unit);
       expect(deck.cards).toHaveLength(1);
@@ -139,27 +139,27 @@ describe("Deck", () => {
     });
 
     it("throws when adding more than 3 copies of a card", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const unit = makeUnit("u1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addMainCard(unit, 3);
       expect(() => deck.addMainCard(unit)).toThrow("Cannot have more than 3 copies");
     });
 
     it("throws when the main deck would exceed 40 cards", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       // Add 40 unique cards (3 + 3 + ... then fill up)
       for (let i = 0; i < 13; i++) {
-        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+        deck.addMainCard(makeUnit(`u${i}`, [CardDomain.Fury]), 3);
       }
       // 39 cards so far — one more should be fine
-      deck.addMainCard(makeUnit("u99", ["Fury"]));
+      deck.addMainCard(makeUnit("u99", [CardDomain.Fury]));
       // Now at 40; adding one more should fail
-      expect(() => deck.addMainCard(makeUnit("u100", ["Fury"]))).toThrow("Cannot have more than 40 total cards");
+      expect(() => deck.addMainCard(makeUnit("u100", [CardDomain.Fury]))).toThrow("Cannot have more than 40 total cards");
     });
 
     it("adds a card to the sideboard when toSideboard is true", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const unit = makeUnit("u1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addMainCard(unit, 1, true);
       expect(deck.cards).toHaveLength(0);
       expect(deck.sideboard).toHaveLength(1);
@@ -167,15 +167,15 @@ describe("Deck", () => {
     });
 
     it("allows card with no domains regardless of legend domains", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       const neutral = makeUnit("u1", []);
       expect(() => deck.addMainCard(neutral)).not.toThrow();
       expect(deck.cards).toHaveLength(1);
     });
 
     it("sets chosenChampion when the champion is in the legend's related_champions", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion);
       expect(deck.chosenChampion).toBe(champion);
@@ -183,9 +183,9 @@ describe("Deck", () => {
     });
 
     it("adds a second champion to the main deck if one is already chosen", () => {
-      const champion1 = makeChampion("c1", ["Fury"]);
-      const champion2 = makeChampion("c2", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [
+      const champion1 = makeChampion("c1", [CardDomain.Fury]);
+      const champion2 = makeChampion("c2", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [
         relatedCard("c1", "Champion c1"),
         relatedCard("c2", "Champion c2"),
       ]);
@@ -198,8 +198,8 @@ describe("Deck", () => {
 
     /**
     it("adds a champion to the main deck when it is not in the legend's related_champions", () => {
-      const champion = makeChampion("c_other", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c_other", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion);
       expect(deck.chosenChampion).toBeNull();
@@ -208,8 +208,8 @@ describe("Deck", () => {
     */
 
     it("sets chosenChampion and adds remaining copies to the main deck when quantity > 1", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion, 2);
       expect(deck.chosenChampion).toBe(champion);
@@ -218,8 +218,8 @@ describe("Deck", () => {
     });
 
     it("sets chosenChampion and adds remaining 2 copies to main deck when quantity is 3", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion, 3);
       expect(deck.chosenChampion).toBe(champion);
@@ -227,8 +227,8 @@ describe("Deck", () => {
     });
 
     it("counts chosenChampion slot toward the 3-copy limit on subsequent adds", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion); // 1 → chosenChampion
       deck.addMainCard(champion, 2); // 2 more → total 3, should be fine
@@ -238,16 +238,16 @@ describe("Deck", () => {
     });
 
     it("applies the 40-card cap to overflow copies after the champion slot is filled", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       // Fill the deck: chosenChampion (1) + 13×3 = 40 total
       deck.addMainCard(champion); // chosenChampion (1 main card count)
       for (let i = 0; i < 13; i++) {
-        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+        deck.addMainCard(makeUnit(`u${i}`, [CardDomain.Fury]), 3);
       }
       // At 40 cards — any overflow from a batch champion add that exceeds cap must fail
-      const champion2 = makeChampion("c2", ["Fury"]);
+      const champion2 = makeChampion("c2", [CardDomain.Fury]);
       // champion2 is not in related_champions, so it goes straight to main deck
       expect(() => deck.addMainCard(champion2)).toThrow("Cannot have more than 40 total cards");
     });
@@ -257,25 +257,25 @@ describe("Deck", () => {
 
   describe("addBattleground", () => {
     it("adds a valid battleground", () => {
-      const bg = makeBattleground("b1");
+      const bg = makeBattlefield("b1");
       deck.addBattleground(bg);
       expect(deck.battlegrounds).toHaveLength(1);
       expect(deck.battlegrounds[0]).toBe(bg);
     });
 
     it("throws when card is not a battleground", () => {
-      expect(() => deck.addBattleground(makeUnit("u1"))).toThrow("is not a Battleground");
+      expect(() => deck.addBattleground(makeUnit("u1"))).toThrow("is not a Battlefield");
     });
 
     it("throws when a fourth battleground is added", () => {
-      deck.addBattleground(makeBattleground("b1"));
-      deck.addBattleground(makeBattleground("b2"));
-      deck.addBattleground(makeBattleground("b3"));
-      expect(() => deck.addBattleground(makeBattleground("b4"))).toThrow("Cannot have more than 3 battlegrounds");
+      deck.addBattleground(makeBattlefield("b1"));
+      deck.addBattleground(makeBattlefield("b2"));
+      deck.addBattleground(makeBattlefield("b3"));
+      expect(() => deck.addBattleground(makeBattlefield("b4"))).toThrow("Cannot have more than 3 battlegrounds");
     });
 
     it("throws when the same battleground is added twice", () => {
-      const bg = makeBattleground("b1");
+      const bg = makeBattlefield("b1");
       deck.addBattleground(bg);
       expect(() => deck.addBattleground(bg)).toThrow("already in the deck");
     });
@@ -285,51 +285,51 @@ describe("Deck", () => {
 
   describe("addRune", () => {
     beforeEach(() => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
     });
 
     it("adds a valid rune", () => {
-      const rune = makeRune("r1", ["Fury"]);
+      const rune = makeRune("r1", [CardDomain.Fury]);
       deck.addRune(rune);
       expect(deck.runes).toHaveLength(1);
       expect(deck.runes[0]).toMatchObject({ card: rune, quantity: 1 });
     });
 
     it("throws when card is not a rune", () => {
-      expect(() => deck.addRune(makeUnit("u1", ["Fury"]))).toThrow("is not a Rune");
+      expect(() => deck.addRune(makeUnit("u1", [CardDomain.Fury]))).toThrow("is not a Rune");
     });
 
     it("throws when rune domain is not covered by the legend", () => {
-      expect(() => deck.addRune(makeRune("r1", ["Arcane"]))).toThrow("does not match all domains");
+      expect(() => deck.addRune(makeRune("r1", [CardDomain.Calm]))).toThrow("does not match all domains");
     });
 
     it("increments quantity for duplicate runes", () => {
-      const rune = makeRune("r1", ["Fury"]);
+      const rune = makeRune("r1", [CardDomain.Fury]);
       deck.addRune(rune, 3);
       deck.addRune(rune, 2);
       expect(deck.runes[0].quantity).toBe(5);
     });
 
     it("throws when the same rune already has 12 copies", () => {
-      const rune = makeRune("r1", ["Fury"]);
+      const rune = makeRune("r1", [CardDomain.Fury]);
       deck.addRune(rune, 12);
       expect(() => deck.addRune(rune)).toThrow("Cannot have more than 12 runes");
     });
 
     it("throws when runes across different cards would exceed 12 total", () => {
-      deck.addRune(makeRune("r1", ["Fury"]), 10);
-      expect(() => deck.addRune(makeRune("r2", ["Fury"]), 3)).toThrow("Cannot have more than 12 runes");
+      deck.addRune(makeRune("r1", [CardDomain.Fury]), 10);
+      expect(() => deck.addRune(makeRune("r2", [CardDomain.Fury]), 3)).toThrow("Cannot have more than 12 runes");
     });
 
     it("allows mixing rune cards up to exactly 12 total", () => {
-      deck.addRune(makeRune("r1", ["Fury"]), 6);
-      deck.addRune(makeRune("r2", ["Fury"]), 6);
+      deck.addRune(makeRune("r1", [CardDomain.Fury]), 6);
+      deck.addRune(makeRune("r2", [CardDomain.Fury]), 6);
       expect(deck.runes.reduce((sum, c) => sum + c.quantity, 0)).toBe(12);
     });
 
     it("throws when a single batch add would push multiple rune types past 12 total", () => {
-      deck.addRune(makeRune("r1", ["Fury"]), 12);
-      expect(() => deck.addRune(makeRune("r2", ["Fury"]), 1)).toThrow("Cannot have more than 12 runes");
+      deck.addRune(makeRune("r1", [CardDomain.Fury]), 12);
+      expect(() => deck.addRune(makeRune("r2", [CardDomain.Fury]), 1)).toThrow("Cannot have more than 12 runes");
     });
   });
 
@@ -337,13 +337,13 @@ describe("Deck", () => {
 
   describe("removeLegend", () => {
     it("removes the legend and clears all dependent state", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion);
-      deck.addMainCard(makeUnit("u1", ["Fury"]));
-      deck.addMainCard(makeUnit("u2", ["Fury"]), 1, true);
-      deck.addRune(makeRune("r1", ["Fury"]));
+      deck.addMainCard(makeUnit("u1", [CardDomain.Fury]));
+      deck.addMainCard(makeUnit("u2", [CardDomain.Fury]), 1, true);
+      deck.addRune(makeRune("r1", [CardDomain.Fury]));
 
       deck.removeLegend(legend.id);
 
@@ -359,7 +359,7 @@ describe("Deck", () => {
     });
 
     it("throws when a legend is set but the wrong id is provided", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       expect(() => deck.removeLegend("wrong-id")).toThrow("No legend to remove");
     });
   });
@@ -368,35 +368,35 @@ describe("Deck", () => {
 
   describe("removeMainCard", () => {
     beforeEach(() => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
     });
 
     it("decrements quantity when more than one copy exists", () => {
-      const unit = makeUnit("u1", ["Fury"]);
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addMainCard(unit, 2);
       deck.removeMainCard("u1");
       expect(deck.cards[0].quantity).toBe(1);
     });
 
     it("removes the entry entirely when the last copy is removed", () => {
-      deck.addMainCard(makeUnit("u1", ["Fury"]));
+      deck.addMainCard(makeUnit("u1", [CardDomain.Fury]));
       deck.removeMainCard("u1");
       expect(deck.cards).toHaveLength(0);
     });
 
     it("removes from the sideboard when no copies remain in the main deck", () => {
-      const unit = makeUnit("u1", ["Fury"]);
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addMainCard(unit, 1, true);
       deck.removeMainCard("u1");
       expect(deck.sideboard).toHaveLength(0);
     });
 
     it("unsets chosenChampion when the champion card is removed", () => {
-      const champion = makeChampion("c1", ["Fury"]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
       deck.addLegend = deck.addLegend.bind(deck);
       // Rebuild with a legend that has the champion as related
       deck = new Deck();
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion);
       expect(deck.chosenChampion).toBe(champion);
@@ -414,7 +414,7 @@ describe("Deck", () => {
 
   describe("removeBattleground", () => {
     it("removes an existing battleground", () => {
-      const bg = makeBattleground("b1");
+      const bg = makeBattlefield("b1");
       deck.addBattleground(bg);
       deck.removeBattleground("b1");
       expect(deck.battlegrounds).toHaveLength(0);
@@ -429,18 +429,18 @@ describe("Deck", () => {
 
   describe("removeRune", () => {
     beforeEach(() => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
     });
 
     it("decrements rune quantity when more than one copy exists", () => {
-      const rune = makeRune("r1", ["Fury"]);
+      const rune = makeRune("r1", [CardDomain.Fury]);
       deck.addRune(rune, 3);
       deck.removeRune("r1");
       expect(deck.runes[0].quantity).toBe(2);
     });
 
     it("removes the rune entry entirely when the last copy is removed", () => {
-      deck.addRune(makeRune("r1", ["Fury"]));
+      deck.addRune(makeRune("r1", [CardDomain.Fury]));
       deck.removeRune("r1");
       expect(deck.runes).toHaveLength(0);
     });
@@ -465,42 +465,42 @@ describe("Deck", () => {
     });
 
     it("serialises the legend id", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       expect(deck.toSimplifiedDeck().legendId).toBe("l1");
     });
 
     it("serialises chosenChampion id", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion);
       expect(deck.toSimplifiedDeck().chosenChampionId).toBe("c1");
     });
 
     it("serialises main deck cards as id:quantity strings", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      deck.addMainCard(makeUnit("u1", ["Fury"]), 3);
-      deck.addMainCard(makeUnit("u2", ["Fury"]), 1);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      deck.addMainCard(makeUnit("u1", [CardDomain.Fury]), 3);
+      deck.addMainCard(makeUnit("u2", [CardDomain.Fury]), 1);
       const { mainDeck } = deck.toSimplifiedDeck();
       expect(mainDeck).toContain("u1:3");
       expect(mainDeck).toContain("u2:1");
     });
 
     it("serialises sideboard cards as id:quantity strings", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      deck.addMainCard(makeUnit("u1", ["Fury"]), 2, true);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      deck.addMainCard(makeUnit("u1", [CardDomain.Fury]), 2, true);
       expect(deck.toSimplifiedDeck().sideboard).toContain("u1:2");
     });
 
     it("serialises runes as id:quantity strings", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      deck.addRune(makeRune("r1", ["Fury"]), 4);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      deck.addRune(makeRune("r1", [CardDomain.Fury]), 4);
       expect(deck.toSimplifiedDeck().runes).toContain("r1:4");
     });
 
     it("serialises battleground ids", () => {
-      deck.addBattleground(makeBattleground("b1"));
-      deck.addBattleground(makeBattleground("b2"));
+      deck.addBattleground(makeBattlefield("b1"));
+      deck.addBattleground(makeBattlefield("b2"));
       const { battlegrounds } = deck.toSimplifiedDeck();
       expect(battlegrounds).toEqual(["b1", "b2"]);
     });
@@ -531,7 +531,7 @@ describe("Deck", () => {
     });
 
     it("restores the legend from legendId", async () => {
-      const legend = makeLegend("l1", ["Fury"]);
+      const legend = makeLegend("l1", [CardDomain.Fury]);
       deck.addLegend(legend);
       const simplified = deck.toSimplifiedDeck();
       const restored = await Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend));
@@ -539,8 +539,8 @@ describe("Deck", () => {
     });
 
     it("restores chosenChampion from chosenChampionId", async () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion);
       const simplified = deck.toSimplifiedDeck();
@@ -549,9 +549,9 @@ describe("Deck", () => {
     });
 
     it("restores main deck cards with correct quantities", async () => {
-      const legend = makeLegend("l1", ["Fury"]);
-      const unit1 = makeUnit("u1", ["Fury"]);
-      const unit2 = makeUnit("u2", ["Fury"]);
+      const legend = makeLegend("l1", [CardDomain.Fury]);
+      const unit1 = makeUnit("u1", [CardDomain.Fury]);
+      const unit2 = makeUnit("u2", [CardDomain.Fury]);
       deck.addLegend(legend);
       deck.addMainCard(unit1, 3);
       deck.addMainCard(unit2, 2);
@@ -563,8 +563,8 @@ describe("Deck", () => {
     });
 
     it("restores sideboard cards with correct quantities", async () => {
-      const legend = makeLegend("l1", ["Fury"]);
-      const unit = makeUnit("u1", ["Fury"]);
+      const legend = makeLegend("l1", [CardDomain.Fury]);
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addLegend(legend);
       deck.addMainCard(unit, 2, true);
       const simplified = deck.toSimplifiedDeck();
@@ -574,8 +574,8 @@ describe("Deck", () => {
     });
 
     it("restores runes with correct quantities", async () => {
-      const legend = makeLegend("l1", ["Fury"]);
-      const rune = makeRune("r1", ["Fury"]);
+      const legend = makeLegend("l1", [CardDomain.Fury]);
+      const rune = makeRune("r1", [CardDomain.Fury]);
       deck.addLegend(legend);
       deck.addRune(rune, 6);
       const simplified = deck.toSimplifiedDeck();
@@ -585,8 +585,8 @@ describe("Deck", () => {
     });
 
     it("restores battlegrounds", async () => {
-      const bg1 = makeBattleground("b1");
-      const bg2 = makeBattleground("b2");
+      const bg1 = makeBattlefield("b1");
+      const bg2 = makeBattlefield("b2");
       deck.addBattleground(bg1);
       deck.addBattleground(bg2);
       const simplified = deck.toSimplifiedDeck();
@@ -671,11 +671,11 @@ describe("Deck", () => {
     });
 
     it("round-trips a fully populated deck", async () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
-      const unit = makeUnit("u1", ["Fury"]);
-      const rune = makeRune("r1", ["Fury"]);
-      const bg = makeBattleground("b1");
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
+      const unit = makeUnit("u1", [CardDomain.Fury]);
+      const rune = makeRune("r1", [CardDomain.Fury]);
+      const bg = makeBattlefield("b1");
 
       deck.addLegend(legend);
       deck.addMainCard(champion);
@@ -704,51 +704,51 @@ describe("Deck", () => {
 
   describe("addCard", () => {
     it("routes a Legend card to addLegend", () => {
-      const legend = makeLegend("l1", ["Fury"]);
+      const legend = makeLegend("l1", [CardDomain.Fury]);
       deck.addCard(legend);
       expect(deck.legend).toBe(legend);
     });
 
     it("routes a Battleground card to addBattleground", () => {
-      const bg = makeBattleground("b1");
+      const bg = makeBattlefield("b1");
       deck.addCard(bg);
       expect(deck.battlegrounds).toHaveLength(1);
       expect(deck.battlegrounds[0]).toBe(bg);
     });
 
     it("routes a Rune card to addRune with quantity", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const rune = makeRune("r1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const rune = makeRune("r1", [CardDomain.Fury]);
       deck.addCard(rune, 3);
       expect(deck.runes[0]).toMatchObject({ card: rune, quantity: 3 });
     });
 
     it("routes a Unit card to addMainCard", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const unit = makeUnit("u1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addCard(unit, 2);
       expect(deck.cards[0]).toMatchObject({ card: unit, quantity: 2 });
     });
 
     it("overflows to sideboard when main deck has no remaining capacity", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       // Fill main deck to 39
       for (let i = 0; i < 13; i++) {
-        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+        deck.addMainCard(makeUnit(`u${i}`, [CardDomain.Fury]), 3);
       }
-      const overflow = makeUnit("uOvf", ["Fury"]);
+      const overflow = makeUnit("uOvf", [CardDomain.Fury]);
       deck.addCard(overflow, 2);
       expect(deck.cards.find(c => c.card.id === "uOvf")?.quantity).toBe(1);
       expect(deck.sideboard.find(c => c.card.id === "uOvf")?.quantity).toBe(1);
     });
 
     it("sends all copies to sideboard when main deck is already at 40", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       for (let i = 0; i < 13; i++) {
-        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+        deck.addMainCard(makeUnit(`u${i}`, [CardDomain.Fury]), 3);
       }
-      deck.addMainCard(makeUnit("u40", ["Fury"]));
-      const extra = makeUnit("uExtra", ["Fury"]);
+      deck.addMainCard(makeUnit("u40", [CardDomain.Fury]));
+      const extra = makeUnit("uExtra", [CardDomain.Fury]);
       deck.addCard(extra, 2);
       expect(deck.cards.find(c => c.card.id === "uExtra")).toBeUndefined();
       expect(deck.sideboard.find(c => c.card.id === "uExtra")?.quantity).toBe(2);
@@ -759,32 +759,32 @@ describe("Deck", () => {
 
   describe("removeCard", () => {
     it("removes a Legend by id and clears dependent state", () => {
-      const legend = makeLegend("l1", ["Fury"]);
+      const legend = makeLegend("l1", [CardDomain.Fury]);
       deck.addLegend(legend);
-      deck.addMainCard(makeUnit("u1", ["Fury"]));
+      deck.addMainCard(makeUnit("u1", [CardDomain.Fury]));
       deck.removeCard("l1");
       expect(deck.legend).toBeNull();
       expect(deck.cards).toHaveLength(0);
     });
 
     it("removes a Battleground by id", () => {
-      const bg = makeBattleground("b1");
+      const bg = makeBattlefield("b1");
       deck.addBattleground(bg);
       deck.removeCard("b1");
       expect(deck.battlegrounds).toHaveLength(0);
     });
 
     it("removes a Rune by id with quantity", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const rune = makeRune("r1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const rune = makeRune("r1", [CardDomain.Fury]);
       deck.addRune(rune, 3);
       deck.removeCard("r1", 2);
       expect(deck.runes[0].quantity).toBe(1);
     });
 
     it("removes a main deck card by id", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
-      const unit = makeUnit("u1", ["Fury"]);
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
+      const unit = makeUnit("u1", [CardDomain.Fury]);
       deck.addMainCard(unit, 2);
       deck.removeCard("u1", 1);
       expect(deck.cards[0].quantity).toBe(1);
@@ -808,43 +808,43 @@ describe("Deck", () => {
     });
 
     it("returns NoChosenChampion when legend is set but no champion chosen", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       expect(deck.getFinalisationIssues()).toContain(DeckIssue.NoChosenChampion);
     });
 
     it("returns NotEnoughMainCards when fewer than 40 cards are in the main deck", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       expect(deck.getFinalisationIssues()).toContain(DeckIssue.NotEnoughMainCards);
     });
 
     it("returns NotEnoughBattlegrounds when fewer than 3 battlegrounds are set", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       expect(deck.getFinalisationIssues()).toContain(DeckIssue.NotEnoughBattlegrounds);
     });
 
     it("returns NotEnoughRunes when fewer than 12 runes are set", () => {
-      deck.addLegend(makeLegend("l1", ["Fury"]));
+      deck.addLegend(makeLegend("l1", [CardDomain.Fury]));
       expect(deck.getFinalisationIssues()).toContain(DeckIssue.NotEnoughRunes);
     });
 
     it("returns no issues for a fully valid deck", () => {
-      const champion = makeChampion("c1", ["Fury"]);
-      const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
+      const champion = makeChampion("c1", [CardDomain.Fury]);
+      const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
       deck.addLegend(legend);
       deck.addMainCard(champion); // sets chosenChampion
 
       // Fill main deck to 40 cards (chosenChampion counts as 1, so 13×3 = 39 + 1 = 40)
       for (let i = 0; i < 13; i++) {
-        deck.addMainCard(makeUnit(`u${i}`, ["Fury"]), 3);
+        deck.addMainCard(makeUnit(`u${i}`, [CardDomain.Fury]), 3);
       }
 
       // 3 battlegrounds
-      deck.addBattleground(makeBattleground("b1"));
-      deck.addBattleground(makeBattleground("b2"));
-      deck.addBattleground(makeBattleground("b3"));
+      deck.addBattleground(makeBattlefield("b1"));
+      deck.addBattleground(makeBattlefield("b2"));
+      deck.addBattleground(makeBattlefield("b3"));
 
       // 12 runes
-      deck.addRune(makeRune("r1", ["Fury"]), 12);
+      deck.addRune(makeRune("r1", [CardDomain.Fury]), 12);
 
       expect(deck.getFinalisationIssues()).toHaveLength(0);
     });
