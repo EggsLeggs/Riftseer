@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { SimplifiedDeckProviderImpl } from "../providers/simplified_deck_provider.ts";
 import { DeckSerializerV1 } from "../serialiser.ts";
-import { Card, RelatedCard } from "../types.ts";
+import { Card, CardDomain, CardSupertype, CardType, RelatedCard } from "../types.ts";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -22,44 +22,44 @@ function relatedCard(id: string, name: string): RelatedCard {
   return { object: "related_card", id, name, component: "champion" };
 }
 
-function makeLegend(id: string, domains: string[], relatedChampions: RelatedCard[] = []): Card {
+function makeLegend(id: string, domains: CardDomain[], relatedChampions: RelatedCard[] = []): Card {
   return makeCard({
     id,
     name: `Legend ${id}`,
-    classification: { type: "Legend", domains },
+    classification: { type: CardType.Legend, domains },
     related_champions: relatedChampions,
   });
 }
 
-function makeChampion(id: string, domains: string[]): Card {
+function makeChampion(id: string, domains: CardDomain[]): Card {
   return makeCard({
     id,
     name: `Champion ${id}`,
-    classification: { supertype: "Champion", domains },
+    classification: { supertype: CardSupertype.Champion, domains },
   });
 }
 
-function makeUnit(id: string, domains: string[] = []): Card {
+function makeUnit(id: string, domains: CardDomain[] = []): Card {
   return makeCard({
     id,
     name: `Unit ${id}`,
-    classification: { type: "Unit", domains },
+    classification: { type: CardType.Unit, domains },
   });
 }
 
-function makeRune(id: string, domains: string[] = []): Card {
+function makeRune(id: string, domains: CardDomain[] = []): Card {
   return makeCard({
     id,
     name: `Rune ${id}`,
-    classification: { supertype: "Rune", domains },
+    classification: { type: CardType.Rune, domains },
   });
 }
 
-function makeBattleground(id: string): Card {
+function makeBattleField(id: string): Card {
   return makeCard({
     id,
     name: `Battleground ${id}`,
-    classification: { supertype: "Battleground" },
+    classification: { type: CardType.Battlefield },
   });
 }
 
@@ -77,12 +77,12 @@ function buildLookup(...cards: Card[]): (id: string) => Promise<Card> {
 describe("SimplifieDeckProvider", () => {
   const serialiser = new DeckSerializerV1();
 
-  const legend = makeLegend("l1", ["Fury"], [relatedCard("c1", "Champion c1")]);
-  const champion = makeChampion("c1", ["Fury"]);
-  const unit1 = makeUnit("u1", ["Fury"]);
-  const unit2 = makeUnit("u2", ["Fury"]);
-  const rune = makeRune("r1", ["Fury"]);
-  const bg = makeBattleground("b1");
+  const legend = makeLegend("l1", [CardDomain.Fury], [relatedCard("c1", "Champion c1")]);
+  const champion = makeChampion("c1", [CardDomain.Fury]);
+  const unit1 = makeUnit("u1", [CardDomain.Fury]);
+  const unit2 = makeUnit("u2", [CardDomain.Fury]);
+  const rune = makeRune("r1", [CardDomain.Fury]);
+  const bg = makeBattleField("b1");
 
   const lookup = buildLookup(legend, champion, unit1, unit2, rune, bg);
   const provider = new SimplifiedDeckProviderImpl(serialiser, lookup);

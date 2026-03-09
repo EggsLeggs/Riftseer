@@ -43,15 +43,49 @@ export interface CardAttributes {
 
 export interface CardClassification {
   /** Card type line, e.g. "Unit", "Gear", "Spell". */
-  type?: string;
+  type?: CardType;
   /** Optional supertype, e.g. "Champion". */
-  supertype?: string | null;
+  supertype?: CardSupertype | null;
   /** Rarity string, e.g. "Common", "Rare", "Legendary". */
-  rarity?: string;
+  rarity?: CardRarity;
   /** Card tags, e.g. ["Poro"]. */
   tags?: string[];
   /** Domains/regions the card belongs to, e.g. ["Fury"]. */
-  domains?: string[];
+  domains?: CardDomain[];
+}
+
+export enum CardType {
+  Unit = "Unit",
+  Spell = "Spell",
+  Gear = "Gear",
+  Legend = "Legend",
+  Battlefield = "Battlefield",
+  Rune = "Rune",
+}
+
+export enum CardSupertype {
+  Basic = "Basic",
+  Token = "Token",
+  Signature = "Signature",
+  Champion = "Champion"
+}
+
+export enum CardRarity {
+  Common = "Common",
+  Uncommon = "Uncommon",
+  Rare = "Rare",
+  Epic = "Epic",
+  Showcase = "Showcase",
+}
+
+export enum CardDomain {
+  Fury = "Fury",
+  Calm = "Calm",
+  Mind = "Mind",
+  Body = "Body",
+  Chaos = "Chaos",
+  Order = "Order",
+  Colorless = "Colorless"
 }
 
 export interface CardText {
