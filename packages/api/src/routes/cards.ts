@@ -141,7 +141,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           fuzzy: t.Optional(
             t.String({
               description:
-                "Fuzzy / autocomplete matching is on by default. Pass '0' or 'false' to require an exact normalized name match only.",
+                "Autocomplete and fuzzy matching are used when this parameter is omitted or set to any value except the literal strings `false` or `0` (e.g. `true`, `1`, `yes` all keep the default behavior). Pass `false` or `0` to opt out and require an exact normalized name match only.",
             }),
           ),
           limit: t.Optional(t.String({ description: "Max results (default 10)" })),
@@ -155,7 +155,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           summary: "Search cards by name",
           description:
             "Search for cards by name with optional set/collector filters. " +
-            "Supports fuzzy matching for typo tolerance.",
+            "Autocomplete and fuzzy matching run by default; use `fuzzy=false` or `fuzzy=0` for exact-name-only lookup.",
         },
       },
     )

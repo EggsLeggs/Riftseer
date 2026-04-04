@@ -52,10 +52,10 @@ The swagger plugin is mounted on the **root app only** — it discovers routes f
 
 | Param | Type | Notes |
 |-------|------|-------|
-| `name` | string | Name search (fuzzy if `fuzzy=true`) |
+| `name` | string | Name search (autocomplete/fuzzy by default) |
 | `set` | string | Filter by set code, e.g. `OGN` |
 | `collector` | string | Exact collector number filter |
-| `fuzzy` | boolean | Enable fuzzy matching |
+| `fuzzy` | string | Omit or any value except `false` / `0` → fuzzy/autocomplete; `false` or `0` → exact match only |
 | `limit` | number | Max results (default 10) |
 
 ### POST /api/v1/resolve — Body
