@@ -16,7 +16,7 @@ export function TermsPage() {
         <FileText className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Terms of Service</h1>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Last Updated: 20 February 2026</p>
+      <p className="text-sm text-muted-foreground mb-6">Last Updated: 4 April 2026</p>
 
       <p className="text-foreground leading-relaxed mb-8">
         These are the Terms of Service for using Riftseer. By using Riftseer, you agree to these terms.
