@@ -36,13 +36,10 @@ const config: Config = {
       'classic',
       {
         docs: {
-          // Point directly at the ingest worker docs in the monorepo.
-          // This avoids symlink-related issues while still keeping docs
-          // co-located with the package.
-          path: '../packages/ingest-worker/docs',
-          sidebarPath: './sidebars.ts',
+          path: './doc-pages/getting-started',
+          sidebarPath: './sidebarsGettingStarted.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
+          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/docs/doc-pages/getting-started/',
         },
         blog: false,
         theme: {
@@ -56,10 +53,10 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'getting-started',
-        path: './doc-pages/getting-started',
-        routeBasePath: 'getting-started',
-        sidebarPath: './sidebarsGettingStarted.ts',
+        id: 'ingest-worker',
+        path: '../packages/ingest-worker/docs',
+        routeBasePath: 'ingest-worker',
+        sidebarPath: './sidebarsIngestWorker.ts',
       },
     ],
     [
@@ -134,7 +131,6 @@ const config: Config = {
         {
           type: 'doc',
           docId: 'index',
-          docsPluginId: 'getting-started',
           position: 'left',
           label: 'Getting Started',
         },
@@ -161,7 +157,7 @@ const config: Config = {
         },
         {
           type: 'doc',
-          docId: 'discord-bot',
+          docId: 'index',
           docsPluginId: 'bots',
           position: 'left',
           label: 'Clients & Bots',
@@ -169,6 +165,7 @@ const config: Config = {
         {
           type: 'docSidebar',
           sidebarId: 'ingestWorkerSidebar',
+          docsPluginId: 'ingest-worker',
           position: 'left',
           label: 'Ingest Worker',
         },
