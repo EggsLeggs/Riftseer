@@ -1,5 +1,5 @@
 /**
- * Calls the RiftSeer Elysia API to resolve card requests and builds the
+ * Calls the Riftseer Elysia API to resolve card requests and builds the
  * Reddit reply string.
  *
  * The Devvit app does NOT embed provider logic — it delegates to the external
@@ -40,7 +40,7 @@ interface ApiResolveResponse {
 export async function buildReply(
   requests: CardRequest[],
   apiBaseUrl: string,
-  siteBaseUrl: string
+  siteBaseUrl: string,
 ): Promise<string | null> {
   if (requests.length === 0) return null;
 
@@ -59,13 +59,13 @@ export async function buildReply(
     });
 
     if (!res.ok) {
-      console.error(`[RiftSeer] API returned HTTP ${res.status}`);
+      console.error(`[Riftseer] API returned HTTP ${res.status}`);
       return null;
     }
 
     data = (await res.json()) as ApiResolveResponse;
   } catch (err) {
-    console.error(`[RiftSeer] API fetch failed: ${err}`);
+    console.error(`[Riftseer] API fetch failed: ${err}`);
     return null;
   }
 
@@ -90,7 +90,11 @@ export async function buildReply(
  * Not found:  **Card Name** — not found.
  * Fuzzy:      **[Card Name](imgUrl)** *(fuzzy: Actual Name)* — ...
  */
-function formatCard(result: ApiResolvedCard, apiBase: string, siteBase: string): string {
+function formatCard(
+  result: ApiResolvedCard,
+  apiBase: string,
+  siteBase: string,
+): string {
   const displayName = result.request.name;
 
   if (!result.card) {

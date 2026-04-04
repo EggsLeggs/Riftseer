@@ -21,7 +21,7 @@ return json({ type: InteractionResponseType.DeferredChannelMessageWithSource });
 // In the handler: PATCH the webhook after your async work
 await patchResponse(interaction, env, { embeds: [embed] });
 ```
-Never call the RiftSeer API before returning the deferred response.
+Never call the Riftseer API before returning the deferred response.
 
 ## Eden Client
 Use the `createClient(env.API_BASE_URL)` helper from `src/api.ts`. It's typed against `App` from `@riftseer/api` (type-only import — erased at bundle time).
@@ -43,8 +43,8 @@ All secrets and vars come from `Env` (defined in `src/index.ts`):
 env.DISCORD_PUBLIC_KEY     // Ed25519 public key for signature verification
 env.DISCORD_BOT_TOKEN      // Bot token for REST API calls
 env.DISCORD_APPLICATION_ID // Application ID for webhook patching
-env.API_BASE_URL           // RiftSeer API base URL
-env.SITE_BASE_URL          // RiftSeer site URL (used in embed links)
+env.API_BASE_URL           // Riftseer API base URL
+env.SITE_BASE_URL          // Riftseer site URL (used in embed links)
 ```
 Public vars are in `wrangler.toml`; secrets are set with `wrangler secret put`.
 

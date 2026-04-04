@@ -23,40 +23,41 @@ interface Route {
 const routes: Route[] = [
   {
     outPath: "index.html",
-    title: "RiftSeer — Riftbound Database",
+    title: "Riftseer — Riftbound Database",
     description:
       "The comprehensive Riftbound TCG card database with deck building support and community bots for Discord and Reddit.",
     ogUrl: `${SITE}/`,
   },
   {
     outPath: "search/index.html",
-    title: "Search — RiftSeer",
-    description: "Filter Riftbound cards on RiftSeer using options you specify.",
+    title: "Search — Riftseer",
+    description:
+      "Filter Riftbound cards on Riftseer using options you specify.",
     ogUrl: `${SITE}/search`,
   },
   {
     outPath: "sets/index.html",
-    title: "All Sets — RiftSeer",
-    description: "All Riftbound sets on RiftSeer.",
+    title: "All Sets — Riftseer",
+    description: "All Riftbound sets on Riftseer.",
     ogUrl: `${SITE}/sets`,
   },
   {
     outPath: "syntax/index.html",
-    title: "Search Reference — RiftSeer",
+    title: "Search Reference — Riftseer",
     description:
-      "RiftSeer includes a large set of keywords and expressions used to find Riftbound cards.",
+      "Riftseer includes a large set of keywords and expressions used to find Riftbound cards.",
     ogUrl: `${SITE}/syntax`,
   },
   {
     outPath: "docs/terms/index.html",
-    title: "Terms of Service — RiftSeer",
-    description: "Terms of Service for RiftSeer.",
+    title: "Terms of Service — Riftseer",
+    description: "Terms of Service for Riftseer.",
     ogUrl: `${SITE}/docs/terms`,
   },
   {
     outPath: "docs/privacy/index.html",
-    title: "Privacy Policy — RiftSeer",
-    description: "Privacy Policy for RiftSeer.",
+    title: "Privacy Policy — Riftseer",
+    description: "Privacy Policy for Riftseer.",
     ogUrl: `${SITE}/docs/privacy`,
   },
 ];
@@ -78,7 +79,11 @@ function buildMeta(route: Route): string {
 for (const route of routes) {
   const outFile = join(dist, route.outPath);
   mkdirSync(dirname(outFile), { recursive: true });
-  writeFileSync(outFile, template.replace("<!-- META -->", buildMeta(route)), "utf-8");
+  writeFileSync(
+    outFile,
+    template.replace("<!-- META -->", buildMeta(route)),
+    "utf-8",
+  );
   console.log(`  ✓ ${route.outPath}`);
 }
 

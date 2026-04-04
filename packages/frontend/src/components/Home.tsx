@@ -19,14 +19,14 @@ export function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-      <title>RiftSeer — Riftbound Database</title>
+      <title>Riftseer — Riftbound Database</title>
       <meta name="description" content="The comprehensive Riftbound TCG card database with deck building support and community bots for Discord and Reddit." />
       <meta property="og:type" content="website" />
-      <meta property="og:title" content="RiftSeer — Riftbound Database" />
+      <meta property="og:title" content="Riftseer — Riftbound Database" />
       <meta property="og:description" content="The comprehensive Riftbound TCG card database with deck building support and community bots for Discord and Reddit." />
       <meta property="og:url" content={window.location.href} />
       <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-2 tracking-tight">
-        RiftSeer
+        Riftseer
       </h1>
       <p className="text-muted-foreground mb-8 text-center max-w-md">
         Search every Riftbound card, across every set. Fast, free, and community-driven.

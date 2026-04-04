@@ -1,4 +1,4 @@
-# RiftSeer
+# Riftseer
 
 Card data API, web app, and Reddit + Discord integration for the **Riftbound** TCG.
 

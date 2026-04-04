@@ -1,5 +1,5 @@
 /**
- * RiftSeer — Devvit mod-tool bot
+ * Riftseer — Devvit mod-tool bot
  *
  * Triggers:
  *   CommentCreate  → detects [[Card Name]] calls in new comments, replies with
@@ -11,7 +11,7 @@
  *   even across re-deploys.
  *
  * Card data:
- *   Delegated to the external RiftSeer Elysia API (packages/api).
+ *   Delegated to the external Riftseer Elysia API (packages/api).
  *   URLs are stored as app-level secrets (shared across all subreddits).
  *   Set them once with:
  *     npx devvit settings set apiBaseUrl
@@ -46,15 +46,15 @@ Devvit.addSettings([
   {
     type: "string",
     name: "apiBaseUrl",
-    label: "RiftSeer API base URL",
-    helpText: "Full URL of the RiftSeer Elysia API.",
+    label: "Riftseer API base URL",
+    helpText: "Full URL of the Riftseer Elysia API.",
     scope: SettingScope.App,
     isSecret: true,
   },
   {
     type: "string",
     name: "siteBaseUrl",
-    label: "RiftSeer site base URL",
+    label: "Riftseer site base URL",
     helpText:
       "URL of the React card browser site, used for [site] and [txt] links in replies.",
     scope: SettingScope.App,
@@ -93,7 +93,7 @@ Devvit.addTrigger({
 
     if (!apiBaseUrl) {
       console.error(
-        "[RiftSeer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
+        "[Riftseer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
       );
       return;
     }
@@ -107,7 +107,7 @@ Devvit.addTrigger({
     });
 
     console.log(
-      `[RiftSeer] Replied to comment t1_${comment.id} (${requests.length} card(s))`,
+      `[Riftseer] Replied to comment t1_${comment.id} (${requests.length} card(s))`,
     );
   },
 });
@@ -146,7 +146,7 @@ Devvit.addTrigger({
 
     if (!apiBaseUrl) {
       console.error(
-        "[RiftSeer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
+        "[Riftseer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
       );
       return;
     }
@@ -160,7 +160,7 @@ Devvit.addTrigger({
     });
 
     console.log(
-      `[RiftSeer] Replied to post t3_${post.id} (${requests.length} card(s))`,
+      `[Riftseer] Replied to post t3_${post.id} (${requests.length} card(s))`,
     );
   },
 });
