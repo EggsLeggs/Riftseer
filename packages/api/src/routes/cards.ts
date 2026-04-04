@@ -121,10 +121,13 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           };
         }
 
+        // Pass fuzzy: false only when the caller explicitly opts out, so the
+        // default path runs autocomplete scoring instead of exact-only lookup.
+        const exactOnly = query.fuzzy === "0" || query.fuzzy === "false";
         const cards = await cardProvider.searchByName(query.name, {
           set: query.set,
           collector: query.collector,
-          fuzzy: query.fuzzy === "1" || query.fuzzy === "true",
+          fuzzy: exactOnly ? false : undefined,
           limit: limit ?? 10,
         });
 

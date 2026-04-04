@@ -14,10 +14,14 @@ export function getRedisClient(): Redis {
     _client = new Redis(url, {
       lazyConnect: true,
       enableOfflineQueue: false,
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 0,
     });
     _client.on("error", (err) => {
-      console.error("[redis] client error:", err);
+      // Only log the first connection refusal per session to avoid noise when
+      // Redis is intentionally not running (e.g. local dev against prod Supabase).
+      if ((err as NodeJS.ErrnoException).code !== "ECONNREFUSED") {
+        console.error("[redis] client error:", err);
+      }
     });
   }
   return _client;
