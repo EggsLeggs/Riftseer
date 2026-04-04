@@ -44,7 +44,7 @@ export { parseCardRequests } from "./parser.ts";
 export { logger } from "./logger.ts";
 
 // Errors
-export { BadRequestError } from "./errors.ts";
+export { BadRequestError, NotFoundError } from "./errors.ts";
 
 // Icon system
 export {

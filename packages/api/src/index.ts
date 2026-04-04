@@ -29,6 +29,7 @@ import {
   createProvider,
   logger,
   DeckSerializerV1,
+  NotFoundError,
   SimplifiedDeckProviderImpl,
 } from "@riftseer/core";
 import { loadTCGData } from "./services/tcgplayer";
@@ -43,13 +44,6 @@ await cardProvider.warmup();
 void loadTCGData().catch(() => {}); // fire-and-forget; errors logged in loadTCGData
 
 const startTime = Date.now();
-
-class NotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "NotFoundError";
-  }
-}
 
 const deckProvider = new SimplifiedDeckProviderImpl(
   new DeckSerializerV1(),

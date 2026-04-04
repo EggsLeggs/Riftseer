@@ -138,7 +138,12 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           name: t.Optional(t.String({ description: "Card name to search for" })),
           set: t.Optional(t.String({ description: "Set code filter, e.g. OGN" })),
           collector: t.Optional(t.String({ description: "Collector number filter" })),
-          fuzzy: t.Optional(t.String({ description: "Set to '1' or 'true' to enable fuzzy matching" })),
+          fuzzy: t.Optional(
+            t.String({
+              description:
+                "Fuzzy / autocomplete matching is on by default. Pass '0' or 'false' to require an exact normalized name match only.",
+            }),
+          ),
           limit: t.Optional(t.String({ description: "Max results (default 10)" })),
         }),
         response: {
