@@ -36,32 +36,11 @@ The swagger plugin is mounted on the **root app only** — it discovers routes f
 
 ## Routes
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/v1/health` | Liveness probe |
-| `GET` | `/api/v1/meta` | Provider metadata + cache age |
-| `GET` | `/api/v1/cards` | Search cards (query params below) |
-| `GET` | `/api/v1/cards/random` | Random card |
-| `GET` | `/api/v1/cards/:id` | Single card by UUID |
-| `GET` | `/api/v1/cards/:id/text` | Plain-text card summary |
-| `POST` | `/api/v1/resolve` | Batch resolve up to 20 `CardRequest` objects |
-| `GET` | `/api/v1/prices/tcgplayer` | TCGPlayer USD prices for a card |
-| `GET` | `/api/v1/sets` | All sets with card counts |
-
-### GET /api/v1/cards — Query Parameters
-
-| Param | Type | Notes |
-|-------|------|-------|
-| `name` | string | Name search (autocomplete/fuzzy by default) |
-| `set` | string | Filter by set code, e.g. `OGN` |
-| `collector` | string | Exact collector number filter |
-| `fuzzy` | string | Omit or any value except `false` / `0` → fuzzy/autocomplete; `false` or `0` → exact match only |
-| `limit` | number | Max results (default 10) |
-
-### POST /api/v1/resolve — Body
-```typescript
-{ requests: CardRequest[] }  // max 20 items
-```
+See [`packages/api/docs/`](./docs/) for endpoint reference:
+- [`cards.md`](./docs/cards.md) — card lookup, resolve, prices, sets
+- [`search.md`](./docs/search.md) — `GET /cards` search mechanics, params, fuzzy/autocomplete
+- [`decks.md`](./docs/decks.md) — deck short-form endpoints
+- [`meta.md`](./docs/meta.md) — health and provider state
 
 ## Elysia Patterns
 - Define routes on the versioned sub-app (`v1`, `v2`, …), not directly on the root app
@@ -81,7 +60,8 @@ const json = await res.json()
 1. Add the route handler to the relevant versioned sub-app (`v1`, etc.) in `src/index.ts`
 2. Add Elysia schema annotations (`.query()`, `.body()`, `.response()`) for Swagger
 3. Write a test in `src/__tests__/routes.test.ts`
-4. If the route exposes new personal data or logs new information, update `PrivacyPage.tsx`
+4. Update or add the relevant doc page in `packages/api/docs/`
+5. If the route exposes new personal data or logs new information, update `PrivacyPage.tsx`
 
 ## Error Handling
 - Return `{ error: string }` with appropriate HTTP status codes

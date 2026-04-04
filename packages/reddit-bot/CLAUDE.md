@@ -86,3 +86,6 @@ If the bot begins storing new data in the KV store or logging additional fields 
 The current data stored:
 - **KV store**: Replied comment/post IDs only (for deduplication)
 - **API logs**: Card name + subreddit logged server-side for analytics (not stored by the bot itself)
+
+## Documentation
+Doc pages for this bot live in `bots/docs/reddit-bot.md`. Keep them up to date when making changes — if triggers, KV key patterns, settings, or the API call change, update the doc alongside the code.
