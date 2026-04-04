@@ -7,8 +7,9 @@
  *
  * Enable with: CARD_PROVIDER=supabase
  * Requires: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Optional: REDIS_URL (defaults to redis://localhost:6379), FUZZY_THRESHOLD,
- *           CACHE_REFRESH_INTERVAL_MS
+ * Optional: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN (Upstash Redis REST cache;
+ *           if UPSTASH_REDIS_REST_URL is set, UPSTASH_REDIS_REST_TOKEN is required),
+ *           FUZZY_THRESHOLD, CACHE_REFRESH_INTERVAL_MS
  */
 
 import Fuse from "fuse.js";
