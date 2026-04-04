@@ -1,4 +1,4 @@
-# RiftSeer ingest worker — runs full ingestion pipeline on a schedule (no Elysia API).
+# Riftseer ingest worker — runs full ingestion pipeline on a schedule (no Elysia API).
 # Set secrets: wrangler secret put SUPABASE_URL, wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 # Optional: RIFTCODEX_BASE_URL, RIFTCODEX_API_KEY in vars or secrets.
 

@@ -35,7 +35,7 @@ export function App() {
                 <Link to="/docs/privacy" className="text-primary hover:underline">Privacy Policy</Link>
               </div>
               <div>
-                RiftSeer is not affiliated with Riot Games. Riftbound and all related properties are trademarks of Riot Games.
+                Riftseer is not affiliated with Riot Games. Riftbound and all related properties are trademarks of Riot Games.
               </div>
             </div>
           </footer>

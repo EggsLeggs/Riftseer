@@ -1,5 +1,5 @@
 /**
- * RiftSeer ingest worker — Cloudflare Worker.
+ * Riftseer ingest worker — Cloudflare Worker.
  *
  * Runs the full ingestion pipeline on a schedule (scheduled events / cron).
  * Not linked to the Elysia API; fetches RiftCodex, enriches with TCGPlayer,
@@ -34,7 +34,11 @@ export default {
     );
   },
 
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<Response> {
     if (request.method === "GET" && new URL(request.url).pathname === "/") {
       return new Response(
         JSON.stringify({
@@ -46,7 +50,10 @@ export default {
       );
     }
 
-    if (request.method === "POST" && new URL(request.url).pathname === "/ingest") {
+    if (
+      request.method === "POST" &&
+      new URL(request.url).pathname === "/ingest"
+    ) {
       if (env.INGEST_SECRET) {
         const auth = request.headers.get("Authorization");
         if (!auth || auth !== `Bearer ${env.INGEST_SECRET}`) {

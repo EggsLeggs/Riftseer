@@ -22,15 +22,15 @@ export function SetsPage() {
   }, []);
 
   const setsDescription = sets.length > 0
-    ? `All ${sets.length} Riftbound sets on RiftSeer.`
-    : "All Riftbound sets on RiftSeer.";
+    ? `All ${sets.length} Riftbound sets on Riftseer.`
+    : "All Riftbound sets on Riftseer.";
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
-      <title>All Sets — RiftSeer</title>
+      <title>All Sets — Riftseer</title>
       <meta name="description" content={setsDescription} />
       <meta property="og:type" content="website" />
-      <meta property="og:title" content="All Sets — RiftSeer" />
+      <meta property="og:title" content="All Sets — Riftseer" />
       <meta property="og:description" content={setsDescription} />
       <meta property="og:url" content={window.location.href} />
 

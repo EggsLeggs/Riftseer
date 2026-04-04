@@ -56,7 +56,7 @@ post.authorId           // string ID — NOT the username
 ```
 
 ## Architecture
-- The bot calls `/api/resolve` on the external RiftSeer API — it does **not** embed a provider or database
+- The bot calls `/api/resolve` on the external Riftseer API — it does **not** embed a provider or database
 - If the API domain changes, update `devvit.yaml` under `permissions.http` and redeploy
 - Settings (`apiBaseUrl`, `siteBaseUrl`) are per-install and set by the subreddit mod
 

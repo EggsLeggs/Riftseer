@@ -5,21 +5,21 @@ import { FileText } from "lucide-react";
 export function TermsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <title>Terms of Service — RiftSeer</title>
-      <meta name="description" content="Terms of Service for RiftSeer." />
+      <title>Terms of Service — Riftseer</title>
+      <meta name="description" content="Terms of Service for Riftseer." />
       <meta property="og:type" content="website" />
-      <meta property="og:title" content="Terms of Service — RiftSeer" />
-      <meta property="og:description" content="Terms of Service for RiftSeer." />
+      <meta property="og:title" content="Terms of Service — Riftseer" />
+      <meta property="og:description" content="Terms of Service for Riftseer." />
       <meta property="og:url" content={window.location.href} />
 
       <div className="flex items-center gap-2 mb-2">
         <FileText className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Terms of Service</h1>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Last Updated: 20 February 2026</p>
+      <p className="text-sm text-muted-foreground mb-6">Last Updated: 4 April 2026</p>
 
       <p className="text-foreground leading-relaxed mb-8">
-        These are the Terms of Service for using RiftSeer. By using RiftSeer, you agree to these terms.
+        These are the Terms of Service for using Riftseer. By using Riftseer, you agree to these terms.
         If you do not agree, you may not use the service.
       </p>
 
@@ -28,12 +28,12 @@ export function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">Definitions</h2>
           <p className="text-foreground leading-relaxed mb-2">
-            We use the following shorthand: When we say <strong>RiftSeer</strong> we mean the
-            RiftSeer website, the RiftSeer API, the Reddit bot, and any related services. When we
+            We use the following shorthand: When we say <strong>Riftseer</strong> we mean the
+            Riftseer website, the Riftseer API, the Reddit bot, and any related services. When we
             say <strong>we</strong>, <strong>us</strong>, or <strong>the operators</strong> we
-            mean the people or entity operating RiftSeer. When we say <strong>content</strong> or{" "}
+            mean the people or entity operating Riftseer. When we say <strong>content</strong> or{" "}
             <strong>your content</strong> we mean any information you submit or store through
-            RiftSeer (e.g. if you create an account or post data in the future).
+            Riftseer (e.g. if you create an account or post data in the future).
           </p>
         </section>
 
@@ -45,7 +45,7 @@ export function TermsPage() {
           <p className="text-foreground leading-relaxed">
             We may modify these terms at any time. If changes are material, we will post a notice
             before they take effect. If you do not agree to the new terms, you may stop using
-            RiftSeer. Continued use after the notice period means you accept the updated terms.
+            Riftseer. Continued use after the notice period means you accept the updated terms.
           </p>
         </section>
 
@@ -59,11 +59,11 @@ export function TermsPage() {
 
           <ul className="space-y-4 text-foreground">
             <li>
-              <strong>Age.</strong> RiftSeer is for people ages 13 and up. You may not use RiftSeer
+              <strong>Age.</strong> Riftseer is for people ages 13 and up. You may not use Riftseer
               if you are under 13.
             </li>
             <li>
-              <strong>No advertising, trades, or sales.</strong> RiftSeer is about playing and
+              <strong>No advertising, trades, or sales.</strong> Riftseer is about playing and
               discussing the Riftbound TCG. You may not use it to sell, advertise, or trade
               products or services (including cards), or to recruit, advertise for businesses, or
               run political campaigns.
@@ -75,7 +75,7 @@ export function TermsPage() {
               distribute others’ personal information or photos without consent.
             </li>
             <li>
-              <strong>PG-13.</strong> RiftSeer is not for mature content. You may not post
+              <strong>PG-13.</strong> Riftseer is not for mature content. You may not post
               excessively violent content, sexual content, or content focused on real-world weapons
               or drugs. An exception applies for in-game or card artwork that is part of the game.
             </li>
@@ -85,8 +85,8 @@ export function TermsPage() {
               post content you created, own, or have permission to use.
             </li>
             <li>
-              <strong>No interference.</strong> You may not attempt to disrupt RiftSeer’s servers or
-              services, gain access to another user’s account, or place undue burden on RiftSeer
+              <strong>No interference.</strong> You may not attempt to disrupt Riftseer’s servers or
+              services, gain access to another user’s account, or place undue burden on Riftseer
               through automated means (e.g. excessive scraping or abuse of the API).
             </li>
           </ul>
@@ -103,9 +103,9 @@ export function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">Content License</h2>
           <p className="text-foreground leading-relaxed">
-            You retain ownership of any content you post on RiftSeer. By posting content, you grant
+            You retain ownership of any content you post on Riftseer. By posting content, you grant
             us a non-exclusive, royalty-free, worldwide license to use, display, and store that
-            content as needed to operate RiftSeer. This license ends when you delete the content or
+            content as needed to operate Riftseer. This license ends when you delete the content or
             your account.
           </p>
         </section>
@@ -117,7 +117,7 @@ export function TermsPage() {
           </h2>
           <ul className="space-y-3 text-foreground">
             <li>
-              <strong>AS-IS.</strong> RiftSeer is provided “as is.” We may change, terminate, or
+              <strong>AS-IS.</strong> Riftseer is provided “as is.” We may change, terminate, or
               restrict any part of the service at any time, without notice.
             </li>
             <li>
@@ -125,10 +125,10 @@ export function TermsPage() {
               uptime. There may be downtime, outages, or slow periods.
             </li>
             <li>
-              <strong>Your risk.</strong> You use RiftSeer at your own risk. We do not owe you
+              <strong>Your risk.</strong> You use Riftseer at your own risk. We do not owe you
               compensation for outages, bugs, or our failure to meet any statement in these terms.
               We are not liable for any losses (personal, financial, data, or competitive) arising
-              from your use of RiftSeer.
+              from your use of Riftseer.
             </li>
             <li>
               <strong>Card and set data.</strong> Card data, set information, and API responses are
@@ -145,7 +145,7 @@ export function TermsPage() {
             Third-Party Services and Trademarks
           </h2>
           <p className="text-foreground leading-relaxed">
-            RiftSeer is not affiliated with or endorsed by Riot Games. Riftbound and all related
+            Riftseer is not affiliated with or endorsed by Riot Games. Riftbound and all related
             marks are trademarks of Riot Games. Card data may be supplied by community or
             third-party sources; we are not responsible for their content or licensing. Use of
             Reddit and other platforms is subject to their respective terms.
@@ -163,7 +163,7 @@ export function TermsPage() {
       </div>
 
       <p className="text-sm text-muted-foreground mt-8">
-        <Link to="/" className="text-primary hover:underline">← Back to RiftSeer</Link>
+        <Link to="/" className="text-primary hover:underline">← Back to Riftseer</Link>
         {" · "}
         <Link to="/docs/privacy" className="text-primary hover:underline">Privacy Policy</Link>
       </p>

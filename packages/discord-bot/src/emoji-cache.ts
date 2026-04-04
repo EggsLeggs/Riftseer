@@ -27,11 +27,13 @@ export async function getEmojiMap(env: Env): Promise<EmojiMap> {
     );
 
     if (!res.ok) {
-      console.warn(`[RiftSeer] Failed to fetch emojis (${res.status})`);
+      console.warn(`[Riftseer] Failed to fetch emojis (${res.status})`);
       return {};
     }
 
-    const data = (await res.json()) as { items: Array<{ id: string; name: string }> };
+    const data = (await res.json()) as {
+      items: Array<{ id: string; name: string }>;
+    };
     const map: EmojiMap = {};
 
     for (const emoji of data.items) {
@@ -44,7 +46,7 @@ export async function getEmojiMap(env: Env): Promise<EmojiMap> {
     cached = map;
     return map;
   } catch (err) {
-    console.warn("[RiftSeer] Error fetching emojis:", err);
+    console.warn("[Riftseer] Error fetching emojis:", err);
     return {};
   }
 }

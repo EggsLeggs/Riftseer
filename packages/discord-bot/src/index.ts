@@ -1,5 +1,5 @@
 /**
- * RiftSeer Discord Bot — Cloudflare Workers entry point.
+ * Riftseer Discord Bot — Cloudflare Workers entry point.
  *
  * Discord sends a POST request for every interaction (slash command, ping).
  * The worker:
@@ -23,7 +23,10 @@
  *   DISCORD_PUBLIC_KEY, DISCORD_BOT_TOKEN, DISCORD_APPLICATION_ID
  */
 
-import { InteractionResponseType, InteractionType } from "discord-api-types/v10";
+import {
+  InteractionResponseType,
+  InteractionType,
+} from "discord-api-types/v10";
 import type {
   APIInteraction,
   APIChatInputApplicationCommandInteraction,
@@ -38,14 +41,18 @@ export interface Env {
   DISCORD_PUBLIC_KEY: string;
   DISCORD_BOT_TOKEN: string;
   DISCORD_APPLICATION_ID: string;
-  /** Base URL of the RiftSeer API (e.g. https://riftseerapi-production.up.railway.app) */
+  /** Base URL of the Riftseer API (e.g. https://riftseerapi-production.up.railway.app) */
   API_BASE_URL: string;
-  /** Base URL of the RiftSeer site for card links */
+  /** Base URL of the Riftseer site for card links */
   SITE_BASE_URL: string;
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
@@ -57,7 +64,12 @@ export default {
     if (
       !signature ||
       !timestamp ||
-      !(await verifySignature(env.DISCORD_PUBLIC_KEY, signature, timestamp, body))
+      !(await verifySignature(
+        env.DISCORD_PUBLIC_KEY,
+        signature,
+        timestamp,
+        body,
+      ))
     ) {
       return new Response("Invalid request signature", { status: 401 });
     }
@@ -76,7 +88,9 @@ export default {
 
       ctx.waitUntil(dispatch(name, cmd, env));
 
-      return json({ type: InteractionResponseType.DeferredChannelMessageWithSource });
+      return json({
+        type: InteractionResponseType.DeferredChannelMessageWithSource,
+      });
     }
 
     return new Response("Unknown interaction type", { status: 400 });
@@ -96,7 +110,7 @@ async function dispatch(
     case "sets":
       return handleSets(interaction, env);
     default:
-      console.warn(`[RiftSeer] Unknown command: ${name}`);
+      console.warn(`[Riftseer] Unknown command: ${name}`);
       await patchResponse(interaction, env, { content: "Unknown command." });
   }
 }

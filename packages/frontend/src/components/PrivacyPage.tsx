@@ -5,11 +5,11 @@ import { Shield } from "lucide-react";
 export function PrivacyPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <title>Privacy Policy — RiftSeer</title>
-      <meta name="description" content="Privacy Policy for RiftSeer." />
+      <title>Privacy Policy — Riftseer</title>
+      <meta name="description" content="Privacy Policy for Riftseer." />
       <meta property="og:type" content="website" />
-      <meta property="og:title" content="Privacy Policy — RiftSeer" />
-      <meta property="og:description" content="Privacy Policy for RiftSeer." />
+      <meta property="og:title" content="Privacy Policy — Riftseer" />
+      <meta property="og:description" content="Privacy Policy for Riftseer." />
       <meta property="og:url" content={window.location.href} />
 
       <div className="flex items-center gap-2 mb-2">
@@ -19,7 +19,7 @@ export function PrivacyPage() {
       <p className="text-sm text-muted-foreground mb-6">Last Updated: 20 February 2026</p>
 
       <p className="text-foreground leading-relaxed mb-8">
-        This Privacy Policy describes how RiftSeer collects, uses, and protects information when
+        This Privacy Policy describes how Riftseer collects, uses, and protects information when
         you use our website, API, and Reddit bot. We do not sell your personal information.
       </p>
 
@@ -28,9 +28,9 @@ export function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">Definitions</h2>
           <p className="text-foreground leading-relaxed mb-2">
-            <strong>RiftSeer</strong> means the RiftSeer website, the RiftSeer API, the Reddit bot
+            <strong>Riftseer</strong> means the Riftseer website, the Riftseer API, the Reddit bot
             (when installed in a subreddit), and related services. <strong>We</strong> /{" "}
-            <strong>us</strong> means the operators of RiftSeer. <strong>Personal data</strong>{" "}
+            <strong>us</strong> means the operators of Riftseer. <strong>Personal data</strong>{" "}
             means information that could identify you, such as your IP address or username.
           </p>
         </section>
@@ -38,7 +38,7 @@ export function PrivacyPage() {
         {/* Site */}
         <section>
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">
-            RiftSeer Website and API
+            Riftseer Website and API
           </h2>
           <ul className="space-y-3 text-foreground">
             <li>
@@ -89,10 +89,10 @@ export function PrivacyPage() {
         {/* Bot */}
         <section>
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">
-            RiftSeer Reddit Bot
+            Riftseer Reddit Bot
           </h2>
           <p className="text-foreground leading-relaxed mb-3">
-            The RiftSeer bot runs on Reddit via Devvit. When it is installed in a subreddit, it
+            The Riftseer bot runs on Reddit via Devvit. When it is installed in a subreddit, it
             reacts to new comments and self-posts that contain card references (e.g.{" "}
             <code className="bg-muted px-1 py-0.5 rounded text-xs">[[Sun Disc]]</code>) and may
             post a reply with card information and links.
@@ -106,7 +106,7 @@ export function PrivacyPage() {
             </li>
             <li>
               <strong>How we use that data.</strong> We use the text to find card references and
-              to call the RiftSeer API to resolve them. We use the author username to skip
+              to call the Riftseer API to resolve them. We use the author username to skip
               replying to accounts whose username ends with <code className="bg-muted px-1 py-0.5 rounded text-xs">"bot"</code>.
               We also use it (together with subreddit and card requests) for analytics as
               described below.
@@ -202,7 +202,7 @@ export function PrivacyPage() {
           <p className="text-foreground leading-relaxed">
             We may update this Privacy Policy from time to time. We will post the updated policy
             on this page and, for material changes, we will note the change here. Continued use of
-            RiftSeer after changes means you accept the updated policy.
+            Riftseer after changes means you accept the updated policy.
           </p>
         </section>
 
@@ -217,7 +217,7 @@ export function PrivacyPage() {
       </div>
 
       <p className="text-sm text-muted-foreground mt-8">
-        <Link to="/" className="text-primary hover:underline">← Back to RiftSeer</Link>
+        <Link to="/" className="text-primary hover:underline">← Back to Riftseer</Link>
         {" · "}
         <Link to="/docs/terms" className="text-primary hover:underline">Terms of Service</Link>
       </p>
