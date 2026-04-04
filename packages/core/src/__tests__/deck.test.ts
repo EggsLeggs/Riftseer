@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test";
 import { Deck, DeckIssue } from "../deck.ts";
-import { Card, RelatedCard } from "../types.ts";
+import { BadRequestError } from "../errors.ts";
+import { Card, RelatedCard, SimplifiedDeck } from "../types.ts";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -592,6 +593,81 @@ describe("Deck", () => {
       const restored = await Deck.fromSimplifiedDeck(simplified, buildCardLookup(bg1, bg2));
       expect(restored.battlegrounds).toHaveLength(2);
       expect(restored.battlegrounds.map(c => c.id)).toEqual(["b1", "b2"]);
+    });
+
+    it("wraps card lookup failures with section and simplified ref", async () => {
+      const simplified: SimplifiedDeck = {
+        id: null,
+        legendId: "missing-legend",
+        chosenChampionId: null,
+        mainDeck: [],
+        sideboard: [],
+        runes: [],
+        battlegrounds: [],
+      };
+      await expect(
+        Deck.fromSimplifiedDeck(simplified, async id => {
+          throw new Error(`Card not found: ${id}`);
+        }),
+      ).rejects.toThrow(BadRequestError);
+      await expect(
+        Deck.fromSimplifiedDeck(simplified, async id => {
+          throw new Error(`Card not found: ${id}`);
+        }),
+      ).rejects.toThrow(/legend.*legendId "missing-legend"/);
+    });
+
+    it("wraps mainDeck lookup failures with the offending entry", async () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      const simplified: SimplifiedDeck = {
+        id: null,
+        legendId: "l1",
+        chosenChampionId: null,
+        mainDeck: ["ghost:1"],
+        sideboard: [],
+        runes: [],
+        battlegrounds: [],
+      };
+      await expect(
+        Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend)),
+      ).rejects.toThrow(/mainDeck.*entry "ghost:1"/);
+    });
+
+    it("rejects simplified decks that violate domain rules", async () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      const wrongDomain = makeUnit("u1", ["Arcane"]);
+      const simplified: SimplifiedDeck = {
+        id: null,
+        legendId: "l1",
+        chosenChampionId: null,
+        mainDeck: ["u1:1"],
+        sideboard: [],
+        runes: [],
+        battlegrounds: [],
+      };
+      await expect(Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend, wrongDomain))).rejects.toThrow(
+        BadRequestError,
+      );
+      await expect(Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend, wrongDomain))).rejects.toThrow(
+        /does not match all domains of the legend/,
+      );
+    });
+
+    it("rejects simplified decks with more than 3 copies of a card", async () => {
+      const legend = makeLegend("l1", ["Fury"]);
+      const unit = makeUnit("u1", ["Fury"]);
+      const simplified: SimplifiedDeck = {
+        id: null,
+        legendId: "l1",
+        chosenChampionId: null,
+        mainDeck: ["u1:4"],
+        sideboard: [],
+        runes: [],
+        battlegrounds: [],
+      };
+      await expect(Deck.fromSimplifiedDeck(simplified, buildCardLookup(legend, unit))).rejects.toThrow(
+        /Cannot have more than 3 copies/,
+      );
     });
 
     it("round-trips a fully populated deck", async () => {

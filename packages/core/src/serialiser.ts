@@ -203,17 +203,21 @@ export class DeckSerializerV1 implements DeckSerializer {
             return entries;
         };
 
-        const readBareSection = (): string[] => {
+        const readBareSection = (sectionName: string): string[] => {
             const count = readByte();
             const ids: string[] = [];
-            for (let i = 0; i < count; i++) ids.push(readStr());
+            for (let i = 0; i < count; i++) {
+                const id = readStr();
+                if (id === "") throw new BadRequestError(`Invalid deck string: empty card ID in ${sectionName} section`);
+                ids.push(id);
+            }
             return ids;
         };
 
         const mainDeck = readQtySection("mainDeck");
         const sideboard = readQtySection("sideboard");
         const runes = readQtySection("runes");
-        const battlegrounds = readBareSection();
+        const battlegrounds = readBareSection("battlegrounds");
 
         if (pos !== buf.length) throw new BadRequestError("Invalid deck string: trailing bytes after decoding");
 

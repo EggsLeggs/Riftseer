@@ -183,7 +183,7 @@ describe("SimplifieDeckProvider", () => {
 
     it("throws when trying to remove a card not in the deck", async () => {
       const { shortForm } = await provider.addCards([{ id: "l1", quantity: 1 }]);
-      expect(provider.removeCards([{ id: "u2", quantity: 1 }], shortForm)).rejects.toThrow();
+      await expect(provider.removeCards([{ id: "u2", quantity: 1 }], shortForm)).rejects.toThrow();
     });
   });
 
@@ -207,7 +207,7 @@ describe("SimplifieDeckProvider", () => {
     });
 
     it("throws on an invalid shortForm string", async () => {
-      expect(provider.getDeckFromShortForm("not-valid-base64url!!!")).rejects.toThrow();
+      await expect(provider.getDeckFromShortForm("not-valid-base64url!!!")).rejects.toThrow();
     });
   });
 });

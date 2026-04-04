@@ -1,6 +1,9 @@
 import Redis from "ioredis";
 
+import { logger } from "../logger.ts";
+
 let _client: Redis | null = null;
+let redisConnRefusedLogged = false;
 
 /**
  * Returns a lazy singleton ioredis client.
@@ -17,10 +20,26 @@ export function getRedisClient(): Redis {
       maxRetriesPerRequest: 0,
     });
     _client.on("error", (err) => {
-      // Only log the first connection refusal per session to avoid noise when
-      // Redis is intentionally not running (e.g. local dev against prod Supabase).
-      if ((err as NodeJS.ErrnoException).code !== "ECONNREFUSED") {
-        console.error("[redis] client error:", err);
+      const errno = err as NodeJS.ErrnoException;
+      if (errno.code === "ECONNREFUSED") {
+        if (!redisConnRefusedLogged) {
+          redisConnRefusedLogged = true;
+          logger.warn("[redis] connection refused", {
+            code: errno.code,
+            err:
+              err instanceof Error
+                ? { name: err.name, message: err.message, stack: err.stack }
+                : String(err),
+          });
+        }
+      } else {
+        logger.error("[redis] client error", {
+          code: errno.code,
+          err:
+            err instanceof Error
+              ? { name: err.name, message: err.message, stack: err.stack }
+              : String(err),
+        });
       }
     });
   }
