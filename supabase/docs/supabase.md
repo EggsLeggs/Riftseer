@@ -2,7 +2,7 @@
 title: Supabase environments
 ---
 
-RiftSeer services can talk to either your **live Supabase project** or a **local Supabase stack**. They only care about the URL and service-role key you provide via environment variables.
+Riftseer services can talk to either your **live Supabase project** or a **local Supabase stack**. They only care about the URL and service-role key you provide via environment variables.
 
 ## Production Supabase project
 
@@ -30,9 +30,9 @@ Typical setup (see the root `README.md` for details):
   - `SUPABASE_URL = http://127.0.0.1:54321`
   - `SUPABASE_SERVICE_ROLE_KEY` is the well-known local service-role key from the Supabase docs.
 
-## How RiftSeer uses Supabase
+## How Riftseer uses Supabase
 
-Regardless of which environment you point it at, Supabase-backed services in RiftSeer (API, ingest worker, future microservices):
+Regardless of which environment you point it at, Supabase-backed services in Riftseer (API, ingest worker, future microservices):
 
 1. Read `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the environment.
 2. Perform their reads/writes against that target (for example: the ingest pipeline runs fetch → enrich → link → upsert).

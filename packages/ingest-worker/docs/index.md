@@ -3,7 +3,7 @@ title: Ingest worker overview
 sidebar_label: Overview
 ---
 
-The RiftSeer ingest worker is a dedicated Cloudflare Worker that keeps the Supabase card database in sync with the upstream RiftCodex API (and related sources).
+The Riftseer ingest worker is a dedicated Cloudflare Worker that keeps the Supabase card database in sync with the upstream RiftCodex API (and related sources).
 
 It is responsible for:
 

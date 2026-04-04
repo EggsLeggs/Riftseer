@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'RiftSeer Dev Docs',
+  title: 'Riftseer Dev Docs',
   tagline: 'Riftbound TCG API, frontend, and workers',
   favicon: 'img/favicon.ico',
 
@@ -15,10 +15,10 @@ const config: Config = {
   },
 
   url: 'https://eggsleggs.github.io',
-  baseUrl: '/RiftSeer/',
+  baseUrl: '/Riftseer/',
 
   organizationName: 'EggsLeggs',
-  projectName: 'RiftSeer',
+  projectName: 'Riftseer',
 
   onBrokenLinks: 'throw',
 
@@ -47,7 +47,7 @@ const config: Config = {
           path: '../packages/ingest-worker/docs',
           sidebarPath: './sidebars.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/EggsLeggs/RiftSeer/edit/main/packages/ingest-worker/docs/',
+          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
         },
         blog: false,
         theme: {
@@ -76,9 +76,9 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'RiftSeer',
+      title: 'Riftseer',
       logo: {
-        alt: 'RiftSeer Logo',
+        alt: 'Riftseer Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -105,7 +105,7 @@ const config: Config = {
     footer: {
       style: 'dark',
           links: [],
-      copyright: `Copyright © ${new Date().getFullYear()} RiftSeer. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Riftseer. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,
