@@ -107,7 +107,8 @@ Only needed when `CARD_PROVIDER=supabase`. Both require **Docker Desktop** to be
 **Option A — use production Supabase for local dev** (easiest; ingest is idempotent):
 
 In `.env`, set:
-```
+
+```env
 SUPABASE_URL=https://zsummtaaaftymjhnapyo.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<your production service role key>
 ```
@@ -127,12 +128,14 @@ npx supabase db push
 
 In `.env`, uncomment the local block. The local service_role key is the well-known Supabase
 default (all local instances use this key):
-```
+
+```env
 SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hj04zWl196z2-SBc0
 ```
 
 Then populate the local database:
+
 ```bash
 bun packages/api/src/ingest.ts
 ```
