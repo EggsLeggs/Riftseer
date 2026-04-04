@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "riftseer",
+  "name": "riftseer-frontend",
   "compatibility_date": "2026-02-19",
   "assets": {
     "directory": "./dist",
