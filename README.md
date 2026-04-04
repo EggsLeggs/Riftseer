@@ -148,7 +148,7 @@ Upstash Redis is used as a warmup cache for the Supabase provider (fast restarts
 
 Create a free database at [console.upstash.com](https://console.upstash.com) (free tier: 10k req/day, 256MB — sufficient for ~650 cards), then set the credentials in your `.env`:
 
-```
+```bash
 UPSTASH_REDIS_REST_TOKEN=<rest-token>
 UPSTASH_REDIS_REST_URL=https://<database-name>.upstash.io
 ```
