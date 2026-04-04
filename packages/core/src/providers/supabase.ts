@@ -129,7 +129,14 @@ async function redisSafeGet(key: string): Promise<DBCardRow[] | null> {
   const client = getRedisClient();
   if (!client) return null;
   try {
-    return await client.get<DBCardRow[]>(key);
+    const cached = await client.get<unknown>(key);
+    if (!cached) return null;
+    if (Array.isArray(cached)) return cached as DBCardRow[];
+    if (typeof cached === "string") {
+      const parsed: unknown = JSON.parse(cached);
+      return Array.isArray(parsed) ? (parsed as DBCardRow[]) : null;
+    }
+    return null;
   } catch {
     return null;
   }
