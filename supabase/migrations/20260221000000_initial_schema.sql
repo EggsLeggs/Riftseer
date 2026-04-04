@@ -1,5 +1,5 @@
 -- ┌─────────────────────────────────────────────────────────────────────────┐
--- │  RiftSeer — initial schema                                              │
+-- │  Riftseer — initial schema                                              │
 -- │  Apply via: supabase db push  (or paste into the Supabase SQL editor)   │
 -- └─────────────────────────────────────────────────────────────────────────┘
 

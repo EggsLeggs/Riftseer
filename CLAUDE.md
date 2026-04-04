@@ -1,7 +1,7 @@
-# RiftSeer — Project Context for Claude
+# Riftseer — Project Context for Claude
 
 ## Overview
-RiftSeer is a Riftbound TCG card data platform. It exposes a REST API, a React frontend, a Discord bot, and a Reddit bot that all share a common card data model.
+Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a React frontend, a Discord bot, and a Reddit bot that all share a common card data model.
 
 ## Monorepo Structure
 ```

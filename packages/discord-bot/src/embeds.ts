@@ -15,7 +15,7 @@ const DOMAIN_COLORS: Record<string, number> = {
   Tech: 0xed8936,
   Water: 0x00b5d8,
 };
-const DEFAULT_COLOR = 0x7c3aed; // RiftSeer brand purple
+const DEFAULT_COLOR = 0x7c3aed; // Riftseer brand purple
 
 function domainColor(domains?: string[]): number {
   const first = domains?.[0];
@@ -92,7 +92,7 @@ export function buildCardEmbed(
     color: domainColor(domains),
     image: imageUrl ? { url: imageUrl } : undefined,
     fields,
-    footer: { text: footerText || "RiftSeer" },
+    footer: { text: footerText || "Riftseer" },
   };
 }
 
@@ -105,7 +105,12 @@ export function buildCardImageEmbed(card: Card, siteBaseUrl: string): APIEmbed {
     url: `${siteBaseUrl}/card/${card.id}`,
     color: domainColor(domains),
     image: imageUrl ? { url: imageUrl } : undefined,
-    footer: { text: [card.set?.set_code, card.collector_number].filter(Boolean).join(" · ") || "RiftSeer" },
+    footer: {
+      text:
+        [card.set?.set_code, card.collector_number]
+          .filter(Boolean)
+          .join(" · ") || "Riftseer",
+    },
   };
 }
 
@@ -119,6 +124,6 @@ export function buildSetsEmbed(sets: CardSet[]): APIEmbed {
     title: "Riftbound Card Sets",
     description: description || "No sets found.",
     color: DEFAULT_COLOR,
-    footer: { text: "RiftSeer" },
+    footer: { text: "Riftseer" },
   };
 }

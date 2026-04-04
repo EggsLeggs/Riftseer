@@ -65,11 +65,11 @@ export function SearchPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      <title>Search — RiftSeer</title>
-      <meta name="description" content="Filter Riftbound cards on RiftSeer using options you specify." />
+      <title>Search — Riftseer</title>
+      <meta name="description" content="Filter Riftbound cards on Riftseer using options you specify." />
       <meta property="og:type" content="website" />
-      <meta property="og:title" content="Search — RiftSeer" />
-      <meta property="og:description" content="Filter Riftbound cards on RiftSeer using options you specify." />
+      <meta property="og:title" content="Search — Riftseer" />
+      <meta property="og:description" content="Filter Riftbound cards on Riftseer using options you specify." />
       <meta property="og:url" content={window.location.href} />
 
       {/* Search bar */}

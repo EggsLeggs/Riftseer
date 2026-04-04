@@ -1,7 +1,7 @@
 # packages/reddit-bot — Context for Claude
 
 ## Purpose
-Devvit Reddit app that listens for `[[Card Name]]` mentions in comments and posts, resolves them via the RiftSeer API, and replies with a formatted Markdown card summary.
+Devvit Reddit app that listens for `[[Card Name]]` mentions in comments and posts, resolves them via the Riftseer API, and replies with a formatted Markdown card summary.
 
 ## Important: Standalone Project
 This is **NOT** part of the root Bun workspace. It is a separate npm project managed with `npx devvit` tooling.
@@ -66,8 +66,8 @@ await reddit.submitComment({
 ## Settings (per-install, configured by mod)
 | Key | Description |
 |-----|-------------|
-| `apiBaseUrl` | Base URL of the RiftSeer API (e.g., `https://riftseerapi-production.up.railway.app`) |
-| `siteBaseUrl` | Base URL of the RiftSeer site for card links |
+| `apiBaseUrl` | Base URL of the Riftseer API (e.g., `https://riftseerapi-production.up.railway.app`) |
+| `siteBaseUrl` | Base URL of the Riftseer site for card links |
 
 Settings are accessed via `context.settings.get('apiBaseUrl')`.
 
