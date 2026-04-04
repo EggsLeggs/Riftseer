@@ -32,6 +32,7 @@ import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { getRedisClient } from "../redis/client.ts";
 import { normalizeCardName } from "../normalize.ts";
+import { autocompleteSearch } from "../search.ts";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -302,20 +303,24 @@ export class SupabaseCardProvider implements CardDataProvider {
     const limit = opts.limit ?? 10;
     const norm = normalizeCardName(q);
 
-    let results = this.byNorm.get(norm) ?? [];
-
-    if (opts.set || opts.collector) {
-      results = applyFilters(results, opts);
+    // Exact mode: only return cards whose normalized name is an exact match.
+    // Used when the caller explicitly opts out of fuzzy/autocomplete matching.
+    if (opts.fuzzy === false) {
+      let results = this.byNorm.get(norm) ?? [];
+      if (opts.set || opts.collector) results = applyFilters(results, opts);
+      return results.slice(0, limit);
     }
 
-    if (results.length === 0 && opts.fuzzy !== false && this.fuse) {
-      const hits = this.fuse.search(q, { limit: limit * 2 });
-      let fuzzy = hits.map((h) => h.item);
-      if (opts.set || opts.collector) {
-        const filtered = applyFilters(fuzzy, opts);
-        if (filtered.length > 0) fuzzy = filtered;
-      }
-      results = fuzzy;
+    // Autocomplete mode (default): deterministic scoring-based ranking.
+    // Scores and ranks all cards; excludes low-quality matches automatically.
+    // fetch extra before filter so we have enough after set/collector narrowing.
+    let results = autocompleteSearch(this.byId.values(), q, limit * 3);
+
+    if (opts.set || opts.collector) {
+      const filtered = applyFilters(results, opts);
+      // If filters leave nothing, return the unfiltered autocomplete results so
+      // a set-scoped query can still surface cards from other sets as a fallback.
+      if (filtered.length > 0) results = filtered;
     }
 
     return results.slice(0, limit);
