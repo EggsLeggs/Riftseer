@@ -149,16 +149,19 @@ Upstash Redis is used as a warmup cache for the Supabase provider (fast restarts
 Create a free database at [console.upstash.com](https://console.upstash.com) (free tier: 10k req/day, 256MB — sufficient for ~650 cards), then set the credentials in your `.env`:
 
 ```
-UPSTASH_REDIS_REST_URL=https://<database-name>.upstash.io
 UPSTASH_REDIS_REST_TOKEN=<rest-token>
+UPSTASH_REDIS_REST_URL=https://<database-name>.upstash.io
 ```
 
-For the API Cloudflare Worker, set them as secrets:
+If you deploy the API as a Cloudflare Worker (using Wrangler), set the following secrets:
 
 ```bash
 wrangler secret put UPSTASH_REDIS_REST_URL
 wrangler secret put UPSTASH_REDIS_REST_TOKEN
 ```
+
+On other hosts, set the same values using that platform’s environment variable or secret mechanism (not Wrangler).
+
 
 ---
 
@@ -176,8 +179,8 @@ See `.env.example`. Summary:
 | `FUZZY_THRESHOLD` | `0.4` | Fuse.js fuzzy match (0=exact, 1=loose) |
 | `SUPABASE_URL` | — | Required when `CARD_PROVIDER=supabase` |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | Required when `CARD_PROVIDER=supabase` |
-| `UPSTASH_REDIS_REST_URL` | — | Upstash Redis REST URL (optional cache) |
-| `UPSTASH_REDIS_REST_TOKEN` | — | Upstash Redis REST token |
+| `UPSTASH_REDIS_REST_URL` | — | Upstash Redis REST URL (optional cache). If set, `UPSTASH_REDIS_REST_TOKEN` is required. |
+| `UPSTASH_REDIS_REST_TOKEN` | — | Required when `UPSTASH_REDIS_REST_URL` is set — Upstash Redis REST token |
 | `REDDIT_*` | — | Required for Reddit bot (see Reddit setup below) |
 
 ---
