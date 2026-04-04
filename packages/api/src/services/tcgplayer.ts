@@ -4,6 +4,7 @@ const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
 const TCGCSV_CATEGORY = 89; // Riftbound League of Legends Trading Card Game
 const RIFTBOUND_GROUPS = [24344, 24439, 24502, 24519, 24528, 24552, 24560]; // all known groups
 const TCG_PRICE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const TCG_FAILURE_BACKOFF_MS = 60 * 1000; // avoid hammering tcgcsv on transient errors
 
 export type TCGEntry = {
   productId: number;
@@ -14,6 +15,7 @@ export type TCGEntry = {
 
 let tcgNameMap = new Map<string, TCGEntry>(); // key: normalizeCardName(cleanName)
 let tcgDataLoadedAt = 0;
+let tcgDataLastFailedAt = 0;
 let tcgDataLoadPromise: Promise<void> | null = null;
 
 export function getTCGEntry(normalizedName: string): TCGEntry | undefined {
@@ -22,6 +24,7 @@ export function getTCGEntry(normalizedName: string): TCGEntry | undefined {
 
 export async function loadTCGData(): Promise<void> {
   if (tcgDataLoadedAt && Date.now() - tcgDataLoadedAt < TCG_PRICE_TTL_MS) return;
+  if (tcgDataLastFailedAt && Date.now() - tcgDataLastFailedAt < TCG_FAILURE_BACKOFF_MS) return;
   if (tcgDataLoadPromise) {
     await tcgDataLoadPromise;
     return;
@@ -75,10 +78,14 @@ export async function loadTCGData(): Promise<void> {
       if (map.size > 0) {
         tcgNameMap = map;
         tcgDataLoadedAt = Date.now();
+        tcgDataLastFailedAt = 0;
         logger.info("TCGPlayer data loaded", { count: map.size });
       }
     } catch (error) {
       logger.error("Failed to load TCG data", { error });
+      tcgDataLastFailedAt = Date.now();
+      tcgDataLoadPromise = null;
+      throw error;
     } finally {
       clearTimeout(timeoutId);
       tcgDataLoadPromise = null;

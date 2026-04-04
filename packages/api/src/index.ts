@@ -40,7 +40,7 @@ import { decksRoutes } from "./routes/decks";
 
 const cardProvider = createProvider();
 await cardProvider.warmup();
-loadTCGData(); // fire-and-forget
+void loadTCGData().catch(() => {}); // fire-and-forget; errors logged in loadTCGData
 
 const startTime = Date.now();
 
