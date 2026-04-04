@@ -98,6 +98,39 @@ describe("API routes", () => {
       const body = await res.json();
       expect(body.count).toBe(0);
     });
+
+    // ── Exact lookup via ?fuzzy=false ──────────────────────────────────────────
+
+    it("exact mode (fuzzy=false) returns card when name matches exactly", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?name=Sun+Disc&fuzzy=false"),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.count).toBe(1);
+      expect(body.cards[0].name).toBe("Sun Disc");
+    });
+
+    it("exact mode (fuzzy=false) returns empty for a non-existent card name", async () => {
+      // The stub returns [] for exact mode on unknown names — this is the
+      // canonical "not found" signal for exact card lookup via the search endpoint.
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?name=Nonexistent+Card&fuzzy=false"),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.count).toBe(0);
+    });
+
+    it("autocomplete mode (default) matches partial names", async () => {
+      // "Sunshine" contains "sun" → stub returns the card in autocomplete mode
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?name=Sunshine"),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.count).toBe(1);
+    });
   });
 
   // ── POST /resolve ──────────────────────────────────────────────────────────
@@ -122,7 +155,10 @@ describe("API routes", () => {
       expect(Array.isArray(body.results[0].card.related_legends)).toBe(true);
     });
 
-    it("returns not-found for unknown cards", async () => {
+    it("nonexistent exact card lookup returns not-found with null card", async () => {
+      // /resolve is the exact-lookup endpoint used by bots.
+      // A missing card returns matchType "not-found" and a null card — the
+      // caller (bot, frontend) should treat this as a 404-equivalent.
       const res = await app.handle(
         new Request("http://localhost/api/v1/resolve", {
           method: "POST",
@@ -130,6 +166,7 @@ describe("API routes", () => {
           body: JSON.stringify({ requests: ["Nonexistent Card"] }),
         }),
       );
+      expect(res.status).toBe(200); // envelope is always 200
       const body = await res.json();
       expect(body.results[0].matchType).toBe("not-found");
       expect(body.results[0].card).toBeNull();
