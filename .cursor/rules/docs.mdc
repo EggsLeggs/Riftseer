@@ -56,18 +56,21 @@ When a new package needs its own doc section:
 
 ## Running Locally
 
-The docs site uses **Node.js + npm**, not Bun. Use npm scripts from within `docs/`:
+The docs site is a Bun workspace member. Run from the repo root or from `docs/`:
 
 ```bash
-cd docs
-npm install       # first time / after dependency changes
-npm start         # dev server at http://localhost:3000
-npm run build     # production build to docs/build/
-npm run serve     # preview the production build
-npm run clear     # clear Docusaurus cache (use when pages don't update)
-```
+# From repo root (preferred):
+bun run --filter docs start   # dev server at http://localhost:3001
+bun run --filter docs build   # production build → docs/build/
 
-Node.js ≥ 20 is required.
+# Or from within docs/:
+cd docs
+bun install       # first time / after dependency changes
+bun run start     # dev server at http://localhost:3001
+bun run build     # production build to docs/build/
+bun run serve     # preview the production build at http://localhost:3001
+bun run clear     # clear Docusaurus cache (use when pages don't update)
+```
 
 ## Mermaid Diagrams
 
@@ -92,5 +95,5 @@ sequenceDiagram
 
 - Edit files inside `docs/node_modules/`
 - Put content in `docs/src/pages/` unless it is a standalone custom React page (not a standard doc)
-- Run `bun` commands in `docs/` — use `npm`
+- Run `npm` commands in `docs/` — use `bun`
 - Edit the generated `docs/build/` output directly
