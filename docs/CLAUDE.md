@@ -8,15 +8,15 @@ The docs site is a Bun workspace member. Run `bun install` from the repo root to
 
 ```bash
 # From the repo root (preferred):
-bun run --filter docs start   # dev server at http://localhost:3000 with hot reload
+bun run --filter docs start   # dev server at http://localhost:3001 (avoids API on :3000)
 bun run --filter docs build   # production build → docs/build/
 
 # Or from within docs/:
 cd docs
 bun install       # install dependencies (first time / after updates)
-bun run start     # dev server at http://localhost:3000 with hot reload
+bun run start     # dev server at http://localhost:3001 (avoids API on :3000)
 bun run build     # production build → docs/build/
-bun run serve     # serve the production build locally
+bun run serve     # serve the production build at http://localhost:3001
 bun run clear     # clear Docusaurus cache — use if pages fail to update
 ```
 
