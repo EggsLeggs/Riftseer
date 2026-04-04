@@ -1,15 +1,18 @@
 {
   "name": "riftseer",
   "private": true,
-  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot","packages/ingest-worker"],
+  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "docs"],
+  "overrides": {
+    "@sinclair/typebox": "0.34.48"
+  },
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
     "dev:api": "cd packages/api && bun --env-file ../../.env --watch src/index.ts",
     "dev:frontend": "cd packages/frontend && bun run dev",
     "build:frontend": "cd packages/frontend && bun run build",
-    "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/*.test.ts",
+    "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/**/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
-    "test:api": "bun test ./packages/api/src/__tests__/*.test.ts",
+    "test:api": "bun test ./packages/api/src/__tests__/**/*.test.ts",
     "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/ingest-worker/tsconfig.json"
   }
 }
