@@ -125,7 +125,7 @@ const config: Config = {
       logo: {
         alt: 'Riftseer Logo',
         src: 'img/logo.svg',
-        href: '/getting-started',
+        href: '/',
       },
       items: [
         {

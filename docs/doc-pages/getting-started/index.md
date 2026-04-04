@@ -22,7 +22,7 @@ Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a React f
 ## Prerequisites
 
 - **[Bun](https://bun.sh) ≥ 1.2** — required. The API layer (Elysia) is Bun-first and will not work on Node.
-- A **Supabase** project with the schema applied (see [Supabase docs](/supabase/)).
+- A **Supabase** project with the schema applied (see [Supabase docs](/supabase/supabase)).
 - Optionally: a Cloudflare account for the Discord bot and ingest worker.
 
 ---
