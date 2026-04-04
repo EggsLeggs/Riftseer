@@ -312,17 +312,18 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
 
     // Autocomplete mode (default): deterministic scoring-based ranking.
-    // Scores and ranks all cards; excludes low-quality matches automatically.
-    // fetch extra before filter so we have enough after set/collector narrowing.
-    let results = autocompleteSearch(this.byId.values(), q, limit * 3);
-
+    // With set/collector filters, score only the matching corpus (or fall back to
+    // the full index when no cards match the filter).
+    let searchCorpus: Iterable<Card>;
     if (opts.set || opts.collector) {
-      const filtered = applyFilters(results, opts);
-      // If filters leave nothing, return the unfiltered autocomplete results so
-      // a set-scoped query can still surface cards from other sets as a fallback.
-      if (filtered.length > 0) results = filtered;
+      const corpus = Array.from(this.byId.values());
+      const filteredCandidates = applyFilters(corpus, opts);
+      searchCorpus = filteredCandidates.length > 0 ? filteredCandidates : corpus;
+    } else {
+      searchCorpus = this.byId.values();
     }
 
+    const results = autocompleteSearch(searchCorpus, q, limit, { fuse: this.fuse });
     return results.slice(0, limit);
   }
 

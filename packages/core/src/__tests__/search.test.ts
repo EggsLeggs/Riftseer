@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect } from "bun:test";
+import Fuse from "fuse.js";
 import { autocompleteSearch, scoreCard } from "../search.ts";
 import { normalizeCardName } from "../normalize.ts";
 import type { Card } from "../types.ts";
@@ -99,6 +100,15 @@ describe("scoreCard", () => {
     expect(result).not.toBeNull();
     expect(result!.score).toBeGreaterThanOrEqual(100); // above MIN_AUTOCOMPLETE_SCORE
     expect(result!.score).toBeLessThan(700); // below substring tier
+  });
+
+  it("fuzzy full normalized name handles typos across the whole name (not only per word)", () => {
+    const sunDisc = makeCard("Sun Disc");
+    const normQ = normalizeCardName("sun dsic"); // 2 edits from "sun disc", queryLen 8 → maxDist 2
+    const result = scoreCard(sunDisc, normQ, normQ.length);
+    expect(result).not.toBeNull();
+    expect(result!.position).toBe(0);
+    expect(result!.score).toBe(100); // 200 - 2 * 50
   });
 
   it("does NOT return fuzzy for query length < 4", () => {
@@ -197,19 +207,41 @@ describe("autocompleteSearch", () => {
     expect(sunDiscIdx).toBeLessThan(sunfireIdx);
   });
 
+  it("merges Fuse.js hits when fuse option is passed and query length >= 4", () => {
+    const volcanic = makeCard("Volcanic Surge");
+    expect(scoreCard(volcanic, normalizeCardName("volq"), 4)).toBeNull();
+
+    const fuse = new Fuse([volcanic], {
+      keys: [
+        { name: "name", weight: 0.7 },
+        { name: "name_normalized", weight: 0.3 },
+      ],
+      threshold: 0.4,
+      includeScore: true,
+      ignoreLocation: true,
+      minMatchCharLength: 2,
+    });
+    const results = autocompleteSearch([volcanic], "volq", 10, { fuse });
+    expect(results.map((c) => c.name)).toContain("Volcanic Surge");
+  });
+
   it("fuzzy matches for 4+ char queries appear after direct matches", () => {
-    // Add a card whose name is a slight misspelling target
     const extraCards = [...ALL_CARDS, makeCard("Barrd the Wanderer")];
-    // "bard" is exact for Bard; "barrr" (5 chars, edit dist 1 from "bard") should fuzzy-match
-    const results = autocompleteSearch(extraCards, "baard", 10); // edit dist 1 from "bard"
-    if (results.length > 0) {
-      // If there's an exact or prefix match, it must come first
-      const bardIdx = results.findIndex((c) => c.name === "Bard");
-      if (bardIdx !== -1) {
-        // Bard is likely a fuzzy match here; score should be < 700
-        const scored = results.map((c, i) => ({ name: c.name, idx: i }));
-        // Just verify Bard appears (fuzzy)
-        expect(scored.some((s) => s.name === "Bard")).toBe(true);
+    const query = "baard"; // edit dist 1 from normalized "bard"; Bard matches via fuzzy, not exact
+    const normQuery = normalizeCardName(query);
+    const results = autocompleteSearch(extraCards, query, 10);
+
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some((c) => c.name === "Bard")).toBe(true);
+    const bardIdx = results.findIndex((c) => c.name === "Bard");
+    expect(bardIdx).not.toBe(-1);
+
+    for (let i = 0; i < results.length; i++) {
+      const scored = scoreCard(results[i], normQuery, normQuery.length);
+      expect(scored).not.toBeNull();
+      const isExactOrPrefix = scored!.score === 1000 || scored!.score === 900;
+      if (isExactOrPrefix) {
+        expect(i).toBeLessThan(bardIdx);
       }
     }
   });

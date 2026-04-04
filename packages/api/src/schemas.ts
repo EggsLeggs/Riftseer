@@ -109,6 +109,7 @@ export const ErrorSchema = t.Object({
 });
 
 export const SimplifiedDeckSchema = t.Object({
+  id: t.Nullable(t.String({ description: "Deck ID" })),
   legend: t.Nullable(t.String({ description: "Legend card ID" })),
   mainDeck: t.Array(t.String({ description: "Card ID and quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" })),
   chosenChampionId: t.Nullable(t.String({ description: "Champion card ID" })),

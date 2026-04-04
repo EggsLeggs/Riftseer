@@ -31,6 +31,7 @@ export type { ProviderName } from "./providers/index.ts";
 
 export { normalizeCardName } from "./normalize.ts";
 export { autocompleteSearch, scoreCard } from "./search.ts";
+export type { AutocompleteSearchOptions } from "./search.ts";
 export { SupabaseCardProvider } from "./providers/supabase.ts";
 
 // Deck provider interface + implementation
@@ -44,7 +45,7 @@ export { parseCardRequests } from "./parser.ts";
 export { logger } from "./logger.ts";
 
 // Errors
-export { BadRequestError } from "./errors.ts";
+export { BadRequestError, NotFoundError } from "./errors.ts";
 
 // Icon system
 export {
