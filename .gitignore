@@ -19,9 +19,6 @@ dist/
 # Wrangler (Cloudflare Workers)
 .wrangler/
 
-# Bun
-bun.lock
-
 # npm
 package-lock.json
 
