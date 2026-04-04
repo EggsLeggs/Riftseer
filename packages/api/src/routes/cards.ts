@@ -160,9 +160,9 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
       },
     )
 
-    // ── POST /resolve ─────────────────────────────────────────────────────────
+    // ── POST /cards/resolve ───────────────────────────────────────────────────
     .post(
-      "/resolve",
+      "/cards/resolve",
       async ({ body, set }) => {
         if (body.requests.length > 20) {
           set.status = 400;

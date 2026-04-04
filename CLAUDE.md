@@ -75,7 +75,7 @@ npx devvit settings set siteBaseUrl
 
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core`; the only implementation is `SupabaseCardProvider` (data from the ingest pipeline).
-- **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/resolve` endpoint.
+- **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/cards/resolve` endpoint.
 - **Ingest**: Pipeline (RiftCodex → TCG enrich → token linking → champion/legend linking → Supabase upsert) runs via the standalone Cloudflare Worker `packages/ingest-worker` on a schedule. Locally: `cd packages/ingest-worker && bun run dev`, then `curl -X POST http://localhost:8787/ingest`. There is no ingest endpoint in the API.
 - **Fuzzy search**: Fuse.js index is built from `name` + `name_normalized`. Exact match is tried first; fuzzy search is used as fallback.
 

@@ -20,7 +20,7 @@ No authentication is required. All endpoints are publicly accessible.
 
 ## Request format
 
-All requests use standard HTTP. Query parameters are plain strings. The only endpoint that accepts a request body is `POST /api/v1/resolve` and the deck endpoints — these accept `application/json`.
+All requests use standard HTTP. Query parameters are plain strings. The only endpoint that accepts a request body is `POST /api/v1/cards/resolve` and the deck endpoints — these accept `application/json`.
 
 No special headers are required beyond `Content-Type: application/json` on POST requests with a body.
 
@@ -107,7 +107,7 @@ Route modules live in `packages/api/src/routes/`:
 | Module | Routes |
 |---|---|
 | `meta.ts` | `/health`, `/meta` |
-| `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/resolve`, `/prices/tcgplayer` |
+| `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve`, `/prices/tcgplayer` |
 | `sets.ts` | `/sets` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
 
@@ -143,7 +143,7 @@ See [Swagger](./swagger.md) for how the `detail` annotation maps to what appears
 | `GET` | `/api/v1/cards/random` | [Cards](./cards.md) |
 | `GET` | `/api/v1/cards/:id` | [Cards](./cards.md) |
 | `GET` | `/api/v1/cards/:id/text` | [Cards](./cards.md) |
-| `POST` | `/api/v1/resolve` | [Cards](./cards.md) |
+| `POST` | `/api/v1/cards/resolve` | [Cards](./cards.md) |
 | `GET` | `/api/v1/prices/tcgplayer` | [Cards](./cards.md) |
 | `GET` | `/api/v1/sets` | [Sets](./sets.md) |
 | `GET` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |

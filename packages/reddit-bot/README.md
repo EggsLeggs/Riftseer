@@ -29,7 +29,7 @@ The following external domains are required by this app (submitted for [Reddit's
 This is the **only domain** the app fetches, and it is the app's own backend — not a third-party service.
 
 **What it does:**
-When a user writes `[[Card Name]]`, the bot POSTs the token to `/api/v1/resolve` on this host. The API performs:
+When a user writes `[[Card Name]]`, the bot POSTs the token to `/api/v1/cards/resolve` on this host. The API performs:
 
 - **Name resolution** against a live database of all Riftbound TCG cards, continuously updated from [RiftCodex](https://riftcodex.com) and [TCGPlayer](https://tcgplayer.com) via a scheduled ingest pipeline. Card data changes with every set release, balance patch, and errata — there is no static snapshot that stays correct.
 - **Fuzzy search** to handle typos, partial names, and alternate spellings. The search index is maintained server-side and is not feasible to ship inside a Devvit bundle.
@@ -41,6 +41,6 @@ Riftbound TCG is not served by any globally-approved card API. The globally-appr
 
 **Compliance:**
 - Only the exact hostname above is used; no wildcards.
-- The single endpoint called is `POST /api/v1/resolve`.
+- The single endpoint called is `POST /api/v1/cards/resolve`.
 - No user data is forwarded — only the card name string extracted from the comment.
 - The domain is the app developer's own production deployment (Railway).

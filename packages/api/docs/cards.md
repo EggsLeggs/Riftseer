@@ -16,7 +16,7 @@ All card endpoints are under `/api/v1/cards`. For full request/response schemas,
 | `GET` | `/api/v1/cards/random` | Random card |
 | `GET` | `/api/v1/cards/:id` | Single card by UUID |
 | `GET` | `/api/v1/cards/:id/text` | Plain-text card summary |
-| `POST` | `/api/v1/resolve` | Batch resolve card name strings |
+| `POST` | `/api/v1/cards/resolve` | Batch resolve card name strings |
 | `GET` | `/api/v1/prices/tcgplayer` | TCGPlayer USD prices by card name |
 
 ---
@@ -86,12 +86,12 @@ Equipped Champion gains +2 Power and +2 Might.
 
 ---
 
-## POST /api/v1/resolve
+## POST /api/v1/cards/resolve
 
 Batch-resolves up to 20 card name strings. Used by the Discord and Reddit bots for `[[Card Name]]` triggers; also useful for any client that needs to go from human-readable names to card objects in one round-trip.
 
 ```json
-POST /api/v1/resolve
+POST /api/v1/cards/resolve
 {
   "requests": ["Sun Disc", "Stalwart Poro", "[[Bard|OGN-001]]"]
 }

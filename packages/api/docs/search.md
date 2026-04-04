@@ -13,7 +13,7 @@ sidebar_position: 3
 | Mode | Endpoint | Use case |
 |---|---|---|
 | **Autocomplete** | `GET /api/v1/cards?name=<q>` | Live search bar, partial queries |
-| **Exact lookup** | `POST /api/v1/resolve` | Bot triggers (`[[Card Name]]`), deterministic resolution |
+| **Exact lookup** | `POST /api/v1/cards/resolve` | Bot triggers (`[[Card Name]]`), deterministic resolution |
 
 ---
 
@@ -82,7 +82,7 @@ Returns only cards whose normalised name exactly matches the normalised query. R
 
 ## Exact lookup mode
 
-`POST /api/v1/resolve` — used by the Discord bot and Reddit bot for `[[Card Name]]` triggers.
+`POST /api/v1/cards/resolve` — used by the Discord bot and Reddit bot for `[[Card Name]]` triggers.
 
 Implemented in `SupabaseCardProvider.resolveRequest`. Resolution order:
 

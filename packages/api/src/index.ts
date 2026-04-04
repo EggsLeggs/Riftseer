@@ -8,7 +8,7 @@
  *   GET  /api/v1/cards/random
  *   GET  /api/v1/cards/:id
  *   GET  /api/v1/cards/:id/text
- *   POST /api/v1/resolve        body: { requests: string[] }
+ *   POST /api/v1/cards/resolve  body: { requests: string[] }
  *   GET  /api/v1/prices/tcgplayer
  *   GET  /api/v1/sets
  *   GET  /api/v1/decks/u/:shortForm

@@ -141,7 +141,7 @@ export function SyntaxPage() {
             />
             <ApiEndpoint
               method="POST"
-              path="/api/v1/resolve"
+              path="/api/v1/cards/resolve"
               description="Batch resolve card names to cards"
             />
           </div>
