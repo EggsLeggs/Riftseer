@@ -1,18 +1,17 @@
 import { Elysia, t } from "elysia";
-import { logger, BadRequestError, type SimplifiedDeck, type SimplifiedDeckProvider } from "@riftseer/core";
+import {
+  logger,
+  BadRequestError,
+  NotFoundError,
+  type SimplifiedDeck,
+  type SimplifiedDeckProvider,
+} from "@riftseer/core";
 import {
   ErrorSchema,
   SimplifiedDeckRequestSchema,
   SimplifiedDeckResponseSchema,
   SimplifiedDeckSchema,
 } from "../schemas";
-
-class NotFoundError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "NotFoundError";
-  }
-}
 
 /** Validate and parse an "id:qty" entry from the request body. */
 export function parseCardEntry(entry: string): { id: string; quantity: number } {
@@ -36,6 +35,7 @@ function classifyStatus(error: unknown): 400 | 404 | 500 {
 /** Transformation from a SimplifiedDeck object to an object compliant with SimplifiedDeckSchema */
 function simplifiedDeckToSchema(deck: SimplifiedDeck): any {
   return {
+    id: deck.id ?? null,
     legend: deck.legendId,
     mainDeck: deck.mainDeck,
     chosenChampionId: deck.chosenChampionId,

@@ -350,31 +350,178 @@ export class Deck {
   static async fromSimplifiedDeck(simplified: SimplifiedDeck, cardLookup: (id: string) => Promise<Card>): Promise<Deck> {
     const deck = new Deck();
     deck.id = simplified.id;
-    deck.legend = simplified.legendId ? await cardLookup(simplified.legendId) : null;
-    deck.chosenChampion = simplified.chosenChampionId ? await cardLookup(simplified.chosenChampionId) : null;
-    const parseEntry = (entry: string): { id: string; quantity: number } => {
-        const colon = entry.lastIndexOf(":");
-        if (colon <= 0) throw new BadRequestError(`Malformed deck entry (expected "id:qty"): "${entry}"`);
-        const qtyStr = entry.slice(colon + 1);
-        if (!/^\d+$/.test(qtyStr)) throw new BadRequestError(`Invalid quantity in deck entry: "${entry}"`);
-        const quantity = Number(qtyStr);
-        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 255) throw new BadRequestError(`Quantity out of bounds in deck entry: "${entry}"`);
-        return { id: entry.slice(0, colon), quantity };
+
+    const lookup = async (section: string, ref: string, id: string): Promise<Card> => {
+      try {
+        return await cardLookup(id);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        throw new BadRequestError(`Invalid deck: card lookup failed in ${section} (${ref}): ${msg}`);
+      }
     };
-    deck.cards = await Promise.all(simplified.mainDeck.map(async entry => {
+
+    const parseEntry = (entry: string): { id: string; quantity: number } => {
+      const colon = entry.lastIndexOf(":");
+      if (colon <= 0) throw new BadRequestError(`Malformed deck entry (expected "id:qty"): "${entry}"`);
+      const qtyStr = entry.slice(colon + 1);
+      if (!/^\d+$/.test(qtyStr)) throw new BadRequestError(`Invalid quantity in deck entry: "${entry}"`);
+      const quantity = Number(qtyStr);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 255) {
+        throw new BadRequestError(`Quantity out of bounds in deck entry: "${entry}"`);
+      }
+      return { id: entry.slice(0, colon), quantity };
+    };
+
+    if (simplified.legendId) {
+      deck.legend = await lookup("legend", `legendId "${simplified.legendId}"`, simplified.legendId);
+    }
+    if (simplified.chosenChampionId) {
+      deck.chosenChampion = await lookup(
+        "chosenChampion",
+        `chosenChampionId "${simplified.chosenChampionId}"`,
+        simplified.chosenChampionId,
+      );
+    }
+
+    deck.cards = await Promise.all(
+      simplified.mainDeck.map(async entry => {
         const { id, quantity } = parseEntry(entry);
-        return { card: await cardLookup(id), quantity };
-    }));
-    deck.sideboard = await Promise.all(simplified.sideboard.map(async entry => {
+        return { card: await lookup("mainDeck", `entry "${entry}"`, id), quantity };
+      }),
+    );
+    deck.sideboard = await Promise.all(
+      simplified.sideboard.map(async entry => {
         const { id, quantity } = parseEntry(entry);
-        return { card: await cardLookup(id), quantity };
-    }));
-    deck.runes = await Promise.all(simplified.runes.map(async entry => {
+        return { card: await lookup("sideboard", `entry "${entry}"`, id), quantity };
+      }),
+    );
+    deck.runes = await Promise.all(
+      simplified.runes.map(async entry => {
         const { id, quantity } = parseEntry(entry);
-        return { card: await cardLookup(id), quantity };
-    }));
-    deck.battlegrounds = await Promise.all(simplified.battlegrounds.map(async id => await cardLookup(id)));
+        return { card: await lookup("runes", `entry "${entry}"`, id), quantity };
+      }),
+    );
+    deck.battlegrounds = await Promise.all(
+      simplified.battlegrounds.map(id => lookup("battlegrounds", `battlegroundId "${id}"`, id)),
+    );
+
+    deck.validateFromSimplifiedConstraints();
     return deck;
+  }
+
+  /**
+   * Enforces the same domain, copy, and zone-size rules as addLegend / addMainCard / addRune / addBattleground
+   * after loading from {@link SimplifiedDeck} (direct field assignment bypasses those methods).
+   */
+  private validateFromSimplifiedConstraints(): void {
+    if (this.legend && this.legend.classification?.type !== "Legend") {
+      throw new BadRequestError(`${this.legend.name} is not a legend and cannot be added as the legend.`);
+    }
+
+    if (this.chosenChampion) {
+      if (!this.legend) {
+        throw new BadRequestError("Invalid deck: chosen champion requires a legend");
+      }
+      if (this.chosenChampion.classification?.supertype !== "Champion") {
+        throw new BadRequestError(
+          `${this.chosenChampion.name} cannot be the chosen champion (not a Champion).`,
+        );
+      }
+    }
+
+    const needsLegend = this.cards.length > 0 || this.sideboard.length > 0 || this.runes.length > 0;
+    if (needsLegend && !this.legend) {
+      throw new BadRequestError("Invalid deck: main deck, sideboard, or runes require a legend");
+    }
+
+    const assertMainOrSideCard = (card: Card) => {
+      const cardType = card.classification?.type;
+      const cardSupertype = card.classification?.supertype;
+      if (cardType === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
+        throw new BadRequestError(`${card.name} can not be added into the main deck or sideboard.`);
+      }
+
+      const legendDomains = this.getLegendDomains();
+      if (!legendDomains) {
+        throw new BadRequestError("Cannot add cards before a legend is chosen.");
+      }
+      const cardDomains = card.classification?.domains || [];
+      if (cardDomains.some(domain => !legendDomains.includes(domain))) {
+        throw new BadRequestError(
+          `${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. Card domains: ${cardDomains.join(", ")}`,
+        );
+      }
+    };
+
+    for (const { card } of this.cards) assertMainOrSideCard(card);
+    for (const { card } of this.sideboard) assertMainOrSideCard(card);
+
+    const ids = new Set<string>();
+    if (this.chosenChampion) ids.add(this.chosenChampion.id);
+    for (const { card } of this.cards) ids.add(card.id);
+    for (const { card } of this.sideboard) ids.add(card.id);
+
+    for (const id of ids) {
+      const card =
+        this.chosenChampion?.id === id
+          ? this.chosenChampion
+          : this.cards.find(c => c.card.id === id)?.card ?? this.sideboard.find(c => c.card.id === id)?.card;
+      if (!card) continue;
+      const chosenPart = this.chosenChampion?.id === id ? 1 : 0;
+      const mainPart = this.cards.filter(c => c.card.id === id).reduce((s, c) => s + c.quantity, 0);
+      const sidePart = this.sideboard.filter(c => c.card.id === id).reduce((s, c) => s + c.quantity, 0);
+      if (chosenPart + mainPart + sidePart > 3) {
+        throw new BadRequestError(`Cannot have more than 3 copies of ${card.name} in the deck.`);
+      }
+    }
+
+    const mainTotal =
+      this.cards.reduce((sum, c) => sum + c.quantity, 0) + (this.chosenChampion ? 1 : 0);
+    if (mainTotal > 40) {
+      throw new BadRequestError("Cannot have more than 40 total cards in the main deck.");
+    }
+
+    const sideTotal = this.sideboard.reduce((sum, c) => sum + c.quantity, 0);
+    if (sideTotal > 8) {
+      throw new BadRequestError("Cannot have more than 8 total cards in the sideboard.");
+    }
+
+    if (this.runes.length > 0) {
+      const legendDomainsForRunes = this.getLegendDomains();
+      if (!legendDomainsForRunes || legendDomainsForRunes.length === 0) {
+        throw new BadRequestError("Cannot add runes before a legend is chosen.");
+      }
+      for (const { card } of this.runes) {
+        if (card.classification?.supertype !== "Rune") {
+          throw new BadRequestError(`${card.name} is not a Rune and cannot be added as a rune.`);
+        }
+        const cardDomains = card.classification?.domains || [];
+        if (cardDomains.some(domain => !legendDomainsForRunes.includes(domain))) {
+          throw new BadRequestError(
+            `${card.name} does not match all domains of the legend. Legend domains: ${legendDomainsForRunes.join(", ")}. Card domains: ${cardDomains.join(", ")}`,
+          );
+        }
+      }
+    }
+
+    const runeTotal = this.runes.reduce((s, c) => s + c.quantity, 0);
+    if (runeTotal > 12) {
+      throw new BadRequestError("Cannot have more than 12 runes in a deck.");
+    }
+
+    const seenBg = new Set<string>();
+    for (const card of this.battlegrounds) {
+      if (card.classification?.supertype !== "Battleground") {
+        throw new BadRequestError(`${card.name} is not a Battleground and cannot be added as a battleground.`);
+      }
+      if (seenBg.has(card.id)) {
+        throw new BadRequestError(`${card.name} is already in the deck.`);
+      }
+      seenBg.add(card.id);
+    }
+    if (this.battlegrounds.length > 3) {
+      throw new BadRequestError("Cannot have more than 3 battlegrounds in a deck.");
+    }
   }
 }
 

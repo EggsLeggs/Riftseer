@@ -138,7 +138,12 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           name: t.Optional(t.String({ description: "Card name to search for" })),
           set: t.Optional(t.String({ description: "Set code filter, e.g. OGN" })),
           collector: t.Optional(t.String({ description: "Collector number filter" })),
-          fuzzy: t.Optional(t.String({ description: "Set to '1' or 'true' to enable fuzzy matching" })),
+          fuzzy: t.Optional(
+            t.String({
+              description:
+                "Autocomplete and fuzzy matching are used when this parameter is omitted or set to any value except the literal strings `false` or `0` (e.g. `true`, `1`, `yes` all keep the default behavior). Pass `false` or `0` to opt out and require an exact normalized name match only.",
+            }),
+          ),
           limit: t.Optional(t.String({ description: "Max results (default 10)" })),
         }),
         response: {
@@ -150,7 +155,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           summary: "Search cards by name",
           description:
             "Search for cards by name with optional set/collector filters. " +
-            "Supports fuzzy matching for typo tolerance.",
+            "Autocomplete and fuzzy matching run by default; use `fuzzy=false` or `fuzzy=0` for exact-name-only lookup.",
         },
       },
     )
