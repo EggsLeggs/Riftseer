@@ -7,8 +7,9 @@
  *
  * Enable with: CARD_PROVIDER=supabase
  * Requires: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Optional: REDIS_URL (defaults to redis://localhost:6379), FUZZY_THRESHOLD,
- *           CACHE_REFRESH_INTERVAL_MS
+ * Optional: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN (Upstash Redis REST cache;
+ *           if UPSTASH_REDIS_REST_URL is set, UPSTASH_REDIS_REST_TOKEN is required),
+ *           FUZZY_THRESHOLD, CACHE_REFRESH_INTERVAL_MS
  */
 
 import Fuse from "fuse.js";
@@ -124,17 +125,28 @@ function dbRowToCard(row: DBCardRow): Card {
 
 // ─── Redis helpers (silent failures — Redis is optional) ─────────────────────
 
-async function redisSafeGet(key: string): Promise<string | null> {
+async function redisSafeGet(key: string): Promise<DBCardRow[] | null> {
+  const client = getRedisClient();
+  if (!client) return null;
   try {
-    return await getRedisClient().get(key);
+    const cached = await client.get<unknown>(key);
+    if (!cached) return null;
+    if (Array.isArray(cached)) return cached as DBCardRow[];
+    if (typeof cached === "string") {
+      const parsed: unknown = JSON.parse(cached);
+      return Array.isArray(parsed) ? (parsed as DBCardRow[]) : null;
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
-async function redisSafeSet(key: string, value: string, ttlSeconds: number): Promise<void> {
+async function redisSafeSet(key: string, value: DBCardRow[], ttlSeconds: number): Promise<void> {
+  const client = getRedisClient();
+  if (!client) return;
   try {
-    await getRedisClient().set(key, value, "EX", ttlSeconds);
+    await client.set(key, value, { ex: ttlSeconds });
   } catch {
     // Redis unavailable — continue without caching
   }
@@ -241,12 +253,12 @@ export class SupabaseCardProvider implements CardDataProvider {
 
       if (cached) {
         logger.info("Loading cards from Redis snapshot", { ingestedAt });
-        rows = JSON.parse(cached) as DBCardRow[];
+        rows = cached;
       } else {
         // 3. Slow path: load from Supabase, then cache in Redis
         logger.info("Loading cards from Supabase", { ingestedAt });
         rows = await loadAllCardsFromDB();
-        await redisSafeSet(snapshotKey(ingestedAt), JSON.stringify(rows), REDIS_SNAPSHOT_TTL);
+        await redisSafeSet(snapshotKey(ingestedAt), rows, REDIS_SNAPSHOT_TTL);
       }
 
       const cards = rows.map(dbRowToCard);
