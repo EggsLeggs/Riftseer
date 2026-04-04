@@ -1,9 +1,9 @@
 ---
-description: RiftSeer monorepo — top-level conventions and architecture
+description: Riftseer monorepo — top-level conventions and architecture
 alwaysApply: true
 ---
 
-# RiftSeer Project Rules
+# Riftseer Project Rules
 
 ## Runtime & Package Manager
 - **Always use Bun** as the runtime and package manager for workspace packages (`packages/core`, `packages/api`, `packages/frontend`, `packages/discord-bot`, `packages/ingest-worker`)

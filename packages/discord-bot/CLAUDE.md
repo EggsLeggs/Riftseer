@@ -1,7 +1,7 @@
 # packages/discord-bot — Context for Claude
 
 ## Purpose
-Discord bot running on Cloudflare Workers. Responds to slash commands by looking up Riftbound cards via the RiftSeer API and replying with rich Discord embeds.
+Discord bot running on Cloudflare Workers. Responds to slash commands by looking up Riftbound cards via the Riftseer API and replying with rich Discord embeds.
 
 ## Key Files
 | File | Purpose |
@@ -41,7 +41,7 @@ bun run type-check                # tsc --noEmit
 1. Discord POSTs to the worker URL
 2. Worker verifies Ed25519 signature
 3. Worker responds `{ type: 5 }` (DEFERRED) immediately — Discord has a 3 s deadline
-4. Inside `ctx.waitUntil()`, the handler calls the RiftSeer API
+4. Inside `ctx.waitUntil()`, the handler calls the Riftseer API
 5. Handler PATCHes `webhooks/{appId}/{token}/messages/@original` with the final response
 
 Never make the API call synchronously before responding — Discord will time out.
@@ -74,4 +74,4 @@ Run `bun run register` from `packages/discord-bot` (needs `DISCORD_BOT_TOKEN` an
 - Type-only imports from `@riftseer/api` and `elysia` are stripped at bundle time
 
 ## Privacy
-The Discord bot does not store any data. It forwards the card name to the RiftSeer API and returns the result. If logging or persistence is added, update `packages/frontend/src/components/PrivacyPage.tsx`.
+The Discord bot does not store any data. It forwards the card name to the Riftseer API and returns the result. If logging or persistence is added, update `packages/frontend/src/components/PrivacyPage.tsx`.

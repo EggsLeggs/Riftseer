@@ -6,11 +6,11 @@ import { apiUrl } from "../api";
 export function SyntaxPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
-      <title>Search Reference — RiftSeer</title>
-      <meta name="description" content="RiftSeer includes a large set of keywords and expressions used to find Riftbound cards." />
+      <title>Search Reference — Riftseer</title>
+      <meta name="description" content="Riftseer includes a large set of keywords and expressions used to find Riftbound cards." />
       <meta property="og:type" content="website" />
-      <meta property="og:title" content="Search Reference — RiftSeer" />
-      <meta property="og:description" content="RiftSeer includes a large set of keywords and expressions used to find Riftbound cards." />
+      <meta property="og:title" content="Search Reference — Riftseer" />
+      <meta property="og:description" content="Riftseer includes a large set of keywords and expressions used to find Riftbound cards." />
       <meta property="og:url" content={window.location.href} />
 
       <div className="flex items-center gap-2 mb-6">
@@ -23,7 +23,7 @@ export function SyntaxPage() {
         <section>
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">Overview</h2>
           <p className="text-foreground leading-relaxed">
-            RiftSeer supports searching for Riftbound cards by name. Type a card name (or part
+            Riftseer supports searching for Riftbound cards by name. Type a card name (or part
             of one) into the search bar to find matching cards. The search engine uses fuzzy
             matching, so minor typos and partial names will still return results.
           </p>
@@ -35,7 +35,7 @@ export function SyntaxPage() {
             Card Reference Syntax
           </h2>
           <p className="text-foreground leading-relaxed mb-3">
-            RiftSeer's bot and API use a bracket syntax to look up specific cards.
+            Riftseer's bot and API use a bracket syntax to look up specific cards.
             Wrap a card name in double square brackets:
           </p>
           <div className="space-y-3">
@@ -116,7 +116,7 @@ export function SyntaxPage() {
         <section>
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">API</h2>
           <p className="text-foreground leading-relaxed mb-3">
-            RiftSeer provides a free JSON API. Some useful endpoints:
+            Riftseer provides a free JSON API. Some useful endpoints:
           </p>
           <div className="space-y-2">
             <ApiEndpoint
