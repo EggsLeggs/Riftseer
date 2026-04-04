@@ -245,29 +245,4 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
       },
     )
 
-    // ── GET /sets ─────────────────────────────────────────────────────────────
-    .get(
-      "/sets",
-      async () => {
-        const sets = await cardProvider.getSets();
-        return { count: sets.length, sets };
-      },
-      {
-        response: t.Object({
-          count: t.Number(),
-          sets: t.Array(
-            t.Object({
-              setCode: t.String(),
-              setName: t.String(),
-              cardCount: t.Number(),
-            }),
-          ),
-        }),
-        detail: {
-          tags: ["Cards"],
-          summary: "List all sets",
-          description: "Returns all known card sets with card counts.",
-        },
-      },
-    );
 }

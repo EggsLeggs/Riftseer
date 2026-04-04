@@ -107,7 +107,8 @@ Route modules live in `packages/api/src/routes/`:
 | Module | Routes |
 |---|---|
 | `meta.ts` | `/health`, `/meta` |
-| `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/resolve`, `/prices/tcgplayer`, `/sets` |
+| `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/resolve`, `/prices/tcgplayer` |
+| `sets.ts` | `/sets` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
 
 ---
@@ -144,7 +145,7 @@ See [Swagger](./swagger.md) for how the `detail` annotation maps to what appears
 | `GET` | `/api/v1/cards/:id/text` | [Cards](./cards.md) |
 | `POST` | `/api/v1/resolve` | [Cards](./cards.md) |
 | `GET` | `/api/v1/prices/tcgplayer` | [Cards](./cards.md) |
-| `GET` | `/api/v1/sets` | [Cards](./cards.md) |
+| `GET` | `/api/v1/sets` | [Sets](./sets.md) |
 | `GET` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
 | `POST` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
 | `POST` | `/api/v1/decks/u` | [Decks](./decks.md) |

@@ -18,7 +18,6 @@ All card endpoints are under `/api/v1/cards`. For full request/response schemas,
 | `GET` | `/api/v1/cards/:id/text` | Plain-text card summary |
 | `POST` | `/api/v1/resolve` | Batch resolve card name strings |
 | `GET` | `/api/v1/prices/tcgplayer` | TCGPlayer USD prices by card name |
-| `GET` | `/api/v1/sets` | All sets with card counts |
 
 ---
 
@@ -131,25 +130,3 @@ Response:
 
 All fields are nullable — if a card has no TCGPlayer listing, all three return `null`.
 
----
-
-## GET /api/v1/sets
-
-Returns all known sets with a card count for each.
-
-```
-GET /api/v1/sets
-```
-
-Response:
-
-```json
-{
-  "count": 3,
-  "sets": [
-    { "setCode": "OGN", "setName": "Origins", "cardCount": 250 }
-  ]
-}
-```
-
-To browse all cards in a set, use `GET /api/v1/cards?set=OGN` — see [Search](./search.md).
