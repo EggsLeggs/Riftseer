@@ -252,7 +252,7 @@ export function CardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      <title>{card.name} — RiftSeer</title>
+      <title>{card.name} — Riftseer</title>
       <meta name="description" content={seoDescription} />
       <meta property="og:title" content={card.name} />
       <meta property="og:description" content={seoDescription} />

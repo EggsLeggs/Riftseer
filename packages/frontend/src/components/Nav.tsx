@@ -41,7 +41,7 @@ export function Nav() {
           to="/"
           className="text-lg font-bold tracking-tight text-white hover:no-underline shrink-0"
         >
-          RiftSeer
+          Riftseer
         </Link>
 
         {/* Search bar */}

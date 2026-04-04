@@ -1,5 +1,5 @@
 /**
- * RiftSeer API — Elysia server
+ * Riftseer API — Elysia server
  *
  * All API endpoints are under /api/v1:
  *   GET  /api/v1/health
@@ -82,7 +82,7 @@ const app = new Elysia()
       },
       documentation: {
         info: {
-          title: "RiftSeer API",
+          title: "Riftseer API",
           version: "0.1.0",
           description:
             "Riftbound card data API. Data from Supabase (populated by the ingest pipeline). " +
@@ -104,7 +104,7 @@ const app = new Elysia()
   .listen(parseInt(process.env.PORT ?? process.env.API_PORT ?? "3000", 10));
 
 const port = process.env.PORT ?? process.env.API_PORT ?? "3000";
-logger.info("RiftSeer API started", {
+logger.info("Riftseer API started", {
   port,
   provider: cardProvider.sourceName,
   swagger: `http://localhost:${port}/api/swagger`,
