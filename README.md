@@ -142,19 +142,23 @@ Studio UI (local): `http://127.0.0.1:54323`. To stop: `npx supabase stop`.
 > **Note:** Bun reads `.env` from the directory where it is invoked. The API scripts use
 > `--env-file ../../.env` so the root `.env` is always picked up regardless of working directory.
 
-### Redis
+### Upstash Redis
 
-Redis is used as a warmup cache for the Supabase provider (fast restarts without re-querying Postgres). It is optional — if unavailable, the provider falls back to Supabase on every restart.
+Upstash Redis is used as a warmup cache for the Supabase provider (fast restarts without re-querying Postgres). It is optional — if credentials are absent, the provider falls back to Supabase on every restart.
 
-```bash
-# Docker (recommended — also available via docker-compose)
-docker run -d -p 6379:6379 redis:7-alpine
+Create a free database at [console.upstash.com](https://console.upstash.com) (free tier: 10k req/day, 256MB — sufficient for ~650 cards), then set the credentials in your `.env`:
 
-# Or via Homebrew
-brew install redis && brew services start redis
+```
+UPSTASH_REDIS_REST_URL=https://<database-name>.upstash.io
+UPSTASH_REDIS_REST_TOKEN=<rest-token>
 ```
 
-The default `REDIS_URL=redis://localhost:6379` works for both options.
+For the API Cloudflare Worker, set them as secrets:
+
+```bash
+wrangler secret put UPSTASH_REDIS_REST_URL
+wrangler secret put UPSTASH_REDIS_REST_TOKEN
+```
 
 ---
 
@@ -172,7 +176,8 @@ See `.env.example`. Summary:
 | `FUZZY_THRESHOLD` | `0.4` | Fuse.js fuzzy match (0=exact, 1=loose) |
 | `SUPABASE_URL` | — | Required when `CARD_PROVIDER=supabase` |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | Required when `CARD_PROVIDER=supabase` |
-| `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
+| `UPSTASH_REDIS_REST_URL` | — | Upstash Redis REST URL (optional cache) |
+| `UPSTASH_REDIS_REST_TOKEN` | — | Upstash Redis REST token |
 | `REDDIT_*` | — | Required for Reddit bot (see Reddit setup below) |
 
 ---

@@ -70,7 +70,8 @@ npx devvit settings set siteBaseUrl
 | `FUZZY_THRESHOLD` | Fuse.js threshold 0–1 (default `0.4`) |
 | `SUPABASE_URL` | Supabase project URL — required when `CARD_PROVIDER=supabase` (MR6+) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required when `CARD_PROVIDER=supabase` |
-| `REDIS_URL` | Redis connection URL (default `redis://localhost:6379`) |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional; speeds up provider restarts |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
 | `INGEST_SECRET` | Bearer token for POST /ingest on the ingest-worker (optional) |
 
 ## Key Architecture Decisions
