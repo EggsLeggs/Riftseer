@@ -57,7 +57,7 @@ const config: Config = {
       '@docusaurus/plugin-content-docs',
       {
         id: 'getting-started',
-        path: '../getting-started/docs',
+        path: './doc-pages/getting-started',
         routeBasePath: 'getting-started',
         sidebarPath: './sidebarsGettingStarted.ts',
       },
@@ -111,7 +111,7 @@ const config: Config = {
       '@docusaurus/plugin-content-docs',
       {
         id: 'infrastructure',
-        path: '../infrastructure/docs',
+        path: './doc-pages/infrastructure',
         routeBasePath: 'infrastructure',
         sidebarPath: './sidebarsInfrastructure.ts',
       },
