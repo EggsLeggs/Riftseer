@@ -124,6 +124,5 @@ bun run deploy   # requires GH_TOKEN or SSH access to the repo
 | File | Purpose |
 | ---- | ------- |
 | `docs/docusaurus.config.ts` | Site metadata, plugins, navbar, theme |
-| `docs/sidebars.ts` | Sidebar for Ingest Worker docs |
-| `docs/sidebars*.ts` | One sidebar file per section |
+| `docs/sidebars*.ts` | One sidebar file per section (e.g. `sidebarsIngestWorker.ts`, `sidebarsApi.ts`) |
 | `docs/src/css/custom.css` | Global CSS overrides |
