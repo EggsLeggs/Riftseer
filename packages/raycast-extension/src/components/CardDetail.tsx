@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { Card } from "../types";
 
 function tinted(source: string): Image.ImageLike {
@@ -227,16 +227,20 @@ function buildMarkdown(card: Card): string {
       /\n/g,
       " ",
     );
-    const url = new URL(imageUrl);
-    if (isLandscape) {
-      url.searchParams.set("raycast-width", "300");
-      url.searchParams.set("raycast-height", "200");
-    } else {
-      url.searchParams.set("raycast-width", "200");
-      url.searchParams.set("raycast-height", "300");
+    try {
+      const url = new URL(imageUrl);
+      if (isLandscape) {
+        url.searchParams.set("raycast-width", "300");
+        url.searchParams.set("raycast-height", "200");
+      } else {
+        url.searchParams.set("raycast-width", "200");
+        url.searchParams.set("raycast-height", "300");
+      }
+      lines.push(`![${altText}](${url.toString()})`);
+      lines.push("");
+    } catch {
+      // Skip image if URL is malformed or relative
     }
-    lines.push(`![${altText}](${url.toString()})`);
-    lines.push("");
   }
 
   // Rules text
@@ -276,11 +280,9 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
     card.classification?.supertype,
   );
 
-  const onViewRef = useRef(onView);
-  const cardRef = useRef(card);
   useEffect(() => {
-    onViewRef.current?.(cardRef.current);
-  }, []);
+    onView?.(card);
+  }, [card, onView]);
 
   const metadata = (
     <Detail.Metadata>

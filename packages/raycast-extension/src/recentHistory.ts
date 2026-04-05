@@ -46,12 +46,13 @@ export function useRecentCardHistory(maxRecent: number) {
 
   const recordVisit = useCallback(
     (card: Card) => {
+      if (isLoading) return;
       if (maxRecent <= 0) return;
       const next = mergeRecentHistory(recentRef.current, card, maxRecent);
       recentRef.current = next;
       void setRecentCards(next);
     },
-    [maxRecent, setRecentCards],
+    [isLoading, maxRecent, setRecentCards],
   );
 
   return {
