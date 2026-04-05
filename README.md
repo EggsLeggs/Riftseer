@@ -20,13 +20,13 @@ Card data API, web app, and Reddit + Discord integration for the **Riftbound** T
 
 ## What’s included
 
-|Part|Description|
-|------|--------------|
-|**Site**|React (Vite) app: search, card pages, sets browser, syntax guide, light/dark theme|
-|**API**|Elysia HTTP server under `/api/v1`: cards, sets, resolve; Swagger UI at `/api/swagger`|
-|**Discord bot**|Slash-command bot on Cloudflare Workers — see `packages/discord-bot`|
-|**Reddit bot**|Bracket-syntax bot on Reddit — uses [Devvit](https://devvit.dev), see `packages/reddit-bot`|
-|**Core**|Shared types, `CardDataProvider`, parser, icon definitions, Supabase provider|
+| Part | Description |
+| --- | --- |
+| **Site** | React (Vite) app: search, card pages, sets browser, syntax guide, light/dark theme |
+| **API** | Elysia HTTP server under `/api/v1`: cards, sets, resolve; Swagger UI at `/api/swagger` |
+| **Discord bot** | Slash-command bot on Cloudflare Workers — see `packages/discord-bot` |
+| **Reddit bot** | Bracket-syntax bot on Reddit — uses [Devvit](https://devvit.dev), see `packages/reddit-bot` |
+| **Core** | Shared types, `CardDataProvider`, parser, icon definitions, Supabase provider |
 
 ---
 
@@ -63,9 +63,9 @@ packages/
 
 ## Requirements
 
-| Tool                    | Version |
-| ----------------------- | ------- |
-| [Bun](https://bun.sh)   | ≥ 1.2   |
+| Tool | Version |
+| --- | --- |
+| [Bun](https://bun.sh) | ≥ 1.2 |
 
 Elysia is Bun-first and uses `Bun.serve()`; Bun also provides SQLite and a Jest-compatible test runner.
 
@@ -165,7 +165,6 @@ wrangler secret put UPSTASH_REDIS_REST_TOKEN
 
 On other hosts, set the same values using that platform’s environment variable or secret mechanism (not Wrangler).
 
-
 ---
 
 ## Environment Variables
@@ -173,7 +172,7 @@ On other hosts, set the same values using that platform’s environment variable
 See `.env.example`. Summary:
 
 | Variable | Default | Description |
-| ---------- | --------- | ------------- |
+| --- | --- | --- |
 | `CARD_PROVIDER` | `supabase` | `supabase` |
 | `API_PORT` | `3000` | Elysia port |
 | `API_BASE_URL` | `http://localhost:3000` | Public API URL (bot/site links) |
@@ -249,7 +248,7 @@ When the API is running, OpenAPI UI is at **`/api/swagger`** (documents all API 
 All endpoints are under **`/api/v1`**:
 
 | Method | Path | Description |
-| ------ | ---- | ----------- |
+| --- | --- | --- |
 | GET | `/api/v1/health` | `{ status, uptimeMs }` |
 | GET | `/api/v1/meta` | Provider name, card count, last refresh, cache age |
 | GET | `/api/v1/cards` | Search: `?name=...` (required unless browsing set), optional `?set=`, `?fuzzy=1`, `?limit=` |

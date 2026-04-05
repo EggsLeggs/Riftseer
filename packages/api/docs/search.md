@@ -11,7 +11,7 @@ sidebar_position: 3
 ## Two modes
 
 | Mode | Trigger | Use case |
-|---|---|---|
+| --- | --- | --- |
 | **Autocomplete** | `GET /api/v1/cards?name=<q>` | Live search bar, partial queries |
 | **Exact lookup** | `POST /api/v1/cards/resolve` | Bot triggers (`[[Card Name]]`), deterministic resolution |
 
@@ -27,7 +27,7 @@ The route calls `provider.searchByName(name, opts)`, which delegates to `autocom
 
 Pass `?fuzzy=false` (or `?fuzzy=0`) to require an exact normalised name match:
 
-```
+```http
 GET /api/v1/cards?name=Sun+Disc&fuzzy=false
 ```
 
@@ -77,7 +77,7 @@ sequenceDiagram
 ## Key files
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `packages/core/src/search.ts` | Scoring logic — `autocompleteSearch`, `scoreCard`, Levenshtein |
 | `packages/core/src/normalize.ts` | `normalizeCardName` — shared by index build and query path |
 | `packages/core/src/providers/supabase.ts` | `searchByName` (autocomplete), `resolveRequest` (exact lookup) |

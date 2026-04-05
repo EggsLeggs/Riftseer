@@ -77,4 +77,3 @@ Responsibilities typically include:
 See the Supabase migrations in the root `supabase/migrations/` folder for the exact schema the pipeline targets.
 
 For details on pointing the ingest worker at either a live Supabase project or a local Supabase stack, see the Supabase docs under `supabase/docs/supabase.md` in the repo.
-

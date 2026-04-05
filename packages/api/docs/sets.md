@@ -11,7 +11,7 @@ All set endpoints are under `/api/v1/sets`. For full request/response schemas, t
 ## Endpoints at a glance
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/api/v1/sets` | List all sets with card counts |
 
 ---

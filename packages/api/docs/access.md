@@ -33,7 +33,7 @@ Card images are served directly from the source CDN (RiftCodex). The Riftseer AP
 The `media.media_urls` object on a card may contain the following keys:
 
 | Key | Notes |
-|---|---|
+| --- | --- |
 | `normal` | Standard display size — the only size currently populated from the data source |
 | `small` | Coming soon |
 | `large` | Coming soon |
