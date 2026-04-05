@@ -220,9 +220,6 @@ function buildMarkdown(card: Card): string {
   // Portrait cards: 300 tall (matches lotus-mtg-companion); width=200 preserves 2:3 ratio.
   // Landscape cards: height=200 (= width of a portrait card at height=300 with 2:3 ratio); width=300.
   const isLandscape = card.media?.orientation === "landscape";
-  const imgDims = isLandscape
-    ? "raycast-width=300&raycast-height=200"
-    : "raycast-width=200&raycast-height=300";
   const imageUrl =
     card.media?.media_urls?.normal ?? card.media?.media_urls?.large;
   if (imageUrl) {
@@ -230,7 +227,15 @@ function buildMarkdown(card: Card): string {
       /\n/g,
       " ",
     );
-    lines.push(`![${altText}](${imageUrl}?${imgDims})`);
+    const url = new URL(imageUrl);
+    if (isLandscape) {
+      url.searchParams.set("raycast-width", "300");
+      url.searchParams.set("raycast-height", "200");
+    } else {
+      url.searchParams.set("raycast-width", "200");
+      url.searchParams.set("raycast-height", "300");
+    }
+    lines.push(`![${altText}](${url.toString()})`);
     lines.push("");
   }
 
@@ -402,7 +407,13 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
                       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
                     }
                     const buf = Buffer.from(await res.arrayBuffer());
-                    const ext = imageUrl.endsWith(".png") ? "png" : "jpg";
+                    // Determine extension from URL pathname
+                    const url = new URL(imageUrl);
+                    const lastDot = url.pathname.lastIndexOf(".");
+                    const ext =
+                      lastDot >= 0 && lastDot < url.pathname.length - 1
+                        ? url.pathname.substring(lastDot + 1)
+                        : "png";
                     tempPath = join(tmpdir(), `riftseer-${card.id}.${ext}`);
                     await writeFile(tempPath, buf);
                     await Clipboard.copy({ file: tempPath });

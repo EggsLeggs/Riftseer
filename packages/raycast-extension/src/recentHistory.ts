@@ -28,9 +28,21 @@ export function useRecentCardHistory(maxRecent: number) {
   } = useLocalStorage<Card[]>(STORAGE_KEY, []);
 
   const recentRef = useRef<Card[]>([]);
+  const trimmedCards = (recentCards ?? []).slice(0, maxRecent);
+
   useEffect(() => {
-    recentRef.current = recentCards ?? [];
-  }, [recentCards]);
+    recentRef.current = trimmedCards;
+  }, [trimmedCards]);
+
+  // Enforce maxRecent when loading or when maxRecent changes
+  useEffect(() => {
+    const loaded = recentCards ?? [];
+    if (loaded.length > maxRecent) {
+      const trimmed = loaded.slice(0, maxRecent);
+      recentRef.current = trimmed;
+      void setRecentCards(trimmed);
+    }
+  }, [maxRecent, recentCards, setRecentCards]);
 
   const recordVisit = useCallback(
     (card: Card) => {
@@ -43,7 +55,7 @@ export function useRecentCardHistory(maxRecent: number) {
   );
 
   return {
-    recentCards: recentCards ?? [],
+    recentCards: trimmedCards,
     recordVisit,
     isLoadingHistory: isLoading,
   };
