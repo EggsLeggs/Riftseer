@@ -64,8 +64,8 @@ function renderTokens(text: string, keyOffset = 0): React.ReactNode[] {
 
 function renderLine(line: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  // Split on italic spans _..._
-  const segments = line.split(/(_[^_\n]+_)/);
+  // Split on italic spans _..._ while treating token patterns (like energy_3) as atomic
+  const segments = line.split(/(_(?:[^_\n]|:rb_[^:]+:)+_)/);
   segments.forEach((seg, si) => {
     if (seg.startsWith("_") && seg.endsWith("_") && seg.length > 2) {
       const inner = seg.slice(1, -1);

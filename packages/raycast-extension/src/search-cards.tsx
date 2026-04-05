@@ -35,7 +35,6 @@ async function rotateImageCW90(url: string): Promise<string> {
       rotatedImageCache.set(url, dataUrl);
       return dataUrl;
     } catch {
-      rotatedImageCache.set(url, url);
       return url;
     } finally {
       rotatedImageInflight.delete(url);

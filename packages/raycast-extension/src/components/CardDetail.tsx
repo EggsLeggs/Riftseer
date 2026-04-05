@@ -13,6 +13,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { useEffect, useRef } from "react";
 import type { Card } from "../types";
 
@@ -113,8 +114,13 @@ function renderTextForRaycast(text: string): string {
       if (uri) return `![${key}](${uri})`;
     }
     const pngAsset = TOKEN_PNG_ASSETS[key];
-    if (pngAsset)
-      return `![${key}](file://${environment.assetsPath}/${pngAsset}?raycast-width=${INLINE_ICON_SIZE}&raycast-height=${INLINE_ICON_SIZE})`;
+    if (pngAsset) {
+      const filePath = join(environment.assetsPath, pngAsset);
+      const fileUrl = pathToFileURL(filePath);
+      fileUrl.searchParams.set("raycast-width", String(INLINE_ICON_SIZE));
+      fileUrl.searchParams.set("raycast-height", String(INLINE_ICON_SIZE));
+      return `![${key}](${fileUrl.href})`;
+    }
     return TOKEN_TEXT_FALLBACKS[key] ?? `[${key}]`;
   });
 }
@@ -244,11 +250,11 @@ function buildMarkdown(card: Card): string {
 
 function buildCopyableText(card: Card): string {
   const lines: string[] = [card.name];
-  const typeParts = [
-    card.classification?.supertype,
+  const typeLine = formatTypeLine(
     card.classification?.type,
-  ].filter(Boolean);
-  if (typeParts.length > 0) lines.push(typeParts.join(" — "));
+    card.classification?.supertype,
+  );
+  if (typeLine) lines.push(typeLine);
   if (card.text?.plain?.trim()) {
     if (lines.length > 1) lines.push("");
     lines.push(card.text.plain.trim());
@@ -392,6 +398,9 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
                   let tempPath: string | undefined;
                   try {
                     const res = await fetch(imageUrl);
+                    if (!res.ok) {
+                      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+                    }
                     const buf = Buffer.from(await res.arrayBuffer());
                     const ext = imageUrl.endsWith(".png") ? "png" : "jpg";
                     tempPath = join(tmpdir(), `riftseer-${card.id}.${ext}`);
