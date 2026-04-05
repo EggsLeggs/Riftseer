@@ -360,7 +360,7 @@
 }
 
 .icon-legend {
-  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/59e98d14f83125c88880af1d61213e3aef941370-64x64.png?auto=format&fit=fill&q=80&w=48");
+  background-image: url("/icons/types/legend.png");
   filter: brightness(0);
 }
 

@@ -16,11 +16,12 @@ export function PrivacyPage() {
         <Shield className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Privacy Policy</h1>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Last Updated: 20 February 2026</p>
+      <p className="text-sm text-muted-foreground mb-6">Last Updated: 5 April 2026</p>
 
       <p className="text-foreground leading-relaxed mb-8">
         This Privacy Policy describes how Riftseer collects, uses, and protects information when
-        you use our website, API, and Reddit bot. We do not sell your personal information.
+        you use our website, API, Reddit bot, and optional Raycast extension. We do not sell your
+        personal information.
       </p>
 
       <div className="prose prose-sm max-w-none space-y-8">
@@ -29,7 +30,8 @@ export function PrivacyPage() {
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">Definitions</h2>
           <p className="text-foreground leading-relaxed mb-2">
             <strong>Riftseer</strong> means the Riftseer website, the Riftseer API, the Reddit bot
-            (when installed in a subreddit), and related services. <strong>We</strong> /{" "}
+            (when installed in a subreddit), the Raycast extension (if you install it from the
+            Raycast Store), and related services. <strong>We</strong> /{" "}
             <strong>us</strong> means the operators of Riftseer. <strong>Personal data</strong>{" "}
             means information that could identify you, such as your IP address or username.
           </p>
@@ -129,6 +131,25 @@ export function PrivacyPage() {
               <strong>Reddit and Devvit.</strong> The bot is built on Devvit and runs in Reddit’s
               environment. Reddit and Devvit may process data according to their own policies. We
               do not control Reddit’s or Devvit’s data practices.
+            </li>
+          </ul>
+        </section>
+
+        {/* Raycast */}
+        <section>
+          <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">
+            Riftseer Raycast Extension
+          </h2>
+          <p className="text-foreground leading-relaxed mb-3">
+            The optional Raycast extension calls the public RiftSeer API to search and display
+            cards. It does not send us your Raycast account or identity.
+          </p>
+          <ul className="space-y-3 text-foreground">
+            <li>
+              <strong>Local storage on your Mac.</strong> The extension may keep a bounded list of
+              recently viewed cards in Raycast&apos;s local storage on your device (you can set the
+              limit to zero to turn this off). That history is not uploaded to RiftSeer; it stays
+              in Raycast until you clear it or remove the extension.
             </li>
           </ul>
         </section>

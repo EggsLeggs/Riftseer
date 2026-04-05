@@ -23,6 +23,7 @@ npm run publish      # npx @raycast/api@latest publish
 | `src/search-cards.tsx` | `search-cards` command — List view with throttled search |
 | `src/random-card.tsx`  | `random-card` command — fetches random card on load |
 | `src/components/CardDetail.tsx` | Shared Detail view with Metadata panel |
+| `src/recentHistory.ts` | Recent-card history (Raycast `LocalStorage` via `useLocalStorage`) |
 | `src/types.ts` | Local copy of Card types from `packages/core/src/types.ts` |
 
 ## API Endpoints Used
@@ -36,6 +37,7 @@ npm run publish      # npx @raycast/api@latest publish
 |-----|---------|-------------|
 | `apiBaseUrl` | `https://riftseerapi-production.up.railway.app` | RiftSeer API base URL |
 | `siteBaseUrl` | `https://riftseer.com` | RiftSeer site base URL for card links |
+| `maxRecentHistory` | `50` | Max recently viewed cards kept in Raycast local storage (`0` = off). Shown when Search Cards has an empty query. |
 
 ## Type Versioning
 `src/types.ts` is a local copy of the canonical types in `packages/core/src/types.ts`. If the Card shape changes upstream, update both files.
@@ -48,7 +50,7 @@ npm run publish      # npx @raycast/api@latest publish
 Do not upgrade `@types/react` without checking `@raycast/api`'s peer deps first — version mismatches cause widespread JSX type errors.
 
 ## Privacy
-This extension makes read-only HTTP requests to the RiftSeer API. It does not store, log, or transmit any user data. No analytics or tracking. If this ever changes, update `packages/frontend/src/components/PrivacyPage.tsx`.
+This extension makes read-only HTTP requests to the RiftSeer API. It stores a bounded list of recently viewed card payloads in Raycast local storage (for the Search Cards empty state and history cap); that data stays on the device and is not sent to RiftSeer. No analytics or tracking. If this ever changes, update `packages/frontend/src/components/PrivacyPage.tsx`.
 
 ## Documentation
 Doc pages for this extension live in `packages/raycast-extension/docs/raycast-extension.md`. The dev docs site copies this file into `docs/doc-pages/clients-bots/` when you run `bun run build` or `bun run start` in `docs/` (see `sync-clients-bots-docs`). Keep the doc up to date when commands, preferences, or the API call change.

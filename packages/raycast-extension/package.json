@@ -43,6 +43,15 @@
       "required": true,
       "default": "https://riftseer.thinkhuman.dev",
       "placeholder": "https://riftseer.thinkhuman.dev"
+    },
+    {
+      "name": "maxRecentHistory",
+      "title": "Max Recent History",
+      "description": "How many recently viewed cards to remember and show when the search is empty. Use 0 to disable.",
+      "type": "textfield",
+      "required": false,
+      "default": "50",
+      "placeholder": "50"
     }
   ],
   "dependencies": {

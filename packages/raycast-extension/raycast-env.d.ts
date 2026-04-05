@@ -11,7 +11,9 @@ type ExtensionPreferences = {
   /** API Base URL - Base URL of the RiftSeer API server (where /api/v1 routes live). */
   "apiBaseUrl": string,
   /** Site Base URL - Base URL of the RiftSeer frontend (used for card links). */
-  "siteBaseUrl": string
+  "siteBaseUrl": string,
+  /** Max Recent History - How many recently viewed cards to remember and show when the search is empty. Use 0 to disable. */
+  "maxRecentHistory": string
 }
 
 /** Preferences accessible in all the extension's commands */

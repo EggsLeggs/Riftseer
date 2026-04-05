@@ -6,7 +6,7 @@ interface Props {
 }
 
 export function CardTextRenderer({ text }: Props) {
-  const lines = text.split("\n");
+  const lines = text.replace(/([.)—])([A-Z\[])/g, "$1\n$2").split("\n");
 
   return (
     <div className="space-y-2 text-sm leading-relaxed">

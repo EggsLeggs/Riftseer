@@ -1,16 +1,123 @@
-import { Action, ActionPanel, Clipboard, Color, Detail, Image, open, showToast, Toast } from "@raycast/api";
+import {
+  Action,
+  ActionPanel,
+  Clipboard,
+  Color,
+  Detail,
+  Image,
+  environment,
+  showToast,
+  Toast,
+} from "@raycast/api";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { useEffect } from "react";
 import type { Card } from "../types";
 
 function tinted(source: string): Image.ImageLike {
   return { source, tintColor: Color.PrimaryText };
 }
 
+// ─── Card text token rendering ────────────────────────────────────────────────
+
+const CIRCLED_DIGITS = ["⓪", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
+
+/**
+ * SVG token icons have hardcoded fill="white". We swap the fill to black on
+ * light mode and re-encode as a data URI so the colour tracks the theme.
+ * PNG domain rune icons have baked-in colours and work as-is with file:// URLs.
+ */
+const TOKEN_SVG_ASSETS: Record<string, string> = {
+  exhaust: "icons/stats/exhaust.svg",
+  might: "icons/stats/might.svg",
+  power: "icons/stats/card_type_rune.svg",
+};
+
+const TOKEN_PNG_ASSETS: Record<string, string> = {
+  rune_fury: "icons/domains/rune_fury.png",
+  rune_calm: "icons/domains/rune_calm.png",
+  rune_mind: "icons/domains/rune_mind.png",
+  rune_body: "icons/domains/rune_body.png",
+  rune_chaos: "icons/domains/rune_chaos.png",
+  rune_order: "icons/domains/rune_order.png",
+  rune_rainbow: "icons/domains/rune_rainbow.svg",
+};
+
+const TOKEN_TEXT_FALLBACKS: Record<string, string> = {
+  energy: "⚡",
+};
+
+const svgDataUriCache = new Map<string, string>();
+
+const INLINE_ICON_SIZE = 16;
+
+function themedSvgDataUri(assetRelPath: string): string {
+  const cacheKey = `${assetRelPath}:${environment.appearance}`;
+  const cached = svgDataUriCache.get(cacheKey);
+  if (cached) return cached;
+  try {
+    let svg = readFileSync(join(environment.assetsPath, assetRelPath), "utf8");
+
+    // Pin display size so the icon sits inline with text
+    svg = svg
+      .replace(/(<svg[^>]*)\swidth="[^"]*"/, `$1 width="${INLINE_ICON_SIZE}"`)
+      .replace(
+        /(<svg[^>]*)\sheight="[^"]*"/,
+        `$1 height="${INLINE_ICON_SIZE}"`,
+      );
+
+    if (environment.appearance === "light") {
+      // Protect fill="white" inside structural elements (mask/defs/clipPath) — those
+      // define geometry for masking, not visual colour, and must stay white.
+      const SENTINEL = "\x00FILL_WHITE\x00";
+      svg = svg
+        .replace(/<mask[\s\S]*?<\/mask>/g, (m) =>
+          m.replace(/fill="white"/g, SENTINEL),
+        )
+        .replace(/<defs[\s\S]*?<\/defs>/g, (m) =>
+          m.replace(/fill="white"/g, SENTINEL),
+        )
+        .replace(/fill="white"/g, 'fill="black"')
+        .replace(new RegExp(SENTINEL, "g"), 'fill="white"');
+    }
+
+    const uri = `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+    svgDataUriCache.set(cacheKey, uri);
+    return uri;
+  } catch {
+    return "";
+  }
+}
+
+function renderTextForRaycast(text: string): string {
+  // Insert a newline at sentence boundaries that have no space, common in plain
+  // card text: ".)Choose", "—Deal", "base.Kill" all need a break before the
+  // next word.
+  text = text.replace(/([.)—])([A-Z[])/g, "$1\n\n$2");
+  return text.replace(/:rb_(\w+):/g, (_match, key: string) => {
+    const energyMatch = /^energy_(\d+)$/.exec(key);
+    if (energyMatch) {
+      const n = parseInt(energyMatch[1], 10);
+      return CIRCLED_DIGITS[n] ?? `(${n})`;
+    }
+    const svgAsset = TOKEN_SVG_ASSETS[key];
+    if (svgAsset) {
+      const uri = themedSvgDataUri(svgAsset);
+      if (uri) return `![${key}](${uri})`;
+    }
+    const pngAsset = TOKEN_PNG_ASSETS[key];
+    if (pngAsset)
+      return `![${key}](file://${environment.assetsPath}/${pngAsset}?raycast-width=${INLINE_ICON_SIZE}&raycast-height=${INLINE_ICON_SIZE})`;
+    return TOKEN_TEXT_FALLBACKS[key] ?? `[${key}]`;
+  });
+}
+
 const TYPE_ICONS: Record<string, string> = {
   unit: "icons/types/unit.png",
   champion: "icons/types/champion.png",
+  legend: "icons/types/legend.png",
   spell: "icons/types/spell.png",
   gear: "icons/types/gear.png",
   battlefield: "icons/types/battlefield.png",
@@ -34,7 +141,10 @@ const DOMAIN_ICONS: Record<string, string> = {
 };
 
 /** Pick the icon key that best represents the type line, mirroring frontend prefix logic. */
-function typeIconKey(type?: string, supertype?: string | null): string | undefined {
+function typeIconKey(
+  type?: string,
+  supertype?: string | null,
+): string | undefined {
   const tl = type?.toLowerCase();
   const st = supertype?.toLowerCase();
   if (st === "token" || st === "basic") return tl === "token" ? "unit" : tl;
@@ -42,7 +152,10 @@ function typeIconKey(type?: string, supertype?: string | null): string | undefin
   return st;
 }
 
-function getTypeIcon(type?: string, supertype?: string | null): Image.ImageLike | undefined {
+function getTypeIcon(
+  type?: string,
+  supertype?: string | null,
+): Image.ImageLike | undefined {
   const key = typeIconKey(type, supertype);
   const src = key ? TYPE_ICONS[key] : undefined;
   return src ? tinted(src) : undefined;
@@ -59,7 +172,10 @@ function getDomainIcon(domain: string): Image.ImageLike | undefined {
 }
 
 /** Mirrors the frontend CardPage type-line logic (without icons). */
-export function formatTypeLine(type?: string, supertype?: string | null): string | null {
+export function formatTypeLine(
+  type?: string,
+  supertype?: string | null,
+): string | null {
   if (!type && !supertype) return null;
   if (!type) return supertype!;
   if (!supertype) return type;
@@ -76,6 +192,8 @@ export function formatTypeLine(type?: string, supertype?: string | null): string
 interface CardDetailProps {
   card: Card;
   siteBaseUrl: string;
+  /** Called when this detail view is shown (full-screen detail, random card, or push from search). */
+  onView?: (card: Card) => void;
 }
 
 function buildMarkdown(card: Card): string {
@@ -86,22 +204,29 @@ function buildMarkdown(card: Card): string {
   // Portrait cards: 300 tall (matches lotus-mtg-companion); width=200 preserves 2:3 ratio.
   // Landscape cards: height=200 (= width of a portrait card at height=300 with 2:3 ratio); width=300.
   const isLandscape = card.media?.orientation === "landscape";
-  const imgDims = isLandscape ? "raycast-width=300&raycast-height=200" : "raycast-width=200&raycast-height=300";
-  const imageUrl = card.media?.media_urls?.normal ?? card.media?.media_urls?.large;
+  const imgDims = isLandscape
+    ? "raycast-width=300&raycast-height=200"
+    : "raycast-width=200&raycast-height=300";
+  const imageUrl =
+    card.media?.media_urls?.normal ?? card.media?.media_urls?.large;
   if (imageUrl) {
-    lines.push(`![${card.media?.accessibility_text ?? card.name}](${imageUrl}?${imgDims})`);
+    const altText = (card.media?.accessibility_text ?? card.name).replace(
+      /\n/g,
+      " ",
+    );
+    lines.push(`![${altText}](${imageUrl}?${imgDims})`);
     lines.push("");
   }
 
   // Rules text
   if (card.text?.plain?.trim()) {
-    lines.push(card.text.plain.trim());
+    lines.push(renderTextForRaycast(card.text.plain.trim()));
     lines.push("");
   }
 
   // Flavour text
   if (card.text?.flavour?.trim()) {
-    lines.push(`*${card.text.flavour.trim()}*`);
+    lines.push(`*${renderTextForRaycast(card.text.flavour.trim())}*`);
   }
 
   return lines.join("\n");
@@ -109,7 +234,10 @@ function buildMarkdown(card: Card): string {
 
 function buildCopyableText(card: Card): string {
   const lines: string[] = [card.name];
-  const typeParts = [card.classification?.supertype, card.classification?.type].filter(Boolean);
+  const typeParts = [
+    card.classification?.supertype,
+    card.classification?.type,
+  ].filter(Boolean);
   if (typeParts.length > 0) lines.push(typeParts.join(" — "));
   if (card.text?.plain?.trim()) {
     if (lines.length > 1) lines.push("");
@@ -118,27 +246,48 @@ function buildCopyableText(card: Card): string {
   return lines.join("\n");
 }
 
-export function CardDetail({ card, siteBaseUrl }: CardDetailProps) {
+export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
   const site = siteBaseUrl.replace(/\/$/, "");
   const siteUrl = `${site}/card/${card.id}`;
   const markdown = buildMarkdown(card);
+
+  useEffect(() => {
+    onView?.(card);
+  }, [card, onView]);
 
   const metadata = (
     <Detail.Metadata>
       {/* ── Section 1: identity & stats ── */}
       <Detail.Metadata.Label title="Name" text={card.name} />
-      {formatTypeLine(card.classification?.type, card.classification?.supertype) && (
+      {formatTypeLine(
+        card.classification?.type,
+        card.classification?.supertype,
+      ) && (
         <Detail.Metadata.Label
           title="Type"
-          text={formatTypeLine(card.classification?.type, card.classification?.supertype)!}
-          icon={getTypeIcon(card.classification?.type, card.classification?.supertype)}
+          text={
+            formatTypeLine(
+              card.classification?.type,
+              card.classification?.supertype,
+            )!
+          }
+          icon={getTypeIcon(
+            card.classification?.type,
+            card.classification?.supertype,
+          )}
         />
       )}
       {card.attributes?.energy != null && (
-        <Detail.Metadata.Label title="Energy" text={String(card.attributes.energy)} />
+        <Detail.Metadata.Label
+          title="Energy"
+          text={String(card.attributes.energy)}
+        />
       )}
       {card.attributes?.power != null && (
-        <Detail.Metadata.Label title="Power" text={String(card.attributes.power)} />
+        <Detail.Metadata.Label
+          title="Power"
+          text={String(card.attributes.power)}
+        />
       )}
       {card.attributes?.might != null && (
         <Detail.Metadata.Label
@@ -150,7 +299,11 @@ export function CardDetail({ card, siteBaseUrl }: CardDetailProps) {
       {card.classification?.domains?.length ? (
         <Detail.Metadata.TagList title="Domains">
           {card.classification.domains.map((d) => (
-            <Detail.Metadata.TagList.Item key={d} text={d} icon={getDomainIcon(d)} />
+            <Detail.Metadata.TagList.Item
+              key={d}
+              text={d}
+              icon={getDomainIcon(d)}
+            />
           ))}
         </Detail.Metadata.TagList>
       ) : null}
@@ -175,14 +328,21 @@ export function CardDetail({ card, siteBaseUrl }: CardDetailProps) {
         <Detail.Metadata.Label title="Set" text={card.set.set_name} />
       )}
       {card.collector_number && (
-        <Detail.Metadata.Label title="Collector #" text={card.collector_number} />
+        <Detail.Metadata.Label
+          title="Collector #"
+          text={card.collector_number}
+        />
       )}
 
       {/* ── Section 3: credits ── */}
       {card.artist && (
         <>
           <Detail.Metadata.Separator />
-          <Detail.Metadata.Label title="Artist" text={card.artist} icon={tinted("icons/misc/artist.svg")} />
+          <Detail.Metadata.Label
+            title="Artist"
+            text={card.artist}
+            icon={tinted("icons/misc/artist.svg")}
+          />
         </>
       )}
     </Detail.Metadata>
@@ -208,18 +368,27 @@ export function CardDetail({ card, siteBaseUrl }: CardDetailProps) {
                 shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
               />
             )}
-            {(card.media?.media_urls?.normal ?? card.media?.media_urls?.large) && (
+            {(card.media?.media_urls?.normal ??
+              card.media?.media_urls?.large) && (
               <Action
                 title="Copy Card Image"
                 shortcut={{ modifiers: ["cmd", "opt"], key: "c" }}
                 onAction={async () => {
-                  const imageUrl = card.media!.media_urls!.normal ?? card.media!.media_urls!.large!;
-                  const toast = await showToast({ style: Toast.Style.Animated, title: "Copying image…" });
+                  const imageUrl =
+                    card.media!.media_urls!.normal ??
+                    card.media!.media_urls!.large!;
+                  const toast = await showToast({
+                    style: Toast.Style.Animated,
+                    title: "Copying image…",
+                  });
                   try {
                     const res = await fetch(imageUrl);
                     const buf = Buffer.from(await res.arrayBuffer());
                     const ext = imageUrl.endsWith(".png") ? "png" : "jpg";
-                    const tempPath = join(tmpdir(), `riftseer-${card.id}.${ext}`);
+                    const tempPath = join(
+                      tmpdir(),
+                      `riftseer-${card.id}.${ext}`,
+                    );
                     await writeFile(tempPath, buf);
                     await Clipboard.copy({ file: tempPath });
                     toast.style = Toast.Style.Success;
