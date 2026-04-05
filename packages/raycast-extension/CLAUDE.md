@@ -49,3 +49,6 @@ Do not upgrade `@types/react` without checking `@raycast/api`'s peer deps first 
 
 ## Privacy
 This extension makes read-only HTTP requests to the RiftSeer API. It does not store, log, or transmit any user data. No analytics or tracking. If this ever changes, update `packages/frontend/src/components/PrivacyPage.tsx`.
+
+## Documentation
+Doc pages for this extension live in `packages/raycast-extension/docs/raycast-extension.md`. The dev docs site copies this file into `docs/doc-pages/clients-bots/` when you run `bun run build` or `bun run start` in `docs/` (see `sync-clients-bots-docs`). Keep the doc up to date when commands, preferences, or the API call change.

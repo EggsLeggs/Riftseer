@@ -25,6 +25,11 @@ export interface CardSet {
   set_search_uri?: string;
 }
 
+export interface CardRulings {
+  rulings_id?: string;
+  rulings_uri?: string;
+}
+
 export interface CardAttributes {
   energy?: number | null;
   might?: number | null;
@@ -86,10 +91,12 @@ export interface Card {
   collector_number?: string;
   external_ids?: CardExternalIds;
   set?: CardSet;
+  rulings?: CardRulings;
   attributes?: CardAttributes;
   classification?: CardClassification;
   text?: CardText;
   artist?: string;
+  artist_id?: string;
   metadata?: CardMetadata;
   media?: CardMedia;
   purchase_uris?: CardPurchaseUris;

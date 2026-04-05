@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
-    "sync-clients-bots-docs": "cp ../packages/discord-bot/docs/discord-bot.md ./doc-pages/clients-bots/discord-bot.md && cp ../packages/reddit-bot/docs/reddit-bot.md ./doc-pages/clients-bots/reddit-bot.md",
+    "sync-clients-bots-docs": "cp ../packages/discord-bot/docs/discord-bot.md ./doc-pages/clients-bots/discord-bot.md && cp ../packages/reddit-bot/docs/reddit-bot.md ./doc-pages/clients-bots/reddit-bot.md && cp ../packages/raycast-extension/docs/raycast-extension.md ./doc-pages/clients-bots/raycast-extension.md",
     "prestart": "bun run sync-clients-bots-docs",
     "prebuild": "bun run sync-clients-bots-docs",
     "start": "docusaurus start --port 3001",
