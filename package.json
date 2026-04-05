@@ -1,7 +1,7 @@
 {
   "name": "riftseer",
   "private": true,
-  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "docs"],
+  "workspaces": ["packages/types", "packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "docs"],
   "overrides": {
     "@sinclair/typebox": "0.34.48"
   },
@@ -13,7 +13,7 @@
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/**/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
     "test:api": "bun test ./packages/api/src/__tests__/**/*.test.ts",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/ingest-worker/tsconfig.json",
+    "typecheck": "tsc --noEmit -p packages/types/tsconfig.json && tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/ingest-worker/tsconfig.json",
     "lint:md": "bunx --yes markdownlint-cli2"
   }
 }
