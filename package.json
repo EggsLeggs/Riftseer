@@ -2,6 +2,7 @@
   "name": "riftseer",
   "private": true,
   "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "docs"],
+  "_workspacesExcluded": "packages/reddit-bot (Devvit/npm standalone) and packages/raycast-extension (Raycast/npm standalone) are intentionally excluded — both require npm and are not Bun workspace members.",
   "overrides": {
     "@sinclair/typebox": "0.34.48"
   },

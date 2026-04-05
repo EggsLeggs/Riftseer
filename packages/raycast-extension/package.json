@@ -1,0 +1,68 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "riftseer",
+  "title": "RiftSeer — Riftbound Card Search",
+  "description": "Search Riftbound TCG cards via the RiftSeer API.",
+  "icon": "icon.png",
+  "author": "riftseer",
+  "categories": [
+    "Fun"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "search-cards",
+      "title": "Search Cards",
+      "subtitle": "RiftSeer",
+      "description": "Search for Riftbound TCG cards by name.",
+      "mode": "view"
+    },
+    {
+      "name": "random-card",
+      "title": "Random Card",
+      "subtitle": "RiftSeer",
+      "description": "Fetch a random Riftbound TCG card.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "apiBaseUrl",
+      "title": "API Base URL",
+      "description": "Base URL of the RiftSeer API server (where /api/v1 routes live).",
+      "type": "textfield",
+      "required": true,
+      "default": "https://riftseerapi-production.up.railway.app",
+      "placeholder": "https://riftseerapi-production.up.railway.app"
+    },
+    {
+      "name": "siteBaseUrl",
+      "title": "Site Base URL",
+      "description": "Base URL of the RiftSeer frontend (used for card links).",
+      "type": "textfield",
+      "required": true,
+      "default": "https://riftseer.thinkhuman.dev",
+      "placeholder": "https://riftseer.thinkhuman.dev"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.90.0",
+    "@raycast/utils": "^1.17.0",
+    "jimp": "^0.22.12"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.13.10",
+    "@types/react": "19.0.10",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
