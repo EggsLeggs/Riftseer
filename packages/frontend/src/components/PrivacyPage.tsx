@@ -141,14 +141,14 @@ export function PrivacyPage() {
             Riftseer Raycast Extension
           </h2>
           <p className="text-foreground leading-relaxed mb-3">
-            The optional Raycast extension calls the public RiftSeer API to search and display
+            The optional Raycast extension calls the public Riftseer API to search and display
             cards. It does not send us your Raycast account or identity.
           </p>
           <ul className="space-y-3 text-foreground">
             <li>
               <strong>Local storage on your Mac.</strong> The extension may keep a bounded list of
               recently viewed cards in Raycast&apos;s local storage on your device (you can set the
-              limit to zero to turn this off). That history is not uploaded to RiftSeer; it stays
+              limit to zero to turn this off). That history is not uploaded to Riftseer; it stays
               in Raycast until you clear it or remove the extension.
             </li>
           </ul>

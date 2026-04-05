@@ -51,7 +51,7 @@ The shared `CardDetail` component (used by both commands) renders:
 - Card image (portrait: 200×300; landscape: 300×200)
 - Rules text and flavour text
 - Metadata panel: type line, stats (energy/power/might), domains, tags, rarity, set, collector number, artist
-- Actions: open on RiftSeer, copy card name, copy rules text, copy card image to clipboard
+- Actions: open in browser (card page), copy card name, copy rules text, copy card image to clipboard
 
 ---
 
@@ -76,15 +76,15 @@ Set these in Raycast preferences for the extension:
 
 | Preference | Default | Description |
 | --- | --- | --- |
-| `apiBaseUrl` | `https://riftseerapi-production.up.railway.app` | RiftSeer API base URL |
-| `siteBaseUrl` | `https://riftseer.thinkhuman.dev` | RiftSeer site URL (used for card page links) |
+| `apiBaseUrl` | `https://riftseerapi-production.up.railway.app` | Riftseer API base URL |
+| `siteBaseUrl` | `https://riftseer.thinkhuman.dev` | Riftseer site URL (used for card page links) |
 | `maxRecentHistory` | `50` | Recent cards to keep locally; `0` disables recording and the empty-query Recent section |
 
 ---
 
 ## Types
 
-`src/types.ts` is a local copy of the canonical card types from `packages/core/src/types.ts`. Since this package is a standalone npm project it cannot import from `@riftseer/core` directly. When the `Card` shape changes in core, update `src/types.ts` to match.
+`src/types.ts` is a local copy of the canonical card types from `packages/core/src/types.ts`. Since this package is a standalone npm project, it cannot import from `@riftseer/core` directly. When the `Card` shape changes in core, update `src/types.ts` to match.
 
 ---
 

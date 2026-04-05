@@ -1,10 +1,10 @@
 {
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "riftseer",
-  "title": "RiftSeer — Riftbound Card Search",
-  "description": "Search Riftbound TCG cards via the RiftSeer API.",
+  "title": "Riftseer — Riftbound Card Search",
+  "description": "Search Riftbound TCG cards via the Riftseer API.",
   "icon": "icon.png",
-  "author": "riftseer",
+  "author": "amory",
   "categories": [
     "Fun"
   ],
@@ -13,14 +13,14 @@
     {
       "name": "search-cards",
       "title": "Search Cards",
-      "subtitle": "RiftSeer",
+      "subtitle": "Riftseer",
       "description": "Search for Riftbound TCG cards by name.",
       "mode": "view"
     },
     {
       "name": "random-card",
       "title": "Random Card",
-      "subtitle": "RiftSeer",
+      "subtitle": "Riftseer",
       "description": "Fetch a random Riftbound TCG card.",
       "mode": "view"
     }
@@ -29,7 +29,7 @@
     {
       "name": "apiBaseUrl",
       "title": "API Base URL",
-      "description": "Base URL of the RiftSeer API server (where /api/v1 routes live).",
+      "description": "Base URL of the Riftseer API server (where /api/v1 routes live).",
       "type": "textfield",
       "required": true,
       "default": "https://riftseerapi-production.up.railway.app",
@@ -38,7 +38,7 @@
     {
       "name": "siteBaseUrl",
       "title": "Site Base URL",
-      "description": "Base URL of the RiftSeer frontend (used for card links).",
+      "description": "Base URL of the Riftseer frontend (used for card links).",
       "type": "textfield",
       "required": true,
       "default": "https://riftseer.thinkhuman.dev",
@@ -70,8 +70,9 @@
   "scripts": {
     "build": "ray build",
     "dev": "ray develop",
-    "fix-lint": "ray lint --fix",
-    "lint": "ray lint",
+    "fix-lint": "eslint src --ext ts,tsx --fix && prettier --write src",
+    "lint": "eslint src --ext ts,tsx && prettier --check src",
+    "lint:ray": "ray lint",
     "publish": "npx @raycast/api@latest publish"
   }
 }

@@ -11,9 +11,9 @@ import {
 } from "@raycast/api";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { writeFile } from "node:fs/promises";
+import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { Card } from "../types";
 
 function tinted(source: string): Image.ImageLike {
@@ -96,6 +96,11 @@ function renderTextForRaycast(text: string): string {
   // card text: ".)Choose", "—Deal", "base.Kill" all need a break before the
   // next word.
   text = text.replace(/([.)—])([A-Z[])/g, "$1\n\n$2");
+  // Fix italic reminder text: "_ (text)_word" → "_(text)_ word"
+  // CommonMark: "_ (" doesn't open emphasis (underscore followed by space),
+  // and ")_Word" doesn't close it (underscore followed by alphanumeric).
+  text = text.replace(/_ \(/g, "_(");
+  text = text.replace(/\)_([^\s_\n])/g, ")_\n\n$1");
   return text.replace(/:rb_(\w+):/g, (_match, key: string) => {
     const energyMatch = /^energy_(\d+)$/.exec(key);
     if (energyMatch) {
@@ -171,7 +176,12 @@ function getDomainIcon(domain: string): Image.ImageLike | undefined {
   return src ? { source: src } : undefined;
 }
 
-/** Mirrors the frontend CardPage type-line logic (without icons). */
+/**
+ * Plain-text type line aligned with `CardPage.tsx` (no icons): supertype
+ * `token` / `basic` uses a space prefix (`Token Unit`); type `unit` / `basic`
+ * with a supertype uses an em dash (`Unit — Champion`); otherwise
+ * `supertype type`.
+ */
 export function formatTypeLine(
   type?: string,
   supertype?: string | null,
@@ -250,27 +260,25 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
   const site = siteBaseUrl.replace(/\/$/, "");
   const siteUrl = `${site}/card/${card.id}`;
   const markdown = buildMarkdown(card);
+  const typeLine = formatTypeLine(
+    card.classification?.type,
+    card.classification?.supertype,
+  );
 
+  const onViewRef = useRef(onView);
+  const cardRef = useRef(card);
   useEffect(() => {
-    onView?.(card);
-  }, [card, onView]);
+    onViewRef.current?.(cardRef.current);
+  }, []);
 
   const metadata = (
     <Detail.Metadata>
       {/* ── Section 1: identity & stats ── */}
       <Detail.Metadata.Label title="Name" text={card.name} />
-      {formatTypeLine(
-        card.classification?.type,
-        card.classification?.supertype,
-      ) && (
+      {typeLine && (
         <Detail.Metadata.Label
           title="Type"
-          text={
-            formatTypeLine(
-              card.classification?.type,
-              card.classification?.supertype,
-            )!
-          }
+          text={typeLine}
           icon={getTypeIcon(
             card.classification?.type,
             card.classification?.supertype,
@@ -355,7 +363,7 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
       actions={
         <ActionPanel>
           <ActionPanel.Section>
-            <Action.OpenInBrowser title="Open on RiftSeer" url={siteUrl} />
+            <Action.OpenInBrowser title="Open on Riftseer" url={siteUrl} />
             <Action.CopyToClipboard
               title="Copy Card Name"
               content={card.name}
@@ -381,14 +389,12 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
                     style: Toast.Style.Animated,
                     title: "Copying image…",
                   });
+                  let tempPath: string | undefined;
                   try {
                     const res = await fetch(imageUrl);
                     const buf = Buffer.from(await res.arrayBuffer());
                     const ext = imageUrl.endsWith(".png") ? "png" : "jpg";
-                    const tempPath = join(
-                      tmpdir(),
-                      `riftseer-${card.id}.${ext}`,
-                    );
+                    tempPath = join(tmpdir(), `riftseer-${card.id}.${ext}`);
                     await writeFile(tempPath, buf);
                     await Clipboard.copy({ file: tempPath });
                     toast.style = Toast.Style.Success;
@@ -396,6 +402,14 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
                   } catch {
                     toast.style = Toast.Style.Failure;
                     toast.title = "Failed to copy image";
+                  } finally {
+                    if (tempPath) {
+                      try {
+                        await unlink(tempPath);
+                      } catch {
+                        // Best-effort cleanup (ENOENT if already gone, etc.)
+                      }
+                    }
                   }
                 }}
               />

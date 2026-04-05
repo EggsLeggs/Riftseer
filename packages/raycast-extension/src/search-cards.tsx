@@ -18,14 +18,32 @@ import type { Card, CardsSearchResponse } from "./types";
 
 // Cache rotated images by URL to avoid re-processing on re-render
 const rotatedImageCache = new Map<string, string>();
+const rotatedImageInflight = new Map<string, Promise<string>>();
 
 async function rotateImageCW90(url: string): Promise<string> {
-  if (rotatedImageCache.has(url)) return rotatedImageCache.get(url)!;
-  const image = await Jimp.read(url);
-  image.rotate(-90); // jimp rotate is CCW; -90 = CW 90°
-  const dataUrl = await image.getBase64Async(Jimp.MIME_JPEG);
-  rotatedImageCache.set(url, dataUrl);
-  return dataUrl;
+  const cached = rotatedImageCache.get(url);
+  if (cached !== undefined) return cached;
+
+  const inflight = rotatedImageInflight.get(url);
+  if (inflight) return inflight;
+
+  const promise = (async (): Promise<string> => {
+    try {
+      const image = await Jimp.read(url);
+      image.rotate(-90); // jimp rotate is CCW; -90 = CW 90°
+      const dataUrl = await image.getBase64Async(Jimp.MIME_JPEG);
+      rotatedImageCache.set(url, dataUrl);
+      return dataUrl;
+    } catch {
+      rotatedImageCache.set(url, url);
+      return url;
+    } finally {
+      rotatedImageInflight.delete(url);
+    }
+  })();
+
+  rotatedImageInflight.set(url, promise);
+  return promise;
 }
 
 type ViewType = "list" | "3" | "5" | "6";
@@ -87,7 +105,7 @@ function cardActions(
             />
           }
         />
-        <Action.OpenInBrowser title="Open on RiftSeer" url={siteUrl} />
+        <Action.OpenInBrowser title="Open on Riftseer" url={siteUrl} />
         <Action.CopyToClipboard
           title="Copy Card Name"
           content={card.name}
@@ -125,6 +143,11 @@ function CardSidebarDetail({
     }
   }, [imgUrl, isLandscape]);
 
+  const typeLine = formatTypeLine(
+    card.classification?.type,
+    card.classification?.supertype,
+  );
+
   return (
     <List.Item.Detail
       markdown={
@@ -132,19 +155,8 @@ function CardSidebarDetail({
       }
       metadata={
         <List.Item.Detail.Metadata>
-          {formatTypeLine(
-            card.classification?.type,
-            card.classification?.supertype,
-          ) && (
-            <List.Item.Detail.Metadata.Label
-              title="Type"
-              text={
-                formatTypeLine(
-                  card.classification?.type,
-                  card.classification?.supertype,
-                )!
-              }
-            />
+          {typeLine && (
+            <List.Item.Detail.Metadata.Label title="Type" text={typeLine} />
           )}
           {card.classification?.rarity && (
             <List.Item.Detail.Metadata.Label
@@ -185,9 +197,9 @@ function CardSidebarDetail({
           ) : null}
           <List.Item.Detail.Metadata.Separator />
           <List.Item.Detail.Metadata.Link
-            title="RiftSeer"
+            title="Riftseer"
             target={siteUrl}
-            text="Open in RiftSeer"
+            text="Open in Riftseer"
           />
         </List.Item.Detail.Metadata>
       }
@@ -361,8 +373,7 @@ export default function SearchCards() {
     return (
       <Grid
         columns={columns}
-        // Contain (not Fill) so landscape cards render at their natural proportions
-        // without cropping or stretching — landscape cards naturally appear shorter
+        // Fill scales artwork to the 2:3 grid cell; landscape cards read shorter in the cell
         aspectRatio="2/3"
         fit={Grid.Fit.Fill}
         isLoading={viewLoading}
