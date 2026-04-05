@@ -100,6 +100,6 @@ graph TD
 | REST API reference | [API](/api/) |
 | Card data types and provider interface | [Core](/core/) |
 | Discord and Reddit bots | [Clients & Bots](/bots/) |
-| Ingest pipeline | [Ingest Worker](/) |
+| Ingest pipeline | [Ingest Worker](/ingest-worker/) |
 | Database schema | [Supabase](/supabase/supabase) |
 | This docs site | [Docs Site](./docusaurus.md) |

@@ -36,10 +36,10 @@ const config: Config = {
       'classic',
       {
         docs: {
-          path: '../packages/ingest-worker/docs',
-          sidebarPath: './sidebarsIngestWorker.ts',
+          path: './doc-pages/getting-started',
+          sidebarPath: './sidebarsGettingStarted.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
+          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/docs/doc-pages/getting-started/',
         },
         blog: false,
         theme: {
@@ -53,11 +53,11 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'getting-started',
-        path: './doc-pages/getting-started',
-        routeBasePath: 'getting-started',
-        sidebarPath: './sidebarsGettingStarted.ts',
-        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/docs/doc-pages/getting-started/',
+        id: 'ingest-worker',
+        path: '../packages/ingest-worker/docs',
+        routeBasePath: 'ingest-worker',
+        sidebarPath: './sidebarsIngestWorker.ts',
+        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
       },
     ],
     [
@@ -142,7 +142,6 @@ const config: Config = {
         {
           type: 'doc',
           docId: 'index',
-          docsPluginId: 'getting-started',
           position: 'left',
           label: 'Getting Started',
         },
@@ -175,8 +174,9 @@ const config: Config = {
           label: 'Clients & Bots',
         },
         {
-          type: 'docSidebar',
-          sidebarId: 'ingestWorkerSidebar',
+          type: 'doc',
+          docId: 'index',
+          docsPluginId: 'ingest-worker',
           position: 'left',
           label: 'Ingest Worker',
         },
