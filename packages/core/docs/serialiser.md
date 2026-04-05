@@ -25,7 +25,7 @@ The current implementation encodes a `SimplifiedDeck` as a compact binary buffer
 
 ### Binary format (V1)
 
-```
+```text
 [1 byte]  FORMAT_VERSION (= 1)
 [1 byte]  flags  (bit 0 = hasLegendId, bit 1 = hasChampionId)
 [string]  legendId          (omitted when flag bit 0 is clear)
@@ -66,7 +66,7 @@ const deck = serializer.deserializeDeck(shortForm);
 ## Constraints
 
 | Constraint | Limit |
-|---|---|
+| --- | --- |
 | Max ID length | 255 UTF-8 bytes |
 | Max entries per section | 255 |
 | Quantity per card | 1–255 |
@@ -76,6 +76,7 @@ const deck = serializer.deserializeDeck(shortForm);
 ## Error handling
 
 `deserializeDeck` throws `BadRequestError` (from `src/errors.ts`) for:
+
 - Base64url decode failure
 - Unsupported format version
 - Unexpected end of data

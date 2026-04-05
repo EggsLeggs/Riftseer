@@ -11,7 +11,7 @@ Most card endpoints live under `/api/v1/cards`. **Pricing** is separate: `GET /a
 ## Endpoints at a glance
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/api/v1/cards` | Search / browse — see [Search](./search.md) |
 | `GET` | `/api/v1/cards/random` | Random card |
 | `GET` | `/api/v1/cards/:id` | Single card by UUID |
@@ -26,7 +26,7 @@ Most card endpoints live under `/api/v1/cards`. **Pricing** is separate: `GET /a
 Every card endpoint returns the same card shape. Key fields:
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `id` | string (UUID) | Stable identifier — safe to store |
 | `name` | string | Display name |
 | `name_normalized` | string | Lowercased, punctuation-stripped — used for search |
@@ -100,7 +100,7 @@ POST /api/v1/cards/resolve
 Each entry in `results` has:
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `request` | object | The parsed request (`name`, `set`, `collector`) |
 | `card` | Card \| null | Matched card, or `null` if not found |
 | `matchType` | string | `"exact"`, `"fuzzy"`, or `"not-found"` |
@@ -129,4 +129,3 @@ Response:
 ```
 
 All fields are nullable — if a card has no TCGPlayer listing, all three return `null`.
-

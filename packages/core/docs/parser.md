@@ -13,7 +13,7 @@ sidebar_position: 4
 ## Token syntax
 
 | Format | Parsed as |
-|---|---|
+| --- | --- |
 | `[[Card Name]]` | Name-only — fuzzy search |
 | `[[Card Name\|SET]]` | Name + set code |
 | `[[Card Name\|SET-123]]` | Name + set code + collector number (preferred) |
@@ -30,19 +30,21 @@ The `|SET-123` form resolves to an exact printing. Without a collector number, t
 function parseCardRequests(text: string): CardRequest[]
 ```
 
-**Parameters**
+### Parameters
 
 - `text` — arbitrary string, e.g. a Discord message body or Reddit comment
 
-**Returns** up to 20 `CardRequest` objects. Tokens beyond the 20th are silently dropped.
+### Returns
 
-**Behaviour**
+Up to 20 `CardRequest` objects. Tokens beyond the 20th are silently dropped.
+
+### Behaviour
 
 - Strips fenced (` ``` `) and inline (`` ` ``) code blocks before scanning, so tokens inside code are never matched.
 - Returns an empty array if no tokens are found.
 - Never throws.
 
-**Example**
+### Example
 
 ```typescript
 import { parseCardRequests } from "@riftseer/core";
@@ -72,9 +74,9 @@ interface CardRequest {
 ## Limits
 
 | Constraint | Value |
-|---|---|
+| --- | --- |
 | Max tokens per call | 20 |
-| Separator characters | `|` and `\\` |
+| Separator characters | Pipe (U+007C) and backslash |
 | Collector format | Last segment must be digits; separated from set code by `-` or space |
 
 ---

@@ -13,7 +13,7 @@ sidebar_position: 5
 Results are ranked by score descending. Each query character length unlocks additional tiers:
 
 | Score | Tier | Min query length |
-|---|---|---|
+| --- | --- | --- |
 | 1000 | Exact normalized name match | 1 |
 | 900 | Full-name prefix (name starts with query) | 1 |
 | 800 − n | Word-prefix (a word in the name starts with query, minus 10 per word position) | 2 |
@@ -26,7 +26,7 @@ Tiebreak order within a score: match position (earlier is better) → name lengt
 **Example — query `bar`:**
 
 | Card | Tier | Score |
-|---|---|---|
+| --- | --- | --- |
 | Bard | Full-name prefix (`bard` starts with `bar`) | 900 |
 | Barrow Stinger | Full-name prefix (`barrow stinger` starts with `bar`) | 900 → tiebreak: shorter name wins |
 | Cannon Barrage | Word-prefix (`barrage` is word 2, starts with `bar`) | 790 |
@@ -45,19 +45,21 @@ function autocompleteSearch(
 ): Card[]
 ```
 
-**Parameters**
+### Parameters
 
 | Parameter | Type | Description |
-|---|---|---|
+| --- | --- | --- |
 | `cards` | `Iterable<Card>` | Full card list to search against (e.g. provider index values) |
 | `query` | `string` | Raw query string — normalized internally via `normalizeCardName` |
 | `limit` | `number` | Max results to return |
 | `options.fuse` | `Fuse<Card> \| null` | Optional Fuse instance for threshold-based fuzzy merging |
 | `options.fuseHitLimit` | `number` | Cap on Fuse result count (default `max(limit * 5, 80)`) |
 
-**Returns** up to `limit` cards, ranked by score descending.
+### Returns
 
-**Behaviour**
+Up to `limit` cards, ranked by score descending.
+
+### Behaviour
 
 - Queries shorter than 3 characters only return prefix matches — fuzzy is never applied at that length.
 - When a Fuse instance is provided, Fuse hits are merged into the scoring pass for queries ≥ 4 characters. Fuse results are only used if their mapped score exceeds the minimum threshold and does not displace a higher-ranked non-fuzzy match.
@@ -80,6 +82,7 @@ Returns `null` when the card does not meet the minimum score threshold. The `Sco
 ## Fuzzy edit distance
 
 The fuzzy tier uses a single-row Levenshtein DP implementation. Maximum edit distance is:
+
 - 1 edit for queries of length 4–5
 - 2 edits for queries of length 6+
 

@@ -50,7 +50,7 @@ The spec reflects whatever annotations exist on the route handlers. To improve o
 ```
 
 | Annotation | What it controls |
-|---|---|
+| --- | --- |
 | `detail.summary` | One-line label shown in the endpoint list |
 | `detail.description` | Longer description shown when the endpoint is expanded |
 | `detail.tags` | Which group the endpoint appears under |

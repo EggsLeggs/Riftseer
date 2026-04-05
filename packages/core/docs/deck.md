@@ -11,7 +11,7 @@ sidebar_position: 7
 ## Deck zones
 
 | Zone | Property | Type | Limit |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Legend | `legend` | `Card \| null` | 1 |
 | Chosen champion | `chosenChampion` | `Card \| null` | 1 |
 | Main deck | `cards` | `{ card, quantity }[]` | 40 total (3 copies per card) |
@@ -49,6 +49,7 @@ Sets the legend. Throws if the card is not a Legend or a legend is already set.
 ### `addMainCard(card, quantity?, toSideboard?)`
 
 Adds to the main deck (or sideboard when `toSideboard` is true). Validates:
+
 - Card is not a Legend, Battleground, or Rune
 - A legend has already been set
 - Card domains are a subset of the legend's domains
@@ -130,7 +131,7 @@ Throws `BadRequestError` for any constraint violation or lookup failure.
 ## Deck rules summary
 
 | Rule | Limit |
-|---|---|
+| --- | --- |
 | Legend | Required, exactly 1 |
 | Chosen champion | Required, auto-assigned from first eligible Champion added |
 | Main deck | Exactly 40 cards |
