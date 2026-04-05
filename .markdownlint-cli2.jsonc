@@ -1,0 +1,18 @@
+{
+  "config": {
+    "MD013": false
+  },
+  "globs": [
+    "README.md",
+    "docs/doc-pages/**/*.md",
+    "docs/README.md",
+    "docs/CLAUDE.md",
+    "packages/*/docs/**/*.md",
+    "supabase/docs/**/*.md"
+  ],
+  "ignores": [
+    "**/node_modules/**",
+    "**/build/**",
+    "**/.docusaurus/**"
+  ]
+}

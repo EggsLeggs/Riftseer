@@ -25,7 +25,7 @@ bun run clear    # clear the Docusaurus cache (use if pages fail to update)
 Most content is **co-located with its package**. Cross-cutting sections (Getting Started, Infrastructure) live under `docs/doc-pages/` so site-only markdown stays grouped apart from Docusaurus config and sidebars. The `docusaurus.config.ts` points each section at its source directory:
 
 | Section | Source path | URL prefix |
-| ------- | ----------- | ---------- |
+| --- | --- | --- |
 | Getting Started | `docs/doc-pages/getting-started/` | `/getting-started/` |
 | API | `packages/api/docs/` | `/api/` |
 | Frontend | `packages/frontend/docs/` | `/frontend/` |
@@ -122,7 +122,7 @@ bun run deploy   # requires GH_TOKEN or SSH access to the repo
 ## Key config files
 
 | File | Purpose |
-| ---- | ------- |
+| --- | --- |
 | `docs/docusaurus.config.ts` | Site metadata, plugins, navbar, theme |
 | `docs/sidebars*.ts` | One sidebar file per section (e.g. `sidebarsIngestWorker.ts`, `sidebarsApi.ts`) |
 | `docs/src/css/custom.css` | Global CSS overrides |

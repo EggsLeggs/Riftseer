@@ -29,11 +29,12 @@ interface CardDataProvider {
 }
 ```
 
-### Methods
+### CardDataProvider methods
 
 #### `warmup()`
 
 Called once at app startup. Should:
+
 1. Load the card cache (fast path from Redis or cold load from Supabase).
 2. Schedule background refreshes.
 
@@ -95,7 +96,7 @@ interface SimplifiedDeckProvider {
 }
 ```
 
-### Methods
+### SimplifiedDeckProvider methods
 
 #### `addCards(cards, deckShortForm?)`
 

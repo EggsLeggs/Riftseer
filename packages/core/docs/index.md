@@ -13,7 +13,7 @@ Nothing in core is runtime-specific — it runs in Bun, Node, and Cloudflare Wor
 ## What's in core
 
 | Module | File | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | Types | `src/types.ts` | `Card`, `CardRequest`, `ResolvedCard`, `SimplifiedDeck`, and all sub-interfaces |
 | Provider interface | `src/provider.ts` | `CardDataProvider` and `SimplifiedDeckProvider` — the only contracts the API cares about |
 | Parser | `src/parser.ts` | `parseCardRequests()` — extracts `[[Name\|SET-123]]` tokens from text |

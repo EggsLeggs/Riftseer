@@ -64,7 +64,7 @@ Errors return a JSON body with `error` (human-readable message) and `code` (mach
 ```
 
 | Status | Meaning |
-|---|---|
+| --- | --- |
 | `400` | Bad request — missing or invalid parameter |
 | `404` | Resource not found |
 | `500` | Internal server error |
@@ -105,7 +105,7 @@ The Swagger plugin sits on the root app and auto-discovers routes from all mount
 Route modules live in `packages/api/src/routes/`:
 
 | Module | Routes |
-|---|---|
+| --- | --- |
 | `meta.ts` | `/health`, `/meta` |
 | `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve`, `/prices/tcgplayer` |
 | `sets.ts` | `/sets` |
@@ -136,7 +136,7 @@ See [Swagger](./swagger.md) for how the `detail` annotation maps to what appears
 ## Endpoints
 
 | Method | Path | Doc |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/api/v1/health` | [Meta](./meta.md) |
 | `GET` | `/api/v1/meta` | [Meta](./meta.md) |
 | `GET` | `/api/v1/cards` | [Search](./search.md) |

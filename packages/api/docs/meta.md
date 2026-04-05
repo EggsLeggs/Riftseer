@@ -11,7 +11,7 @@ Two lightweight endpoints for server health and provider state. Full schemas in 
 ## Endpoints at a glance
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GET` | `/api/v1/health` | Liveness probe |
 | `GET` | `/api/v1/meta` | Provider stats and cache state |
 
@@ -42,7 +42,7 @@ Returns the current state of the card data provider — useful for confirming th
 ```
 
 | Field | Notes |
-|---|---|
+| --- | --- |
 | `provider` | Always `supabase` — the active `CardDataProvider` implementation |
 | `cardCount` | Number of cards currently in the in-memory index |
 | `lastRefresh` | ISO timestamp of the last successful cache load from Supabase |

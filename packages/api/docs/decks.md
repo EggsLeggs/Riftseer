@@ -19,7 +19,7 @@ Encoding and decoding is handled by `DeckSerializerV1` in `packages/core/src/ser
 ## Endpoints at a glance
 
 | Method | Path | Description |
-|---|---|---|
+| --- | --- | --- |
 | `POST` | `/api/v1/decks/u` | Create a new deck, get back a short form |
 | `GET` | `/api/v1/decks/u/:shortForm` | Decode a short form to full deck data |
 | `POST` | `/api/v1/decks/u/:shortForm` | Add or remove cards from an existing short form |
@@ -31,7 +31,7 @@ Encoding and decoding is handled by `DeckSerializerV1` in `packages/core/src/ser
 A decoded deck has the following slots:
 
 | Field | Type | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `legend` | string \| null | Card ID of the legend |
 | `chosenChampionId` | string \| null | Card ID of the chosen champion |
 | `mainDeck` | string[] | `id:qty` entries, max 40 cards |

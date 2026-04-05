@@ -11,7 +11,7 @@ sidebar_position: 6
 ## Configuration
 
 | Env var | Default | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `SUPABASE_URL` | required | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | required | Service-role JWT |
 | `REDIS_URL` | `redis://localhost:6379` | Redis connection URL |
@@ -48,12 +48,13 @@ If the reload fails and the provider already has data in memory, it logs the err
 After loading, the provider holds three structures:
 
 | Structure | Type | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `byId` | `Map<string, Card>` | UUID → card (O(1) lookup for `getCardById`) |
 | `byNorm` | `Map<string, Card[]>` | Normalized name → cards (O(1) for exact-name resolution) |
 | `fuse` | `Fuse<Card>` | Fuse.js index over `name` + `name_normalized` |
 
 The Fuse index is configured with:
+
 ```typescript
 {
   keys: [
