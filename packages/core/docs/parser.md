@@ -74,7 +74,7 @@ interface CardRequest {
 | Constraint | Value |
 |---|---|
 | Max tokens per call | 20 |
-| Separator characters | `|` and `\` |
+| Separator characters | `|` and `\\` |
 | Collector format | Last segment must be digits; separated from set code by `-` or space |
 
 ---
