@@ -16,7 +16,7 @@ type RandomCardData = Awaited<
   ReturnType<ApiClient["api"]["v1"]["cards"]["random"]["get"]>
 >["data"];
 type ResolveData = Awaited<
-  ReturnType<ApiClient["api"]["v1"]["resolve"]["post"]>
+  ReturnType<ApiClient["api"]["v1"]["cards"]["resolve"]["post"]>
 >["data"];
 type SetsData = Awaited<
   ReturnType<ApiClient["api"]["v1"]["sets"]["get"]>

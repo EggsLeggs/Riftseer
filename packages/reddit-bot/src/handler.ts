@@ -52,7 +52,7 @@ export async function buildReply(
 
   let data: ApiResolveResponse;
   try {
-    const res = await fetch(`${api}/api/v1/resolve`, {
+    const res = await fetch(`${api}/api/v1/cards/resolve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ requests: rawStrings }),

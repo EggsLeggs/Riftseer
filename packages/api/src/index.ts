@@ -8,7 +8,7 @@
  *   GET  /api/v1/cards/random
  *   GET  /api/v1/cards/:id
  *   GET  /api/v1/cards/:id/text
- *   POST /api/v1/resolve        body: { requests: string[] }
+ *   POST /api/v1/cards/resolve  body: { requests: string[] }
  *   GET  /api/v1/prices/tcgplayer
  *   GET  /api/v1/sets
  *   GET  /api/v1/decks/u/:shortForm
@@ -35,6 +35,7 @@ import {
 import { loadTCGData } from "./services/tcgplayer";
 import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
+import { setsRoutes } from "./routes/sets";
 import { decksRoutes } from "./routes/decks";
 
 // ─── Singletons ───────────────────────────────────────────────────────────────
@@ -69,6 +70,7 @@ const app = new Elysia()
     new Elysia({ prefix: "/api/v1" })
       .use(metaRoutes(cardProvider, startTime))
       .use(cardsRoutes(cardProvider))
+      .use(setsRoutes(cardProvider))
       .use(decksRoutes(deckProvider)),
   )
   .use(
@@ -96,6 +98,7 @@ const app = new Elysia()
         tags: [
           { name: "Meta", description: "Server health and metadata" },
           { name: "Cards", description: "Card lookup and search" },
+          { name: "Sets", description: "Card set listing" },
           { name: "Decks", description: "Deck building and sharing" },
         ],
       },

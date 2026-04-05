@@ -133,12 +133,12 @@ describe("API routes", () => {
     });
   });
 
-  // ── POST /resolve ──────────────────────────────────────────────────────────
+  // ── POST /cards/resolve ───────────────────────────────────────────────────
 
-  describe("POST /resolve", () => {
+  describe("POST /cards/resolve", () => {
     it("resolves known cards", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/v1/resolve", {
+        new Request("http://localhost/api/v1/cards/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Sun Disc"] }),
@@ -156,11 +156,11 @@ describe("API routes", () => {
     });
 
     it("nonexistent exact card lookup returns not-found with null card", async () => {
-      // /resolve is the exact-lookup endpoint used by bots.
+      // /cards/resolve is the exact-lookup endpoint used by bots.
       // A missing card returns matchType "not-found" and a null card — the
       // caller (bot, frontend) should treat this as a 404-equivalent.
       const res = await app.handle(
-        new Request("http://localhost/api/v1/resolve", {
+        new Request("http://localhost/api/v1/cards/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Nonexistent Card"] }),
@@ -174,7 +174,7 @@ describe("API routes", () => {
 
     it("handles batch requests", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/v1/resolve", {
+        new Request("http://localhost/api/v1/cards/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Sun Disc", "Missing Card"] }),
@@ -187,7 +187,7 @@ describe("API routes", () => {
     it("caps at 20 requests", async () => {
       const requests = Array.from({ length: 25 }, (_, i) => `Card ${i}`);
       const res = await app.handle(
-        new Request("http://localhost/api/v1/resolve", {
+        new Request("http://localhost/api/v1/cards/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests }),
@@ -201,7 +201,7 @@ describe("API routes", () => {
 
     it("accepts [[Name|SET]] format in requests", async () => {
       const res = await app.handle(
-        new Request("http://localhost/api/v1/resolve", {
+        new Request("http://localhost/api/v1/cards/resolve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requests: ["Sun Disc|OGN"] }),
