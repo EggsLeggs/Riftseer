@@ -4,7 +4,7 @@ sidebar_label: Cards
 sidebar_position: 4
 ---
 
-All card endpoints are under `/api/v1/cards`. For full request/response schemas, try them interactively in [Swagger](https://riftseerapi-production.up.railway.app/api/swagger#tag/cards).
+Most card endpoints live under `/api/v1/cards`. **Pricing** is separate: `GET /api/v1/prices/tcgplayer` (see below). For full request/response schemas, try them interactively in [Swagger](https://riftseerapi-production.up.railway.app/api/swagger#tag/cards).
 
 ---
 
@@ -49,7 +49,7 @@ Full schema in [Swagger](https://riftseerapi-production.up.railway.app/api/swagg
 
 Returns one card chosen at random from the full index. No parameters.
 
-```
+```http
 GET /api/v1/cards/random
 ```
 
@@ -59,7 +59,7 @@ GET /api/v1/cards/random
 
 Fetch a single card by its stable UUID.
 
-```
+```http
 GET /api/v1/cards/123e4567-e89b-12d3-a456-426614174000
 ```
 
@@ -71,13 +71,13 @@ Returns 404 if no card with that ID exists.
 
 Returns a plain-text `text/plain` summary — name, type line, then rules text — suitable for copy-pasting into chat or a deck note.
 
-```
+```http
 GET /api/v1/cards/123e4567-e89b-12d3-a456-426614174000/text
 ```
 
 Example output:
 
-```
+```text
 Sun Disc
 Gear
 
@@ -114,7 +114,7 @@ Requests accept plain names or `[[Name|SET-###]]` format — the same syntax the
 
 Returns USD market and low prices for a card by name, sourced from tcgcsv.com (cached for 1 hour).
 
-```
+```http
 GET /api/v1/prices/tcgplayer?name=Sun+Disc
 ```
 

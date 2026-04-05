@@ -18,7 +18,7 @@ Source: `packages/reddit-bot/` (standalone **npm** project — not part of the r
 
 Users type card names in **double brackets** in comments or self-post bodies:
 
-```
+```markdown
 [[Sun Disc]]
 [[Sun Disc|OGN]]
 [[Sun Disc|OGN-021]]

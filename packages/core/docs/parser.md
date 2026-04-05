@@ -4,9 +4,9 @@ sidebar_label: Parser
 sidebar_position: 4
 ---
 
-`src/parser.ts` exports `parseCardRequests()`, which scans arbitrary text for `[[Card Name]]` tokens and returns structured `CardRequest` objects ready to pass to `provider.resolveRequest()`.
+`src/parser.ts` exports `parseCardRequests()`, a **free-text** helper that scans arbitrary strings for `[[Card Name]]` tokens and returns structured `CardRequest` objects ready to pass to `provider.resolveRequest()`.
 
-This is the entry point for all bot-driven card lookups — the Discord bot and Reddit bot both call the `/api/v1/cards/resolve` endpoint, which uses `parseCardRequests` internally when receiving raw text.
+`POST /api/v1/cards/resolve` accepts JSON `{ requests: string[] }` (up to 20 strings). For **each** string, the API wraps it as `[[…]]` and runs `parseCardRequests` once, then resolves the resulting `CardRequest` — see `packages/api/src/routes/cards.ts`. That is different from passing an entire message body through `parseCardRequests` in one shot: clients often build one string per card (for example `packages/discord-bot/src/handlers/card.ts` composes `name` and optional `set` into a single request string before calling the API).
 
 ---
 
@@ -81,11 +81,11 @@ interface CardRequest {
 
 ## Usage in the resolve flow
 
-```
-User message containing [[...]] tokens
-  → parseCardRequests(text)
-  → CardRequest[]
-  → provider.resolveRequest(req) (once per request)
+```text
+Client builds one string per card (plain name or Name|SET-### inside the bracket grammar)
+  → POST /api/v1/cards/resolve { requests: string[] }
+  → per string: parseCardRequests("[[…]]") → CardRequest
+  → provider.resolveRequest(req)
   → ResolvedCard[]
   → API response
 ```

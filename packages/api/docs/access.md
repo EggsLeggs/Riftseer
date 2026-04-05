@@ -8,7 +8,7 @@ sidebar_position: 7
 
 The API allows cross-origin requests from any origin by default. If the `CORS_ORIGIN` environment variable is set on the server, only the listed origins will be permitted (comma-separated):
 
-```
+```bash
 CORS_ORIGIN=https://riftseer.app,https://staging.riftseer.app
 ```
 

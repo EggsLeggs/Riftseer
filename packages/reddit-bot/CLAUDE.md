@@ -88,4 +88,4 @@ The current data stored:
 - **API logs**: Card name + subreddit logged server-side for analytics (not stored by the bot itself)
 
 ## Documentation
-Doc pages for this bot live in `bots/docs/reddit-bot.md`. Keep them up to date when making changes — if triggers, KV key patterns, settings, or the API call change, update the doc alongside the code.
+Doc pages for this bot live in `packages/reddit-bot/docs/reddit-bot.md`. The dev docs site copies this file into `docs/doc-pages/clients-bots/` when you run `bun run build` or `bun run start` in `docs/` (see `sync-clients-bots-docs`). Keep the doc up to date when triggers, KV key patterns, settings, or the API call change.

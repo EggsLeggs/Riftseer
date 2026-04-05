@@ -67,7 +67,7 @@ The API resolves each ID, determines the card's role (legend, rune, battleground
 
 Decode a short form string back into a full deck object.
 
-```
+```http
 GET /api/v1/decks/u/abc123XYZ...
 ```
 

@@ -7,6 +7,9 @@
 # Generated files
 .docusaurus
 .cache-loader
+# Copied from packages/*/docs/ before dev/build (see sync-clients-bots-docs)
+/doc-pages/clients-bots/discord-bot.md
+/doc-pages/clients-bots/reddit-bot.md
 
 # Misc
 .DS_Store

@@ -30,7 +30,8 @@ Most content is **co-located with its package**. Cross-cutting sections (Getting
 | API | `packages/api/docs/` | `/api/` |
 | Frontend | `packages/frontend/docs/` | `/frontend/` |
 | Core | `packages/core/docs/` | `/core/` |
-| Clients & Bots | `bots/docs/` | `/bots/` |
+| Clients & Bots | `docs/doc-pages/clients-bots/` | `/bots/` |
+| Discord / Reddit (same sidebar) | `packages/discord-bot/docs/`, `packages/reddit-bot/docs/` (copied into `clients-bots/` by `bun run sync-clients-bots-docs` before dev/build) | `/bots/` |
 | Ingest Worker | `packages/ingest-worker/docs/` | `/` |
 | Supabase | `supabase/docs/` | `/supabase/` |
 | Infrastructure | `docs/doc-pages/infrastructure/` | `/infrastructure/` |

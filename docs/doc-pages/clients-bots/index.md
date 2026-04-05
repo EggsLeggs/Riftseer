@@ -23,4 +23,4 @@ All integrations resolve card data through the same public API (`POST /api/v1/ca
 | Discord bot | `packages/discord-bot/` | Bun, Wrangler |
 | Reddit bot | `packages/reddit-bot/` | npm, Devvit (`npx devvit`) |
 
-The Reddit bot is **not** a Bun workspace member; use `npm` there as described in its doc page.
+The Reddit bot is **not** a Bun workspace member; use `npm` there as described on its doc page.

@@ -36,10 +36,10 @@ const config: Config = {
       'classic',
       {
         docs: {
-          path: './doc-pages/getting-started',
-          sidebarPath: './sidebarsGettingStarted.ts',
+          path: '../packages/ingest-worker/docs',
+          sidebarPath: './sidebarsIngestWorker.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/docs/doc-pages/getting-started/',
+          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
         },
         blog: false,
         theme: {
@@ -53,10 +53,11 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'ingest-worker',
-        path: '../packages/ingest-worker/docs',
-        routeBasePath: 'ingest-worker',
-        sidebarPath: './sidebarsIngestWorker.ts',
+        id: 'getting-started',
+        path: './doc-pages/getting-started',
+        routeBasePath: 'getting-started',
+        sidebarPath: './sidebarsGettingStarted.ts',
+        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/docs/doc-pages/getting-started/',
       },
     ],
     [
@@ -90,9 +91,19 @@ const config: Config = {
       '@docusaurus/plugin-content-docs',
       {
         id: 'bots',
-        path: '../bots/docs',
+        path: './doc-pages/clients-bots',
         routeBasePath: 'bots',
         sidebarPath: './sidebarsBots.ts',
+        editUrl: ({docPath}) => {
+          const base = 'https://github.com/EggsLeggs/Riftseer/edit/main/';
+          if (docPath === 'discord-bot.md') {
+            return `${base}packages/discord-bot/docs/discord-bot.md`;
+          }
+          if (docPath === 'reddit-bot.md') {
+            return `${base}packages/reddit-bot/docs/reddit-bot.md`;
+          }
+          return `${base}docs/doc-pages/clients-bots/${docPath}`;
+        },
       },
     ],
     [
@@ -131,6 +142,7 @@ const config: Config = {
         {
           type: 'doc',
           docId: 'index',
+          docsPluginId: 'getting-started',
           position: 'left',
           label: 'Getting Started',
         },
@@ -165,7 +177,6 @@ const config: Config = {
         {
           type: 'docSidebar',
           sidebarId: 'ingestWorkerSidebar',
-          docsPluginId: 'ingest-worker',
           position: 'left',
           label: 'Ingest Worker',
         },

@@ -20,7 +20,7 @@ All set endpoints are under `/api/v1/sets`. For full request/response schemas, t
 
 Returns all known card sets with a card count for each.
 
-```
+```http
 GET /api/v1/sets
 ```
 
