@@ -100,7 +100,7 @@ sequenceDiagram
     participant Provider as SimplifiedDeckProviderImpl
     participant Serializer as DeckSerializerV1
 
-    Client->>API: POST /decks/u { cardsToAdd }
+    Client->>API: POST /api/v1/decks/u { cardsToAdd }
     API->>Provider: addCards([{id, qty}...], undefined)
     Provider->>Provider: resolve each card ID
     Provider->>Provider: build Deck (legend, main, runes...)
@@ -109,7 +109,7 @@ sequenceDiagram
     Provider-->>API: { deck, shortForm }
     API-->>Client: 200 OK
 
-    Client->>API: GET /decks/u/:shortForm
+    Client->>API: GET /api/v1/decks/u/:shortForm
     API->>Provider: getDeckFromShortForm(shortForm)
     Provider->>Serializer: deserialize(shortForm)
     Serializer-->>Provider: SimplifiedDeck

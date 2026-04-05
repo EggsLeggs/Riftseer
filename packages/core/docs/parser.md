@@ -81,13 +81,13 @@ interface CardRequest {
 
 ## Usage in the resolve flow
 
-```text
-Client builds one string per card (plain name or Name|SET-### inside the bracket grammar)
-  → POST /api/v1/cards/resolve { requests: string[] }
-  → per string: parseCardRequests("[[…]]") → CardRequest
-  → provider.resolveRequest(req)
-  → ResolvedCard[]
-  → API response
+```mermaid
+flowchart TD
+  A["Client builds one string per card<br/>(plain name or Name|SET-###)"] --> B["POST /api/v1/cards/resolve { requests: string[] }"]
+  B --> C["Per string: parseCardRequests(\"[[...]]\") -> CardRequest"]
+  C --> D["provider.resolveRequest(req)"]
+  D --> E["ResolvedCard[]"]
+  E --> F["API response"]
 ```
 
 See [Provider Interface](./provider.md) for `resolveRequest` and [Types](./types.md) for `CardRequest` / `ResolvedCard`.
