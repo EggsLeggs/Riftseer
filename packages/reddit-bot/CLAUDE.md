@@ -72,7 +72,7 @@ await reddit.submitComment({
 Settings are accessed via `context.settings.get('apiBaseUrl')`.
 
 ## HTTP Fetch
-The bot calls `/api/v1/resolve` on the external API. The fetch domain must be listed in `devvit.yaml` under `permissions.http`. If the API domain changes, update `devvit.yaml` **and** redeploy.
+The bot calls `/api/v1/cards/resolve` on the external API. The fetch domain must be listed in `devvit.yaml` under `permissions.http`. If the API domain changes, update `devvit.yaml` **and** redeploy.
 
 ## Deduplication
 Replied comment/post IDs are stored in the KV store to prevent duplicate replies across restarts and re-deploys. The KV key pattern is `replied:<type>:<id>`.
@@ -86,3 +86,6 @@ If the bot begins storing new data in the KV store or logging additional fields 
 The current data stored:
 - **KV store**: Replied comment/post IDs only (for deduplication)
 - **API logs**: Card name + subreddit logged server-side for analytics (not stored by the bot itself)
+
+## Documentation
+Doc pages for this bot live in `packages/reddit-bot/docs/reddit-bot.md`. The dev docs site copies this file into `docs/doc-pages/clients-bots/` when you run `bun run build` or `bun run start` in `docs/` (see `sync-clients-bots-docs`). Keep the doc up to date when triggers, KV key patterns, settings, or the API call change.
