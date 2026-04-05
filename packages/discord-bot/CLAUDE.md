@@ -75,3 +75,6 @@ Run `bun run register` from `packages/discord-bot` (needs `DISCORD_BOT_TOKEN` an
 
 ## Privacy
 The Discord bot does not store any data. It forwards the card name to the Riftseer API and returns the result. If logging or persistence is added, update `packages/frontend/src/components/PrivacyPage.tsx`.
+
+## Documentation
+Doc pages for this bot live in `packages/discord-bot/docs/discord-bot.md`. The dev docs site copies this file into `docs/doc-pages/clients-bots/` when you run `bun run build` or `bun run start` in `docs/` (see `sync-clients-bots-docs`). Keep the doc up to date when slash commands, interaction flow, or secrets change.

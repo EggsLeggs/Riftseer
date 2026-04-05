@@ -84,3 +84,6 @@ If a new API route is added, add a corresponding typed helper in `src/api.ts`.
 **After updating either page, also update the "Last Updated" date at the top of the component.**
 
 The footer (`Nav.tsx` or a dedicated `Footer` component) links to both pages — if the routes change, update the footer links too.
+
+## Documentation
+Doc pages for this package live in `packages/frontend/docs/`. Keep them up to date when making changes — if routes, key components, or the API client interface change, update the relevant doc page alongside the code.

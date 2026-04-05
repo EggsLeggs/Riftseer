@@ -13,7 +13,9 @@ Content is co-located with the package it describes:
 
 | Section | Source files | Route prefix |
 |---------|-------------|--------------|
+| Getting Started | `docs/doc-pages/getting-started/*.md` | `/getting-started/` |
 | Ingest worker | `packages/ingest-worker/docs/*.md` | `/` (root) |
+| Clients & Bots | `docs/doc-pages/clients-bots/*.md` (overview, Raycast); Discord/Reddit authored in `packages/discord-bot/docs/`, `packages/reddit-bot/docs/` and copied into `clients-bots/` by `bun run sync-clients-bots-docs` (prestart/prebuild) | `/bots/` |
 | Supabase | `supabase/docs/*.md` | `/supabase/` |
 
 Do **not** put doc pages in `docs/docs/` — that directory doesn't exist and the site isn't configured to read from it.

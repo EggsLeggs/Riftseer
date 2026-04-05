@@ -26,7 +26,9 @@ Content is co-located with its package, **not** inside `docs/`. The Docusaurus c
 
 | Navbar section | Source path | URL prefix |
 | -------------- | ----------- | ---------- |
+| Getting Started | `docs/doc-pages/getting-started/` | `/getting-started/` |
 | Ingest worker | `packages/ingest-worker/docs/` | `/` |
+| Clients & Bots | `docs/doc-pages/clients-bots/`; Discord/Reddit pages are authored in `packages/*/docs/` and copied in by `sync-clients-bots-docs` (runs on `prestart` / `prebuild`) | `/bots/` |
 | Supabase | `supabase/docs/` | `/supabase/` |
 
 ## Adding a Page

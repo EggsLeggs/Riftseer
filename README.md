@@ -257,13 +257,13 @@ All endpoints are under **`/api/v1`**:
 | GET | `/api/v1/cards/random` | One random card |
 | GET | `/api/v1/cards/:id` | Card by UUID |
 | GET | `/api/v1/cards/:id/text` | Plain text (name, type line, rules) for copy-paste |
-| POST | `/api/v1/resolve` | Batch resolve: `{ "requests": ["Sun Disc", "Stalwart Poro\|OGN", ...] }` (max 20) |
+| POST | `/api/v1/cards/resolve` | Batch resolve: `{ "requests": ["Sun Disc", "Stalwart Poro\|OGN", ...] }` (max 20) |
 | GET | `/api/v1/sets` | List sets with codes and card counts |
 
-### POST /api/v1/resolve example
+### POST /api/v1/cards/resolve example
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/resolve \
+curl -X POST http://localhost:3000/api/v1/cards/resolve \
   -H 'Content-Type: application/json' \
   -d '{"requests":["Sun Disc","Stalwart Poro|OGN","NonExistentCard"]}'
 ```

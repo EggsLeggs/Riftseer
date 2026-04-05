@@ -36,13 +36,10 @@ const config: Config = {
       'classic',
       {
         docs: {
-          // Point directly at the ingest worker docs in the monorepo.
-          // This avoids symlink-related issues while still keeping docs
-          // co-located with the package.
-          path: '../packages/ingest-worker/docs',
-          sidebarPath: './sidebars.ts',
+          path: './doc-pages/getting-started',
+          sidebarPath: './sidebarsGettingStarted.ts',
           routeBasePath: '/',
-          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
+          editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/docs/doc-pages/getting-started/',
         },
         blog: false,
         theme: {
@@ -56,10 +53,75 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
+        id: 'ingest-worker',
+        path: '../packages/ingest-worker/docs',
+        routeBasePath: 'ingest-worker',
+        sidebarPath: './sidebarsIngestWorker.ts',
+        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'api',
+        path: '../packages/api/docs',
+        routeBasePath: 'api',
+        sidebarPath: './sidebarsApi.ts',
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'frontend',
+        path: '../packages/frontend/docs',
+        routeBasePath: 'frontend',
+        sidebarPath: './sidebarsFrontend.ts',
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'core',
+        path: '../packages/core/docs',
+        routeBasePath: 'core',
+        sidebarPath: './sidebarsCore.ts',
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'bots',
+        path: './doc-pages/clients-bots',
+        routeBasePath: 'bots',
+        sidebarPath: './sidebarsBots.ts',
+        editUrl: ({docPath}) => {
+          const base = 'https://github.com/EggsLeggs/Riftseer/edit/main/';
+          if (docPath === 'discord-bot.md') {
+            return `${base}packages/discord-bot/docs/discord-bot.md`;
+          }
+          if (docPath === 'reddit-bot.md') {
+            return `${base}packages/reddit-bot/docs/reddit-bot.md`;
+          }
+          return `${base}docs/doc-pages/clients-bots/${docPath}`;
+        },
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
         id: 'supabase',
         path: '../supabase/docs',
         routeBasePath: 'supabase',
         sidebarPath: './sidebarsSupabase.ts',
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'infrastructure',
+        path: './doc-pages/infrastructure',
+        routeBasePath: 'infrastructure',
+        sidebarPath: './sidebarsInfrastructure.ts',
       },
     ],
   ],
@@ -74,13 +136,49 @@ const config: Config = {
       logo: {
         alt: 'Riftseer Logo',
         src: 'img/logo.svg',
+        href: '/',
       },
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'ingestWorkerSidebar',
+          type: 'doc',
+          docId: 'index',
           position: 'left',
-          label: 'Ingest worker',
+          label: 'Getting Started',
+        },
+        {
+          type: 'doc',
+          docId: 'index',
+          docsPluginId: 'api',
+          position: 'left',
+          label: 'API',
+        },
+        {
+          type: 'doc',
+          docId: 'index',
+          docsPluginId: 'frontend',
+          position: 'left',
+          label: 'Frontend',
+        },
+        {
+          type: 'doc',
+          docId: 'index',
+          docsPluginId: 'core',
+          position: 'left',
+          label: 'Core',
+        },
+        {
+          type: 'doc',
+          docId: 'index',
+          docsPluginId: 'bots',
+          position: 'left',
+          label: 'Clients & Bots',
+        },
+        {
+          type: 'doc',
+          docId: 'index',
+          docsPluginId: 'ingest-worker',
+          position: 'left',
+          label: 'Ingest Worker',
         },
         {
           type: 'doc',
@@ -88,6 +186,13 @@ const config: Config = {
           docsPluginId: 'supabase',
           position: 'left',
           label: 'Supabase',
+        },
+        {
+          type: 'doc',
+          docId: 'cloudflare',
+          docsPluginId: 'infrastructure',
+          position: 'left',
+          label: 'Infrastructure',
         },
         {
           href: 'https://github.com/EggsLeggs/Riftseer',
