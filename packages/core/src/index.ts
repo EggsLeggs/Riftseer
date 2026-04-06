@@ -30,7 +30,8 @@ export { createProvider } from "./providers/index.ts";
 export type { ProviderName } from "./providers/index.ts";
 
 export { normalizeCardName } from "./normalize.ts";
-export { autocompleteSearch, scoreCard } from "./search.ts";
+export { autocompleteSearch, scoreCard, rankIds } from "./search.ts";
+export type { Nameable } from "./search.ts";
 export { SupabaseCardProvider } from "./providers/supabase.ts";
 
 // Deck provider interface + implementation

@@ -64,7 +64,12 @@ interface DBCardRow {
   updated_at: string;
   ingested_at: string;
   rulings_id: string | null;
-  sets: { set_code: string; set_name: string; set_uri: string | null; set_search_uri: string | null } | null;
+  sets: {
+    set_code: string;
+    set_name: string;
+    set_uri: string | null;
+    set_search_uri: string | null;
+  } | null;
   artists: { name: string } | null;
 }
 
@@ -126,7 +131,10 @@ function sortCardsByCollector(a: Card, b: Card): number {
     const numA = parseInt(matchA[1], 10);
     const numB = parseInt(matchB[1], 10);
     if (numA !== numB) return numA - numB;
-    return matchA[2].localeCompare(matchB[2], undefined, { numeric: false, sensitivity: "variant" });
+    return matchA[2].localeCompare(matchB[2], undefined, {
+      numeric: false,
+      sensitivity: "variant",
+    });
   }
   return na.localeCompare(nb, undefined, { numeric: true });
 }
@@ -139,7 +147,9 @@ export class SupabaseCardProvider implements CardDataProvider {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   async warmup(): Promise<void> {
-    logger.info("Supabase provider warming up", { url: process.env.SUPABASE_URL });
+    logger.info("Supabase provider warming up", {
+      url: process.env.SUPABASE_URL,
+    });
     await this.touchSupabase();
 
     this.refreshTimer = setInterval(() => {
@@ -200,14 +210,19 @@ export class SupabaseCardProvider implements CardDataProvider {
       if (!setId) return [];
     }
 
-    let exactQuery = supabase.from("cards").select(CARD_SELECT).eq("name_normalized", norm);
+    let exactQuery = supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .eq("name_normalized", norm);
     if (setId) exactQuery = exactQuery.eq("set_id", setId);
     if (opts.collector !== undefined && opts.collector !== null) {
       exactQuery = exactQuery.eq("collector_number", String(opts.collector));
     }
 
-    const { data: exactData, error: exactError } = await exactQuery.limit(limit);
-    if (exactError) throw new Error(`searchByName exact failed: ${exactError.message}`);
+    const { data: exactData, error: exactError } =
+      await exactQuery.limit(limit);
+    if (exactError)
+      throw new Error(`searchByName exact failed: ${exactError.message}`);
     if (exactData && exactData.length > 0) {
       return (exactData as DBCardRow[]).map(dbRowToCard);
     }
@@ -224,6 +239,7 @@ export class SupabaseCardProvider implements CardDataProvider {
       .join(" & ");
 
     // Fetch more candidates than needed so the in-memory scorer can re-rank properly.
+    // Use a slim projection here — scoreCard only needs id/name/name_normalized.
     const fetchLimit = Math.min(Math.max(limit * 20, 100), 500);
 
     let ftsQuery = supabase
@@ -237,7 +253,8 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
 
     const { data: ftsData, error: ftsError } = await ftsQuery.limit(fetchLimit);
-    if (ftsError) throw new Error(`searchByName FTS failed: ${ftsError.message}`);
+    if (ftsError)
+      throw new Error(`searchByName FTS failed: ${ftsError.message}`);
 
     const candidates = ftsData ? (ftsData as DBCardRow[]).map(dbRowToCard) : [];
     return autocompleteSearch(candidates, q, limit);
@@ -257,27 +274,40 @@ export class SupabaseCardProvider implements CardDataProvider {
       .eq("name_normalized", norm);
 
     if (exactError) {
-      logger.error("resolveRequest exact query failed", { error: exactError.message });
-      throw new Error(`resolveRequest exact query failed: ${exactError.message}`);
+      logger.error("resolveRequest exact query failed", {
+        error: exactError.message,
+      });
+      throw new Error(
+        `resolveRequest exact query failed: ${exactError.message}`,
+      );
     }
 
-    const candidates = (exactRows as DBCardRow[] | null)?.map(dbRowToCard) ?? [];
+    const candidates =
+      (exactRows as DBCardRow[] | null)?.map(dbRowToCard) ?? [];
 
     if (req.set && req.collector) {
       const exact = candidates.find(
-        (c) => c.set?.set_code === req.set!.toUpperCase() && c.collector_number === req.collector,
+        (c) =>
+          c.set?.set_code === req.set!.toUpperCase() &&
+          c.collector_number === req.collector,
       );
       if (exact) return { request: req, card: exact, matchType: "exact" };
     }
 
     if (req.set) {
-      const withSet = candidates.filter((c) => c.set?.set_code === req.set!.toUpperCase());
-      if (withSet.length > 0) return { request: req, card: withSet[0], matchType: "exact" };
+      const withSet = candidates.filter(
+        (c) => c.set?.set_code === req.set!.toUpperCase(),
+      );
+      if (withSet.length > 0)
+        return { request: req, card: withSet[0], matchType: "exact" };
       if (candidates.length > 0) {
-        logger.debug("Requested set not found; falling back to default printing", {
-          name: req.name,
-          set: req.set,
-        });
+        logger.debug(
+          "Requested set not found; falling back to default printing",
+          {
+            name: req.name,
+            set: req.set,
+          },
+        );
       }
     }
 
@@ -310,7 +340,9 @@ export class SupabaseCardProvider implements CardDataProvider {
     return { request: req, card: null, matchType: "not-found" };
   }
 
-  async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
+  async getSets(): Promise<
+    Array<{ setCode: string; setName: string; cardCount: number }>
+  > {
     const { data, error } = await getSupabaseClient()
       .from("sets")
       .select("set_code, set_name, card_count")
@@ -326,7 +358,10 @@ export class SupabaseCardProvider implements CardDataProvider {
     }));
   }
 
-  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<Card[]> {
+  async getCardsBySet(
+    setCode: string,
+    opts: { limit?: number } = {},
+  ): Promise<Card[]> {
     const limit = opts.limit ?? 1000;
     const setId = await getSetIdByCode(setCode);
     if (!setId) return [];
@@ -348,7 +383,8 @@ export class SupabaseCardProvider implements CardDataProvider {
       .from("cards")
       .select("*", { count: "exact", head: true });
 
-    if (countError) throw new Error(`getRandomCard count failed: ${countError.message}`);
+    if (countError)
+      throw new Error(`getRandomCard count failed: ${countError.message}`);
     const n = count ?? 0;
     if (n === 0) return null;
 

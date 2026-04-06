@@ -23,6 +23,13 @@
 import { normalizeCardName } from "./normalize.ts";
 import type { Card } from "./types.ts";
 
+/** Minimal shape required for name-based ranking. `Card` satisfies this. */
+export interface Nameable {
+  id: string;
+  name: string;
+  name_normalized: string;
+}
+
 // ─── Score constants ─────────────────────────────────────────────────────────
 
 const SCORE_EXACT = 1000;
@@ -82,7 +89,7 @@ function levenshtein(a: string, b: string, maxDist: number): number {
 // ─── Card scorer ─────────────────────────────────────────────────────────────
 
 interface ScoredCard {
-  card: Card;
+  card: Nameable;
   score: number;
   /** Character offset of the match in the normalized name (for tiebreaking). */
   position: number;
@@ -92,7 +99,7 @@ interface ScoredCard {
  * Score a single card against a pre-normalized query string.
  * Returns null when the card does not meet the minimum score threshold.
  */
-export function scoreCard(card: Card, normQuery: string, queryLen: number): ScoredCard | null {
+export function scoreCard(card: Nameable, normQuery: string, queryLen: number): ScoredCard | null {
   const normName = card.name_normalized;
 
   // 1. Exact normalized name match.
@@ -180,6 +187,27 @@ function compareScoredCards(a: ScoredCard, b: ScoredCard): number {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
+ * Score and rank items by name, returning the top `limit` IDs in ranked order.
+ * Accepts any object with `id`, `name`, and `name_normalized` — use this when
+ * you want to rank slim candidates and hydrate full objects separately.
+ */
+export function rankIds(items: Iterable<Nameable>, query: string, limit: number): string[] {
+  const normQuery = normalizeCardName(query);
+  const queryLen = normQuery.length;
+  if (queryLen === 0) return [];
+
+  const bestById = new Map<string, ScoredCard>();
+  for (const item of items) {
+    const result = scoreCard(item, normQuery, queryLen);
+    if (result !== null) bestById.set(item.id, result);
+  }
+
+  const scored = [...bestById.values()];
+  scored.sort(compareScoredCards);
+  return scored.slice(0, limit).map((s) => s.card.id);
+}
+
+/**
  * Autocomplete-style card search with deterministic, position-aware ranking.
  *
  * - Short queries (< 3 chars) only return prefix matches, never fuzzy guesses.
@@ -192,24 +220,8 @@ function compareScoredCards(a: ScoredCard, b: ScoredCard): number {
  * @param limit   Maximum results to return.
  */
 export function autocompleteSearch(cards: Iterable<Card>, query: string, limit: number): Card[] {
-  const normQuery = normalizeCardName(query);
-  const queryLen = normQuery.length;
-
-  if (queryLen === 0) return [];
-
-  const cardList = Array.from(cards);
-
-  const bestById = new Map<string, ScoredCard>();
-
-  for (const card of cardList) {
-    const result = scoreCard(card, normQuery, queryLen);
-    if (result !== null) {
-      bestById.set(card.id, result);
-    }
-  }
-
-  const scored = [...bestById.values()];
-  scored.sort(compareScoredCards);
-
-  return scored.slice(0, limit).map((s) => s.card);
+  const cardMap = new Map<string, Card>();
+  for (const card of cards) cardMap.set(card.id, card);
+  const topIds = rankIds(cardMap.values(), query, limit);
+  return topIds.flatMap((id) => { const c = cardMap.get(id); return c ? [c] : []; });
 }
