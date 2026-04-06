@@ -66,6 +66,23 @@ When a new package needs documentation:
 3. Create `docs/sidebarsSection.ts` (autogenerate pattern — copy `sidebarsSupabase.ts`).
 4. Add a navbar item under `themeConfig.navbar.items` in `docusaurus.config.ts`.
 
+## Linking Between Sections (cross-plugin links)
+
+Each navbar section is a **separate Docusaurus plugin instance** with its own route prefix (see the table above). Relative file paths (e.g. `../../types/docs/card-types`) cannot cross plugin boundaries — Docusaurus resolves them within the same plugin and will throw a broken-link build error.
+
+**Rule: links that cross sections must use absolute site paths.**
+
+```md
+<!-- WRONG — relative path crosses plugin boundary -->
+[Card Types](../../types/docs/card-types)
+
+<!-- CORRECT — absolute path rooted at the site -->
+[Card Types](/types/card-types)
+[Card Types with anchor](/types/card-types#adding-a-field)
+```
+
+Relative paths are fine for links within the same package's docs (same plugin), e.g. `[Provider](./provider)` inside `packages/core/docs/`.
+
 ## Mermaid Diagrams
 
 Enabled via `@docusaurus/theme-mermaid`. Use standard fenced code blocks tagged `mermaid`.
