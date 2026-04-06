@@ -4,7 +4,7 @@
  */
 
 import { normalizeCardName, logger } from "./utils.ts";
-import type { Card } from "@riftseer/core";
+import type { Card } from "@riftseer/types";
 
 const PAGE_SIZE = 100;
 

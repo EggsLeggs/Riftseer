@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260219.0",
-    "@riftseer/core": "workspace:*",
+    "@riftseer/types": "workspace:*",
     "typescript": "~5.8.0",
     "wrangler": "^4.67.0"
   }
