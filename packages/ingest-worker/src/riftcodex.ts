@@ -4,7 +4,7 @@
  */
 
 import { normalizeCardName, logger } from "./utils.ts";
-import type { Card } from "@riftseer/core";
+import type { Card } from "@riftseer/types";
 
 const PAGE_SIZE = 100;
 
@@ -30,18 +30,24 @@ interface RawClassification {
 interface RawText {
   rich: string;
   plain: string;
+  flavour?: string;
 }
 
 interface RawSet {
   set_id: string;
   name?: string;
   label: string;
+  set_uri?: string;
+  set_search_uri?: string;
 }
 
 interface RawMedia {
   image_url: string;
   artist: string;
   accessibility_text: string;
+  image_url_small?: string;
+  image_url_large?: string;
+  image_url_png?: string;
 }
 
 interface RawMetadata {
@@ -49,6 +55,12 @@ interface RawMetadata {
   alternate_art: boolean;
   overnumbered: boolean;
   signature: boolean;
+  finishes?: string[];
+}
+
+interface RawRulings {
+  rulings_id?: string;
+  rulings_uri?: string;
 }
 
 export interface RawCard {
@@ -66,6 +78,8 @@ export interface RawCard {
   tags: string[];
   orientation: string;
   metadata: RawMetadata;
+  released_at?: string;
+  rulings?: RawRulings;
   [k: string]: unknown;
 }
 
@@ -85,6 +99,7 @@ export function rawToCard(raw: RawCard): Card {
     name: raw.name,
     name_normalized: normalizeCardName(raw.metadata?.clean_name || raw.name),
     collector_number: String(raw.collector_number),
+    released_at: raw.released_at || undefined,
     external_ids: {
       riftcodex_id: raw.id,
       riftbound_id: raw.riftbound_id || undefined,
@@ -95,8 +110,17 @@ export function rawToCard(raw: RawCard): Card {
           set_code: setCode,
           set_id: raw.set?.set_id,
           set_name: raw.set?.name ?? raw.set?.label ?? setCode,
+          set_uri: raw.set?.set_uri,
+          set_search_uri: raw.set?.set_search_uri,
         }
       : undefined,
+    rulings:
+      raw.rulings?.rulings_id || raw.rulings?.rulings_uri
+        ? {
+            rulings_id: raw.rulings?.rulings_id,
+            rulings_uri: raw.rulings?.rulings_uri,
+          }
+        : undefined,
     attributes: {
       energy: raw.attributes?.energy ?? null,
       might: raw.attributes?.might ?? null,
@@ -112,9 +136,11 @@ export function rawToCard(raw: RawCard): Card {
     text: {
       rich: raw.text?.rich || undefined,
       plain: raw.text?.plain || undefined,
+      flavour: raw.text?.flavour || undefined,
     },
     artist: raw.media?.artist || undefined,
     metadata: {
+      finishes: raw.metadata?.finishes,
       alternate_art: raw.metadata?.alternate_art ?? false,
       overnumbered: raw.metadata?.overnumbered ?? false,
       signature: raw.metadata?.signature ?? false,
@@ -122,7 +148,14 @@ export function rawToCard(raw: RawCard): Card {
     media: {
       orientation: raw.orientation || undefined,
       accessibility_text: raw.media?.accessibility_text || undefined,
-      media_urls: raw.media?.image_url ? { normal: raw.media.image_url } : undefined,
+      media_urls: raw.media?.image_url
+        ? {
+            small: raw.media.image_url_small,
+            normal: raw.media.image_url,
+            large: raw.media.image_url_large,
+            png: raw.media.image_url_png,
+          }
+        : undefined,
     },
     is_token:
       raw.classification?.type?.toLowerCase() === "token" ||

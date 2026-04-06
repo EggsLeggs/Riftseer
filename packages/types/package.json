@@ -1,0 +1,15 @@
+{
+  "name": "@riftseer/types",
+  "version": "0.1.0",
+  "module": "index.ts",
+  "main": "index.ts",
+  "types": "index.ts",
+  "exports": {
+    ".": "./index.ts",
+    "./icons": "./src/icons.ts",
+    "./parser": "./src/parser.ts"
+  },
+  "devDependencies": {
+    "bun-types": "^1.2.0"
+  }
+}

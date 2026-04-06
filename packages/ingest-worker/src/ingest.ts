@@ -5,7 +5,7 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { normalizeCardName, logger } from "./utils.ts";
-import type { Card, RelatedCard } from "@riftseer/core";
+import type { Card, RelatedCard } from "@riftseer/types";
 import { fetchAllPages, rawToCard } from "./riftcodex.ts";
 
 const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
