@@ -1,16 +1,3 @@
-/**
- * Shared icon system for Riftbound card text tokens.
- *
- * Token format in card text: :rb_<key>:
- * Examples: :rb_exhaust:  :rb_energy_3:  :rb_rune_fury:
- *
- * Used by:
- *   - packages/frontend  (CardTextRenderer — renders CSS icon spans)
- *   - packages/discord-bot  (renderTextForDiscord — renders Discord custom emojis)
- */
-
-// TOKEN_REGEX and TOKEN_ICON_MAP live in @riftseer/types — re-exported here for
-// backwards compatibility with existing workspace imports.
 export { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types";
 
 // ─── Discord emoji registry ───────────────────────────────────────────────────

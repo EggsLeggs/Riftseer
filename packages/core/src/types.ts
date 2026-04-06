@@ -1,8 +1,4 @@
 export type {
-  Card,
-  CardRequest,
-  ResolvedCard,
-  CardSearchOptions,
   RelatedCard,
   CardExternalIds,
   CardSet,
@@ -15,5 +11,9 @@ export type {
   CardMedia,
   CardPurchaseUris,
   CardPrices,
+  Card,
+  CardRequest,
+  ResolvedCard,
+  CardSearchOptions,
   SimplifiedDeck,
 } from "@riftseer/types";

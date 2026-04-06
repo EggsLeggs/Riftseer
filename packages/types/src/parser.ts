@@ -72,7 +72,7 @@ function parseToken(inner: string): CardRequest {
   return {
     raw: inner,
     name,
-    set: rest.toUpperCase(),
+    set: rest,
   };
 }
 
