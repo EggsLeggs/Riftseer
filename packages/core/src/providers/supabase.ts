@@ -2,17 +2,13 @@
  * SupabaseCardProvider
  *
  * Reads card data from Supabase Postgres (populated by the ingest pipeline).
- * Builds an in-memory index (byId, byNorm, Fuse) for fast query serving.
- * Uses Redis as a warmup cache so restarts don't hit Postgres on every deploy.
+ * Name search uses Postgres full-text search (tsvector); no in-memory card index.
  *
  * Enable with: CARD_PROVIDER=supabase
  * Requires: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Optional: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN (Upstash Redis REST cache;
- *           if UPSTASH_REDIS_REST_URL is set, UPSTASH_REDIS_REST_TOKEN is required),
- *           FUZZY_THRESHOLD, CACHE_REFRESH_INTERVAL_MS
+ * Optional: CACHE_REFRESH_INTERVAL_MS (periodic stats refresh)
  */
 
-import Fuse from "fuse.js";
 import type { CardDataProvider } from "../provider.ts";
 import type {
   Card,
@@ -31,28 +27,18 @@ import type {
 } from "../types.ts";
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
-import { getRedisClient } from "../redis/client.ts";
 import { normalizeCardName } from "../normalize.ts";
-import { autocompleteSearch } from "../search.ts";
+import { autocompleteSearch, rankIds, type Nameable } from "../search.ts";
 
-// ─── Configuration ────────────────────────────────────────────────────────────
-
-const FUZZY_THRESHOLD = parseFloat(process.env.FUZZY_THRESHOLD ?? "0.4");
 const REFRESH_INTERVAL_MS = parseInt(
   process.env.CACHE_REFRESH_INTERVAL_MS ?? "21600000",
   10,
 );
-const CARDS_PAGE_SIZE = 1000;
 
-// ─── Redis keys ───────────────────────────────────────────────────────────────
+const CARD_SELECT =
+  "*, sets:set_id(set_code, set_name, set_uri, set_search_uri), artists:artist_id(name)";
 
-const REDIS_SNAPSHOT_PREFIX = "riftseer:snapshot:";
-const REDIS_SNAPSHOT_TTL = 86400; // 24 h — keyed by ingested_at, so stale keys expire naturally
-
-function snapshotKey(ingestedAt: string): string {
-  // Replace characters that are special in Redis key conventions
-  return `${REDIS_SNAPSHOT_PREFIX}${ingestedAt.replace(/[:.]/g, "-")}`;
-}
+const SLIM_SELECT = "id, name, name_normalized";
 
 // ─── DB row shape (cards joined with sets + artists) ─────────────────────────
 
@@ -80,12 +66,14 @@ interface DBCardRow {
   updated_at: string;
   ingested_at: string;
   rulings_id: string | null;
-  // Joined via FK
-  sets: { set_code: string; set_name: string; set_uri: string | null; set_search_uri: string | null } | null;
+  sets: {
+    set_code: string;
+    set_name: string;
+    set_uri: string | null;
+    set_search_uri: string | null;
+  } | null;
   artists: { name: string } | null;
 }
-
-// ─── DB row → Card ───────────────────────────────────────────────────────────
 
 function dbRowToCard(row: DBCardRow): Card {
   return {
@@ -125,97 +113,46 @@ function dbRowToCard(row: DBCardRow): Card {
   };
 }
 
-// ─── Redis helpers (silent failures — Redis is optional) ─────────────────────
-
-async function redisSafeGet(key: string): Promise<DBCardRow[] | null> {
-  const client = getRedisClient();
-  if (!client) return null;
-  try {
-    const cached = await client.get<unknown>(key);
-    if (!cached) return null;
-    if (Array.isArray(cached)) return cached as DBCardRow[];
-    if (typeof cached === "string") {
-      const parsed: unknown = JSON.parse(cached);
-      return Array.isArray(parsed) ? (parsed as DBCardRow[]) : null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function redisSafeSet(key: string, value: DBCardRow[], ttlSeconds: number): Promise<void> {
-  const client = getRedisClient();
-  if (!client) return;
-  try {
-    await client.set(key, value, { ex: ttlSeconds });
-  } catch {
-    // Redis unavailable — continue without caching
-  }
-}
-
-// ─── Supabase helpers ─────────────────────────────────────────────────────────
-
-async function getLatestIngestedAt(): Promise<string | null> {
+async function getSetIdByCode(setCode: string): Promise<string | null> {
   const { data, error } = await getSupabaseClient()
-    .from("cards")
-    .select("ingested_at")
-    .order("ingested_at", { ascending: false })
-    .limit(1)
+    .from("sets")
+    .select("id")
+    .eq("set_code", setCode.toUpperCase())
     .maybeSingle();
 
-  if (error) throw new Error(`Failed to query latest ingested_at: ${error.message}`);
-  return data?.ingested_at ?? null;
+  if (error) throw new Error(`Failed to resolve set code: ${error.message}`);
+  return data?.id ?? null;
 }
 
-async function loadAllCardsFromDB(): Promise<DBCardRow[]> {
-  const supabase = getSupabaseClient();
-  const all: DBCardRow[] = [];
-  let from = 0;
-
-  while (true) {
-    const { data, error } = await supabase
-      .from("cards")
-      .select("*, sets:set_id(set_code, set_name, set_uri, set_search_uri), artists:artist_id(name)")
-      .range(from, from + CARDS_PAGE_SIZE - 1);
-
-    if (error) throw new Error(`Failed to load cards from Supabase: ${error.message}`);
-    if (!data || data.length === 0) break;
-
-    all.push(...(data as DBCardRow[]));
-    if (data.length < CARDS_PAGE_SIZE) break;
-    from += CARDS_PAGE_SIZE;
+function sortCardsByCollector(a: Card, b: Card): number {
+  const na = a.collector_number ?? "";
+  const nb = b.collector_number ?? "";
+  const matchA = /^(\d+)(.*)$/.exec(na);
+  const matchB = /^(\d+)(.*)$/.exec(nb);
+  if (matchA && matchB) {
+    const numA = parseInt(matchA[1], 10);
+    const numB = parseInt(matchB[1], 10);
+    if (numA !== numB) return numA - numB;
+    return matchA[2].localeCompare(matchB[2], undefined, {
+      numeric: false,
+      sensitivity: "variant",
+    });
   }
-
-  return all;
+  return na.localeCompare(nb, undefined, { numeric: true });
 }
-
-// ─── Filter helper (shared with index queries) ────────────────────────────────
-
-function applyFilters(cards: Card[], opts: CardSearchOptions): Card[] {
-  return cards.filter((c) => {
-    if (opts.set && c.set?.set_code !== opts.set.toUpperCase()) return false;
-    if (opts.collector && c.collector_number !== String(opts.collector)) return false;
-    return true;
-  });
-}
-
-// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export class SupabaseCardProvider implements CardDataProvider {
   readonly sourceName = "supabase";
 
-  private byId = new Map<string, Card>();
-  private byNorm = new Map<string, Card[]>();
-  private fuse: Fuse<Card> | null = null;
   private lastRefresh = 0;
+  private cardCount = 0;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-  // ── Lifecycle ────────────────────────────────────────────────────────────────
-
   async warmup(): Promise<void> {
-    logger.info("Supabase provider warming up", { url: process.env.SUPABASE_URL });
-    await this.loadAndIndex();
+    logger.info("Supabase provider warming up", {
+      url: process.env.SUPABASE_URL,
+    });
+    await this.touchSupabase();
 
     this.refreshTimer = setInterval(() => {
       this.refresh().catch((err) =>
@@ -226,8 +163,8 @@ export class SupabaseCardProvider implements CardDataProvider {
   }
 
   async refresh(): Promise<void> {
-    logger.info("Refreshing card data from Supabase");
-    await this.loadAndIndex();
+    logger.info("Refreshing provider stats from Supabase");
+    await this.touchSupabase();
   }
 
   stop(): void {
@@ -237,187 +174,249 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
   }
 
-  // ── Load + index ─────────────────────────────────────────────────────────────
+  private async touchSupabase(): Promise<void> {
+    const supabase = getSupabaseClient();
+    const { count, error } = await supabase
+      .from("cards")
+      .select("*", { count: "exact", head: true });
 
-  private async loadAndIndex(): Promise<void> {
-    try {
-      // 1. Find the current ingested_at timestamp (cheap single-row query)
-      const ingestedAt = await getLatestIngestedAt();
+    if (error) throw new Error(error.message);
 
-      if (!ingestedAt) {
-        logger.warn("Supabase has no cards — has the ingest pipeline run?");
-        return;
-      }
+    this.cardCount = count ?? 0;
+    this.lastRefresh = Math.floor(Date.now() / 1000);
 
-      // 2. Try Redis snapshot keyed by ingested_at (fast path)
-      const cached = await redisSafeGet(snapshotKey(ingestedAt));
-      let rows: DBCardRow[];
-
-      if (cached) {
-        logger.info("Loading cards from Redis snapshot", { ingestedAt });
-        rows = cached;
-      } else {
-        // 3. Slow path: load from Supabase, then cache in Redis
-        logger.info("Loading cards from Supabase", { ingestedAt });
-        rows = await loadAllCardsFromDB();
-        await redisSafeSet(snapshotKey(ingestedAt), rows, REDIS_SNAPSHOT_TTL);
-      }
-
-      const cards = rows.map(dbRowToCard);
-      this.buildIndex(cards);
-      this.lastRefresh = Math.floor(Date.now() / 1000);
-
-      logger.info("Supabase provider ready", {
-        count: cards.length,
-        ingestedAt,
-        source: cached ? "redis" : "supabase",
-      });
-    } catch (err) {
-      // If we already have data in memory, keep serving it rather than crashing
-      if (this.byId.size > 0) {
-        logger.error("Reload failed — continuing with stale index", { error: String(err) });
-      } else {
-        logger.error("Warmup failed — provider has no data", { error: String(err) });
-      }
-    }
+    logger.info("Supabase provider ready", { cardCount: this.cardCount });
   }
-
-  private buildIndex(cards: Card[]): void {
-    this.byId.clear();
-    this.byNorm.clear();
-
-    for (const card of cards) {
-      this.byId.set(card.id, card);
-      const key = card.name_normalized;
-      if (!this.byNorm.has(key)) this.byNorm.set(key, []);
-      this.byNorm.get(key)!.push(card);
-    }
-
-    this.fuse = new Fuse(cards, {
-      keys: [
-        { name: "name", weight: 0.7 },
-        { name: "name_normalized", weight: 0.3 },
-      ],
-      threshold: FUZZY_THRESHOLD,
-      includeScore: true,
-      ignoreLocation: true,
-      minMatchCharLength: 2,
-    });
-
-    logger.debug("Index built", { uniqueIds: this.byId.size, uniqueNames: this.byNorm.size });
-  }
-
-  // ── CardDataProvider implementation ──────────────────────────────────────────
 
   async getCardById(id: string): Promise<Card | null> {
-    return this.byId.get(id) ?? null;
+    const { data, error } = await getSupabaseClient()
+      .from("cards")
+      .select(CARD_SELECT)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw new Error(`getCardById failed: ${error.message}`);
+    return data ? dbRowToCard(data as DBCardRow) : null;
   }
 
   async searchByName(q: string, opts: CardSearchOptions = {}): Promise<Card[]> {
-    const limit = opts.limit ?? 10;
+    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 10)), 1), 100);
     const norm = normalizeCardName(q);
+    if (norm.length === 0) return [];
 
-    // Exact mode: only return cards whose normalized name is an exact match.
-    // Used when the caller explicitly opts out of fuzzy/autocomplete matching.
-    if (opts.fuzzy === false) {
-      let results = this.byNorm.get(norm) ?? [];
-      if (opts.set || opts.collector) results = applyFilters(results, opts);
-      return results.slice(0, limit);
+    const supabase = getSupabaseClient();
+
+    let setId: string | null = null;
+    if (opts.set) {
+      setId = await getSetIdByCode(opts.set);
+      if (!setId) return [];
     }
 
-    // Autocomplete mode (default): deterministic scoring-based ranking.
-    // With set/collector filters, score only the matching corpus (or fall back to
-    // the full index when no cards match the filter).
-    let searchCorpus: Iterable<Card>;
-    if (opts.set || opts.collector) {
-      const corpus = Array.from(this.byId.values());
-      const filteredCandidates = applyFilters(corpus, opts);
-      searchCorpus = filteredCandidates.length > 0 ? filteredCandidates : corpus;
-    } else {
-      searchCorpus = this.byId.values();
+    let exactQuery = supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .eq("name_normalized", norm);
+    if (setId) exactQuery = exactQuery.eq("set_id", setId);
+    if (opts.collector !== undefined && opts.collector !== null) {
+      exactQuery = exactQuery.eq("collector_number", String(opts.collector));
     }
 
-    const results = autocompleteSearch(searchCorpus, q, limit, { fuse: this.fuse });
-    return results.slice(0, limit);
+    const { data: exactData, error: exactError } =
+      await exactQuery.limit(limit);
+    if (exactError)
+      throw new Error(`searchByName exact failed: ${exactError.message}`);
+    if (exactData && exactData.length > 0) {
+      return (exactData as DBCardRow[]).map(dbRowToCard);
+    }
+
+    if (opts.fuzzy === false) return [];
+
+    // Build a prefix tsquery so "bar" matches "bard", "barrage", etc.
+    // Each normalized token gets a :* suffix; tokens are AND-joined.
+    // Omitting `type` makes the client use to_tsquery() (raw syntax), which supports :*.
+    const prefixQuery = norm
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => `${w}:*`)
+      .join(" & ");
+
+    // Fetch more candidates than needed so the in-memory scorer can re-rank properly.
+    // Use a slim projection here — scoreCard only needs id/name/name_normalized.
+    const fetchLimit = Math.min(Math.max(limit * 20, 100), 500);
+
+    let ftsQuery = supabase
+      .from("cards")
+      .select(SLIM_SELECT)
+      .textSearch("name_search", prefixQuery, { config: "simple" });
+
+    if (setId) ftsQuery = ftsQuery.eq("set_id", setId);
+    if (opts.collector !== undefined && opts.collector !== null) {
+      ftsQuery = ftsQuery.eq("collector_number", String(opts.collector));
+    }
+
+    const { data: ftsData, error: ftsError } = await ftsQuery.limit(fetchLimit);
+    if (ftsError)
+      throw new Error(`searchByName FTS failed: ${ftsError.message}`);
+
+    const topIds = rankIds((ftsData ?? []) as Nameable[], q, limit);
+    if (topIds.length === 0) return [];
+
+    const { data: fullData, error: fullError } = await supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .in("id", topIds);
+    if (fullError) throw new Error(`searchByName hydration failed: ${fullError.message}`);
+
+    const cardMap = new Map((fullData as DBCardRow[]).map((r) => [r.id, dbRowToCard(r)]));
+    return topIds.flatMap((id) => { const c = cardMap.get(id); return c ? [c] : []; });
   }
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {
     const norm = normalizeCardName(req.name);
-    const candidates = this.byNorm.get(norm) ?? [];
+    if (norm.length === 0) {
+      return { request: req, card: null, matchType: "not-found" };
+    }
+
+    const supabase = getSupabaseClient();
+
+    const { data: exactRows, error: exactError } = await supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .eq("name_normalized", norm);
+
+    if (exactError) {
+      logger.error("resolveRequest exact query failed", {
+        error: exactError.message,
+      });
+      throw new Error(
+        `resolveRequest exact query failed: ${exactError.message}`,
+      );
+    }
+
+    const candidates =
+      (exactRows as DBCardRow[] | null)?.map(dbRowToCard) ?? [];
 
     if (req.set && req.collector) {
       const exact = candidates.find(
-        (c) => c.set?.set_code === req.set!.toUpperCase() && c.collector_number === req.collector,
+        (c) =>
+          c.set?.set_code === req.set!.toUpperCase() &&
+          c.collector_number === req.collector,
       );
       if (exact) return { request: req, card: exact, matchType: "exact" };
+      return { request: req, card: null, matchType: "not-found" };
     }
 
     if (req.set) {
-      const withSet = candidates.filter((c) => c.set?.set_code === req.set!.toUpperCase());
-      if (withSet.length > 0) return { request: req, card: withSet[0], matchType: "exact" };
+      const withSet = candidates.filter(
+        (c) => c.set?.set_code === req.set!.toUpperCase(),
+      );
+      if (withSet.length > 0)
+        return { request: req, card: withSet[0], matchType: "exact" };
       if (candidates.length > 0) {
-        logger.debug("Requested set not found; falling back to default printing", {
-          name: req.name,
-          set: req.set,
-        });
+        logger.debug(
+          "Requested set not found; falling back to default printing",
+          {
+            name: req.name,
+            set: req.set,
+          },
+        );
       }
+      return { request: req, card: null, matchType: "not-found" };
+    }
+
+    if (req.collector) {
+      const withCollector = candidates.find(
+        (c) => c.collector_number === req.collector,
+      );
+      if (withCollector)
+        return { request: req, card: withCollector, matchType: "exact" };
+      return { request: req, card: null, matchType: "not-found" };
     }
 
     if (candidates.length > 0) {
       return { request: req, card: candidates[0], matchType: "exact" };
     }
 
-    if (this.fuse) {
-      const hits = this.fuse.search(req.name, { limit: 1 });
-      if (hits.length > 0) {
-        return { request: req, card: hits[0].item, matchType: "fuzzy", score: hits[0].score };
-      }
+    const { data: ftsRows, error: ftsError } = await supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .textSearch("name_search", norm, { type: "websearch", config: "simple" })
+      .limit(1);
+
+    if (ftsError) {
+      logger.error("resolveRequest FTS failed", { error: ftsError.message });
+      throw new Error(`resolveRequest FTS failed: ${ftsError.message}`);
+    }
+
+    const first = ftsRows?.[0] as DBCardRow | undefined;
+    if (first) {
+      return { request: req, card: dbRowToCard(first), matchType: "fuzzy" };
     }
 
     return { request: req, card: null, matchType: "not-found" };
   }
 
-  async getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>> {
-    const setMap = new Map<string, { setCode: string; setName: string; cardCount: number }>();
-    for (const card of this.byId.values()) {
-      if (!card.set?.set_code) continue;
-      const existing = setMap.get(card.set.set_code);
-      if (existing) {
-        existing.cardCount++;
-      } else {
-        setMap.set(card.set.set_code, {
-          setCode: card.set.set_code,
-          setName: card.set.set_name ?? card.set.set_code,
-          cardCount: 1,
-        });
-      }
-    }
-    return Array.from(setMap.values()).sort((a, b) => a.setName.localeCompare(b.setName));
+  async getSets(): Promise<
+    Array<{ setCode: string; setName: string; cardCount: number }>
+  > {
+    const { data, error } = await getSupabaseClient()
+      .from("sets")
+      .select("set_code, set_name, card_count")
+      .order("set_name");
+
+    if (error) throw new Error(`getSets failed: ${error.message}`);
+    if (!data) return [];
+
+    return data.map((row) => ({
+      setCode: row.set_code,
+      setName: row.set_name,
+      cardCount: row.card_count ?? 0,
+    }));
   }
 
-  async getCardsBySet(setCode: string, opts: { limit?: number } = {}): Promise<Card[]> {
-    const limit = opts.limit ?? 1000;
-    const upper = setCode.toUpperCase();
-    const cards = Array.from(this.byId.values()).filter((c) => c.set?.set_code === upper);
-    cards.sort((a, b) => {
-      const na = a.collector_number ?? "";
-      const nb = b.collector_number ?? "";
-      const numA = parseInt(na, 10);
-      const numB = parseInt(nb, 10);
-      if (!Number.isNaN(numA) && !Number.isNaN(numB)) return numA - numB;
-      return na.localeCompare(nb, undefined, { numeric: true });
-    });
+  async getCardsBySet(
+    setCode: string,
+    opts: { limit?: number } = {},
+  ): Promise<Card[]> {
+    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 1000)), 0), 1000);
+    const setId = await getSetIdByCode(setCode);
+    if (!setId) return [];
+
+    const { data, error } = await getSupabaseClient()
+      .from("cards")
+      .select(CARD_SELECT)
+      .eq("set_id", setId);
+
+    if (error) throw new Error(`getCardsBySet failed: ${error.message}`);
+    const cards = (data as DBCardRow[]).map(dbRowToCard);
+    cards.sort(sortCardsByCollector);
     return cards.slice(0, limit);
   }
 
   async getRandomCard(): Promise<Card | null> {
-    const keys = Array.from(this.byId.keys());
-    if (keys.length === 0) return null;
-    return this.byId.get(keys[Math.floor(Math.random() * keys.length)]) ?? null;
+    const supabase = getSupabaseClient();
+    const { count, error: countError } = await supabase
+      .from("cards")
+      .select("*", { count: "exact", head: true });
+
+    if (countError)
+      throw new Error(`getRandomCard count failed: ${countError.message}`);
+    const n = count ?? 0;
+    if (n === 0) return null;
+
+    const offset = Math.floor(Math.random() * n);
+    const { data, error } = await supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .range(offset, offset);
+
+    if (error) throw new Error(`getRandomCard failed: ${error.message}`);
+    const row = data?.[0] as DBCardRow | undefined;
+    return row ? dbRowToCard(row) : null;
   }
 
   getStats(): { lastRefresh: number; cardCount: number } {
-    return { lastRefresh: this.lastRefresh, cardCount: this.byId.size };
+    return { lastRefresh: this.lastRefresh, cardCount: this.cardCount };
   }
 
   /** @deprecated Use getStats() */
@@ -427,6 +426,6 @@ export class SupabaseCardProvider implements CardDataProvider {
 
   /** @deprecated Use getStats() */
   getCacheSize(): number {
-    return this.byId.size;
+    return this.cardCount;
   }
 }

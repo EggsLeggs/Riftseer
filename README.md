@@ -177,8 +177,7 @@ See `.env.example`. Summary:
 | `API_PORT` | `3000` | Elysia port |
 | `API_BASE_URL` | `http://localhost:3000` | Public API URL (bot/site links) |
 | `SITE_BASE_URL` | `https://example.com` | Public site URL (bot reply links) |
-| `CACHE_REFRESH_INTERVAL_MS` | `21600000` | Card cache TTL (6h) |
-| `FUZZY_THRESHOLD` | `0.4` | Fuse.js fuzzy match (0=exact, 1=loose) |
+| `CACHE_REFRESH_INTERVAL_MS` | `21600000` | Provider stats refresh interval (6h) |
 | `SUPABASE_URL` | — | Required when `CARD_PROVIDER=supabase` |
 | `SUPABASE_SERVICE_ROLE_KEY` | — | Required when `CARD_PROVIDER=supabase` |
 | `UPSTASH_REDIS_REST_URL` | — | Upstash Redis REST URL (optional cache). If set, `UPSTASH_REDIS_REST_TOKEN` is required. |
@@ -251,7 +250,7 @@ All endpoints are under **`/api/v1`**:
 | --- | --- | --- |
 | GET | `/api/v1/health` | `{ status, uptimeMs }` |
 | GET | `/api/v1/meta` | Provider name, card count, last refresh, cache age |
-| GET | `/api/v1/cards` | Search: `?name=...` (required unless browsing set), optional `?set=`, `?fuzzy=1`, `?limit=` |
+| GET | `/api/v1/cards` | Search: `?name=...` (required unless browsing set), optional `?set=`, `?fuzzy=false` (exact name only), `?limit=` |
 | GET | `/api/v1/cards?set=OGN` | List cards in set (no `name` required) |
 | GET | `/api/v1/cards/random` | One random card |
 | GET | `/api/v1/cards/:id` | Card by UUID |

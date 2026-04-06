@@ -6,8 +6,7 @@
  *    900  full-name prefix (name starts with query)
  *    800  word-prefix: a word in the name starts with query — minus 10 per word position
  *    700  substring match — minus 2 per character of match offset
- *    200  fuzzy: full-name and per-word Levenshtein (max dist by query length), minus 50 per edit;
- *          optional Fuse.js merge when a configured Fuse instance is passed to autocompleteSearch
+ *    200  fuzzy: full-name and per-word Levenshtein (max dist by query length), minus 50 per edit
  *      0  no match
  *
  * Minimum query length per tier:
@@ -21,9 +20,15 @@
  * Results with score < MIN_AUTOCOMPLETE_SCORE are excluded entirely.
  */
 
-import type Fuse from "fuse.js";
 import { normalizeCardName } from "./normalize.ts";
 import type { Card } from "./types.ts";
+
+/** Minimal shape required for name-based ranking. `Card` satisfies this. */
+export interface Nameable {
+  id: string;
+  name: string;
+  name_normalized: string;
+}
 
 // ─── Score constants ─────────────────────────────────────────────────────────
 
@@ -81,21 +86,10 @@ function levenshtein(a: string, b: string, maxDist: number): number {
   return prev[b.length];
 }
 
-/**
- * Map Fuse.js relevance score (0 = perfect, 1 = mismatch) into the autocomplete fuzzy band.
- * Fuse instances from the provider use FUZZY_THRESHOLD in their options; only hits returned
- * by fuse.search are merged.
- */
-function scoreFromFuseResult(fuseScore: number | undefined): number {
-  if (fuseScore === undefined) return 0;
-  const s = Math.min(Math.max(fuseScore, 0), 1);
-  return Math.round(SCORE_FUZZY_BASE - s * (SCORE_FUZZY_BASE - MIN_AUTOCOMPLETE_SCORE));
-}
-
 // ─── Card scorer ─────────────────────────────────────────────────────────────
 
 interface ScoredCard {
-  card: Card;
+  card: Nameable;
   score: number;
   /** Character offset of the match in the normalized name (for tiebreaking). */
   position: number;
@@ -105,7 +99,7 @@ interface ScoredCard {
  * Score a single card against a pre-normalized query string.
  * Returns null when the card does not meet the minimum score threshold.
  */
-export function scoreCard(card: Card, normQuery: string, queryLen: number): ScoredCard | null {
+export function scoreCard(card: Nameable, normQuery: string, queryLen: number): ScoredCard | null {
   const normName = card.name_normalized;
 
   // 1. Exact normalized name match.
@@ -192,15 +186,27 @@ function compareScoredCards(a: ScoredCard, b: ScoredCard): number {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export type AutocompleteSearchOptions = {
-  /**
-   * When provided, fuse.search(normQuery) results are merged for query length >= MIN_LEN_FUZZY.
-   * The instance should already use the app FUZZY_THRESHOLD.
-   */
-  fuse?: Fuse<Card> | null;
-  /** Cap on Fuse result count (default {@code max(limit * 5, 80)}). */
-  fuseHitLimit?: number;
-};
+/**
+ * Score and rank items by name, returning the top `limit` IDs in ranked order.
+ * Accepts any object with `id`, `name`, and `name_normalized` — use this when
+ * you want to rank slim candidates and hydrate full objects separately.
+ */
+export function rankIds(items: Iterable<Nameable>, query: string, limit: number): string[] {
+  const normQuery = normalizeCardName(query);
+  const queryLen = normQuery.length;
+  if (queryLen === 0) return [];
+
+  const bestById = new Map<string, ScoredCard>();
+  for (const item of items) {
+    const result = scoreCard(item, normQuery, queryLen);
+    if (result !== null) bestById.set(item.id, result);
+  }
+
+  const scored = [...bestById.values()];
+  scored.sort(compareScoredCards);
+  const safeLimit = Math.max(0, Math.floor(Number(limit) || 0));
+  return scored.slice(0, safeLimit).map((s) => s.card.id);
+}
 
 /**
  * Autocomplete-style card search with deterministic, position-aware ranking.
@@ -213,48 +219,10 @@ export type AutocompleteSearchOptions = {
  * @param cards   Full card list to search (e.g. provider index values).
  * @param query   Raw query string (will be normalized internally).
  * @param limit   Maximum results to return.
- * @param options Optional Fuse instance (provider index) to merge threshold-based fuzzy hits.
  */
-export function autocompleteSearch(
-  cards: Iterable<Card>,
-  query: string,
-  limit: number,
-  options?: AutocompleteSearchOptions,
-): Card[] {
-  const normQuery = normalizeCardName(query);
-  const queryLen = normQuery.length;
-
-  if (queryLen === 0) return [];
-
-  const cardList = Array.from(cards);
-  const fuse = options?.fuse ?? null;
-  const allowedIds = fuse ? new Set(cardList.map((c) => c.id)) : null;
-
-  const bestById = new Map<string, ScoredCard>();
-
-  for (const card of cardList) {
-    const result = scoreCard(card, normQuery, queryLen);
-    if (result !== null) {
-      bestById.set(card.id, result);
-    }
-  }
-
-  if (fuse && queryLen >= MIN_LEN_FUZZY) {
-    const fuseLimit = options?.fuseHitLimit ?? Math.max(limit * 5, 80);
-    const hits = fuse.search(normQuery, { limit: fuseLimit });
-    for (const hit of hits) {
-      if (allowedIds && !allowedIds.has(hit.item.id)) continue;
-      const fuseScoreVal = scoreFromFuseResult(hit.score);
-      if (fuseScoreVal < MIN_AUTOCOMPLETE_SCORE) continue;
-      const existing = bestById.get(hit.item.id);
-      if (existing !== undefined && existing.score > SCORE_FUZZY_BASE) continue;
-      if (existing !== undefined && fuseScoreVal <= existing.score) continue;
-      bestById.set(hit.item.id, { card: hit.item, score: fuseScoreVal, position: 0 });
-    }
-  }
-
-  const scored = [...bestById.values()];
-  scored.sort(compareScoredCards);
-
-  return scored.slice(0, limit).map((s) => s.card);
+export function autocompleteSearch(cards: Iterable<Card>, query: string, limit: number): Card[] {
+  const cardMap = new Map<string, Card>();
+  for (const card of cards) cardMap.set(card.id, card);
+  const topIds = rankIds(cardMap.values(), query, limit);
+  return topIds.flatMap((id) => { const c = cardMap.get(id); return c ? [c] : []; });
 }

@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect } from "bun:test";
-import Fuse from "fuse.js";
 import { autocompleteSearch, scoreCard } from "../search.ts";
 import { normalizeCardName } from "../normalize.ts";
 import type { Card } from "../types.ts";
@@ -205,24 +204,6 @@ describe("autocompleteSearch", () => {
     const sunfireIdx = names.indexOf("Sunfire Cape");
     // Both are prefix matches (score 900), but "Sun Disc" is shorter so it ranks first.
     expect(sunDiscIdx).toBeLessThan(sunfireIdx);
-  });
-
-  it("merges Fuse.js hits when fuse option is passed and query length >= 4", () => {
-    const volcanic = makeCard("Volcanic Surge");
-    expect(scoreCard(volcanic, normalizeCardName("volq"), 4)).toBeNull();
-
-    const fuse = new Fuse([volcanic], {
-      keys: [
-        { name: "name", weight: 0.7 },
-        { name: "name_normalized", weight: 0.3 },
-      ],
-      threshold: 0.4,
-      includeScore: true,
-      ignoreLocation: true,
-      minMatchCharLength: 2,
-    });
-    const results = autocompleteSearch([volcanic], "volq", 10, { fuse });
-    expect(results.map((c) => c.name)).toContain("Volcanic Surge");
   });
 
   it("fuzzy matches for 4+ char queries appear after direct matches", () => {

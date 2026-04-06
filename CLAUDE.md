@@ -24,7 +24,7 @@ riftseer/
 | API | ElysiaJS 1.3 + @elysiajs/swagger, @elysiajs/cors |
 | DB | bun:sqlite (built-in, no extra dep) |
 | Frontend | React 19, React Router 7, Tailwind CSS 4, Vite 6 |
-| Fuzzy search | fuse.js v7 |
+| Card name search | Postgres `tsvector` full-text search (Supabase) |
 | API client | @elysiajs/eden (type-safe, Eden Treaty) |
 | Testing | bun test (Jest-compatible) |
 | Discord bot | Cloudflare Workers + discord-api-types |
@@ -67,11 +67,10 @@ npx devvit settings set siteBaseUrl
 | `API_PORT` | Server port (default `3000`) |
 | `BASE_URL` / `SWAGGER_BASE_URL` | Base URL for Swagger/OpenAPI servers (default `"/"`); use behind reverse proxy or non-root base path |
 | `RIFTCODEX_BASE_URL` | `https://api.riftcodex.com` |
-| `CACHE_REFRESH_INTERVAL_MS` | Cache TTL in ms (default 6h) |
-| `FUZZY_THRESHOLD` | Fuse.js threshold 0–1 (default `0.4`) |
+| `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
 | `SUPABASE_URL` | Supabase project URL — required when `CARD_PROVIDER=supabase` (MR6+) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required when `CARD_PROVIDER=supabase` |
-| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional; speeds up provider restarts |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
 | `INGEST_SECRET` | Bearer token for POST /ingest on the ingest-worker (optional) |
 
@@ -79,7 +78,7 @@ npx devvit settings set siteBaseUrl
 - **Provider pattern**: `CardDataProvider` interface in `packages/core`; the only implementation is `SupabaseCardProvider` (data from the ingest pipeline).
 - **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/cards/resolve` endpoint.
 - **Ingest**: Pipeline (RiftCodex → TCG enrich → token linking → champion/legend linking → Supabase upsert) runs via the standalone Cloudflare Worker `packages/ingest-worker` on a schedule. Locally: `cd packages/ingest-worker && bun run dev`, then `curl -X POST http://localhost:8787/ingest`. There is no ingest endpoint in the API.
-- **Fuzzy search**: Fuse.js index is built from `name` + `name_normalized`. Exact match is tried first; fuzzy search is used as fallback.
+- **Card name search**: Postgres `tsvector` on `name` + `name_normalized` (see migration `name_search`). Exact `name_normalized` match is tried first; full-text search is used as fallback.
 
 ## Deployment
 - **API + Frontend**: Docker (Alpine + Bun 1.3) or Railway (`railway.toml`). The Dockerfile serves the API and the built static frontend from the same container.
