@@ -29,6 +29,8 @@ Content is co-located with its package, **not** inside `docs/`. The Docusaurus c
 | Getting Started | `docs/doc-pages/getting-started/` | `/getting-started/` |
 | Ingest worker | `packages/ingest-worker/docs/` | `/` |
 | Clients & Bots | `docs/doc-pages/clients-bots/`; Discord/Reddit pages are authored in `packages/*/docs/` and copied in by `sync-clients-bots-docs` (runs on `prestart` / `prebuild`) | `/bots/` |
+| Core | `packages/core/docs/` | `/core/` |
+| Types | `packages/types/docs/` | `/types/` |
 | Supabase | `supabase/docs/` | `/supabase/` |
 
 ## Adding a Page
@@ -63,6 +65,23 @@ When a new package needs documentation:
 
 3. Create `docs/sidebarsSection.ts` (autogenerate pattern — copy `sidebarsSupabase.ts`).
 4. Add a navbar item under `themeConfig.navbar.items` in `docusaurus.config.ts`.
+
+## Linking Between Sections (cross-plugin links)
+
+Each navbar section is a **separate Docusaurus plugin instance** with its own route prefix (see the table above). Relative file paths (e.g. `../../types/docs/card-types`) cannot cross plugin boundaries — Docusaurus resolves them within the same plugin and will throw a broken-link build error.
+
+**Rule: links that cross sections must use absolute site paths.**
+
+```md
+<!-- WRONG — relative path crosses plugin boundary -->
+[Card Types](../../types/docs/card-types)
+
+<!-- CORRECT — absolute path rooted at the site -->
+[Card Types](/types/card-types)
+[Card Types with anchor](/types/card-types#adding-a-field)
+```
+
+Relative paths are fine for links within the same package's docs (same plugin), e.g. `[Provider](./provider)` inside `packages/core/docs/`.
 
 ## Mermaid Diagrams
 
