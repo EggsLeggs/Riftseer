@@ -5,7 +5,7 @@
       "name": "API",
       "runtimeExecutable": "bun",
       "runtimeArgs": ["dev:api"],
-      "port": 3000
+      "port": 8789
     },
     {
       "name": "Frontend",

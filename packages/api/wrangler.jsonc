@@ -2,6 +2,7 @@
   "name": "riftseer-api",
   "main": "src/index.ts",
   "compatibility_date": "2025-06-01",
+  "dev": { "port": 8789 },
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "vars": {
