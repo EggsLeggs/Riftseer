@@ -36,6 +36,8 @@ A dropdown in the search bar lets you switch between four layouts:
 
 The selected view is persisted across sessions via `useLocalStorage`.
 
+When the search field is empty, the extension can show **Recent** cards: a list of cards you opened in the full detail view, browsed long enough in list/grid selection (debounced), or loaded via **Random Card**. The maximum count is configurable (see preferences); set it to `0` to disable history and hide that section.
+
 ### Landscape cards
 
 Cards with `media.orientation === "landscape"` are rotated 90° clockwise using [Jimp](https://github.com/jimp-dev/jimp) before display. Rotated data-URLs are cached in memory for the session to avoid re-processing on re-render.
@@ -76,6 +78,7 @@ Set these in Raycast preferences for the extension:
 | --- | --- | --- |
 | `apiBaseUrl` | `https://riftseerapi-production.up.railway.app` | Riftseer API base URL |
 | `siteBaseUrl` | `https://riftseer.thinkhuman.dev` | Riftseer site URL (used for card page links) |
+| `maxRecentHistory` | `50` | Recent cards to keep locally; `0` disables recording and the empty-query Recent section |
 
 ---
 
@@ -87,4 +90,4 @@ Set these in Raycast preferences for the extension:
 
 ## Privacy
 
-The extension makes read-only HTTP requests to the configured API. It does not store, log, or transmit user data. No analytics or tracking. If this ever changes, update the site [Privacy Policy](https://riftseer.thinkhuman.dev/docs/privacy).
+The extension makes read-only HTTP requests to the configured API. It may store recently viewed card data in Raycast local storage (bounded by `maxRecentHistory`); that data remains on your device. No analytics or tracking. If this ever changes, update the site [Privacy Policy](https://riftseer.thinkhuman.dev/docs/privacy).
