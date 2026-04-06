@@ -200,7 +200,7 @@ export class SupabaseCardProvider implements CardDataProvider {
   }
 
   async searchByName(q: string, opts: CardSearchOptions = {}): Promise<Card[]> {
-    const limit = opts.limit ?? 10;
+    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 10)), 1), 100);
     const norm = normalizeCardName(q);
     if (norm.length === 0) return [];
 
@@ -373,7 +373,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     setCode: string,
     opts: { limit?: number } = {},
   ): Promise<Card[]> {
-    const limit = opts.limit ?? 1000;
+    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 1000)), 0), 1000);
     const setId = await getSetIdByCode(setCode);
     if (!setId) return [];
 
