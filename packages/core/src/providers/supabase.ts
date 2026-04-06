@@ -303,6 +303,7 @@ export class SupabaseCardProvider implements CardDataProvider {
           c.collector_number === req.collector,
       );
       if (exact) return { request: req, card: exact, matchType: "exact" };
+      return { request: req, card: null, matchType: "not-found" };
     }
 
     if (req.set) {
@@ -320,16 +321,20 @@ export class SupabaseCardProvider implements CardDataProvider {
           },
         );
       }
+      return { request: req, card: null, matchType: "not-found" };
+    }
+
+    if (req.collector) {
+      const withCollector = candidates.find(
+        (c) => c.collector_number === req.collector,
+      );
+      if (withCollector)
+        return { request: req, card: withCollector, matchType: "exact" };
+      return { request: req, card: null, matchType: "not-found" };
     }
 
     if (candidates.length > 0) {
       return { request: req, card: candidates[0], matchType: "exact" };
-    }
-
-    // Skip global FTS when a set or collector scope was requested to avoid
-    // returning unrelated cards for a scoped miss.
-    if (req.set || req.collector) {
-      return { request: req, card: null, matchType: "not-found" };
     }
 
     const { data: ftsRows, error: ftsError } = await supabase

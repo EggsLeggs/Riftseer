@@ -204,7 +204,8 @@ export function rankIds(items: Iterable<Nameable>, query: string, limit: number)
 
   const scored = [...bestById.values()];
   scored.sort(compareScoredCards);
-  return scored.slice(0, limit).map((s) => s.card.id);
+  const safeLimit = Math.max(0, Math.floor(Number(limit) || 0));
+  return scored.slice(0, safeLimit).map((s) => s.card.id);
 }
 
 /**
