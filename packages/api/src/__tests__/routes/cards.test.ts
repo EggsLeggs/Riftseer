@@ -5,8 +5,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { Elysia, t } from "elysia";
-import { swagger } from "@elysiajs/swagger";
+import { Elysia } from "elysia";
 import type {
   CardDataProvider,
 } from "@riftseer/core";
@@ -23,9 +22,7 @@ import { cardsRoutes } from "../../routes/cards";
 import { STUB_CARD, StubProvider } from "../stub_card_provider";
 
 function buildTestApp(provider: CardDataProvider) {
-  const startTime = Date.now();
-
-  return new Elysia({prefix: "/api/v1"}).use(cardsRoutes(provider)).use(swagger());
+  return new Elysia({ prefix: "/api/v1" }).use(cardsRoutes(provider));
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

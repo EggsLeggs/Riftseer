@@ -1,5 +1,5 @@
 /**
- * Riftseer API — Elysia server
+ * Riftseer API — Elysia Cloudflare Worker
  *
  * All API endpoints are under /api/v1:
  *   GET  /api/v1/health
@@ -9,41 +9,36 @@
  *   GET  /api/v1/cards/:id
  *   GET  /api/v1/cards/:id/text
  *   POST /api/v1/cards/resolve  body: { requests: string[] }
- *   GET  /api/v1/prices/tcgplayer
  *   GET  /api/v1/sets
  *   GET  /api/v1/decks/u/:shortForm
  *   POST /api/v1/decks/u/:shortForm
  *   POST /api/v1/decks/u
- *   GET  /api/swagger           (OpenAPI UI for all versions)
- *   GET  /api/swagger/json      (raw OpenAPI schema)
  *
- * Design note:
- *   The API depends only on the CardDataProvider interface from @riftseer/core.
- *   Swap the provider by changing CARD_PROVIDER env var — no API code changes needed.
+ * Deploy: wrangler deploy
+ * Dev:    wrangler dev
+ * Secrets (wrangler secret put): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+ *   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
  */
 
 import { Elysia } from "elysia";
-import { swagger } from "@elysiajs/swagger";
+import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 import { cors } from "@elysiajs/cors";
 import {
   createProvider,
-  logger,
   DeckSerializerV1,
   NotFoundError,
   SimplifiedDeckProviderImpl,
 } from "@riftseer/core";
-import { loadTCGData } from "./services/tcgplayer";
 import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
 import { setsRoutes } from "./routes/sets";
 import { decksRoutes } from "./routes/decks";
 
 // ─── Singletons ───────────────────────────────────────────────────────────────
+// CF Workers forbid async I/O (fetch) in global scope — only inside handlers.
+// Warmup is deferred to the first request via onBeforeHandle.
 
 const cardProvider = createProvider();
-await cardProvider.warmup();
-void loadTCGData().catch(() => {}); // fire-and-forget; errors logged in loadTCGData
-
 const startTime = Date.now();
 
 const deckProvider = new SimplifiedDeckProviderImpl(
@@ -55,14 +50,29 @@ const deckProvider = new SimplifiedDeckProviderImpl(
   },
 );
 
+// Lazy warmup — runs once per isolate on the first request. Retries on failure.
+let warmupPromise: Promise<void> | null = null;
+function ensureWarmedUp(): Promise<void> {
+  if (!warmupPromise) {
+    warmupPromise = cardProvider.warmup().catch((err) => {
+      console.error("[riftseer-api] Provider warmup failed:", err);
+      warmupPromise = null; // allow retry on next request
+    });
+  }
+  return warmupPromise;
+}
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-const app = new Elysia()
+export const app = new Elysia({ adapter: CloudflareAdapter })
+  .onBeforeHandle(async () => {
+    await ensureWarmedUp();
+  })
   .use(
     cors({
       origin: process.env.CORS_ORIGIN
         ? process.env.CORS_ORIGIN.split(",")
-        : true,
+        : ["https://riftseer.pages.dev", "https://riftseer.com"],
       methods: ["GET", "POST", "OPTIONS"],
     }),
   )
@@ -73,44 +83,7 @@ const app = new Elysia()
       .use(setsRoutes(cardProvider))
       .use(decksRoutes(deckProvider)),
   )
-  .use(
-    swagger({
-      path: "/api/swagger",
-      specPath: "/api/swagger/json",
-      scalarConfig: {
-        spec: {
-          url: "/api/swagger/json",
-        },
-      },
-      documentation: {
-        info: {
-          title: "Riftseer API",
-          version: "0.1.0",
-          description:
-            "Riftbound card data API. Data from Supabase (populated by the ingest pipeline). " +
-            "All versioned routes (e.g. /api/v1/*) are documented here.",
-        },
-        servers: [
-          {
-            url: process.env.BASE_URL ?? process.env.SWAGGER_BASE_URL ?? "/",
-          },
-        ],
-        tags: [
-          { name: "Meta", description: "Server health and metadata" },
-          { name: "Cards", description: "Card lookup and search" },
-          { name: "Sets", description: "Card set listing" },
-          { name: "Decks", description: "Deck building and sharing" },
-        ],
-      },
-    }),
-  )
-  .listen(parseInt(process.env.PORT ?? process.env.API_PORT ?? "3000", 10));
-
-const port = process.env.PORT ?? process.env.API_PORT ?? "3000";
-logger.info("Riftseer API started", {
-  port,
-  provider: cardProvider.sourceName,
-  swagger: `http://localhost:${port}/api/swagger`,
-});
+  .compile();
 
 export type App = typeof app;
+export default app;

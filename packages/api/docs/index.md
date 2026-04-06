@@ -6,9 +6,8 @@ sidebar_position: 1
 
 The Riftseer API is a read-mostly REST API that exposes Riftbound TCG card data. It powers the Riftseer frontend, Discord bot, and Reddit bot. It can also be used directly by third-party tools.
 
-- **Base URL:** `https://riftseerapi-production.up.railway.app`
+- **Base URL:** `https://riftseer-api.workers.dev`
 - **All versioned routes:** `/api/v1/...`
-- **Interactive docs:** [`/api/swagger`](https://riftseerapi-production.up.railway.app/api/swagger)
 
 ---
 
@@ -83,7 +82,7 @@ The Swagger UI at `/api/swagger` documents all active versions.
 
 ## Framework
 
-The API is built with [ElysiaJS](https://elysiajs.com) on [Bun](https://bun.sh). Elysia uses a versioned sub-app pattern rather than `.group()`:
+The API is built with [ElysiaJS](https://elysiajs.com) deployed as a [Cloudflare Worker](https://workers.cloudflare.com). Elysia uses the `CloudflareAdapter` and a versioned sub-app pattern rather than `.group()`:
 
 ```typescript
 // Each version is a standalone Elysia sub-app
@@ -92,22 +91,21 @@ const v1 = new Elysia({ prefix: "/api/v1" })
   .use(cardsRoutes(...))
   .use(decksRoutes(...))
 
-// Mounted on the root app alongside CORS and Swagger
-const app = new Elysia()
+// Mounted on the root app with CloudflareAdapter
+export const app = new Elysia({ adapter: CloudflareAdapter })
   .use(cors(...))
   .use(v1)
-  .use(swagger(...))
-  .listen(3000)
-```
+  .compile()
 
-The Swagger plugin sits on the root app and auto-discovers routes from all mounted sub-apps — no manual registration needed.
+export default app
+```
 
 Route modules live in `packages/api/src/routes/`:
 
 | Module | Routes |
 | --- | --- |
 | `meta.ts` | `/health`, `/meta` |
-| `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve`, `/prices/tcgplayer` |
+| `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve` |
 | `sets.ts` | `/sets` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
 
@@ -124,12 +122,10 @@ This means the API has no opinion on where data comes from — swapping the prov
 ## Adding an endpoint
 
 1. Add the handler to the relevant route module in `src/routes/`
-2. Annotate it with Elysia schema types (`.query()`, `.body()`, `.response()`) and a `detail` block for Swagger
+2. Annotate it with Elysia schema types (`.query()`, `.body()`, `.response()`) and a `detail` block (used for Eden Treaty types and static spec generation)
 3. Write a test in `src/__tests__/routes/`
 4. Update the relevant doc page in `packages/api/docs/`
 5. If the endpoint stores or exposes new personal data, update `PrivacyPage.tsx`
-
-See [Swagger](./swagger.md) for how the `detail` annotation maps to what appears in the UI.
 
 ---
 
@@ -144,7 +140,6 @@ See [Swagger](./swagger.md) for how the `detail` annotation maps to what appears
 | `GET` | `/api/v1/cards/:id` | [Cards](./cards.md) |
 | `GET` | `/api/v1/cards/:id/text` | [Cards](./cards.md) |
 | `POST` | `/api/v1/cards/resolve` | [Cards](./cards.md) |
-| `GET` | `/api/v1/prices/tcgplayer` | [Cards](./cards.md) |
 | `GET` | `/api/v1/sets` | [Sets](./sets.md) |
 | `GET` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
 | `POST` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |

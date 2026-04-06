@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
-    "dev:api": "cd packages/api && bun --env-file ../../.env --watch src/index.ts",
+    "dev:api": "cd packages/api && wrangler dev",
     "dev:frontend": "cd packages/frontend && bun run dev",
     "build:frontend": "cd packages/frontend && bun run build",
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/**/*.test.ts",

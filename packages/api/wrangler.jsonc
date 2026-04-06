@@ -1,0 +1,15 @@
+{
+  "name": "riftseer-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "vars": {
+    "CARD_PROVIDER": "supabase"
+    // Secrets — set once with:
+    //   wrangler secret put SUPABASE_URL
+    //   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+    //   wrangler secret put UPSTASH_REDIS_REST_URL
+    //   wrangler secret put UPSTASH_REDIS_REST_TOKEN
+  }
+}

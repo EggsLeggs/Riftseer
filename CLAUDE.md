@@ -8,7 +8,7 @@ Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a React f
 riftseer/
 ├── packages/types/          # Zero-dependency types, parser, icon tokens (@riftseer/types)
 ├── packages/core/           # Provider interface, Supabase provider, search, deck model (@riftseer/core)
-├── packages/api/            # ElysiaJS REST API (port 3000)
+├── packages/api/            # ElysiaJS REST API — Cloudflare Worker (wrangler dev/deploy)
 ├── packages/frontend/       # React 19 + Vite SPA
 ├── packages/discord-bot/    # Discord bot on Cloudflare Workers (Bun workspace member)
 ├── packages/ingest-worker/  # Cloudflare Worker — scheduled ingest (RiftCodex → Supabase, no API)
@@ -20,8 +20,8 @@ riftseer/
 ## Stack
 | Layer | Technology |
 |-------|-----------|
-| Runtime | Bun ≥ 1.2 (required — Elysia is Bun-first) |
-| API | ElysiaJS 1.3 + @elysiajs/swagger, @elysiajs/cors |
+| Runtime | Bun ≥ 1.2 (workspace tooling) + Cloudflare Workers (API runtime) |
+| API | ElysiaJS 1.4+ with CloudflareAdapter + @elysiajs/cors |
 | DB | bun:sqlite (built-in, no extra dep) |
 | Frontend | React 19, React Router 7, Tailwind CSS 4, Vite 6 |
 | Card name search | Postgres `tsvector` full-text search (Supabase) |
@@ -32,8 +32,8 @@ riftseer/
 
 ## Running the Project
 ```bash
-bun dev             # API + frontend together
-bun dev:api         # API only (port 3000, swagger at /api/swagger)
+bun dev             # API (wrangler dev) + frontend together
+bun dev:api         # API only via wrangler dev (http://localhost:8787)
 bun dev:frontend    # Frontend only
 bun test            # Run all tests
 bun typecheck       # Type-check all workspace packages
@@ -60,19 +60,26 @@ npx devvit settings set apiBaseUrl   # Set per-install config
 npx devvit settings set siteBaseUrl
 ```
 
-## Environment Variables (see .env.example)
+## Environment Variables
+
+### API Worker (packages/api — set via `wrangler secret put` or `wrangler.jsonc` vars)
 | Variable | Purpose |
 |----------|---------|
-| `CARD_PROVIDER` | `supabase` (only; data from ingest pipeline) |
-| `API_PORT` | Server port (default `3000`) |
-| `BASE_URL` / `SWAGGER_BASE_URL` | Base URL for Swagger/OpenAPI servers (default `"/"`); use behind reverse proxy or non-root base path |
-| `RIFTCODEX_BASE_URL` | `https://api.riftcodex.com` |
-| `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
-| `SUPABASE_URL` | Supabase project URL — required when `CARD_PROVIDER=supabase` (MR6+) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required when `CARD_PROVIDER=supabase` |
+| `CARD_PROVIDER` | `supabase` (only; data from ingest pipeline) — set in `wrangler.jsonc` vars |
+| `SUPABASE_URL` | Supabase project URL — required |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
-| `INGEST_SECRET` | Bearer token for POST /ingest on the ingest-worker (optional) |
+| `CORS_ORIGIN` | Comma-separated allowed origins (default: `https://riftseer.pages.dev,https://riftseer.com`) |
+| `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
+
+### Ingest Worker (packages/ingest-worker)
+| Variable | Purpose |
+|----------|---------|
+| `SUPABASE_URL` | Supabase project URL — required |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required |
+| `RIFTCODEX_BASE_URL` | `https://api.riftcodex.com` |
+| `INGEST_SECRET` | Bearer token for POST /ingest (optional) |
 
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core`; the only implementation is `SupabaseCardProvider` (data from the ingest pipeline).
@@ -81,7 +88,8 @@ npx devvit settings set siteBaseUrl
 - **Card name search**: Postgres `tsvector` on `name` + `name_normalized` (see migration `name_search`). Exact `name_normalized` match is tried first; full-text search is used as fallback.
 
 ## Deployment
-- **API + Frontend**: Docker (Alpine + Bun 1.3) or Railway (`railway.toml`). The Dockerfile serves the API and the built static frontend from the same container.
+- **API**: Cloudflare Workers via `cd packages/api && wrangler deploy`. Secrets set with `wrangler secret put`. Worker name: `riftseer-api`.
+- **Frontend**: Cloudflare Pages (separate deployment).
 - **Discord bot**: Cloudflare Workers via `wrangler deploy`. Secrets set with `wrangler secret put`.
 - **Reddit bot**: Devvit upload (`npx devvit upload`). The bot's HTTP fetch domain must be registered in `devvit.yaml`.
 

@@ -1,7 +1,6 @@
 import { Elysia, t } from "elysia";
-import { parseCardRequests, normalizeCardName, type CardDataProvider, type Card } from "@riftseer/core";
+import { parseCardRequests, type CardDataProvider, type Card } from "@riftseer/core";
 import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
-import { loadTCGData, getTCGEntry } from "../services/tcgplayer";
 
 /** Scryfall-style copyable text: name, type line, then rules text. */
 function cardCopyableText(card: Card): string {
@@ -208,41 +207,5 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
       },
     )
 
-    // ── GET /prices/tcgplayer ─────────────────────────────────────────────────
-    .get(
-      "/prices/tcgplayer",
-      async ({ query, set }) => {
-        if (!query.name?.trim()) {
-          set.status = 400;
-          return { error: "Query parameter `name` is required", code: "MISSING_PARAM" };
-        }
-        await loadTCGData();
-        const entry = getTCGEntry(normalizeCardName(query.name.trim()));
-        return {
-          usdMarket: entry?.usdMarket ?? null,
-          usdLow: entry?.usdLow ?? null,
-          url: entry?.url ?? null,
-        };
-      },
-      {
-        query: t.Object({
-          name: t.String({ description: "Card name to look up on TCGPlayer" }),
-        }),
-        response: {
-          200: t.Object({
-            usdMarket: t.Nullable(t.Number()),
-            usdLow: t.Nullable(t.Number()),
-            url: t.Nullable(t.String()),
-          }),
-          400: ErrorSchema,
-        },
-        detail: {
-          tags: ["Cards"],
-          summary: "TCGPlayer USD price",
-          description:
-            "Returns market/low USD prices and direct product URL for a card by name. Data from tcgcsv.com, cached for 1 hour.",
-        },
-      },
-    )
 
 }

@@ -1,41 +1,38 @@
 ---
-title: Swagger / OpenAPI
-sidebar_label: Swagger
+title: OpenAPI / Swagger
+sidebar_label: OpenAPI
 sidebar_position: 2
 ---
 
-The API ships a live [Scalar](https://scalar.com) UI (served via `@elysiajs/swagger`) that lets you browse and try every endpoint without writing any code.
-
-- **Production UI:** `https://riftseerapi-production.up.railway.app/api/swagger`
-- **Raw OpenAPI JSON:** `https://riftseerapi-production.up.railway.app/api/swagger/json`
+The API uses Elysia schema annotations (`detail`, `query`, `body`, `response`) to define its contract. Because `@elysiajs/swagger` requires `fs` (unavailable on Cloudflare Workers), the spec is generated at build time using a separate Bun script and served as a static file via GitHub Pages alongside the dev docs.
 
 ---
 
-## Running locally
+## Interactive reference
 
-Start the API, then open the UI in a browser:
+The API reference is available at [/Riftseer/api-reference/](https://eggsleggs.github.io/Riftseer/api-reference/) and is powered by [Scalar](https://scalar.com). It is regenerated on every docs deploy from the OpenAPI spec.
+
+---
+
+## Static spec generation
+
+`packages/api/scripts/generate-spec.ts` builds the Elysia app under Bun (where `fs` is available), mounts `@elysiajs/swagger`, fetches `/swagger/json`, and writes the result to `docs/static/openapi.json` in the repo root. Docusaurus copies everything in `docs/static/` verbatim to the build output, so the spec becomes available at `/Riftseer/openapi.json`.
 
 ```bash
-bun dev:api
-# → http://localhost:3000/api/swagger
-# → http://localhost:3000/api/swagger/json  (raw spec)
+# Generate the spec locally (needs .dev.vars with Supabase credentials, or
+# credentials will be absent and warmup will be skipped — spec still generates)
+cd packages/api
+bun run generate:spec
+# → writes docs/static/openapi.json
 ```
 
-The UI is served by the API process itself — no separate tool needed.
-
----
-
-## How it works
-
-The swagger plugin is mounted on the **root Elysia app** and auto-discovers routes from all mounted sub-apps. You never need to register routes manually with Swagger — adding a route to the `v1` sub-app (or any future version) makes it appear in the UI automatically.
-
-The spec is generated at startup from the Elysia schema annotations on each route (`detail`, `query`, `body`, `response`). Tags (`Meta`, `Cards`, `Decks`) are defined in `src/index.ts` and assigned per-route via `detail.tags`.
+The CI workflow (`.github/workflows/docs.yml`) runs this step automatically before `bun run build` in the docs site. No Supabase secrets are needed in CI — the warmup failure is caught and non-fatal for spec generation.
 
 ---
 
 ## Updating the spec
 
-The spec reflects whatever annotations exist on the route handlers. To improve or extend what Swagger shows for a route, edit the `detail` object and schema annotations in the relevant route file:
+The spec is derived from the Elysia schema annotations on each route handler. To improve what appears in the docs, edit the `detail` object and schemas in the relevant route file:
 
 ```typescript
 // packages/api/src/routes/cards.ts
@@ -67,16 +64,16 @@ query: t.Object({
 
 ### Adding a new tag
 
-Tags are declared in the `documentation.tags` array in `src/index.ts`. Add the tag there first, then reference it by name in `detail.tags` on the routes that belong to it.
+Tags are declared in the `documentation.tags` array in `scripts/generate-spec.ts`. Add the tag there first, then reference it by name in `detail.tags` on the routes that belong to it.
 
 ---
 
-## Environment variables
+## Eden Treaty
 
-When the API is deployed behind a reverse proxy or at a non-root path, set `BASE_URL` (or `SWAGGER_BASE_URL`) so the spec's `servers` field points to the correct base:
+`export type App = typeof app` in `src/index.ts` exposes all route types for Eden Treaty clients. This is independent of the OpenAPI spec — Eden Treaty uses TypeScript inference at compile time, not the runtime spec.
 
-```bash
-BASE_URL=https://riftseerapi-production.up.railway.app
+The Discord bot (`packages/discord-bot/src/api.ts`) consumes this:
+
+```typescript
+import type { App } from "@riftseer/api";
 ```
-
-Without this, the "Try it" requests in the UI will use `/` as the base and may fail if the API is not at the root.

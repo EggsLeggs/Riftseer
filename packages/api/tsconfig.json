@@ -2,8 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": ".",
-    "jsx": "react-jsx",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+    "lib": ["ESNext"],
+    "types": ["@cloudflare/workers-types", "bun-types"]
   },
   "include": ["src/**/*"]
 }

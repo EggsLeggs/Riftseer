@@ -37,6 +37,10 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Generate OpenAPI spec
+        working-directory: packages/api
+        run: bun run generate:spec
+
       - name: Build docs
         working-directory: docs
         run: bun run build

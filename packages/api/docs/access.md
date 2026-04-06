@@ -6,13 +6,13 @@ sidebar_position: 7
 
 ## CORS
 
-The API allows cross-origin requests from any origin by default. If the `CORS_ORIGIN` environment variable is set on the server, only the listed origins will be permitted (comma-separated):
+The production API allows requests from `https://riftseer.pages.dev` and `https://riftseer.com` by default. Override by setting the `CORS_ORIGIN` worker var (comma-separated) in `wrangler.jsonc` or via `wrangler secret put`:
 
 ```bash
-CORS_ORIGIN=https://riftseer.app,https://staging.riftseer.app
+CORS_ORIGIN=https://riftseer.com,https://staging.riftseer.pages.dev
 ```
 
-Without `CORS_ORIGIN`, the API responds with `Access-Control-Allow-Origin: *`. Allowed methods are `GET`, `POST`, and `OPTIONS`.
+Allowed methods are `GET`, `POST`, and `OPTIONS`.
 
 ---
 
