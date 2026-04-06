@@ -90,4 +90,4 @@ Set these in Raycast preferences for the extension:
 
 ## Privacy
 
-The extension makes read-only HTTP requests to the configured API. It may store recently viewed card data in Raycast local storage (bounded by `maxRecentHistory`); that data remains on your device. No analytics or tracking. If this ever changes, update the site [Privacy Policy](https://riftseer.thinkhuman.dev/docs/privacy).
+The extension makes read-only HTTP requests to the configured API. It may store recently viewed card data in Raycast local storage (bounded by `maxRecentHistory`); that data remains on your device. No analytics or tracking. If this ever changes, update the site [Privacy Policy](/docs/privacy).

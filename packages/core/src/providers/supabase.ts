@@ -120,9 +120,14 @@ async function getSetIdByCode(setCode: string): Promise<string | null> {
 function sortCardsByCollector(a: Card, b: Card): number {
   const na = a.collector_number ?? "";
   const nb = b.collector_number ?? "";
-  const numA = parseInt(na, 10);
-  const numB = parseInt(nb, 10);
-  if (!Number.isNaN(numA) && !Number.isNaN(numB)) return numA - numB;
+  const matchA = /^(\d+)(.*)$/.exec(na);
+  const matchB = /^(\d+)(.*)$/.exec(nb);
+  if (matchA && matchB) {
+    const numA = parseInt(matchA[1], 10);
+    const numB = parseInt(matchB[1], 10);
+    if (numA !== numB) return numA - numB;
+    return matchA[2].localeCompare(matchB[2], undefined, { numeric: false, sensitivity: "variant" });
+  }
   return na.localeCompare(nb, undefined, { numeric: true });
 }
 
@@ -158,21 +163,17 @@ export class SupabaseCardProvider implements CardDataProvider {
   }
 
   private async touchSupabase(): Promise<void> {
-    try {
-      const supabase = getSupabaseClient();
-      const { count, error } = await supabase
-        .from("cards")
-        .select("*", { count: "exact", head: true });
+    const supabase = getSupabaseClient();
+    const { count, error } = await supabase
+      .from("cards")
+      .select("*", { count: "exact", head: true });
 
-      if (error) throw new Error(error.message);
+    if (error) throw new Error(error.message);
 
-      this.cardCount = count ?? 0;
-      this.lastRefresh = Math.floor(Date.now() / 1000);
+    this.cardCount = count ?? 0;
+    this.lastRefresh = Math.floor(Date.now() / 1000);
 
-      logger.info("Supabase provider ready", { cardCount: this.cardCount });
-    } catch (err) {
-      logger.error("Warmup failed — Supabase unreachable or misconfigured", { error: String(err) });
-    }
+    logger.info("Supabase provider ready", { cardCount: this.cardCount });
   }
 
   async getCardById(id: string): Promise<Card | null> {
@@ -257,7 +258,7 @@ export class SupabaseCardProvider implements CardDataProvider {
 
     if (exactError) {
       logger.error("resolveRequest exact query failed", { error: exactError.message });
-      return { request: req, card: null, matchType: "not-found" };
+      throw new Error(`resolveRequest exact query failed: ${exactError.message}`);
     }
 
     const candidates = (exactRows as DBCardRow[] | null)?.map(dbRowToCard) ?? [];
@@ -284,6 +285,12 @@ export class SupabaseCardProvider implements CardDataProvider {
       return { request: req, card: candidates[0], matchType: "exact" };
     }
 
+    // Skip global FTS when a set or collector scope was requested to avoid
+    // returning unrelated cards for a scoped miss.
+    if (req.set || req.collector) {
+      return { request: req, card: null, matchType: "not-found" };
+    }
+
     const { data: ftsRows, error: ftsError } = await supabase
       .from("cards")
       .select(CARD_SELECT)
@@ -292,7 +299,7 @@ export class SupabaseCardProvider implements CardDataProvider {
 
     if (ftsError) {
       logger.error("resolveRequest FTS failed", { error: ftsError.message });
-      return { request: req, card: null, matchType: "not-found" };
+      throw new Error(`resolveRequest FTS failed: ${ftsError.message}`);
     }
 
     const first = ftsRows?.[0] as DBCardRow | undefined;

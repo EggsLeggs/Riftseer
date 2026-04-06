@@ -24,7 +24,7 @@ The route calls `provider.searchByName(name, opts)`.
 
 `SupabaseCardProvider` implementation:
 
-1. **`normalizeCardName(query)`** — same normalisation as stored `name_normalized`.
+1. **`normalizeCardName(query)`** — same normalization as stored `name_normalized`.
 2. **Exact path** — `WHERE name_normalized = <normalized query>` (optional `set` / `collector` filters).
 3. If no rows and fuzzy is allowed — **`textSearch('name_search', …)`** with `websearch` type and `simple` config (Postgres `tsvector` on `name` + `name_normalized`).
 
@@ -32,13 +32,13 @@ There is no in-memory card index. Ranking follows Postgres FTS relevance for the
 
 ### Opting out of FTS fallback
 
-Pass `?fuzzy=false` or `?fuzzy=0` to require an exact normalised name match only:
+Pass `?fuzzy=false` or `?fuzzy=0` to require an exact normalized name match only:
 
 ```http
 GET /api/v1/cards?name=<normalised-or-display-name>&fuzzy=false
 ```
 
-Returns only cards whose normalised name exactly matches the normalised query. Returns an empty array (not 404) if nothing matches. Omitting `fuzzy` or using other values keeps the default (exact first, then FTS).
+Returns only cards whose normalized name exactly matches the normalized query. Returns an empty array (not 404) if nothing matches. Omitting `fuzzy` or using other values keeps the default (exact first, then FTS).
 
 With the default mode, the FTS step matches **whole lexemes** from the `simple` config (see Postgres `tsvector` behaviour). Very short or typo queries may return no rows if no token matches.
 

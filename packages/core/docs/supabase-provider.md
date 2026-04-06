@@ -33,9 +33,9 @@ Enable with: `CARD_PROVIDER=supabase`
 `searchByName(q, opts)`:
 
 1. **Exact path**: `WHERE name_normalized = normalizeCardName(q)`, with optional `set_id` / `collector_number` filters when `opts.set` / `opts.collector` are set.
-2. If no rows and `opts.fuzzy !== false`: **FTS path** — `textSearch` on `name_search` with `type: "websearch"` and `config: "simple"`.
+2. If no rows and `opts.fuzzy !== false`: **FTS path** — `textSearch` on `name_search` using a prefix tsquery (e.g. `token:* & token:*`, no `type` option so `to_tsquery()` handles raw syntax) with `config: "simple"`. Candidates are re-ranked in memory by `autocompleteSearch` before returning the final limited set.
 
-`resolveRequest(req)` tries exact matches on `name_normalized` first (same set/collector priority as before), then a single-row FTS fallback.
+`resolveRequest(req)` tries exact matches on `name_normalized` first (same set/collector priority as before), then a single-row FTS fallback using `type: "websearch"` and `config: "simple"`. When `req.set` or `req.collector` is provided the FTS fallback is skipped entirely to prevent global matches from satisfying a scoped lookup.
 
 `getCardById`, `getCardsBySet`, `getRandomCard`, and `getSets` query Postgres on demand.
 
