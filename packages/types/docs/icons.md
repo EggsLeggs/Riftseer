@@ -24,7 +24,7 @@ import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types";
 
 Icon tokens appear inline in card `text.rich` strings:
 
-```
+```text
 :rb_<key>:
 ```
 

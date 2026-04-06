@@ -365,7 +365,6 @@ async function upsertCards(
     media: card.media ?? {},
     purchase_uris: card.purchase_uris ?? {},
     prices: card.prices ?? {},
-    rulings_id: card.rulings?.rulings_id ?? null,
     all_parts: card.all_parts,
     used_by: card.used_by,
     related_champions: card.related_champions,

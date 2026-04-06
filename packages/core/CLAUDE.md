@@ -4,6 +4,7 @@
 Shared library consumed by `packages/api`. Contains the `CardDataProvider` interface, the Supabase provider, the autocomplete search engine, and the deck model. Canonical card types and the parser live in `@riftseer/types` and are re-exported here.
 
 ## Key Files
+
 | File | Purpose |
 |------|---------|
 | `src/types.ts` | Re-exports `Card`, `CardRequest`, `ResolvedCard`, `CardSearchOptions` from `@riftseer/types` |
@@ -23,7 +24,7 @@ Shared library consumed by `packages/api`. Contains the `CardDataProvider` inter
 - `parseCardRequests(text: string): CardRequest[]`
 
 ## Card shape
-See `src/types.ts` for the canonical nested `Card` type (mirrors Postgres/supabase migrations).
+The canonical `Card` interface is defined in `packages/types/src/card.ts` (source of truth). `src/types.ts` re-exports it from `@riftseer/types` for convenience.
 
 ## Testing
 ```bash
