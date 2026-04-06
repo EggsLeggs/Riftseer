@@ -28,7 +28,7 @@ import type {
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { normalizeCardName } from "../normalize.ts";
-import { autocompleteSearch } from "../search.ts";
+import { autocompleteSearch, rankIds, type Nameable } from "../search.ts";
 
 const REFRESH_INTERVAL_MS = parseInt(
   process.env.CACHE_REFRESH_INTERVAL_MS ?? "21600000",
@@ -37,6 +37,8 @@ const REFRESH_INTERVAL_MS = parseInt(
 
 const CARD_SELECT =
   "*, sets:set_id(set_code, set_name, set_uri, set_search_uri), artists:artist_id(name)";
+
+const SLIM_SELECT = "id, name, name_normalized";
 
 // ─── DB row shape (cards joined with sets + artists) ─────────────────────────
 
@@ -244,7 +246,7 @@ export class SupabaseCardProvider implements CardDataProvider {
 
     let ftsQuery = supabase
       .from("cards")
-      .select(CARD_SELECT)
+      .select(SLIM_SELECT)
       .textSearch("name_search", prefixQuery, { config: "simple" });
 
     if (setId) ftsQuery = ftsQuery.eq("set_id", setId);
@@ -256,8 +258,17 @@ export class SupabaseCardProvider implements CardDataProvider {
     if (ftsError)
       throw new Error(`searchByName FTS failed: ${ftsError.message}`);
 
-    const candidates = ftsData ? (ftsData as DBCardRow[]).map(dbRowToCard) : [];
-    return autocompleteSearch(candidates, q, limit);
+    const topIds = rankIds((ftsData ?? []) as Nameable[], q, limit);
+    if (topIds.length === 0) return [];
+
+    const { data: fullData, error: fullError } = await supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .in("id", topIds);
+    if (fullError) throw new Error(`searchByName hydration failed: ${fullError.message}`);
+
+    const cardMap = new Map((fullData as DBCardRow[]).map((r) => [r.id, dbRowToCard(r)]));
+    return topIds.flatMap((id) => { const c = cardMap.get(id); return c ? [c] : []; });
   }
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {
