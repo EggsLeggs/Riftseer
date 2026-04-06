@@ -4,7 +4,7 @@ sidebar_label: Parser
 sidebar_position: 4
 ---
 
-`src/parser.ts` re-exports `parseCardRequests()` from [`@riftseer/types`](../../types/parser). For the full function reference, token syntax table, and examples see the [`@riftseer/types` Parser page](../../types/parser).
+`src/parser.ts` re-exports `parseCardRequests()` from [`@riftseer/types`](../types/parser). For the full function reference, token syntax table, and examples see the [`@riftseer/types` Parser page](../types/parser).
 
 ---
 

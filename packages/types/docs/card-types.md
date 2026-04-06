@@ -227,7 +227,7 @@ interface SimplifiedDeck {
 }
 ```
 
-See [@riftseer/core — Deck](../../core/deck) for the richer in-memory `Deck` class, and [@riftseer/core — Serialiser](../../core/serialiser) for how `SimplifiedDeck` is encoded for URL sharing.
+See [@riftseer/core — Deck](../core/deck) for the richer in-memory `Deck` class, and [@riftseer/core — Serialiser](../core/serialiser) for how `SimplifiedDeck` is encoded for URL sharing.
 
 ---
 

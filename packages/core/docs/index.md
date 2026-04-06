@@ -4,7 +4,7 @@ sidebar_label: Overview
 sidebar_position: 1
 ---
 
-`@riftseer/core` is the shared library that everything else in the monorepo depends on. It owns the provider interface all data access goes through, the autocomplete search engine, and the deck model. Card types and the parser live in [`@riftseer/types`](../../types/overview) and are re-exported here for convenience.
+`@riftseer/core` is the shared library that everything else in the monorepo depends on. It owns the provider interface all data access goes through, the autocomplete search engine, and the deck model. Card types and the parser live in [`@riftseer/types`](../types/) and are re-exported here for convenience.
 
 Nothing in core is runtime-specific — it runs in Bun, Node, and Cloudflare Workers alike (except the server-only entry point, which is Bun/Node).
 
@@ -52,7 +52,7 @@ import { DeckSerializerV1 } from "@riftseer/core";
 
 Server-side clients (Supabase, Redis) are exported from `@riftseer/core/server` — do not import these in Workers or browser builds.
 
-If you only need types or the parser and want to avoid core's heavier dependencies, import from [`@riftseer/types`](../../types/overview) directly.
+If you only need types or the parser and want to avoid core's heavier dependencies, import from [`@riftseer/types`](../types/) directly.
 
 ---
 
