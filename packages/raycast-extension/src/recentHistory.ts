@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "@raycast/utils";
-import type { Card } from "./types";
+import type { Card } from "@riftseer/types";
 
 const STORAGE_KEY = "recent-card-history";
 

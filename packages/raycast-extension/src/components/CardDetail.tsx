@@ -15,7 +15,7 @@ import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { useEffect } from "react";
-import type { Card } from "../types";
+import type { Card } from "@riftseer/types";
 
 function tinted(source: string): Image.ImageLike {
   return { source, tintColor: Color.PrimaryText };
@@ -96,7 +96,7 @@ function renderTextForRaycast(text: string): string {
   // Insert a newline at sentence boundaries that have no space, common in plain
   // card text: ".)Choose", "—Deal", "base.Kill" all need a break before the
   // next word.
-  text = text.replace(/([.)—])([A-Z[])/g, "$1\n\n$2");
+  text = text.replace(/([.)—])\s+([A-Z[])/g, "$1\n\n$2");
   // Fix italic reminder text: "_ (text)_word" → "_(text)_ word"
   // CommonMark: "_ (" doesn't open emphasis (underscore followed by space),
   // and ")_Word" doesn't close it (underscore followed by alphanumeric).

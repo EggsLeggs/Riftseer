@@ -28,7 +28,7 @@ Set `author` in `package.json` to your [Raycast Store](https://www.raycast.com/)
 | `src/random-card.tsx`  | `random-card` command — fetches random card on load |
 | `src/components/CardDetail.tsx` | Shared Detail view with Metadata panel |
 | `src/recentHistory.ts` | Recent-card history (Raycast `LocalStorage` via `useLocalStorage`) |
-| `src/types.ts` | Local copy of Card types from `packages/core/src/types.ts` |
+| `src/types.ts` | Extension-only types (`CardsSearchResponse`); card types come from `@riftseer/types` |
 
 ## API Endpoints Used
 
@@ -46,7 +46,7 @@ Set `author` in `package.json` to your [Raycast Store](https://www.raycast.com/)
 | `maxRecentHistory` | `50` | Max recently viewed cards kept in Raycast local storage (`0` = off). Shown when Search Cards has an empty query. |
 
 ## Type Versioning
-`src/types.ts` is a local copy of the canonical types in `packages/core/src/types.ts`. If the Card shape changes upstream, update both files.
+Card types (`Card`, `RelatedCard`, etc.) are imported directly from `@riftseer/types` (linked via `file:../types`). `src/types.ts` contains only extension-specific types (`CardsSearchResponse`).
 
 ## React / TypeScript Version Pinning
 `@raycast/api@^1.90` requires `react@19` peer deps. Pin:

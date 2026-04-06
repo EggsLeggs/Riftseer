@@ -9,7 +9,7 @@ export function CardTextRenderer({ text }: Props) {
   const normalized = text
     .replace(/_ \(/g, "_(")
     .replace(/\)_([^\s_\n])/g, ")_\n$1")
-    .replace(/([.)—])([A-Z\[])/g, "$1\n$2");
+    .replace(/([.)—])\s+([A-Z\[])/g, "$1\n$2");
 
   const lines = normalized.split("\n");
 
@@ -65,7 +65,7 @@ function renderTokens(text: string, keyOffset = 0): React.ReactNode[] {
 function renderLine(line: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   // Split on italic spans _..._ while treating token patterns (like energy_3) as atomic
-  const segments = line.split(/(_(?:[^_\n]|:rb_[^:]+:)+_)/);
+  const segments = line.split(/(_(?:[^_\n]|:[^:\n]+:)+_)/);
   segments.forEach((seg, si) => {
     if (seg.startsWith("_") && seg.endsWith("_") && seg.length > 2) {
       const inner = seg.slice(1, -1);

@@ -14,7 +14,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Jimp from "jimp";
 import { CardDetail, formatTypeLine } from "./components/CardDetail";
 import { parseMaxRecentHistory, useRecentCardHistory } from "./recentHistory";
-import type { Card, CardsSearchResponse } from "./types";
+import type { Card } from "@riftseer/types";
+import type { CardsSearchResponse } from "./types";
 
 // Cache rotated images by URL to avoid re-processing on re-render
 const rotatedImageCache = new Map<string, string>();

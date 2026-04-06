@@ -2,7 +2,7 @@ import { Detail, getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { useFetch } from "@raycast/utils";
 import { CardDetail } from "./components/CardDetail";
 import { parseMaxRecentHistory, useRecentCardHistory } from "./recentHistory";
-import type { Card } from "./types";
+import type { Card } from "@riftseer/types";
 
 export default function RandomCard() {
   const prefs = getPreferenceValues<Preferences>();

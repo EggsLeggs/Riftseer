@@ -57,6 +57,7 @@
   "dependencies": {
     "@raycast/api": "^1.90.0",
     "@raycast/utils": "^1.17.0",
+    "@riftseer/types": "file:../types",
     "jimp": "^0.22.12"
   },
   "devDependencies": {
