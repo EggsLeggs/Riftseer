@@ -81,7 +81,7 @@ interface DBCardRow {
   ingested_at: string;
   rulings_id: string | null;
   // Joined via FK
-  sets: { set_code: string; set_name: string } | null;
+  sets: { set_code: string; set_name: string; set_uri: string | null; set_search_uri: string | null } | null;
   artists: { name: string } | null;
 }
 
@@ -101,6 +101,8 @@ function dbRowToCard(row: DBCardRow): Card {
           set_code: row.sets.set_code,
           set_id: row.set_id ?? undefined,
           set_name: row.sets.set_name,
+          set_uri: row.sets.set_uri ?? undefined,
+          set_search_uri: row.sets.set_search_uri ?? undefined,
         }
       : undefined,
     rulings: row.rulings_id ? { rulings_id: row.rulings_id } : undefined,
@@ -174,7 +176,7 @@ async function loadAllCardsFromDB(): Promise<DBCardRow[]> {
   while (true) {
     const { data, error } = await supabase
       .from("cards")
-      .select("*, sets:set_id(set_code, set_name), artists:artist_id(name)")
+      .select("*, sets:set_id(set_code, set_name, set_uri, set_search_uri), artists:artist_id(name)")
       .range(from, from + CARDS_PAGE_SIZE - 1);
 
     if (error) throw new Error(`Failed to load cards from Supabase: ${error.message}`);

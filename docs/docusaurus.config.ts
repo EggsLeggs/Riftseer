@@ -90,6 +90,15 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
+        id: 'types',
+        path: '../packages/types/docs',
+        routeBasePath: 'types',
+        sidebarPath: './sidebarsTypes.ts',
+      },
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
         id: 'bots',
         path: './doc-pages/clients-bots',
         routeBasePath: 'bots',
@@ -165,6 +174,13 @@ const config: Config = {
           docsPluginId: 'core',
           position: 'left',
           label: 'Core',
+        },
+        {
+          type: 'doc',
+          docId: 'index',
+          docsPluginId: 'types',
+          position: 'left',
+          label: 'Types',
         },
         {
           type: 'doc',

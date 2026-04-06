@@ -1,7 +1,7 @@
 {
   "name": "riftseer",
   "private": true,
-  "workspaces": ["packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "docs"],
+  "workspaces": ["packages/types", "packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "docs"],
   "_workspacesExcluded": "packages/reddit-bot (Devvit/npm standalone) and packages/raycast-extension (Raycast/npm standalone) are intentionally excluded — both require npm and are not Bun workspace members.",
   "overrides": {
     "@sinclair/typebox": "0.34.48"
@@ -14,7 +14,11 @@
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/**/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
     "test:api": "bun test ./packages/api/src/__tests__/**/*.test.ts",
-    "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/ingest-worker/tsconfig.json",
+    "typecheck": "./node_modules/.bin/tsc --noEmit -p packages/types/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/core/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/api/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/ingest-worker/tsconfig.json",
     "lint:md": "bunx --yes markdownlint-cli2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "typescript": "6.0.2"
   }
 }

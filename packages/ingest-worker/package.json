@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config wrangler.toml",
+    "dev": "wrangler dev --config wrangler.toml --port 8788",
     "deploy": "wrangler deploy --config wrangler.toml",
     "type-check": "tsc --noEmit"
   },
@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260219.0",
-    "@riftseer/core": "workspace:*",
+    "@riftseer/types": "workspace:*",
     "typescript": "~5.8.0",
     "wrangler": "^4.67.0"
   }
