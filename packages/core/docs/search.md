@@ -18,7 +18,7 @@ Results are ranked by score descending. Each query character length unlocks addi
 | 900 | Full-name prefix (name starts with query) | 1 |
 | 800 − n | Word-prefix (a word in the name starts with query, minus 10 per word position) | 2 |
 | 700 − n | Substring (query appears anywhere, minus 2 per character offset) | 3 |
-| 200 − n | Fuzzy — Levenshtein edit distance + optional Fuse.js merge (minus 50 per edit) | 4 |
+| 200 − n | Fuzzy — Levenshtein edit distance (minus 50 per edit) | 4 |
 | < 100 | Excluded from results entirely | — |
 
 Tiebreak order within a score: match position (earlier is better) → name length (shorter is better) → alphabetical.
@@ -34,26 +34,19 @@ Tiebreak order within a score: match position (earlier is better) → name lengt
 
 ---
 
-## `autocompleteSearch(cards, query, limit, options?)`
+## `autocompleteSearch(cards, query, limit)`
 
 ```typescript
-function autocompleteSearch(
-  cards: Iterable<Card>,
-  query: string,
-  limit: number,
-  options?: AutocompleteSearchOptions,
-): Card[]
+function autocompleteSearch(cards: Iterable<Card>, query: string, limit: number): Card[]
 ```
 
 ### Parameters
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `cards` | `Iterable<Card>` | Full card list to search against (e.g. provider index values) |
+| `cards` | `Iterable<Card>` | Full card list to search against (e.g. in-memory list for local ranking) |
 | `query` | `string` | Raw query string — normalized internally via `normalizeCardName` |
 | `limit` | `number` | Max results to return |
-| `options.fuse` | `Fuse<Card> \| null` | Optional Fuse instance for threshold-based fuzzy merging |
-| `options.fuseHitLimit` | `number` | Cap on Fuse result count (default `max(limit * 5, 80)`) |
 
 ### Returns
 
@@ -61,9 +54,10 @@ Up to `limit` cards, ranked by score descending.
 
 ### Behaviour
 
-- Queries shorter than 3 characters only return prefix matches — fuzzy is never applied at that length.
-- When a Fuse instance is provided, Fuse hits are merged into the scoring pass for queries ≥ 4 characters. Fuse results are only used if their mapped score exceeds the minimum threshold and does not displace a higher-ranked non-fuzzy match.
+- Queries shorter than 3 characters only return prefix matches — Levenshtein fuzzy is never applied at that length.
 - Returns `[]` when the normalized query is empty.
+
+Server-side card search in `SupabaseCardProvider` uses Postgres FTS instead of this function; `autocompleteSearch` remains useful for pure in-memory ranking (tests, clients).
 
 ---
 
@@ -108,10 +102,3 @@ export function normalizeCardName(name: string): string {
 
 Cards are stored with a pre-computed `name_normalized` field. The query is normalized at search time using the same function so comparisons are always apples-to-apples.
 
----
-
-## Fuse.js integration
-
-The `SupabaseCardProvider` builds a [Fuse.js](https://www.fusejs.io) index over `name` (weight 0.7) and `name_normalized` (weight 0.3). The provider passes this instance into `autocompleteSearch` as `options.fuse`. The threshold is configurable via the `FUZZY_THRESHOLD` env var (default `0.4`).
-
-Fuse results are mapped from Fuse's 0–1 score (0 = perfect) into the autocomplete fuzzy band (100–200) and merged only when they improve on the Levenshtein-based result for the same card.

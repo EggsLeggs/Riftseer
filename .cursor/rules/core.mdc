@@ -26,7 +26,6 @@ alwaysApply: false
 - When adding a field: update `types.ts`, then update the normalization in `providers/riftcodex.ts` (`toCard()`)
 - Do NOT add provider-specific fields to the `Card` type — use `raw` for unstructured passthrough
 
-## Fuzzy Search
-- Uses fuse.js v7; index is built over `name` and `metadata.clean_name`
-- Threshold from `FUZZY_THRESHOLD` env var (0–1, lower = stricter)
-- Exact match is always tried before fuzzy
+## Card name search (Supabase provider)
+- Postgres `tsvector` full-text search on `name_search`; exact `name_normalized` match is tried first
+- See `supabase/migrations/*_add_name_search_tsvector.sql`

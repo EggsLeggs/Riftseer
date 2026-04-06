@@ -4,7 +4,7 @@ sidebar_label: Search
 sidebar_position: 3
 ---
 
-`GET /api/v1/cards` is part of the [Cards](./cards.md) group of endpoints. This page covers how to use the search endpoint and when each mode applies. The scoring model, name normalisation, and Levenshtein implementation live in `packages/core/src/search.ts` — see the Core docs for those details.
+`GET /api/v1/cards` is part of the [Cards](./cards.md) group of endpoints. This page covers query parameters and how search behaves with the Supabase provider.
 
 ---
 
@@ -12,62 +12,71 @@ sidebar_position: 3
 
 | Mode | Trigger | Use case |
 | --- | --- | --- |
-| **Autocomplete** | `GET /api/v1/cards?name=<q>` | Live search bar, partial queries |
-| **Exact lookup** | `POST /api/v1/cards/resolve` | Bot triggers (`[[Card Name]]`), deterministic resolution |
+| **Default (FTS fallback)** | `GET /api/v1/cards?name=<q>` | Live search bar; exact `name_normalized` match first, then Postgres `tsvector` on `name_search` |
+| **Exact name only** | `GET /api/v1/cards?name=<q>&fuzzy=false` (or `fuzzy=0`) | Strict catalogue lookup — no full-text fallback |
+| **Batch resolve** | `POST /api/v1/cards/resolve` | Bots (`[[Card Name]]`), deterministic resolution per request |
 
 ---
 
-## Autocomplete mode
+## Default search (`fuzzy` omitted or true)
 
-Default behaviour of `GET /api/v1/cards`. No extra params needed.
+The route calls `provider.searchByName(name, opts)`.
 
-The route calls `provider.searchByName(name, opts)`, which delegates to `autocompleteSearch` in `packages/core/src/search.ts`. Every card in the index is scored against the normalised query and results below the minimum threshold are dropped. The scoring model uses exact, prefix, word-prefix, substring, and fuzzy tiers — see `packages/core/src/search.ts` for the full scoring breakdown.
+`SupabaseCardProvider` implementation:
 
-### Opting out of autocomplete
+1. **`normalizeCardName(query)`** — same normalisation as stored `name_normalized`.
+2. **Exact path** — `WHERE name_normalized = <normalized query>` (optional `set` / `collector` filters).
+3. If no rows and fuzzy is allowed — **`textSearch('name_search', …)`** with `websearch` type and `simple` config (Postgres `tsvector` on `name` + `name_normalized`).
 
-Pass `?fuzzy=false` (or `?fuzzy=0`) to require an exact normalised name match:
+There is no in-memory card index. Ranking follows Postgres FTS relevance for the fallback step.
+
+### Opting out of FTS fallback
+
+Pass `?fuzzy=false` or `?fuzzy=0` to require an exact normalised name match only:
 
 ```http
-GET /api/v1/cards?name=Sun+Disc&fuzzy=false
+GET /api/v1/cards?name=<normalised-or-display-name>&fuzzy=false
 ```
 
-Returns only cards whose normalised name exactly matches the normalised query. Returns an empty array (not 404) if nothing matches. Any other value for `fuzzy` (including omitting it entirely) keeps the default autocomplete behaviour.
+Returns only cards whose normalised name exactly matches the normalised query. Returns an empty array (not 404) if nothing matches. Omitting `fuzzy` or using other values keeps the default (exact first, then FTS).
+
+With the default mode, the FTS step matches **whole lexemes** from the `simple` config (see Postgres `tsvector` behaviour). Very short or typo queries may return no rows if no token matches.
 
 ---
 
-## Exact lookup mode
+## Batch resolve
 
 `POST /api/v1/cards/resolve` — used by the Discord and Reddit bots for `[[Card Name]]` triggers.
 
 Implemented in `SupabaseCardProvider.resolveRequest`. Resolution order:
 
-1. Normalise the name → look up in the `byNorm` map
-2. If the request includes a set code + collector number, filter to that printing
-3. If the request includes a set code only, filter to that set
-4. If nothing matches, fall back to a single Fuse.js search → `matchType: "fuzzy"`
-5. If still nothing → `{ card: null, matchType: "not-found" }`
+1. Load candidates with **`name_normalized`** equal to the normalised request name.
+2. Prefer set + collector, then set, then first candidate (same as before).
+3. If none — **one row** from **`textSearch` on `name_search`** → `matchType: "fuzzy"`.
+4. If still nothing → `{ card: null, matchType: "not-found" }`.
 
-`not-found` means no card was found and no fuzzy guess was made.
+Request body: `{ "requests": string[] }` (max 20 strings — plain names or `[[Name|SET]]` tokens as documented on [Cards](./cards.md)).
 
 ---
 
-## Flow diagram
+## Flow (high level)
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant API as GET /api/v1/cards
     participant Provider as SupabaseCardProvider
-    participant Scorer as scoreCard (per card)
+    participant PG as Postgres
 
-    Client->>API: ?name=bar&limit=5
-    API->>Provider: searchByName("bar", { limit: 5 })
-    Provider->>Scorer: normalise query → "bar"
-    loop each card in index
-        Scorer-->>Provider: score or null
+    Client->>API: ?name=<q>
+    API->>Provider: searchByName(<q>, { limit })
+    Provider->>PG: SELECT ... WHERE name_normalized = ...
+    alt rows found
+        PG-->>Provider: cards
+    else no rows and fuzzy allowed
+        Provider->>PG: textSearch(name_search, websearch/simple)
+        PG-->>Provider: cards
     end
-    Provider->>Provider: sort (score DESC, position ASC, length ASC, alpha)
-    Provider->>Provider: slice to limit
     Provider-->>API: Card[]
     API-->>Client: { count, cards }
 ```
@@ -78,8 +87,8 @@ sequenceDiagram
 
 | File | Role |
 | --- | --- |
-| `packages/core/src/search.ts` | Scoring logic — `autocompleteSearch`, `scoreCard`, Levenshtein |
-| `packages/core/src/normalize.ts` | `normalizeCardName` — shared by index build and query path |
-| `packages/core/src/providers/supabase.ts` | `searchByName` (autocomplete), `resolveRequest` (exact lookup) |
-| `packages/api/src/routes/cards.ts` | `GET /cards` route — wires `fuzzy` param to mode selection |
-| `packages/core/src/__tests__/search.test.ts` | Unit tests for scoring and ranking |
+| `packages/core/src/normalize.ts` | `normalizeCardName` — exact match path |
+| `packages/core/src/providers/supabase.ts` | `searchByName`, `resolveRequest` — exact query + `textSearch` |
+| `packages/core/src/search.ts` | In-memory `autocompleteSearch` / `scoreCard` for clients that score a local list (not used by `SupabaseCardProvider` search) |
+| `packages/api/src/routes/cards.ts` | `GET /cards` — passes `fuzzy` query param to provider |
+| `supabase/migrations/*name_search*` | `name_search` `tsvector` + GIN index |

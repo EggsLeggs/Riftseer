@@ -145,14 +145,14 @@ export interface CardRequest {
   collector?: string;
 }
 
-/** The result of resolving a CardRequest against the provider's index. */
+/** The result of resolving a CardRequest against the card provider. */
 export interface ResolvedCard {
   request: CardRequest;
   /** The matched card, or null if not found. */
   card: Card | null;
   /** How the card was matched. */
   matchType: "exact" | "fuzzy" | "not-found";
-  /** Fuse.js score when matchType === "fuzzy" (lower = better, 0 = perfect). */
+  /** Optional relevance score when matchType === "fuzzy" (if the provider supplies one). */
   score?: number;
 }
 

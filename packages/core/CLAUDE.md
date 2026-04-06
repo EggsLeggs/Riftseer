@@ -14,7 +14,7 @@ Shared library consumed by `packages/api`. Contains the `CardDataProvider` inter
 | `src/provider.ts` | `CardDataProvider` interface — the only contract between API and data |
 | `src/logger.ts` | Lightweight logging utility |
 | `src/providers/index.ts` | Factory: `createProvider()` — returns `SupabaseCardProvider` |
-| `src/providers/supabase.ts` | `SupabaseCardProvider` — reads from Postgres, in-memory index + Fuse |
+| `src/providers/supabase.ts` | `SupabaseCardProvider` — reads from Postgres; name search via `tsvector` FTS |
 | `src/index.ts` | Public re-exports |
 
 ## Card Token Syntax (parser)

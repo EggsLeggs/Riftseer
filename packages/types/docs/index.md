@@ -12,7 +12,7 @@ Because it has no runtime dependencies it can be imported in any environment —
 
 ## Why a separate package?
 
-`@riftseer/core` carries heavy server-side dependencies (Supabase client, Fuse.js, Redis). Any package that only needs *types* or the parser — the Discord bot, the ingest worker, external tooling — can import `@riftseer/types` directly without pulling in those transitive dependencies.
+`@riftseer/core` carries heavy server-side dependencies (Supabase client, etc.). Any package that only needs *types* or the parser — the Discord bot, the ingest worker, external tooling — can import `@riftseer/types` directly without pulling in those transitive dependencies.
 
 `@riftseer/core` re-exports everything from `@riftseer/types`, so existing code that imports from `@riftseer/core` continues to work unchanged.
 
