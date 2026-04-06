@@ -6,7 +6,8 @@ Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a React f
 ## Monorepo Structure
 ```
 riftseer/
-├── packages/core/           # Shared types, provider interface, parser, Supabase provider
+├── packages/types/          # Zero-dependency types, parser, icon tokens (@riftseer/types)
+├── packages/core/           # Provider interface, Supabase provider, search, deck model (@riftseer/core)
 ├── packages/api/            # ElysiaJS REST API (port 3000)
 ├── packages/frontend/       # React 19 + Vite SPA
 ├── packages/discord-bot/    # Discord bot on Cloudflare Workers (Bun workspace member)
@@ -14,7 +15,7 @@ riftseer/
 └── packages/reddit-bot/     # Devvit Reddit bot (NOT a Bun workspace member)
 ```
 
-`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/core`, `packages/api`, `packages/frontend`, `packages/discord-bot`, and `packages/ingest-worker` are workspace members.
+`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/types`, `packages/core`, `packages/api`, `packages/frontend`, `packages/discord-bot`, and `packages/ingest-worker` are workspace members.
 
 ## Stack
 | Layer | Technology |
