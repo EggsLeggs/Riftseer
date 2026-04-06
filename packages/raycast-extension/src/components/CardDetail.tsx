@@ -34,6 +34,7 @@ const TOKEN_SVG_ASSETS: Record<string, string> = {
   exhaust: "icons/stats/exhaust.svg",
   might: "icons/stats/might.svg",
   power: "icons/stats/card_type_rune.svg",
+  rune_rainbow: "icons/domains/rune_rainbow.svg",
 };
 
 const TOKEN_PNG_ASSETS: Record<string, string> = {
@@ -43,7 +44,6 @@ const TOKEN_PNG_ASSETS: Record<string, string> = {
   rune_body: "icons/domains/rune_body.png",
   rune_chaos: "icons/domains/rune_chaos.png",
   rune_order: "icons/domains/rune_order.png",
-  rune_rainbow: "icons/domains/rune_rainbow.svg",
 };
 
 const TOKEN_TEXT_FALLBACKS: Record<string, string> = {
