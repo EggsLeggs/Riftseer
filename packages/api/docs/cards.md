@@ -36,7 +36,7 @@ Every card endpoint returns the same card shape. Key fields:
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
 | `text.rich` | string | Rules text with inline symbol tokens |
-| `prices` | object \| undefined | Opt-in — only present when `?include=prices` (or `"include": "prices"` in the resolve body) is passed |
+| `prices` | object \| undefined | Opt-in — omitted by default; see [Prices](#prices) section |
 | `purchase_uris` | object | Marketplace purchase URLs (`tcgplayer`, `cardmarket`) when available |
 | `is_token` | boolean | `true` for token cards |
 | `all_parts` | array | Related tokens or meld parts |
@@ -52,7 +52,7 @@ Returns one card chosen at random from the full index.
 
 | Parameter | Type | Notes |
 | --- | --- | --- |
-| `include` | string | Pass `prices` to include price data in the response |
+| `include` | string (optional) | Pass `prices` to include price data; omitted by default (no prices returned) |
 
 ```http
 GET /api/v1/cards/random
@@ -67,7 +67,7 @@ Fetch a single card by its stable card ID.
 
 | Parameter | Type | Notes |
 | --- | --- | --- |
-| `include` | string | Pass `prices` to include price data in the response |
+| `include` | string (optional) | Pass `prices` to include price data; omitted by default (no prices returned) |
 
 ```http
 GET /api/v1/cards/67f4064886be8495f7165dd7
