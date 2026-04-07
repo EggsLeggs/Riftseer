@@ -211,6 +211,11 @@ const config: Config = {
           label: 'Infrastructure',
         },
         {
+          type: 'html',
+          position: 'right',
+          value: '<a class="navbar__link" href="/Riftseer/api-reference/">API Reference</a>',
+        },
+        {
           href: 'https://github.com/EggsLeggs/Riftseer',
           label: 'GitHub',
           position: 'right',

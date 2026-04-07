@@ -1,0 +1,10 @@
+# Wrangler local dev variables — copy to .dev.vars and fill in real values.
+# .dev.vars is gitignored. These are injected into process.env by wrangler dev
+# (nodejs_compat flag required — set in wrangler.jsonc).
+
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
+
+# Optional — leave blank to disable Redis
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=

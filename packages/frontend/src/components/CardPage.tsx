@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
-import { getCard, searchCards, apiUrl, getTCGPlayerPrice, type TCGPlayerPrice, type Card } from "../api";
+import { getCard, searchCards, apiUrl, type Card } from "../api";
 import { CardTextRenderer } from "./CardTextRenderer";
 import {
   Table,
@@ -81,13 +81,10 @@ function tcgPlayerProductUrl(tcgplayerId: string): string {
   return `https://www.tcgplayer.com/product/${tcgplayerId}`;
 }
 
-function tcgPlayerUrlForCard(
-  card: Card,
-  usdPrices: Record<string, TCGPlayerPrice>,
-): string {
+function tcgPlayerUrlForCard(card: Card): string {
   const tcgplayerId = card.external_ids?.tcgplayer_id;
   if (tcgplayerId) return tcgPlayerProductUrl(tcgplayerId);
-  return usdPrices[card.name]?.url ?? tcgPlayerSearchUrl(card.name);
+  return tcgPlayerSearchUrl(card.name);
 }
 
 /** Copy URL to clipboard; show "Copied" feedback. */
@@ -150,8 +147,6 @@ export function CardPage() {
   const [tokens, setTokens] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [rotated, setRotated] = useState(false);
-  const [usdPrices, setUsdPrices] = useState<Record<string, TCGPlayerPrice>>({});
-
   useEffect(() => {
     setRotated(false);
   }, [id]);
@@ -198,17 +193,6 @@ export function CardPage() {
     });
   }, [card?.id, card?.text?.plain]);
 
-  // Fetch USD prices from TCGPlayer (via tcgcsv.com) for names not already in usdPrices
-  useEffect(() => {
-    if (!card) return;
-    const names = new Set<string>([card.name, ...printings.map((p) => p.name), ...tokens.map((t) => t.name)]);
-    const toFetch = [...names].filter((name) => !(name in usdPrices));
-    for (const name of toFetch) {
-      getTCGPlayerPrice(name).then((price) => {
-        setUsdPrices((prev) => ({ ...prev, [name]: price }));
-      });
-    }
-  }, [card?.name, printings, tokens]);
 
   if (loading) {
     return (
@@ -655,22 +639,8 @@ export function CardPage() {
                               "—"
                             )}
                           </TableCell>
-                          <TableCell className="text-right text-xs">
-                            {!(t.name in usdPrices) ? (
-                              <span className="text-muted-foreground">…</span>
-                            ) : usdPrices[t.name].usdMarket != null ? (
-                              <a
-                                href={tcgPlayerUrlForCard(t, usdPrices)}
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-primary hover:underline"
-                              >
-                                ${usdPrices[t.name].usdMarket!.toFixed(2)}
-                              </a>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
+                          <TableCell className="text-right text-xs text-muted-foreground">
+                            {t.prices?.usd != null ? `$${t.prices.usd.toFixed(2)}` : "—"}
                           </TableCell>
                           <TableCell className="text-right">
                             <a
@@ -760,22 +730,8 @@ export function CardPage() {
                             "—"
                           )}
                         </TableCell>
-                        <TableCell className="text-right text-xs">
-                          {!(p.name in usdPrices) ? (
-                            <span className="text-muted-foreground">…</span>
-                          ) : usdPrices[p.name].usdMarket != null ? (
-                            <a
-                              href={tcgPlayerUrlForCard(p, usdPrices)}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-primary hover:underline"
-                            >
-                              ${usdPrices[p.name].usdMarket!.toFixed(2)}
-                            </a>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
+                        <TableCell className="text-right text-xs text-muted-foreground">
+                          {p.prices?.usd != null ? `$${p.prices.usd.toFixed(2)}` : "—"}
                         </TableCell>
                         <TableCell className="text-right">
                           <a
@@ -815,10 +771,22 @@ export function CardPage() {
           {/* Buy this card */}
           <div>
             <h4 className="text-sm font-semibold mb-2">Buy This Card</h4>
+            {card.prices && (
+              <p className="text-xs text-muted-foreground mb-2">
+                {[
+                  card.prices.usd != null && `$${card.prices.usd.toFixed(2)}`,
+                  card.prices.usd_foil != null && `$${card.prices.usd_foil.toFixed(2)} foil`,
+                  card.prices.eur != null && `€${card.prices.eur.toFixed(2)}`,
+                  card.prices.eur_foil != null && `€${card.prices.eur_foil.toFixed(2)} foil`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
             <ul className="space-y-1">
               <li className="flex items-center gap-1">
                 <a
-                  href={tcgPlayerUrlForCard(card, usdPrices)}
+                  href={tcgPlayerUrlForCard(card)}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
@@ -827,7 +795,7 @@ export function CardPage() {
                   Buy on TCGplayer
                 </a>
                 <CopyLink
-                  url={tcgPlayerUrlForCard(card, usdPrices)}
+                  url={tcgPlayerUrlForCard(card)}
                   title="Copy TCGplayer link"
                   ariaLabel="Copy TCGplayer link"
                 />

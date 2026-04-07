@@ -1,6 +1,7 @@
 version: "3.9"
 
-# Local dev stack: API + Redis.
+# Local dev stack: Redis only.
+# API runs via: bun dev:api  (wrangler dev at http://localhost:8789)
 # Ingest is a separate Cloudflare Worker (packages/ingest-worker).
 # Reddit bot is a Devvit app — deploy with: cd packages/reddit-bot && npx devvit upload
 
@@ -18,31 +19,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    ports:
-      - "3000:3000"
-    environment:
-      - CARD_PROVIDER=supabase
-      - API_PORT=3000
-      - LOG_LEVEL=info
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - API_BASE_URL=${API_BASE_URL:-http://localhost:3000}
-      - SITE_BASE_URL=${SITE_BASE_URL:-https://example.com}
-    depends_on:
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
 
 volumes:
   redis_data:

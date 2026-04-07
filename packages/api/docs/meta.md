@@ -4,7 +4,7 @@ sidebar_label: Meta
 sidebar_position: 6
 ---
 
-Two lightweight endpoints for server health and provider state. Full schemas in [Swagger](https://riftseerapi-production.up.railway.app/api/swagger#tag/meta).
+Two lightweight endpoints for server health and provider state.
 
 ---
 
@@ -44,9 +44,9 @@ Returns the current state of the card data provider — useful for confirming th
 | Field | Notes |
 | --- | --- |
 | `provider` | Always `supabase` — the active `CardDataProvider` implementation |
-| `cardCount` | Number of cards currently in the in-memory index |
-| `lastRefresh` | ISO timestamp of the last successful cache load from Supabase |
+| `cardCount` | Number of cards counted during the last Supabase connectivity check |
+| `lastRefresh` | ISO timestamp of the last successful connectivity check; `null` on a cold isolate that hasn't completed warmup |
 | `cacheAgeSeconds` | Seconds since last refresh; `null` if no refresh has completed yet |
-| `uptimeSeconds` | Server process uptime |
+| `uptimeSeconds` | Seconds since the current isolate started |
 
-`cacheAgeSeconds` exceeding the configured `CACHE_REFRESH_INTERVAL_MS` (default 6 hours) means a background refresh is overdue or has failed.
+On Cloudflare Workers, `cardCount` and `lastRefresh` are populated during `warmup()` at isolate startup. If the isolate is recycled, these reset to zero/null until the next request triggers warmup again.

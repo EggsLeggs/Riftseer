@@ -11,6 +11,9 @@ data/
 dist/
 *.tsbuildinfo
 
+# Generated files
+docs/static/openapi.json
+
 # Environment
 .env
 .env.local

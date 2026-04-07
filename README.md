@@ -229,7 +229,7 @@ npm install
 npx devvit login        # one-time auth with your Reddit account
 
 # Set the API and site URLs (stored as app-level secrets, shared across subreddits)
-npx devvit settings set apiBaseUrl   # e.g. https://riftseerapi-production.up.railway.app
+npx devvit settings set apiBaseUrl   # e.g. https://riftseer-api.thinkhuman-21f.workers.dev
 npx devvit settings set siteBaseUrl  # e.g. https://riftseer.thinkhuman.dev
 
 npx devvit upload       # deploy to Reddit
@@ -242,7 +242,7 @@ After upload, install the app on the subreddit you want to moderate via the Devv
 
 ## API Reference
 
-When the API is running, OpenAPI UI is at **`/api/swagger`** (documents all API versions).
+The OpenAPI reference is published at **`/api-reference/`** on the [docs site](https://eggsleggs.github.io/Riftseer/api-reference/) and is regenerated on every docs deploy. There is no live `/api/swagger` endpoint — the spec is generated at build time (see `packages/api/scripts/generate-spec.ts`).
 
 All endpoints are under **`/api/v1`**:
 

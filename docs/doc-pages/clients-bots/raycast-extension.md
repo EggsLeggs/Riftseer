@@ -76,7 +76,7 @@ Set these in Raycast preferences for the extension:
 
 | Preference | Default | Description |
 | --- | --- | --- |
-| `apiBaseUrl` | `https://riftseerapi-production.up.railway.app` | Riftseer API base URL |
+| `apiBaseUrl` | `https://riftseer-api.thinkhuman-21f.workers.dev` | Riftseer API base URL |
 | `siteBaseUrl` | `https://riftseer.thinkhuman.dev` | Riftseer site URL (used for card page links) |
 | `maxRecentHistory` | `50` | Recent cards to keep locally; `0` disables recording and the empty-query Recent section |
 

@@ -88,7 +88,7 @@ describe("Deck routes", () => {
         new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.shortForm).toBe(VALID_SHORT_FORM);
       expect(Array.isArray(body.deck.mainDeck)).toBe(true);
       expect(body.deck.mainDeck).toHaveLength(1);
@@ -99,7 +99,7 @@ describe("Deck routes", () => {
         new Request("http://localhost/api/v1/decks/u/badinput"),
       );
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.code).toBe("INVALID_SHORT_FORM");
     });
   });
@@ -116,7 +116,7 @@ describe("Deck routes", () => {
         }),
       );
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.code).toBe("MISSING_CARDS");
     });
 
@@ -131,7 +131,7 @@ describe("Deck routes", () => {
         }),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.shortForm).toBe(UPDATED_SHORT_FORM);
       expect(body.deck.mainDeck).toHaveLength(2);
     });
@@ -147,7 +147,7 @@ describe("Deck routes", () => {
         }),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.shortForm).toBe(UPDATED_SHORT_FORM);
       expect(body.deck.mainDeck).toHaveLength(0);
     });
@@ -189,7 +189,7 @@ describe("Deck routes", () => {
         }),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.shortForm).toBe(UPDATED_SHORT_FORM);
       expect(Array.isArray(body.deck.mainDeck)).toBe(true);
     });
@@ -203,7 +203,7 @@ describe("Deck routes", () => {
         }),
       );
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.code).toBe("MISSING_CARDS");
     });
 
@@ -219,7 +219,7 @@ describe("Deck routes", () => {
         }),
       );
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.code).toBe("INVALID_INPUT");
     });
 

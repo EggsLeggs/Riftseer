@@ -24,7 +24,7 @@ Card data is sourced from [RiftCodex](https://riftcodex.com) and kept continuous
 
 The following external domains are required by this app (submitted for [Reddit's HTTP Fetch Policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy) approval):
 
-### `riftseerapi-production.up.railway.app`
+### `riftseer-api.thinkhuman-21f.workers.dev`
 
 This is the **only domain** the app fetches, and it is the app's own backend — not a third-party service.
 
@@ -43,4 +43,4 @@ Riftbound TCG is not served by any globally-approved card API. The globally-appr
 - Only the exact hostname above is used; no wildcards.
 - The single endpoint called is `POST /api/v1/cards/resolve`.
 - No user data is forwarded — only the card name string extracted from the comment.
-- The domain is the app developer's own production deployment (Railway).
+- The domain is the app developer's own production deployment (Cloudflare Workers).

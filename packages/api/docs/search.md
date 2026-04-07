@@ -89,6 +89,6 @@ sequenceDiagram
 | --- | --- |
 | `packages/core/src/normalize.ts` | `normalizeCardName` — exact match path |
 | `packages/core/src/providers/supabase.ts` | `searchByName`, `resolveRequest` — exact query + `textSearch` |
-| `packages/core/src/search.ts` | In-memory `autocompleteSearch` / `scoreCard` for clients that score a local list (not used by `SupabaseCardProvider` search) |
+| `packages/core/src/search.ts` | `autocompleteSearch` / `scoreCard` for in-process re-ranking of FTS candidates |
 | `packages/api/src/routes/cards.ts` | `GET /cards` — passes `fuzzy` query param to provider |
 | `supabase/migrations/*name_search*` | `name_search` `tsvector` + GIN index |

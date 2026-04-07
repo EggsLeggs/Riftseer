@@ -4,7 +4,7 @@ sidebar_label: Cards
 sidebar_position: 4
 ---
 
-Most card endpoints live under `/api/v1/cards`. **Pricing** is separate: `GET /api/v1/prices/tcgplayer` (see below). For full request/response schemas, try them interactively in [Swagger](https://riftseerapi-production.up.railway.app/api/swagger#tag/cards).
+Card endpoints live under `/api/v1/cards`.
 
 ---
 
@@ -17,7 +17,6 @@ Most card endpoints live under `/api/v1/cards`. **Pricing** is separate: `GET /a
 | `GET` | `/api/v1/cards/:id` | Single card by UUID |
 | `GET` | `/api/v1/cards/:id/text` | Plain-text card summary |
 | `POST` | `/api/v1/cards/resolve` | Batch resolve card name strings |
-| `GET` | `/api/v1/prices/tcgplayer` | TCGPlayer USD prices by card name |
 
 ---
 
@@ -36,12 +35,12 @@ Every card endpoint returns the same card shape. Key fields:
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
 | `text.rich` | string | Rules text with inline symbol tokens |
+| `prices` | object | `usd`, `usd_foil`, `eur`, `eur_foil` — populated by the ingest pipeline from TCGPlayer |
+| `purchase_uris` | object | `tcgplayer` URL for direct purchase |
 | `is_token` | boolean | `true` for token cards |
 | `all_parts` | array | Related tokens or meld parts |
 | `related_champions` | array | Champions linked to this legend |
 | `related_legends` | array | Legends linked to this champion |
-
-Full schema in [Swagger](https://riftseerapi-production.up.railway.app/api/swagger#tag/cards).
 
 ---
 
@@ -104,28 +103,27 @@ Each entry in `results` has:
 | `request` | object | The parsed request (`name`, `set`, `collector`) |
 | `card` | Card \| null | Matched card, or `null` if not found |
 | `matchType` | string | `"exact"`, `"fuzzy"`, or `"not-found"` |
-| `score` | number? | Fuse.js score for fuzzy hits |
 
 Requests accept plain names or `[[Name|SET-###]]` format — the same syntax the bots parse from messages.
 
 ---
 
-## GET /api/v1/prices/tcgplayer
+## Prices
 
-Returns USD market and low prices for a card by name, sourced from tcgcsv.com (cached for 1 hour).
-
-```http
-GET /api/v1/prices/tcgplayer?name=Sun+Disc
-```
-
-Response:
+Price data and the purchase URL are embedded directly on the card object — no separate price endpoint is needed. They are populated by the ingest pipeline from TCGPlayer via tcgcsv.com and stored in Supabase.
 
 ```json
 {
-  "usdMarket": 1.25,
-  "usdLow": 0.80,
-  "url": "https://www.tcgplayer.com/..."
+  "prices": {
+    "usd": 1.25,
+    "usd_foil": 4.99,
+    "eur": 1.10,
+    "eur_foil": null
+  },
+  "purchase_uris": {
+    "tcgplayer": "https://www.tcgplayer.com/..."
+  }
 }
 ```
 
-All fields are nullable — if a card has no TCGPlayer listing, all three return `null`.
+All price fields are nullable. If a card has no TCGPlayer listing, all `prices` fields and `purchase_uris.tcgplayer` will be `null`.

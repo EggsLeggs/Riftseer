@@ -5,8 +5,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { Elysia, t } from "elysia";
-import { swagger } from "@elysiajs/swagger";
+import { Elysia } from "elysia";
 import type {
   CardDataProvider,
 } from "@riftseer/core";
@@ -23,9 +22,7 @@ import { cardsRoutes } from "../../routes/cards";
 import { STUB_CARD, StubProvider } from "../stub_card_provider";
 
 function buildTestApp(provider: CardDataProvider) {
-  const startTime = Date.now();
-
-  return new Elysia({prefix: "/api/v1"}).use(cardsRoutes(provider)).use(swagger());
+  return new Elysia({ prefix: "/api/v1" }).use(cardsRoutes(provider));
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -45,7 +42,7 @@ describe("API routes", () => {
         new Request(`http://localhost/api/v1/cards/${STUB_CARD.id}`),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.name).toBe("Sun Disc");
       expect(body.object).toBe("card");
       expect(body.set.set_code).toBe("OGN");
@@ -64,7 +61,7 @@ describe("API routes", () => {
         new Request("http://localhost/api/v1/cards/unknown-id"),
       );
       expect(res.status).toBe(404);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.code).toBe("NOT_FOUND");
     });
   });
@@ -77,7 +74,7 @@ describe("API routes", () => {
         new Request("http://localhost/api/v1/cards?name=Sun"),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.count).toBe(1);
       expect(body.cards[0].name).toBe("Sun Disc");
       expect(body.cards[0].set.set_code).toBe("OGN");
@@ -95,7 +92,7 @@ describe("API routes", () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/cards?name=zzzzz"),
       );
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.count).toBe(0);
     });
 
@@ -106,7 +103,7 @@ describe("API routes", () => {
         new Request("http://localhost/api/v1/cards?name=Sun+Disc&fuzzy=false"),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.count).toBe(1);
       expect(body.cards[0].name).toBe("Sun Disc");
     });
@@ -118,7 +115,7 @@ describe("API routes", () => {
         new Request("http://localhost/api/v1/cards?name=Nonexistent+Card&fuzzy=false"),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.count).toBe(0);
     });
 
@@ -128,8 +125,48 @@ describe("API routes", () => {
         new Request("http://localhost/api/v1/cards?name=Sunshine"),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.count).toBe(1);
+    });
+  });
+
+  // ── GET /cards/random ─────────────────────────────────────────────────────
+
+  describe("GET /cards/random", () => {
+    it("returns a card", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/random"),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.name).toBe("Sun Disc");
+      expect(body.object).toBe("card");
+      expect(body.set.set_code).toBe("OGN");
+      expect(Array.isArray(body.related_champions)).toBe(true);
+      expect(Array.isArray(body.related_legends)).toBe(true);
+    });
+  });
+
+  // ── GET /cards/:id/text ────────────────────────────────────────────────────
+
+  describe("GET /cards/:id/text", () => {
+    it("returns plain text for a known card", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/cards/${STUB_CARD.id}/text`),
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/plain");
+      const body = await res.text();
+      expect(body).toContain("Sun Disc");
+    });
+
+    it("returns 404 for unknown ID", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/unknown-id/text"),
+      );
+      expect(res.status).toBe(404);
+      const body = await res.json() as any;
+      expect(body.code).toBe("NOT_FOUND");
     });
   });
 
@@ -145,7 +182,7 @@ describe("API routes", () => {
         }),
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.count).toBe(1);
       expect(body.results[0].matchType).toBe("exact");
       expect(body.results[0].card.name).toBe("Sun Disc");
@@ -167,7 +204,7 @@ describe("API routes", () => {
         }),
       );
       expect(res.status).toBe(200); // envelope is always 200
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.results[0].matchType).toBe("not-found");
       expect(body.results[0].card).toBeNull();
     });
@@ -180,7 +217,7 @@ describe("API routes", () => {
           body: JSON.stringify({ requests: ["Sun Disc", "Missing Card"] }),
         }),
       );
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.count).toBe(2);
     });
 
@@ -194,7 +231,7 @@ describe("API routes", () => {
         }),
       );
       expect(res.status).toBe(400);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.error).toBe("Too many requests: maximum is 20");
       expect(body.code).toBe("TOO_MANY_REQUESTS");
     });
@@ -207,7 +244,7 @@ describe("API routes", () => {
           body: JSON.stringify({ requests: ["Sun Disc|OGN"] }),
         }),
       );
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.results[0].request.name).toBe("Sun Disc");
       expect(body.results[0].request.set).toBe("OGN");
     });

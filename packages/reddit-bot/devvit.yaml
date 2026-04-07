@@ -1,1 +1,5 @@
 name: riftseer-bot
+permissions:
+  http:
+    domains:
+      - riftseer-api.thinkhuman-21f.workers.dev
