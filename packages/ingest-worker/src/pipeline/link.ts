@@ -166,7 +166,7 @@ export function linkRelatedPrintings(cards: Card[]): void {
   const byBase = new Map<string, Card[]>();
   for (const card of cards) {
     if (card.is_token) continue;
-    const key = card.name_normalized || baseName(card.name);
+    const key = baseName(card.name);
     if (!byBase.has(key)) byBase.set(key, []);
     byBase.get(key)!.push(card);
   }
