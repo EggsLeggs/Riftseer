@@ -1,7 +1,9 @@
 {
   "extends": "@devvit/public-api/devvit.tsconfig.json",
   "compilerOptions": {
-    "types": []
+    "types": [],
+    "allowImportingTsExtensions": true,
+    "noEmit": true
   },
   "include": ["src/**/*"]
 }

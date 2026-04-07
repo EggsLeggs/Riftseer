@@ -7,7 +7,7 @@
  * of truth for card data, fuzzy matching, and caching.
  */
 
-import type { CardRequest } from "./parser.js";
+import type { CardRequest } from "@riftseer/types";
 
 // ─── API response types (mirror of Card shape from packages/core/src/types.ts) ──
 
