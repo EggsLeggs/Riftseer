@@ -1,7 +1,7 @@
 version: "3.9"
 
 # Local dev stack: Redis only.
-# API runs via: bun dev:api  (wrangler dev at http://localhost:8787)
+# API runs via: bun dev:api  (wrangler dev at http://localhost:8789)
 # Ingest is a separate Cloudflare Worker (packages/ingest-worker).
 # Reddit bot is a Devvit app — deploy with: cd packages/reddit-bot && npx devvit upload
 
