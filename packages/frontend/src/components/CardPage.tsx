@@ -640,7 +640,7 @@ export function CardPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right text-xs text-muted-foreground">
-                            —
+                            {t.prices?.usd != null ? `$${t.prices.usd.toFixed(2)}` : "—"}
                           </TableCell>
                           <TableCell className="text-right">
                             <a
@@ -731,7 +731,7 @@ export function CardPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">
-                          —
+                          {p.prices?.usd != null ? `$${p.prices.usd.toFixed(2)}` : "—"}
                         </TableCell>
                         <TableCell className="text-right">
                           <a

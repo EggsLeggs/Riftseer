@@ -89,6 +89,7 @@ The API is built with [ElysiaJS](https://elysiajs.com) deployed as a [Cloudflare
 const v1 = new Elysia({ prefix: "/api/v1" })
   .use(metaRoutes(...))
   .use(cardsRoutes(...))
+  .use(setsRoutes(...))
   .use(decksRoutes(...))
 
 // Mounted on the root app with CloudflareAdapter

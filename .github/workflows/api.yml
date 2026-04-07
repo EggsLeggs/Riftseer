@@ -7,11 +7,17 @@ on:
       - "packages/api/**"
       - "packages/core/**"
       - "packages/types/**"
+      - "package.json"
+      - "bun.lockb"
+      - ".github/workflows/api.yml"
   pull_request:
     paths:
       - "packages/api/**"
       - "packages/core/**"
       - "packages/types/**"
+      - "package.json"
+      - "bun.lockb"
+      - ".github/workflows/api.yml"
 
 env:
   BUN_VERSION: "1.2.0"
@@ -41,6 +47,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-api-main
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
 

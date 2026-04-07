@@ -130,6 +130,46 @@ describe("API routes", () => {
     });
   });
 
+  // ── GET /cards/random ─────────────────────────────────────────────────────
+
+  describe("GET /cards/random", () => {
+    it("returns a card", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/random"),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.name).toBe("Sun Disc");
+      expect(body.object).toBe("card");
+      expect(body.set.set_code).toBe("OGN");
+      expect(Array.isArray(body.related_champions)).toBe(true);
+      expect(Array.isArray(body.related_legends)).toBe(true);
+    });
+  });
+
+  // ── GET /cards/:id/text ────────────────────────────────────────────────────
+
+  describe("GET /cards/:id/text", () => {
+    it("returns plain text for a known card", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/cards/${STUB_CARD.id}/text`),
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toContain("text/plain");
+      const body = await res.text();
+      expect(body).toContain("Sun Disc");
+    });
+
+    it("returns 404 for unknown ID", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/unknown-id/text"),
+      );
+      expect(res.status).toBe(404);
+      const body = await res.json() as any;
+      expect(body.code).toBe("NOT_FOUND");
+    });
+  });
+
   // ── POST /cards/resolve ───────────────────────────────────────────────────
 
   describe("POST /cards/resolve", () => {

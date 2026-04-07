@@ -6,10 +6,21 @@ sidebar_position: 7
 
 ## CORS
 
-The production API allows requests from `https://riftseer.pages.dev` and `https://riftseer.com` by default. Override by setting the `CORS_ORIGIN` worker var (comma-separated) in `wrangler.jsonc` or via `wrangler secret put`:
+The production API allows requests from `https://riftseer.pages.dev` and `https://riftseer.com` by default. Override by setting the `CORS_ORIGIN` worker var (comma-separated) in `wrangler.jsonc` or with the `--var` flag during deploy — it is not a secret and should not be set with `wrangler secret put`:
+
+```jsonc
+// wrangler.jsonc
+{
+  "vars": {
+    "CORS_ORIGIN": "https://riftseer.com,https://staging.riftseer.pages.dev"
+  }
+}
+```
+
+Or pass it at deploy time:
 
 ```bash
-CORS_ORIGIN=https://riftseer.com,https://staging.riftseer.pages.dev
+wrangler deploy --var CORS_ORIGIN="https://riftseer.com,https://staging.riftseer.pages.dev"
 ```
 
 Allowed methods are `GET`, `POST`, and `OPTIONS`.

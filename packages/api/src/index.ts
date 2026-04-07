@@ -66,7 +66,8 @@ function ensureWarmedUp(): Promise<void> {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export const app = new Elysia({ adapter: CloudflareAdapter })
-  .onBeforeHandle(async ({ set }) => {
+  .onBeforeHandle(async ({ path, set }) => {
+    if (path === "/api/v1/health") return;
     try {
       await ensureWarmedUp();
     } catch {

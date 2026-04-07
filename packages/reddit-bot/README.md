@@ -43,4 +43,4 @@ Riftbound TCG is not served by any globally-approved card API. The globally-appr
 - Only the exact hostname above is used; no wildcards.
 - The single endpoint called is `POST /api/v1/cards/resolve`.
 - No user data is forwarded — only the card name string extracted from the comment.
-- The domain is the app developer's own production deployment (Railway).
+- The domain is the app developer's own production deployment (Cloudflare Workers).
