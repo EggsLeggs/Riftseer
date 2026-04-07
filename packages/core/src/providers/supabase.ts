@@ -24,6 +24,7 @@ import type {
   CardPurchaseUris,
   CardExternalIds,
   RelatedCard,
+  CardPriceEntry,
 } from "../types.ts";
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
@@ -36,7 +37,7 @@ const REFRESH_INTERVAL_MS = parseInt(
 );
 
 const CARD_SELECT =
-  "*, sets:set_id(set_code, set_name, set_uri, set_search_uri), artists:artist_id(name)";
+  "*, sets:set_id(set_code, set_name, set_uri, set_search_uri, is_promo, published_on), artists:artist_id(name)";
 
 const SLIM_SELECT = "id, name, name_normalized";
 
@@ -62,6 +63,7 @@ interface DBCardRow {
   used_by: RelatedCard[];
   related_champions: RelatedCard[];
   related_legends: RelatedCard[];
+  related_printings: RelatedCard[];
   is_token: boolean;
   updated_at: string;
   ingested_at: string;
@@ -71,6 +73,8 @@ interface DBCardRow {
     set_name: string;
     set_uri: string | null;
     set_search_uri: string | null;
+    is_promo: boolean | null;
+    published_on: string | null;
   } | null;
   artists: { name: string } | null;
 }
@@ -91,6 +95,7 @@ function dbRowToCard(row: DBCardRow): Card {
           set_name: row.sets.set_name,
           set_uri: row.sets.set_uri ?? undefined,
           set_search_uri: row.sets.set_search_uri ?? undefined,
+          published_on: row.sets.published_on ?? undefined,
         }
       : undefined,
     rulings: row.rulings_id ? { rulings_id: row.rulings_id } : undefined,
@@ -108,6 +113,7 @@ function dbRowToCard(row: DBCardRow): Card {
     used_by: row.used_by ?? [],
     related_champions: row.related_champions ?? [],
     related_legends: row.related_legends ?? [],
+    related_printings: row.related_printings ?? [],
     updated_at: row.updated_at,
     ingested_at: row.ingested_at,
   };
@@ -122,6 +128,89 @@ async function getSetIdByCode(setCode: string): Promise<string | null> {
 
   if (error) throw new Error(`Failed to resolve set code: ${error.message}`);
   return data?.id ?? null;
+}
+
+// ─── Search-result dedup: one representative printing per card name ──────────
+
+const RARITY_RANK: Record<string, number> = {
+  Common: 0,
+  Uncommon: 1,
+  Rare: 2,
+  Epic: 3,
+  Legendary: 4,
+};
+
+/**
+ * Strip trailing parenthetical suffixes — e.g. "(Signature)", "(Alternate Art)",
+ * "(Overnumbered)" — then normalize.  Cards that share the same base name are
+ * treated as variant printings of the same card.
+ */
+function baseNormalized(name: string): string {
+  return normalizeCardName(name.replace(/\s*\(.*?\)\s*$/, ""));
+}
+
+/**
+ * From a group of same-base-name rows, pick the representative printing.
+ * Priority: non-promo → lowest rarity → newest release →
+ *           non-alt-art → non-signature → non-overnumbered.
+ */
+function pickPreferredPrinting(rows: DBCardRow[]): DBCardRow {
+  if (rows.length === 1) return rows[0];
+
+  const nonPromo = rows.filter((r) => !r.sets?.is_promo);
+  const candidates = nonPromo.length > 0 ? nonPromo : rows;
+
+  candidates.sort((a, b) => {
+    const rarA = RARITY_RANK[a.classification?.rarity ?? ""] ?? 99;
+    const rarB = RARITY_RANK[b.classification?.rarity ?? ""] ?? 99;
+    if (rarA !== rarB) return rarA - rarB;
+
+    const dateA = a.released_at ?? "";
+    const dateB = b.released_at ?? "";
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+
+    const altA = a.metadata?.alternate_art ? 1 : 0;
+    const altB = b.metadata?.alternate_art ? 1 : 0;
+    if (altA !== altB) return altA - altB;
+
+    const sigA = a.metadata?.signature ? 1 : 0;
+    const sigB = b.metadata?.signature ? 1 : 0;
+    if (sigA !== sigB) return sigA - sigB;
+
+    const overA = a.metadata?.overnumbered ? 1 : 0;
+    const overB = b.metadata?.overnumbered ? 1 : 0;
+    return overA - overB;
+  });
+
+  return candidates[0];
+}
+
+/**
+ * Collapse rows into one per unique base card name (trailing parenthetical
+ * variant suffixes stripped), preserving encounter order (relevance ranking).
+ * Within each group the preferred printing is selected by
+ * {@link pickPreferredPrinting}.
+ */
+function deduplicateRows(rows: DBCardRow[], limit: number): DBCardRow[] {
+  const groups = new Map<string, DBCardRow[]>();
+  const nameOrder: string[] = [];
+
+  for (const row of rows) {
+    const key = baseNormalized(row.name);
+    if (!groups.has(key)) {
+      groups.set(key, [row]);
+      nameOrder.push(key);
+    } else {
+      groups.get(key)!.push(row);
+    }
+  }
+
+  const result: DBCardRow[] = [];
+  for (const key of nameOrder) {
+    if (result.length >= limit) break;
+    result.push(pickPreferredPrinting(groups.get(key)!));
+  }
+  return result;
 }
 
 function sortCardsByCollector(a: Card, b: Card): number {
@@ -222,11 +311,11 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
 
     const { data: exactData, error: exactError } =
-      await exactQuery.limit(limit);
+      await exactQuery.limit(limit * 5);
     if (exactError)
       throw new Error(`searchByName exact failed: ${exactError.message}`);
     if (exactData && exactData.length > 0) {
-      return (exactData as DBCardRow[]).map(dbRowToCard);
+      return deduplicateRows(exactData as DBCardRow[], limit).map(dbRowToCard);
     }
 
     if (opts.fuzzy === false) return [];
@@ -258,7 +347,8 @@ export class SupabaseCardProvider implements CardDataProvider {
     if (ftsError)
       throw new Error(`searchByName FTS failed: ${ftsError.message}`);
 
-    const topIds = rankIds((ftsData ?? []) as Nameable[], q, limit);
+    const dedupHeadroom = Math.min(limit * 5, 200);
+    const topIds = rankIds((ftsData ?? []) as Nameable[], q, dedupHeadroom);
     if (topIds.length === 0) return [];
 
     const { data: fullData, error: fullError } = await supabase
@@ -267,8 +357,9 @@ export class SupabaseCardProvider implements CardDataProvider {
       .in("id", topIds);
     if (fullError) throw new Error(`searchByName hydration failed: ${fullError.message}`);
 
-    const cardMap = new Map((fullData as DBCardRow[]).map((r) => [r.id, dbRowToCard(r)]));
-    return topIds.flatMap((id) => { const c = cardMap.get(id); return c ? [c] : []; });
+    const rowMap = new Map((fullData as DBCardRow[]).map((r) => [r.id, r]));
+    const orderedRows = topIds.flatMap((id) => { const r = rowMap.get(id); return r ? [r] : []; });
+    return deduplicateRows(orderedRows, limit).map(dbRowToCard);
   }
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {
@@ -357,11 +448,11 @@ export class SupabaseCardProvider implements CardDataProvider {
   }
 
   async getSets(): Promise<
-    Array<{ setCode: string; setName: string; cardCount: number }>
+    Array<{ setCode: string; setName: string; cardCount: number; isPromo: boolean; publishedOn: string | null }>
   > {
     const { data, error } = await getSupabaseClient()
       .from("sets")
-      .select("set_code, set_name, card_count")
+      .select("set_code, set_name, card_count, is_promo, published_on")
       .order("set_name");
 
     if (error) throw new Error(`getSets failed: ${error.message}`);
@@ -371,6 +462,8 @@ export class SupabaseCardProvider implements CardDataProvider {
       setCode: row.set_code,
       setName: row.set_name,
       cardCount: row.card_count ?? 0,
+      isPromo: row.is_promo ?? false,
+      publishedOn: row.published_on ?? null,
     }));
   }
 

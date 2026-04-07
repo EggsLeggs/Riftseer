@@ -1,0 +1,132 @@
+name: Ingest Worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/ingest-worker/**"
+      - "packages/types/**"
+      - "package.json"
+      - "bun.lockb"
+      - ".github/workflows/ingest-worker.yml"
+  pull_request:
+    paths:
+      - "packages/ingest-worker/**"
+      - "packages/types/**"
+      - "package.json"
+      - "bun.lockb"
+      - ".github/workflows/ingest-worker.yml"
+
+env:
+  BUN_VERSION: "1.2.0"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build (dry run)
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/ingest-worker
+          command: deploy --dry-run --config wrangler.toml
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-ingest-worker-main
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install
+
+      # Postgres URI only. GitHub Actions runners are often IPv4-only; Supabase's *direct*
+      # host (db.<ref>.supabase.co:5432) may not connect — use Session pooler or Transaction
+      # pooler URI from Dashboard → Database → Connection string (not the REST https URL).
+      # Not SUPABASE_SERVICE_ROLE_KEY (JWT is for the HTTP API; URI uses the DB password).
+      - name: Verify Supabase migrations
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo "SUPABASE_DB_URL secret is required (Postgres connection URI, e.g. postgresql://postgres....)."
+            exit 1
+          fi
+
+          case "${SUPABASE_DB_URL}" in
+            http://*|https://*)
+              echo "SUPABASE_DB_URL must be a Postgres URI (postgresql://... or postgres://...),"
+              echo "not the Supabase project HTTPS URL. Copy it from:"
+              echo "  Supabase Dashboard → Project Settings → Database → Connection string → URI"
+              echo "The service role key is for the HTTP API only, not for psql."
+              exit 1
+              ;;
+          esac
+
+          # Direct connection is often IPv6-only; pooler targets IPv4-friendly endpoints.
+          if echo "${SUPABASE_DB_URL}" | grep -qE '@db\.[^@]+\.supabase\.co:5432/'; then
+            echo "::warning::SUPABASE_DB_URL uses the direct db.*.supabase.co:5432 host. GitHub Actions is usually IPv4-only — if psql times out, switch the secret to the Session or Transaction pooler connection string from the same Supabase page."
+          fi
+
+          MIG_DIR="supabase/migrations"
+          if [ ! -d "${MIG_DIR}" ]; then
+            echo "No ${MIG_DIR} directory — nothing to verify."
+            exit 0
+          fi
+
+          APPLIED=$(mktemp)
+          trap 'rm -f "${APPLIED}"' EXIT
+          psql "${SUPABASE_DB_URL}" -tA -c \
+            "SELECT version FROM supabase_migrations.schema_migrations ORDER BY version;" \
+            | grep -E '^[0-9]+$' | sort -u > "${APPLIED}"
+
+          MISSING=""
+          for f in "${MIG_DIR}"/*.sql; do
+            [ -e "$f" ] || continue
+            base=$(basename "$f")
+            ver="${base%%_*}"
+            if ! echo "$ver" | grep -qE '^[0-9]{14}$'; then
+              echo "Skipping non-timestamped migration file: ${base}"
+              continue
+            fi
+            if ! grep -qx "$ver" "${APPLIED}"; then
+              MISSING="${MISSING:+$MISSING }${ver}"
+            fi
+          done
+
+          if [ -n "${MISSING}" ]; then
+            echo "Remote DB is missing migration version(s) present in repo: ${MISSING}"
+            echo "Apply migrations (e.g. supabase db push) before deploying the ingest worker."
+            exit 1
+          fi
+
+          echo "All repo migrations under ${MIG_DIR} are recorded in supabase_migrations.schema_migrations."
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: packages/ingest-worker
+          command: deploy --config wrangler.toml

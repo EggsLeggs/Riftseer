@@ -8,3 +8,6 @@ SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 # Optional — leave blank to disable Redis
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
+
+# Optional — set to your Impact.com publisher ID to enable TCGPlayer affiliate links
+TCGPLAYER_AFFILIATE_ID=

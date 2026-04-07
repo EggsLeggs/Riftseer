@@ -18,6 +18,8 @@ export function setsRoutes(cardProvider: CardDataProvider) {
               setCode: t.String(),
               setName: t.String(),
               cardCount: t.Number(),
+              isPromo: t.Boolean(),
+              publishedOn: t.Nullable(t.String()),
             }),
           ),
         }),

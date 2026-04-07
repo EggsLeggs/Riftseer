@@ -78,14 +78,63 @@ npx devvit settings set siteBaseUrl
 |----------|---------|
 | `SUPABASE_URL` | Supabase project URL — required |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required |
-| `RIFTCODEX_BASE_URL` | `https://api.riftcodex.com` |
+| `RIFTCODEX_BASE_URL` | RiftCodex API base (default: `https://api.riftcodex.com`) — optional |
+| `RIFTCODEX_API_KEY` | RiftCodex API key — optional |
+| `UPSTREAM_TIMEOUT_MS` | Timeout for upstream HTTP requests in ms (default: 30000) — optional |
 | `INGEST_SECRET` | Bearer token for POST /ingest (optional) |
+
+### GitHub Actions — ingest worker deploy (`.github/workflows/ingest-worker.yml`)
+
+| Secret | Purpose |
+|----------|---------|
+| `SUPABASE_DB_URL` | **Postgres** connection URI for `psql` only: confirms every file in `supabase/migrations/` is in `supabase_migrations.schema_migrations`. Prefer **Session** or **Transaction pooler** from **Dashboard → Database → Connection string** — GitHub Actions is usually **IPv4-only**, and Supabase’s **direct** host (`db.*.supabase.co:5432`) may not work without IPv4 support. Put your DB password in the URI. **Not** `https://*.supabase.co` and **not** `SUPABASE_SERVICE_ROLE_KEY`. |
 
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core`; the only implementation is `SupabaseCardProvider` (data from the ingest pipeline).
 - **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/cards/resolve` endpoint.
-- **Ingest**: Pipeline (RiftCodex → TCG enrich → token linking → champion/legend linking → Supabase upsert) runs via the standalone Cloudflare Worker `packages/ingest-worker` on a schedule. Locally: `cd packages/ingest-worker && bun run dev`, then `curl -X POST http://localhost:8787/ingest`. There is no ingest endpoint in the API.
-- **Card name search**: Postgres `tsvector` on `name` + `name_normalized` (see migration `name_search`). Exact `name_normalized` match is tried first; full-text search is used as fallback.
+- **Ingest**: Modular pipeline runs as a Cloudflare Worker on a schedule. No ingest endpoint in the API. See [Ingest Pipeline](#ingest-pipeline) below.
+- **Card name search**: Postgres `tsvector` on `name` + `name_normalized`. Exact `name_normalized` match is tried first; full-text search is used as fallback.
+- **Card IDs**: `cards.id` is `text` (MongoDB ObjectIds from RiftCodex — 24-char hex strings).
+
+## Ingest Pipeline
+
+The pipeline runs inside `packages/ingest-worker` and is orchestrated by `src/ingest.ts`:
+
+```text
+RiftCodex /sets + /cards
+    ↓ src/sources/riftcodex.ts  — fetch + map to Card[]
+    ↓ src/pipeline/normalize.ts — apply overrides, build IngestSet[]
+    ↓ src/pipeline/enrich.ts    — clearDuplicateImages (alt-art/reprints)
+    ↓ src/sources/tcgcsv.ts     — fetch TCGPlayer groups, products, prices
+    ↓ src/pipeline/enrich.ts    — reconcileSets + enrichCards (prices, purchase URIs, fallback images)
+    ↓ src/pipeline/link.ts      — linkTokens, linkChampionsLegends, linkRelatedPrintings
+    ↓ src/pipeline/db.ts        — ingestCardData() RPC → Supabase (atomic upsert)
+```
+
+**Key files:**
+
+| File | Purpose |
+|------|---------|
+| `src/index.ts` | CF Worker entry — `scheduled` handler + `POST /ingest` HTTP trigger |
+| `src/ingest.ts` | Pipeline coordinator (`runIngest`) + `Env` type |
+| `src/utils.ts` | Local `logger` + `normalizeCardName` (can't import @riftseer/core in CF Workers) |
+| `src/sources/riftcodex.ts` | Fetch RiftCodex `/sets` and `/cards`; `rawToCard` mapper |
+| `src/sources/tcgcsv.ts` | Fetch TCGPlayer groups, products, and prices via TCGCSV |
+| `src/pipeline/types.ts` | `IngestSet` — internal set type with external_ids |
+| `src/pipeline/normalize.ts` | `normalizeSets` / `normalizeCards` — apply overrides |
+| `src/pipeline/enrich.ts` | `reconcileSets`, `clearDuplicateImages`, `buildProductMap`, `enrichCards` |
+| `src/pipeline/link.ts` | `linkTokens`, `linkChampionsLegends`, `linkRelatedPrintings` |
+| `src/pipeline/db.ts` | `ingestCardData()` — calls `ingest_card_data` Postgres RPC |
+| `src/overrides/` | JSON override files for sets, TCGPlayer groups, individual cards |
+
+**Overrides** (`src/overrides/*.json`) allow correcting or augmenting upstream data without code changes:
+- `riftcodex_sets.json` — override set names, `is_promo`, `parent_set_code`
+- `tcgplayer_groups.json` — map TCGPlayer groupId → canonical set_code / name / parent
+- `cards.json` — per-card overrides (e.g. `use_tcgplayer_image: true`)
+
+**TCGPlayer enrichment is non-fatal**: if TCGCSV is unavailable, the pipeline continues without prices/images. Cards still get upserted with RiftCodex data only.
+
+**Supabase RPC**: All three tables (sets, artists, cards) are written atomically via `ingest_card_data(p_sets, p_artists, p_cards)`. See `supabase/migrations/20260407160000_fix_ingest_rpc_id_cast.sql` for the current definition.
 
 ## Deployment
 - **API**: Cloudflare Workers via `cd packages/api && wrangler deploy`. Secrets set with `wrangler secret put`. Worker name: `riftseer-api`.
@@ -105,8 +154,8 @@ supabase db push          # pushes all pending migrations to the linked project
 #    Open https://supabase.com/dashboard → your project → SQL Editor,
 #    paste the contents of each migration file and run.
 
-# 3. psql (direct connection)
-psql "$SUPABASE_URL" -f supabase/migrations/20260221000000_initial_schema.sql
+# 3. psql (direct Postgres connection string)
+psql "$SUPABASE_DB_URL" -f supabase/migrations/20260221000000_initial_schema.sql
 ```
 
 When adding a new migration, create a new file in `supabase/migrations/` with a

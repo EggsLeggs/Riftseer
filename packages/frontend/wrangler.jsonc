@@ -6,4 +6,6 @@
     "directory": "./dist",
     "not_found_handling": "single-page-application"
   }
+  // Secrets — set once with:
+  //   npx wrangler pages secret put VITE_API_URL --project-name riftseer-frontend
 }

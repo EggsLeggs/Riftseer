@@ -2,7 +2,7 @@ import { t } from "elysia";
 
 export const RelatedCardSchema = t.Object({
   object: t.Literal("related_card"),
-  id: t.String({ description: "UUID of the referenced card" }),
+  id: t.String({ description: "ID of the referenced card" }),
   name: t.String(),
   component: t.String({ description: "Relationship role, e.g. 'token', 'meld_part'" }),
   uri: t.Optional(t.String({ description: "API URI for the referenced card" })),
@@ -71,16 +71,25 @@ export const CardSchema = t.Object({
     tcgplayer: t.String(),
   }))),
   prices: t.Optional(t.Partial(t.Object({
-    usd: t.Nullable(t.Number()),
-    usd_foil: t.Nullable(t.Number()),
-    eur: t.Nullable(t.Number()),
-    eur_foil: t.Nullable(t.Number()),
+    tcgplayer: t.Optional(t.Partial(t.Object({
+      normal: t.Nullable(t.Number()),
+      foil: t.Nullable(t.Number()),
+      low_normal: t.Nullable(t.Number()),
+      low_foil: t.Nullable(t.Number()),
+    }))),
+    cardmarket: t.Optional(t.Partial(t.Object({
+      normal: t.Nullable(t.Number()),
+      foil: t.Nullable(t.Number()),
+      low_normal: t.Nullable(t.Number()),
+      low_foil: t.Nullable(t.Number()),
+    }))),
   }))),
   is_token: t.Boolean(),
   all_parts: t.Array(RelatedCardSchema),
   used_by: t.Array(RelatedCardSchema),
   related_champions: t.Array(RelatedCardSchema),
   related_legends: t.Array(RelatedCardSchema),
+  related_printings: t.Array(RelatedCardSchema),
   updated_at: t.Optional(t.String()),
   ingested_at: t.Optional(t.String()),
 });

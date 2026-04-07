@@ -42,7 +42,7 @@ export default {
     if (request.method === "GET" && new URL(request.url).pathname === "/") {
       return new Response(
         JSON.stringify({
-          worker: "riftseer-ingest-worker",
+          worker: "riftseer-ingest",
           cron: "0 */6 * * *",
           hint: "Trigger scheduled run locally: GET /cdn-cgi/mf/scheduled",
         }),
@@ -65,6 +65,7 @@ export default {
         JSON.stringify({
           ok: result.ok,
           cardsCount: result.cardsCount,
+          setsCount: result.setsCount,
           elapsedMs: result.elapsedMs,
           ...(result.error && { error: result.error }),
         }),

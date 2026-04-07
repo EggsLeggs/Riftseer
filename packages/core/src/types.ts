@@ -10,6 +10,7 @@ export type {
   CardMediaUrls,
   CardMedia,
   CardPurchaseUris,
+  CardPriceEntry,
   CardPrices,
   Card,
   CardRequest,
