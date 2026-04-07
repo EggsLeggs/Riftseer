@@ -35,7 +35,7 @@ Every card endpoint returns the same card shape. Key fields:
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
 | `text.rich` | string | Rules text with inline symbol tokens |
-| `prices` | object | `usdMarket`, `usdLow`, `usdFoilMarket`, `usdFoilLow` — populated by the ingest pipeline from TCGPlayer |
+| `prices` | object | `usd`, `usd_foil`, `eur`, `eur_foil` — populated by the ingest pipeline from TCGPlayer |
 | `purchase_uris` | object | `tcgplayer` URL for direct purchase |
 | `is_token` | boolean | `true` for token cards |
 | `all_parts` | array | Related tokens or meld parts |
@@ -110,6 +110,20 @@ Requests accept plain names or `[[Name|SET-###]]` format — the same syntax the
 
 ## Prices
 
-Prices (`usdMarket`, `usdLow`, `usdFoilMarket`, `usdFoilLow`) and the `purchase_uris.tcgplayer` URL are embedded directly on the card object. They are populated during the ingest pipeline from TCGPlayer via tcgcsv.com and stored in Supabase — no separate price endpoint is needed.
+Price data and the purchase URL are embedded directly on the card object — no separate price endpoint is needed. They are populated by the ingest pipeline from TCGPlayer via tcgcsv.com and stored in Supabase.
 
-All price fields are nullable. If a card has no TCGPlayer listing the fields will be `null`.
+```json
+{
+  "prices": {
+    "usd": 1.25,
+    "usd_foil": 4.99,
+    "eur": 1.10,
+    "eur_foil": null
+  },
+  "purchase_uris": {
+    "tcgplayer": "https://www.tcgplayer.com/..."
+  }
+}
+```
+
+All price fields are nullable. If a card has no TCGPlayer listing, all `prices` fields and `purchase_uris.tcgplayer` will be `null`.

@@ -5,7 +5,7 @@ ElysiaJS REST API running as a Cloudflare Worker. Loads a `CardDataProvider` at 
 
 ## Running
 ```bash
-wrangler dev        # Local dev at http://localhost:8787
+wrangler dev        # Local dev at http://localhost:8789
 wrangler deploy     # Deploy to Cloudflare Workers
 bun run typecheck   # Type-check with tsc --noEmit
 ```

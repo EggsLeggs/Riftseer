@@ -5,7 +5,7 @@ React 19 SPA built with Vite 6. Provides card browsing, search, set listing, a s
 
 ## Running
 ```bash
-bun dev:frontend    # Vite dev server (proxies /api to localhost:8787)
+bun dev:frontend    # Vite dev server (proxies /api to localhost:8789)
 bun build:frontend  # Production build to dist/
 ```
 

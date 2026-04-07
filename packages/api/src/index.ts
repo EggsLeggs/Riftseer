@@ -71,7 +71,7 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
   .use(
     cors({
       origin: process.env.CORS_ORIGIN
-        ? process.env.CORS_ORIGIN.split(",")
+        ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim()).filter((o) => o.length > 0)
         : ["https://riftseer.pages.dev", "https://riftseer.com"],
       methods: ["GET", "POST", "OPTIONS"],
     }),

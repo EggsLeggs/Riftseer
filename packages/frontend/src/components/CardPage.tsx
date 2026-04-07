@@ -193,8 +193,6 @@ export function CardPage() {
     });
   }, [card?.id, card?.text?.plain]);
 
-  // TODO: prices removed from API — re-enable once restored
-  // useEffect(() => { fetch USD prices ... }, [card?.name, printings, tokens]);
 
   if (loading) {
     return (
@@ -773,6 +771,18 @@ export function CardPage() {
           {/* Buy this card */}
           <div>
             <h4 className="text-sm font-semibold mb-2">Buy This Card</h4>
+            {card.prices && (
+              <p className="text-xs text-muted-foreground mb-2">
+                {[
+                  card.prices.usd != null && `$${card.prices.usd.toFixed(2)}`,
+                  card.prices.usd_foil != null && `$${card.prices.usd_foil.toFixed(2)} foil`,
+                  card.prices.eur != null && `€${card.prices.eur.toFixed(2)}`,
+                  card.prices.eur_foil != null && `€${card.prices.eur_foil.toFixed(2)} foil`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
             <ul className="space-y-1">
               <li className="flex items-center gap-1">
                 <a

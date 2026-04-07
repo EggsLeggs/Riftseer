@@ -33,7 +33,7 @@ riftseer/
 ## Running the Project
 ```bash
 bun dev             # API (wrangler dev) + frontend together
-bun dev:api         # API only via wrangler dev (http://localhost:8787)
+bun dev:api         # API only via wrangler dev (http://localhost:8789)
 bun dev:frontend    # Frontend only
 bun test            # Run all tests
 bun typecheck       # Type-check all workspace packages
