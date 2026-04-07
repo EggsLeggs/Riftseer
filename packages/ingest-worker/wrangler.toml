@@ -2,7 +2,7 @@
 # Set secrets: wrangler secret put SUPABASE_URL, wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 # Optional: RIFTCODEX_BASE_URL, RIFTCODEX_API_KEY in vars or secrets.
 
-name = "riftseer-ingest-worker"
+name = "riftseer-ingest"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
