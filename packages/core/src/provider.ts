@@ -53,7 +53,7 @@ export interface CardDataProvider {
    * Return all known sets with their code, name, and card count.
    * Optional — providers that don't support this may return [].
    */
-  getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>>;
+  getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number; isPromo: boolean; publishedOn: string | null }>>;
 
   /**
    * Return cards in a set, ordered by collector number.

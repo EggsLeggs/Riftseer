@@ -23,6 +23,7 @@ function makeCard(name: string, id?: string): Card {
     used_by: [],
     related_champions: [],
     related_legends: [],
+    related_printings: [],
   };
 }
 

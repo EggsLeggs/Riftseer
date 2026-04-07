@@ -1,9 +1,11 @@
 /**
  * RiftCodex API fetch + Raw → Card mapping for the ingest worker.
- * Upstream: https://api.riftcodex.com — GET /cards?page=N&size=100
+ * Upstream: https://api.riftcodex.com
+ *   GET /sets        → RawSetInfo[]
+ *   GET /cards?page=N&size=100 → paginated RawCard[]
  */
 
-import { normalizeCardName, logger } from "./utils.ts";
+import { normalizeCardName, logger } from "../utils.ts";
 import type { Card } from "@riftseer/types";
 
 const PAGE_SIZE = 100;
@@ -13,6 +15,19 @@ export interface RiftCodexConfig {
   apiKey?: string;
   timeoutMs: number;
 }
+
+// ─── /sets response ───────────────────────────────────────────────────────────
+
+export interface RawSetInfo {
+  set_id: string;
+  name?: string;
+  label: string;
+  tcgplayer_id?: number | null;
+  cardmarket_id?: string | null;
+  published_on?: string | null;
+}
+
+// ─── /cards response ──────────────────────────────────────────────────────────
 
 interface RawAttributes {
   energy: number | null;
@@ -33,7 +48,7 @@ interface RawText {
   flavour?: string;
 }
 
-interface RawSet {
+interface RawCardSet {
   set_id: string;
   name?: string;
   label: string;
@@ -73,7 +88,7 @@ export interface RawCard {
   attributes: RawAttributes;
   classification: RawClassification;
   text: RawText;
-  set: RawSet;
+  set: RawCardSet;
   media: RawMedia;
   tags: string[];
   orientation: string;
@@ -90,6 +105,8 @@ interface PagedResponse {
   size: number;
   pages: number;
 }
+
+// ─── Raw → Card mapping ───────────────────────────────────────────────────────
 
 export function rawToCard(raw: RawCard): Card {
   const setCode = raw.set?.set_id?.toUpperCase();
@@ -165,7 +182,36 @@ export function rawToCard(raw: RawCard): Card {
     used_by: [],
     related_champions: [],
     related_legends: [],
+    related_printings: [],
   };
+}
+
+// ─── Fetchers ─────────────────────────────────────────────────────────────────
+
+function makeHeaders(apiKey?: string): Record<string, string> {
+  return {
+    "User-Agent": "riftseer-ingest-worker/0.1",
+    Accept: "application/json",
+    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+  };
+}
+
+export async function fetchAllSets(config: RiftCodexConfig): Promise<RawSetInfo[]> {
+  const { baseUrl, apiKey, timeoutMs } = config;
+  const url = `${baseUrl.replace(/\/$/, "")}/sets`;
+
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: makeHeaders(apiKey) });
+    if (!res.ok) throw new Error(`fetchAllSets: ${res.status} ${res.statusText}`);
+    const raw = (await res.json()) as RawSetInfo[] | { items?: RawSetInfo[] };
+    const sets = Array.isArray(raw) ? raw : (Array.isArray(raw.items) ? raw.items : []);
+    logger.info("Fetched sets from RiftCodex", { count: sets.length });
+    return sets;
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function sleep(ms: number): Promise<void> {
@@ -190,14 +236,7 @@ export async function fetchAllPages(config: RiftCodexConfig): Promise<RawCard[]>
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
     let res: Response;
     try {
-      res = await fetch(url, {
-        signal: ctrl.signal,
-        headers: {
-          "User-Agent": "riftseer-ingest-worker/0.1",
-          Accept: "application/json",
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-        },
-      });
+      res = await fetch(url, { signal: ctrl.signal, headers: makeHeaders(apiKey) });
     } catch (err) {
       clearTimeout(t);
       throw new Error(`Network error fetching ${url}: ${err}`);
@@ -207,7 +246,6 @@ export async function fetchAllPages(config: RiftCodexConfig): Promise<RawCard[]>
     if (res.status === 429) {
       retry429Count++;
       if (retry429Count > MAX_429_RETRIES) {
-        logger.error("Too many 429 responses, aborting page fetch", { page, retry429Count });
         throw new Error(`Rate limited too many times fetching page ${page} (${retry429Count} retries)`);
       }
       const retryAfter = parseInt(res.headers.get("Retry-After") ?? "5", 10);

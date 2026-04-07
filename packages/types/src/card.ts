@@ -25,6 +25,8 @@ export interface CardSet {
   set_name: string;
   set_uri?: string;
   set_search_uri?: string;
+  /** ISO date the set was published, e.g. "2024-11-15". */
+  published_on?: string;
 }
 
 export interface CardRulings {
@@ -90,11 +92,16 @@ export interface CardPurchaseUris {
   tcgplayer?: string;
 }
 
+export interface CardPriceEntry {
+  normal?: number | null;
+  foil?: number | null;
+  low_normal?: number | null;
+  low_foil?: number | null;
+}
+
 export interface CardPrices {
-  usd?: number | null;
-  usd_foil?: number | null;
-  eur?: number | null;
-  eur_foil?: number | null;
+  tcgplayer?: CardPriceEntry;
+  cardmarket?: CardPriceEntry;
 }
 
 export interface Card {
@@ -127,6 +134,8 @@ export interface Card {
   related_champions: RelatedCard[];
   /** Legend cards linked to this champion by a shared tag (populated on champions). */
   related_legends: RelatedCard[];
+  /** Other printings/art variants of the same card. */
+  related_printings: RelatedCard[];
   updated_at?: string;
   ingested_at?: string;
 }

@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "./ui/table";
 import { Badge } from "./ui/badge";
-import { Download, Flag, ExternalLink, RotateCw, Copy } from "lucide-react";
+import { Download, Flag, ExternalLink, RotateCw, Copy, ImageOff } from "lucide-react";
 
 /** Build a plain-text SEO description for a card. */
 function buildCardSeoDescription(card: Card): string {
@@ -64,6 +64,8 @@ function cardMarketUrl(name: string): string {
 }
 
 const TCGPLAYER_PRODUCT_LINE = "riftbound-league-of-legends-trading-card-game";
+
+const RARITIES_WITH_ICONS = new Set(["common", "showcase", "uncommon", "rare", "epic", "legendary"]);
 
 function tcgPlayerSearchUrl(name: string): string {
   const params = new URLSearchParams({
@@ -147,20 +149,39 @@ export function CardPage() {
   const [tokens, setTokens] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [rotated, setRotated] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => {
     setRotated(false);
+    setImageFailed(false);
   }, [id]);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     getCard(id)
-      .then((c) => {
+      .then(async (c) => {
         setCard(c);
         if (c) {
-          searchCards(c.name, { limit: 50 }).then((res) => {
-            setPrintings(res.cards);
-          });
+          const relatedIds = c.related_printings.map((rp) => rp.id);
+          if (relatedIds.length > 0) {
+            const others = await Promise.all(relatedIds.map((rpId) => getCard(rpId)));
+            const all = [c, ...others.filter((r): r is Card => r != null)];
+            const getPrintingTime = (c: Card): number => {
+              const s = c.set?.published_on ?? c.released_at;
+              if (!s) return Infinity;
+              const t = new Date(s).getTime();
+              return isNaN(t) ? Infinity : t;
+            };
+            all.sort((a, b) => {
+              const ta = getPrintingTime(a), tb = getPrintingTime(b);
+              if (ta !== tb) return ta - tb;
+              return (a.collector_number ?? "").localeCompare(b.collector_number ?? "", undefined, { numeric: true })
+                || a.id.localeCompare(b.id);
+            });
+            setPrintings(all);
+          } else {
+            setPrintings([c]);
+          }
         }
       })
       .finally(() => setLoading(false));
@@ -281,23 +302,23 @@ export function CardPage() {
               : "";
             const wrapperSizeClass = showAsLandscape ? "w-2/3 h-[150%]" : "w-[150%] h-2/3";
             const transitionClass = "transition-transform duration-300 ease-in-out";
-            return imageUrl ? (
+            const onImgError = () => setImageFailed(true);
+            return imageUrl && !imageFailed ? (
               <div className="space-y-2">
                 <div
                   className={`w-full max-w-[300px] ${containerAspect} overflow-hidden relative rounded-xl shadow-lg mx-auto lg:mx-0 transition-[aspect-ratio] duration-300 ease-in-out`}
                 >
                   {isLandscape ? (
                     showAsLandscape ? (
-                      /* Landscape card in landscape view: show image directly so full art fits, no crop */
                       <img
                         src={imageUrl}
                         alt={card.name}
                         fetchPriority="high"
                         decoding="async"
+                        onError={onImgError}
                         className="absolute inset-0 w-full h-full object-contain"
                       />
                     ) : (
-                      /* Landscape card in portrait view: rotated wrapper to stand card upright */
                       <div
                         className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 origin-center flex items-center justify-center ${wrapperSizeClass} ${rotateClass} ${transitionClass}`}
                       >
@@ -306,6 +327,7 @@ export function CardPage() {
                           alt={card.name}
                           fetchPriority="high"
                           decoding="async"
+                          onError={onImgError}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -316,6 +338,7 @@ export function CardPage() {
                       alt={card.name}
                       fetchPriority="high"
                       decoding="async"
+                      onError={onImgError}
                       className="w-full h-full object-cover"
                     />
                   )}
@@ -333,8 +356,9 @@ export function CardPage() {
                 )}
               </div>
             ) : (
-              <div className="w-full max-w-[300px] aspect-2/3 bg-muted rounded-xl flex items-center justify-center mx-auto lg:mx-0">
-                <span className="text-muted-foreground">{card.name}</span>
+              <div className="w-full max-w-[300px] aspect-2/3 bg-muted rounded-xl flex flex-col items-center justify-center gap-2 mx-auto lg:mx-0">
+                <ImageOff className="w-8 h-8 text-muted-foreground/60" />
+                <span className="text-sm text-muted-foreground">Image coming soon</span>
               </div>
             );
           })()}
@@ -504,8 +528,10 @@ export function CardPage() {
                 </TableCell>
                 <TableCell>
                   {rarity ? (
-                    <Badge variant="secondary" className="gap-1">
-                      <span className={`icon-rarity icon-rarity-${rarity?.toLowerCase()}`} />
+                    <Badge variant="secondary" className={RARITIES_WITH_ICONS.has(rarity.toLowerCase()) ? "gap-1" : ""}>
+                      {RARITIES_WITH_ICONS.has(rarity.toLowerCase()) && (
+                        <span className={`icon-rarity icon-rarity-${rarity.toLowerCase()}`} />
+                      )}
                       {rarity}
                     </Badge>
                   ) : (
@@ -514,156 +540,58 @@ export function CardPage() {
                 </TableCell>
               </TableRow>
 
+              {/* Data sources */}
+              {(() => {
+                const sources: { name: string; url?: string }[] = [];
+                if (card.external_ids?.riftcodex_id) {
+                  sources.push({ name: "RiftCodex" });
+                }
+                if (card.external_ids?.tcgplayer_id) {
+                  sources.push({
+                    name: "TCGPlayer",
+                    url: tcgPlayerProductUrl(card.external_ids.tcgplayer_id),
+                  });
+                }
+                if (sources.length === 0) return null;
+                return (
+                  <TableRow>
+                    <TableCell className="font-semibold text-muted-foreground">
+                      Sources
+                    </TableCell>
+                    <TableCell>
+                      <span className="inline-flex flex-wrap gap-1.5">
+                        {sources.map((s) =>
+                          s.url ? (
+                            <a
+                              key={s.name}
+                              href={s.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1"
+                            >
+                              <Badge variant="outline" className="font-normal hover:bg-muted">
+                                {s.name}
+                                <ExternalLink className="w-3 h-3 ml-0.5" />
+                              </Badge>
+                            </a>
+                          ) : (
+                            <Badge key={s.name} variant="outline" className="font-normal">
+                              {s.name}
+                            </Badge>
+                          )
+                        )}
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                );
+              })()}
+
             </TableBody>
           </Table>
         </div>
 
-        {/* Tokens + Prints in same column */}
+        {/* Prints + Tokens in same column */}
         <div className="lg:col-span-4 space-y-4">
-          {/* Champion / Legend links */}
-          {(() => {
-            const type = card.classification?.type?.toLowerCase();
-            const supertype = card.classification?.supertype?.toLowerCase();
-            const relatedCards =
-              type === "legend"
-                ? card.related_champions
-                : supertype === "champion"
-                  ? card.related_legends
-                  : [];
-            const header =
-              type === "legend"
-                ? "Champions"
-                : supertype === "champion"
-                  ? "Legends"
-                  : null;
-            // One entry per unique name — keep the first encountered printing
-            const dedupedCards = Array.from(
-              new Map(relatedCards.map((rc) => [rc.name, rc])).values()
-            );
-            if (!dedupedCards.length || !header) return null;
-            return (
-              <>
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                  {header}
-                </h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dedupedCards.map((rc) => (
-                        <TableRow
-                          key={rc.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => navigate(`/card/${rc.id}`)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              navigate(`/card/${rc.id}`);
-                            }
-                          }}
-                        >
-                          <TableCell className="text-xs font-semibold text-foreground">
-                            {rc.name}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </>
-            );
-          })()}
-
-          {/* Tokens table — tokens mentioned in this card's ability text */}
-          {tokens.length > 0 && (
-            <>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Tokens
-              </h3>
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>#</TableHead>
-                      <TableHead>Rarity</TableHead>
-                      <TableHead className="text-right">USD</TableHead>
-                      <TableHead className="text-right">EUR</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {tokens.map((t) => {
-                      const tCollector = t.collector_number;
-                      const tSig = t.metadata?.signature;
-                      const tAlt = t.metadata?.alternate_art;
-                      let displayNumber = tCollector ?? "—";
-                      if (tCollector && (tSig || tAlt)) {
-                        displayNumber = tSig
-                          ? `${tCollector}★`
-                          : `${tCollector}a`;
-                      }
-                      const tRarity = t.classification?.rarity;
-                      return (
-                        <TableRow
-                          key={t.id}
-                          className="cursor-pointer hover:bg-muted/50"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => navigate(`/card/${t.id}`)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              navigate(`/card/${t.id}`);
-                            }
-                          }}
-                        >
-                          <TableCell className="text-xs font-semibold text-foreground">
-                            {t.name}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {displayNumber}
-                          </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
-                            {tRarity ? (
-                              <span className="inline-flex items-center gap-1">
-                                <span className={`icon-rarity icon-rarity-${tRarity.toLowerCase()}`} />
-                                {tRarity}
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">
-                            {t.prices?.usd != null ? `$${t.prices.usd.toFixed(2)}` : "—"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <a
-                              href={cardMarketUrl(t.name)}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                              title="View on CardMarket"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              CM
-                            </a>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
-          )}
-
           {/* Printings table */}
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
             Prints
@@ -676,7 +604,7 @@ export function CardPage() {
                   <TableHead>#</TableHead>
                   <TableHead>Rarity</TableHead>
                   <TableHead className="text-right">USD</TableHead>
-                  <TableHead className="text-right">EUR</TableHead>
+                  <TableHead className="text-right">CM</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -722,8 +650,10 @@ export function CardPage() {
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {pRarity ? (
-                            <span className="inline-flex items-center gap-1">
-                              <span className={`icon-rarity icon-rarity-${pRarity.toLowerCase()}`} />
+                            <span className={RARITIES_WITH_ICONS.has(pRarity.toLowerCase()) ? "inline-flex items-center gap-1" : ""}>
+                              {RARITIES_WITH_ICONS.has(pRarity.toLowerCase()) && (
+                                <span className={`icon-rarity icon-rarity-${pRarity.toLowerCase()}`} />
+                              )}
                               {pRarity}
                             </span>
                           ) : (
@@ -731,11 +661,11 @@ export function CardPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">
-                          {p.prices?.usd != null ? `$${p.prices.usd.toFixed(2)}` : "—"}
+                          {p.prices?.tcgplayer?.normal != null ? `$${p.prices.tcgplayer.normal.toFixed(2)}` : "—"}
                         </TableCell>
                         <TableCell className="text-right">
                           <a
-                            href={cardMarketUrl(p.name)}
+                            href={p.purchase_uris?.cardmarket ?? cardMarketUrl(p.name)}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -743,7 +673,7 @@ export function CardPage() {
                             title="View on CardMarket"
                           >
                             <ExternalLink className="w-3 h-3" />
-                            CM
+                            {p.prices?.cardmarket?.normal != null ? `€${p.prices.cardmarket.normal.toFixed(2)}` : "CM"}
                           </a>
                         </TableCell>
                       </TableRow>
@@ -759,6 +689,151 @@ export function CardPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Champion / Legend links */}
+          {(() => {
+            const type = card.classification?.type?.toLowerCase();
+            const supertype = card.classification?.supertype?.toLowerCase();
+            const relatedCards =
+              type === "legend"
+                ? card.related_champions
+                : supertype === "champion"
+                  ? card.related_legends
+                  : [];
+            const header =
+              type === "legend"
+                ? "Champions"
+                : supertype === "champion"
+                  ? "Legends"
+                  : null;
+            const dedupedCards = Array.from(
+              new Map(relatedCards.map((rc) => [rc.name, rc])).values()
+            );
+            if (!dedupedCards.length || !header) return null;
+            return (
+              <>
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                  {header}
+                </h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {dedupedCards.map((rc) => (
+                        <TableRow
+                          key={rc.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => navigate(`/card/${rc.id}`)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              navigate(`/card/${rc.id}`);
+                            }
+                          }}
+                        >
+                          <TableCell className="text-xs font-semibold text-foreground">
+                            {rc.name}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
+
+          {/* Tokens table */}
+          {tokens.length > 0 && (
+            <>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                Tokens
+              </h3>
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>#</TableHead>
+                      <TableHead>Rarity</TableHead>
+                      <TableHead className="text-right">USD</TableHead>
+                      <TableHead className="text-right">CM</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tokens.map((t) => {
+                      const tCollector = t.collector_number;
+                      const tSig = t.metadata?.signature;
+                      const tAlt = t.metadata?.alternate_art;
+                      let displayNumber = tCollector ?? "—";
+                      if (tCollector && (tSig || tAlt)) {
+                        displayNumber = tSig
+                          ? `${tCollector}★`
+                          : `${tCollector}a`;
+                      }
+                      const tRarity = t.classification?.rarity;
+                      return (
+                        <TableRow
+                          key={t.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => navigate(`/card/${t.id}`)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              navigate(`/card/${t.id}`);
+                            }
+                          }}
+                        >
+                          <TableCell className="text-xs font-semibold text-foreground">
+                            {t.name}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {displayNumber}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {tRarity ? (
+                              <span className={RARITIES_WITH_ICONS.has(tRarity.toLowerCase()) ? "inline-flex items-center gap-1" : ""}>
+                                {RARITIES_WITH_ICONS.has(tRarity.toLowerCase()) && (
+                                  <span className={`icon-rarity icon-rarity-${tRarity.toLowerCase()}`} />
+                                )}
+                                {tRarity}
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">
+                            {t.prices?.tcgplayer?.normal != null ? `$${t.prices.tcgplayer.normal.toFixed(2)}` : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <a
+                              href={t.purchase_uris?.cardmarket ?? cardMarketUrl(t.name)}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                              title="View on CardMarket"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              {t.prices?.cardmarket?.normal != null ? `€${t.prices.cardmarket.normal.toFixed(2)}` : "CM"}
+                            </a>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -774,10 +849,10 @@ export function CardPage() {
             {card.prices && (
               <p className="text-xs text-muted-foreground mb-2">
                 {[
-                  card.prices.usd != null && `$${card.prices.usd.toFixed(2)}`,
-                  card.prices.usd_foil != null && `$${card.prices.usd_foil.toFixed(2)} foil`,
-                  card.prices.eur != null && `€${card.prices.eur.toFixed(2)}`,
-                  card.prices.eur_foil != null && `€${card.prices.eur_foil.toFixed(2)} foil`,
+                  card.prices.tcgplayer?.normal != null && `$${card.prices.tcgplayer.normal.toFixed(2)}`,
+                  card.prices.tcgplayer?.foil != null && `$${card.prices.tcgplayer.foil.toFixed(2)} foil`,
+                  card.prices.cardmarket?.normal != null && `€${card.prices.cardmarket.normal.toFixed(2)}`,
+                  card.prices.cardmarket?.foil != null && `€${card.prices.cardmarket.foil.toFixed(2)} foil`,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -802,7 +877,7 @@ export function CardPage() {
               </li>
               <li className="flex items-center gap-1">
                 <a
-                  href={cardMarketUrl(card.name)}
+                  href={card.purchase_uris?.cardmarket ?? cardMarketUrl(card.name)}
                   target="_blank"
                   rel="noopener"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
@@ -811,7 +886,7 @@ export function CardPage() {
                   Buy on CardMarket
                 </a>
                 <CopyLink
-                  url={cardMarketUrl(card.name)}
+                  url={card.purchase_uris?.cardmarket ?? cardMarketUrl(card.name)}
                   title="Copy link (paste in address bar if Card Market rate-limits)"
                   ariaLabel="Copy Card Market link"
                 />

@@ -30,6 +30,7 @@ export const STUB_CARD: Card = {
     },
   ],
   related_legends: [],
+  related_printings: [],
 };
 
 export class StubProvider implements CardDataProvider {
@@ -55,9 +56,9 @@ export class StubProvider implements CardDataProvider {
   }
 
   async getSets(): Promise<
-    Array<{ setCode: string; setName: string; cardCount: number }>
+    Array<{ setCode: string; setName: string; cardCount: number; isPromo: boolean; publishedOn: string | null }>
   > {
-    return [{ setCode: "OGN", setName: "Origins", cardCount: 1 }];
+    return [{ setCode: "OGN", setName: "Origins", cardCount: 1, isPromo: false, publishedOn: null }];
   }
 
   async getCardsBySet(

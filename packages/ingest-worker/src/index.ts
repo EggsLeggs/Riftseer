@@ -65,6 +65,7 @@ export default {
         JSON.stringify({
           ok: result.ok,
           cardsCount: result.cardsCount,
+          setsCount: result.setsCount,
           elapsedMs: result.elapsedMs,
           ...(result.error && { error: result.error }),
         }),

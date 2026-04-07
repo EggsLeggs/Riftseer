@@ -1,7 +1,47 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { searchCards, type Card } from "../api";
-import { Search } from "lucide-react";
+import { Search, ImageOff } from "lucide-react";
+
+function CardThumbnail({ card, isLandscape }: { card: Card; isLandscape: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const imageUrl = card.media?.media_urls?.normal;
+
+  if (!imageUrl || failed) {
+    return (
+      <div className="w-full aspect-2/3 bg-muted rounded-lg flex flex-col items-center justify-center gap-1.5">
+        <ImageOff className="w-6 h-6 text-muted-foreground/60" />
+        <span className="text-[10px] text-muted-foreground">Coming soon</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full aspect-2/3 overflow-hidden relative rounded-lg">
+      {isLandscape ? (
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-2/3 -rotate-90 origin-center">
+          <img
+            src={imageUrl}
+            alt={card.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+            onError={() => setFailed(true)}
+          />
+        </div>
+      ) : (
+        <img
+          src={imageUrl}
+          alt={card.name}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
+  );
+}
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -132,35 +172,7 @@ export function SearchPage() {
                 to={`/card/${card.id}`}
                 className="card-grid-item block overflow-hidden hover:no-underline"
               >
-                {card.media?.media_urls?.normal ? (
-                  <div className="w-full aspect-2/3 overflow-hidden relative rounded-lg">
-                    {isLandscape ? (
-                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-2/3 -rotate-90 origin-center">
-                        <img
-                          src={card.media.media_urls.normal}
-                          alt={card.name}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                      </div>
-                    ) : (
-                      <img
-                        src={card.media.media_urls.normal}
-                        alt={card.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className="w-full aspect-2/3 bg-muted rounded-lg flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground text-center px-2">
-                      {card.name}
-                    </span>
-                  </div>
-                )}
+                <CardThumbnail card={card} isLandscape={isLandscape} />
                 <p className="text-xs text-center mt-1 text-foreground truncate">
                   {card.name}
                 </p>
