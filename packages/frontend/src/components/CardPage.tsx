@@ -90,22 +90,16 @@ function tcgPlayerUrlForCard(card: Card): string {
   return tcgPlayerSearchUrl(card.name);
 }
 
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  mapper: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let nextIndex = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (nextIndex < items.length) {
-      const current = nextIndex;
-      nextIndex += 1;
-      results[current] = await mapper(items[current]);
-    }
-  });
-  await Promise.all(workers);
-  return results;
+/** True when keydown came from an interactive control inside the row (not the row itself). */
+function isFromInteractiveTableRowDescendant(e: React.KeyboardEvent<HTMLTableRowElement>): boolean {
+  const row = e.currentTarget;
+  const target = (e.nativeEvent.target ?? e.target) as Node | null;
+  if (!(target instanceof Element)) return false;
+  if (target === row) return false;
+  const interactive = target.closest(
+    'a, button, input, textarea, select, [role="button"], [role="link"]',
+  );
+  return interactive != null && row.contains(interactive);
 }
 
 /** Copy URL to clipboard; show "Copied" feedback. */
@@ -176,34 +170,50 @@ export function CardPage() {
 
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     setLoading(true);
     getCard(id)
       .then(async (c) => {
+        if (cancelled) return;
         setCard(c);
-        if (c) {
-          const relatedIds = c.related_printings.map((rp) => rp.id);
-          if (relatedIds.length > 0) {
-            const others = await mapWithConcurrency(relatedIds, 4, (rpId) => getCard(rpId));
-            const all = [c, ...others.filter((r): r is Card => r != null)];
-            const getPrintingTime = (c: Card): number => {
-              const s = c.set?.published_on ?? c.released_at;
-              if (!s) return Infinity;
-              const t = new Date(s).getTime();
-              return isNaN(t) ? Infinity : t;
-            };
-            all.sort((a, b) => {
-              const ta = getPrintingTime(a), tb = getPrintingTime(b);
-              if (ta !== tb) return ta - tb;
-              return (a.collector_number ?? "").localeCompare(b.collector_number ?? "", undefined, { numeric: true })
-                || a.id.localeCompare(b.id);
-            });
-            setPrintings(all);
-          } else {
-            setPrintings([c]);
+        if (!c) return;
+        const relatedIds = c.related_printings.map((rp) => rp.id);
+        if (relatedIds.length > 0) {
+          const settled: PromiseSettledResult<Card | null>[] = [];
+          for (let i = 0; i < relatedIds.length; i += 4) {
+            const chunk = relatedIds.slice(i, i + 4);
+            settled.push(...(await Promise.allSettled(chunk.map((rpId) => getCard(rpId)))));
           }
+          if (cancelled) return;
+          const others = settled
+            .filter((s): s is PromiseFulfilledResult<Card | null> => s.status === "fulfilled")
+            .map((s) => s.value)
+            .filter((r): r is Card => r != null);
+          const all = [c, ...others];
+          const getPrintingTime = (card: Card): number => {
+            const s = card.set?.published_on ?? card.released_at;
+            if (!s) return Infinity;
+            const t = new Date(s).getTime();
+            return isNaN(t) ? Infinity : t;
+          };
+          all.sort((a, b) => {
+            const ta = getPrintingTime(a), tb = getPrintingTime(b);
+            if (ta !== tb) return ta - tb;
+            return (a.collector_number ?? "").localeCompare(b.collector_number ?? "", undefined, { numeric: true })
+              || a.id.localeCompare(b.id);
+          });
+          setPrintings(all);
+        } else {
+          if (cancelled) return;
+          setPrintings([c]);
         }
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
@@ -565,7 +575,7 @@ export function CardPage() {
                 if (card.external_ids?.riftcodex_id) {
                   sources.push({ name: "RiftCodex" });
                 }
-                if (card.external_ids?.tcgplayer_id) {
+                if (card.external_ids?.tcgplayer_id || card.purchase_uris?.tcgplayer) {
                   sources.push({
                     name: "TCGPlayer",
                     url: tcgPlayerUrlForCard(card),
@@ -654,10 +664,10 @@ export function CardPage() {
                           isCurrent
                             ? undefined
                             : (e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  navigate(`/card/${p.id}`);
-                                }
+                                if (e.key !== "Enter" && e.key !== " ") return;
+                                if (isFromInteractiveTableRowDescendant(e)) return;
+                                e.preventDefault();
+                                navigate(`/card/${p.id}`);
                               }
                         }
                       >
@@ -750,10 +760,10 @@ export function CardPage() {
                           tabIndex={0}
                           onClick={() => navigate(`/card/${rc.id}`)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              navigate(`/card/${rc.id}`);
-                            }
+                            if (e.key !== "Enter" && e.key !== " ") return;
+                            if (isFromInteractiveTableRowDescendant(e)) return;
+                            e.preventDefault();
+                            navigate(`/card/${rc.id}`);
                           }}
                         >
                           <TableCell className="text-xs font-semibold text-foreground">
@@ -805,10 +815,10 @@ export function CardPage() {
                           tabIndex={0}
                           onClick={() => navigate(`/card/${t.id}`)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              navigate(`/card/${t.id}`);
-                            }
+                            if (e.key !== "Enter" && e.key !== " ") return;
+                            if (isFromInteractiveTableRowDescendant(e)) return;
+                            e.preventDefault();
+                            navigate(`/card/${t.id}`);
                           }}
                         >
                           <TableCell className="text-xs font-semibold text-foreground">
