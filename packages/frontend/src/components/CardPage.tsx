@@ -194,7 +194,7 @@ export function CardPage() {
     setLoading(true);
     setPrintingsLoading(false);
     setPrintings([]);
-    getCard(id)
+    getCard(id, { includePrices: true })
       .then((c) => {
         if (cancelled) return;
         setCard(c);
@@ -211,7 +211,7 @@ export function CardPage() {
           const settled: PromiseSettledResult<Card | null>[] = [];
           for (let i = 0; i < relatedIds.length; i += 4) {
             const chunk = relatedIds.slice(i, i + 4);
-            settled.push(...(await Promise.allSettled(chunk.map((rpId) => getCard(rpId)))));
+            settled.push(...(await Promise.allSettled(chunk.map((rpId) => getCard(rpId, { includePrices: true })))));
           }
           if (cancelled) return;
           const others = settled

@@ -16,8 +16,10 @@ export function apiUrl(path: string): string {
   return `${base}${p}`;
 }
 
-export async function getCard(id: string): Promise<Card | null> {
-  const { data, error } = await client.api.v1.cards({ id }).get();
+export async function getCard(id: string, opts: { includePrices?: boolean } = {}): Promise<Card | null> {
+  const { data, error } = await client.api.v1.cards({ id }).get({
+    query: { include: opts.includePrices ? "prices" : undefined },
+  });
   if (error) return null;
   return data;
 }

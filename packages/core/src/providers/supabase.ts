@@ -37,7 +37,7 @@ const REFRESH_INTERVAL_MS = parseInt(
 );
 
 const CARD_SELECT =
-  "*, sets:set_id(set_code, set_name, set_uri, set_search_uri, is_promo, published_on), artists:artist_id(name)";
+  "*, sets:set_id(set_code, set_name, set_uri, set_search_uri, is_promo, published_on, card_count), artists:artist_id(name)";
 
 const SLIM_SELECT = "id, name, name_normalized";
 
@@ -75,6 +75,7 @@ interface DBCardRow {
     set_search_uri: string | null;
     is_promo: boolean | null;
     published_on: string | null;
+    card_count: number | null;
   } | null;
   artists: { name: string } | null;
 }
@@ -96,6 +97,7 @@ function dbRowToCard(row: DBCardRow): Card {
           set_uri: row.sets.set_uri ?? undefined,
           set_search_uri: row.sets.set_search_uri ?? undefined,
           published_on: row.sets.published_on ?? undefined,
+          card_count: row.sets.card_count ?? undefined,
         }
       : undefined,
     rulings: row.rulings_id ? { rulings_id: row.rulings_id } : undefined,

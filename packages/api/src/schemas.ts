@@ -26,6 +26,8 @@ export const CardSchema = t.Object({
     set_name: t.String(),
     set_uri: t.Optional(t.String()),
     set_search_uri: t.Optional(t.String()),
+    published_on: t.Optional(t.String()),
+    card_count: t.Optional(t.Number()),
   })),
   rulings: t.Optional(t.Partial(t.Object({
     rulings_id: t.String(),

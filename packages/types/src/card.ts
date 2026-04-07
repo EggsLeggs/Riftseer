@@ -27,6 +27,8 @@ export interface CardSet {
   set_search_uri?: string;
   /** ISO date the set was published, e.g. "2024-11-15". */
   published_on?: string;
+  /** Total number of cards in this set. */
+  card_count?: number;
 }
 
 export interface CardRulings {
