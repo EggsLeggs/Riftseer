@@ -26,7 +26,7 @@
  */
 
 import { Devvit, SettingScope } from "@devvit/public-api";
-import { parseCardRequests } from "./parser.js";
+import { parseCardRequests } from "@riftseer/types";
 import { buildReply } from "./handler.js";
 
 // ─── Capabilities ─────────────────────────────────────────────────────────────

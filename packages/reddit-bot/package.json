@@ -12,7 +12,8 @@
     "type-check": "tsc --build"
   },
   "dependencies": {
-    "@devvit/public-api": "0.12.13"
+    "@devvit/public-api": "0.12.13",
+    "@riftseer/types": "file:../types"
   },
   "devDependencies": {
     "devvit": "0.12.13",
