@@ -14,5 +14,8 @@
     //   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
     //   wrangler secret put UPSTASH_REDIS_REST_URL
     //   wrangler secret put UPSTASH_REDIS_REST_TOKEN
+    // Affiliate — set your Impact.com publisher ID to enable affiliate links:
+    //   wrangler secret put TCGPLAYER_AFFILIATE_ID
+    //   (deep link format: https://partner.tcgplayer.com/c/{id}/1780961/21018?u={productUrl})
   }
 }

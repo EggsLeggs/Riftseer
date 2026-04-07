@@ -84,6 +84,7 @@ function tcgPlayerProductUrl(tcgplayerId: string): string {
 }
 
 function tcgPlayerUrlForCard(card: Card): string {
+  if (card.purchase_uris?.tcgplayer) return card.purchase_uris.tcgplayer;
   const tcgplayerId = card.external_ids?.tcgplayer_id;
   if (tcgplayerId) return tcgPlayerProductUrl(tcgplayerId);
   return tcgPlayerSearchUrl(card.name);
@@ -549,7 +550,7 @@ export function CardPage() {
                 if (card.external_ids?.tcgplayer_id) {
                   sources.push({
                     name: "TCGPlayer",
-                    url: tcgPlayerProductUrl(card.external_ids.tcgplayer_id),
+                    url: tcgPlayerUrlForCard(card),
                   });
                 }
                 if (sources.length === 0) return null;

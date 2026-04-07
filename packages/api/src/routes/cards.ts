@@ -2,6 +2,22 @@ import { Elysia, t } from "elysia";
 import { parseCardRequests, type CardDataProvider, type Card } from "@riftseer/core";
 import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
 
+/**
+ * Rewrites purchase_uris.tcgplayer to an Impact.com affiliate deep link.
+ * Set TCGPLAYER_AFFILIATE_ID to your Impact publisher ID to enable.
+ * Deep link format: https://partner.tcgplayer.com/c/{id}/1780961/21018?u={productUrl}
+ */
+function withAffiliateLinks(card: Card, affiliateId: string | undefined): Card {
+  if (!affiliateId || !card.purchase_uris?.tcgplayer) return card;
+  const affiliateUrl =
+    `https://partner.tcgplayer.com/c/${affiliateId}/1780961/21018?u=` +
+    encodeURIComponent(card.purchase_uris.tcgplayer);
+  return {
+    ...card,
+    purchase_uris: { ...card.purchase_uris, tcgplayer: affiliateUrl },
+  };
+}
+
 /** Scryfall-style copyable text: name, type line, then rules text. */
 function cardCopyableText(card: Card): string {
   const lines: string[] = [card.name];
@@ -17,6 +33,9 @@ function cardCopyableText(card: Card): string {
 }
 
 export function cardsRoutes(cardProvider: CardDataProvider) {
+  const affiliateId = process.env.TCGPLAYER_AFFILIATE_ID || undefined;
+  const affiliate = (card: Card) => withAffiliateLinks(card, affiliateId);
+
   return new Elysia()
     // ── GET /cards/random ─────────────────────────────────────────────────────
     .get(
@@ -27,7 +46,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           set.status = 404;
           return { error: "No cards available", code: "NOT_FOUND" };
         }
-        return card;
+        return affiliate(card);
       },
       {
         response: {
@@ -51,7 +70,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           set.status = 404;
           return { error: "Card not found", code: "NOT_FOUND" };
         }
-        return card;
+        return affiliate(card);
       },
       {
         params: t.Object({ id: t.String({ description: "Card UUID" }) }),
@@ -108,7 +127,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           const cards = await cardProvider.getCardsBySet(query.set, {
             limit: limit ?? 2000,
           });
-          return { count: cards.length, cards };
+          return { count: cards.length, cards: cards.map(affiliate) };
         }
 
         if (!query.name?.trim()) {
@@ -129,7 +148,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           limit: limit ?? 10,
         });
 
-        return { count: cards.length, cards };
+        return { count: cards.length, cards: cards.map(affiliate) };
       },
       {
         query: t.Object({
@@ -174,7 +193,10 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           requests.map((req) => cardProvider.resolveRequest(req)),
         );
 
-        return { count: results.length, results };
+        return {
+          count: results.length,
+          results: results.map((r) => r.card ? { ...r, card: affiliate(r.card) } : r),
+        };
       },
       {
         body: t.Object({
