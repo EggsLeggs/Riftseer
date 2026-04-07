@@ -31,11 +31,12 @@ Every card endpoint returns the same card shape. Key fields:
 | `name_normalized` | string | Lowercased, punctuation-stripped — used for search |
 | `collector_number` | string | e.g. `OGN-001` |
 | `set.set_code` | string | Short code, e.g. `OGN` |
+| `set.card_count` | number \| undefined | Total cards in this set |
 | `attributes` | object | `energy`, `might`, `power` |
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
 | `text.rich` | string | Rules text with inline symbol tokens |
-| `prices` | object | Nested by provider: `tcgplayer` and `cardmarket`, each with `normal`, `foil`, `low_normal`, `low_foil` |
+| `prices` | object \| undefined | Opt-in — omitted by default; see [Prices](#prices) section |
 | `purchase_uris` | object | Marketplace purchase URLs (`tcgplayer`, `cardmarket`) when available |
 | `is_token` | boolean | `true` for token cards |
 | `all_parts` | array | Related tokens or meld parts |
@@ -47,10 +48,15 @@ Every card endpoint returns the same card shape. Key fields:
 
 ## GET /api/v1/cards/random
 
-Returns one card chosen at random from the full index. No parameters.
+Returns one card chosen at random from the full index.
+
+| Parameter | Type | Notes |
+| --- | --- | --- |
+| `include` | string (optional) | Pass `prices` to include price data; omitted by default (no prices returned) |
 
 ```http
 GET /api/v1/cards/random
+GET /api/v1/cards/random?include=prices
 ```
 
 ---
@@ -59,8 +65,13 @@ GET /api/v1/cards/random
 
 Fetch a single card by its stable card ID.
 
+| Parameter | Type | Notes |
+| --- | --- | --- |
+| `include` | string (optional) | Pass `prices` to include price data; omitted by default (no prices returned) |
+
 ```http
 GET /api/v1/cards/67f4064886be8495f7165dd7
+GET /api/v1/cards/67f4064886be8495f7165dd7?include=prices
 ```
 
 Returns 404 if no card with that ID exists.
@@ -93,9 +104,12 @@ Batch-resolves up to 20 card name strings. Used by the Discord and Reddit bots f
 ```json
 POST /api/v1/cards/resolve
 {
-  "requests": ["Sun Disc", "Stalwart Poro", "[[Bard|OGN-001]]"]
+  "requests": ["Sun Disc", "Stalwart Poro", "[[Bard|OGN-001]]"],
+  "include": "prices"
 }
 ```
+
+Pass `"include": "prices"` in the request body to include price data on resolved cards. Omit it (or pass any other value) to exclude prices.
 
 Each entry in `results` has:
 
@@ -111,7 +125,9 @@ Requests accept plain names or `[[Name|SET-###]]` format — the same syntax the
 
 ## Prices
 
-Price data and the purchase URL are embedded directly on the card object — no separate price endpoint is needed. They are populated by the ingest pipeline from TCGPlayer via tcgcsv.com and stored in Supabase.
+Prices are **opt-in** — the `prices` field is omitted by default. Pass `?include=prices` (or `"include": "prices"` for the resolve endpoint) to receive price data. `purchase_uris` is always included when available.
+
+Price data is populated by the ingest pipeline from TCGPlayer via tcgcsv.com and stored in Supabase.
 
 ```json
 {

@@ -32,23 +32,32 @@ function cardCopyableText(card: Card): string {
   return lines.join("\n");
 }
 
+function stripPrices(card: Card): Card {
+  return { ...card, prices: undefined };
+}
+
 export function cardsRoutes(cardProvider: CardDataProvider) {
   const affiliateId = process.env.TCGPLAYER_AFFILIATE_ID || undefined;
   const affiliate = (card: Card) => withAffiliateLinks(card, affiliateId);
+  const prepare = (card: Card, include: string | undefined) =>
+    include === "prices" ? affiliate(card) : stripPrices(affiliate(card));
 
   return new Elysia()
     // ── GET /cards/random ─────────────────────────────────────────────────────
     .get(
       "/cards/random",
-      async ({ set }) => {
+      async ({ query, set }) => {
         const card = await cardProvider.getRandomCard();
         if (!card) {
           set.status = 404;
           return { error: "No cards available", code: "NOT_FOUND" };
         }
-        return affiliate(card);
+        return prepare(card, query.include);
       },
       {
+        query: t.Object({
+          include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
+        }),
         response: {
           200: CardSchema,
           404: ErrorSchema,
@@ -64,16 +73,19 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
     // ── GET /cards/:id ────────────────────────────────────────────────────────
     .get(
       "/cards/:id",
-      async ({ params, set }) => {
+      async ({ params, query, set }) => {
         const card = await cardProvider.getCardById(params.id);
         if (!card) {
           set.status = 404;
           return { error: "Card not found", code: "NOT_FOUND" };
         }
-        return affiliate(card);
+        return prepare(card, query.include);
       },
       {
         params: t.Object({ id: t.String({ description: "Card UUID" }) }),
+        query: t.Object({
+          include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
+        }),
         response: {
           200: CardSchema,
           404: ErrorSchema,
@@ -127,7 +139,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           const cards = await cardProvider.getCardsBySet(query.set, {
             limit: limit ?? 2000,
           });
-          return { count: cards.length, cards: cards.map(affiliate) };
+          return { count: cards.length, cards: cards.map((c) => prepare(c, query.include)) };
         }
 
         if (!query.name?.trim()) {
@@ -148,7 +160,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           limit: limit ?? 10,
         });
 
-        return { count: cards.length, cards: cards.map(affiliate) };
+        return { count: cards.length, cards: cards.map((c) => prepare(c, query.include)) };
       },
       {
         query: t.Object({
@@ -161,6 +173,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
             }),
           ),
           limit: t.Optional(t.String({ description: "Max results (default 10)" })),
+          include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
         }),
         response: {
           200: t.Object({ count: t.Number(), cards: t.Array(CardSchema) }),
@@ -195,7 +208,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
 
         return {
           count: results.length,
-          results: results.map((r) => r.card ? { ...r, card: affiliate(r.card) } : r),
+          results: results.map((r) => r.card ? { ...r, card: prepare(r.card, body.include) } : r),
         };
       },
       {
@@ -204,6 +217,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
             description:
               "Array of card name strings (plain name OR [[Name|SET]] format, up to 20)."
           }),
+          include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
         }),
         response: {
           200: t.Object({ count: t.Number(), results: t.Array(ResolvedCardSchema) }),

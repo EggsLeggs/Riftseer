@@ -55,7 +55,7 @@ Implemented in `SupabaseCardProvider.resolveRequest`. Resolution order:
 3. If none — **one row** from **`textSearch` on `name_search`** → `matchType: "fuzzy"`.
 4. If still nothing → `{ card: null, matchType: "not-found" }`.
 
-Request body: `{ "requests": string[] }` (max 20 strings — plain names or `[[Name|SET]]` tokens as documented on [Cards](./cards.md)).
+Request body: `{ "requests": string[], "include"?: string }` (max 20 strings — plain names or `[[Name|SET]]` tokens as documented on [Cards](./cards.md)). Pass `"include": "prices"` to include price data on resolved cards.
 
 ---
 
