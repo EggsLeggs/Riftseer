@@ -24,7 +24,7 @@ Card data is sourced from [RiftCodex](https://riftcodex.com) and kept continuous
 
 The following external domains are required by this app (submitted for [Reddit's HTTP Fetch Policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy) approval):
 
-### `riftseerapi-production.up.railway.app`
+### `riftseer-api.thinkhuman-21f.workers.dev`
 
 This is the **only domain** the app fetches, and it is the app's own backend — not a third-party service.
 

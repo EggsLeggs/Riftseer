@@ -4,7 +4,7 @@ sidebar_label: Sets
 sidebar_position: 6
 ---
 
-All set endpoints are under `/api/v1/sets`. For full request/response schemas, try them interactively in [Swagger](https://riftseerapi-production.up.railway.app/api/swagger#tag/sets).
+All set endpoints are under `/api/v1/sets`. For full request/response schemas, try them interactively in [API reference](https://eggsleggs.github.io/Riftseer/api-reference/#tag/sets).
 
 ---
 

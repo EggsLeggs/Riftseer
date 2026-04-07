@@ -66,7 +66,7 @@ await reddit.submitComment({
 ## Settings (per-install, configured by mod)
 | Key | Description |
 |-----|-------------|
-| `apiBaseUrl` | Base URL of the Riftseer API (e.g., `https://riftseerapi-production.up.railway.app`) |
+| `apiBaseUrl` | Base URL of the Riftseer API (e.g., `https://riftseer-api.thinkhuman-21f.workers.dev`) |
 | `siteBaseUrl` | Base URL of the Riftseer site for card links |
 
 Settings are accessed via `context.settings.get('apiBaseUrl')`.

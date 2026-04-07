@@ -4,7 +4,7 @@ sidebar_label: Decks
 sidebar_position: 5
 ---
 
-The deck endpoints allow clients to build, share, and modify decks using a compact encoded string — the **short form**. For full request/response schemas, see [Swagger](https://riftseerapi-production.up.railway.app/api/swagger#tag/decks).
+The deck endpoints allow clients to build, share, and modify decks using a compact encoded string — the **short form**. For full request/response schemas, see [API reference](https://eggsleggs.github.io/Riftseer/api-reference/#tag/decks).
 
 ---
 
