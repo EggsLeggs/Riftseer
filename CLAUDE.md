@@ -84,6 +84,7 @@ npx devvit settings set siteBaseUrl
 | `INGEST_SECRET` | Bearer token for POST /ingest (optional) |
 
 ### GitHub Actions — ingest worker deploy (`.github/workflows/ingest-worker.yml`)
+
 | Secret | Purpose |
 |----------|---------|
 | `SUPABASE_DB_URL` | **Postgres** connection URI for `psql` only: confirms every file in `supabase/migrations/` is in `supabase_migrations.schema_migrations`. Prefer **Session** or **Transaction pooler** from **Dashboard → Database → Connection string** — GitHub Actions is usually **IPv4-only**, and Supabase’s **direct** host (`db.*.supabase.co:5432`) may not work without IPv4 support. Put your DB password in the URI. **Not** `https://*.supabase.co` and **not** `SUPABASE_SERVICE_ROLE_KEY`. |
@@ -99,7 +100,7 @@ npx devvit settings set siteBaseUrl
 
 The pipeline runs inside `packages/ingest-worker` and is orchestrated by `src/ingest.ts`:
 
-```
+```text
 RiftCodex /sets + /cards
     ↓ src/sources/riftcodex.ts  — fetch + map to Card[]
     ↓ src/pipeline/normalize.ts — apply overrides, build IngestSet[]
@@ -111,6 +112,7 @@ RiftCodex /sets + /cards
 ```
 
 **Key files:**
+
 | File | Purpose |
 |------|---------|
 | `src/index.ts` | CF Worker entry — `scheduled` handler + `POST /ingest` HTTP trigger |

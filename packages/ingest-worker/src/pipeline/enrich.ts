@@ -259,9 +259,23 @@ export function enrichCards(
     const needsTcgImage =
       !card.media?.media_urls?.normal || cardOverride?.use_tcgplayer_image;
     if (needsTcgImage && product.imageUrl) {
-      const small = product.imageUrl;
-      const normal = small.replace(/_200w\./, "_400w.");
-      const large = small.replace(/_200w\./, "_in_1000x1000.");
+      const raw = product.imageUrl;
+      let small: string;
+      let normal: string;
+      let large: string;
+      if (/_200w\./.test(raw)) {
+        small = raw;
+        normal = raw.replace(/_200w\./, "_400w.");
+        large = raw.replace(/_200w\./, "_in_1000x1000.");
+      } else {
+        logger.warn("TCGPlayer image URL missing _200w. token; using same URL for all sizes", {
+          imageUrl: raw,
+          cardId: card.id,
+        });
+        small = raw;
+        normal = raw;
+        large = raw;
+      }
       card.media = {
         ...card.media,
         media_urls: { small, normal, large },

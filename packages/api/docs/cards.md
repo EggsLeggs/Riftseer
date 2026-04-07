@@ -41,6 +41,7 @@ Every card endpoint returns the same card shape. Key fields:
 | `all_parts` | array | Related tokens or meld parts |
 | `related_champions` | array | Champions linked to this legend |
 | `related_legends` | array | Legends linked to this champion |
+| `related_printings` | array | Array of `RelatedCard` objects — other printings/editions (alternate art, promos, etc.) of the same card |
 
 ---
 

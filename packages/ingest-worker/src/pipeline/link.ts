@@ -152,7 +152,13 @@ export function linkChampionsLegends(cards: Card[]): void {
  * Cards that share the same base name but have different ids are related printings.
  */
 function baseName(name: string): string {
-  return normalizeCardName(name.replace(/\s*\(.*?\)\s*$/, "").trim());
+  let s = name.trim();
+  let prev: string;
+  do {
+    prev = s;
+    s = s.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  } while (s !== prev);
+  return normalizeCardName(s);
 }
 
 export function linkRelatedPrintings(cards: Card[]): void {

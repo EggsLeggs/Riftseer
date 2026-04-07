@@ -45,15 +45,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function assertOptionalString(value: unknown, field: string, key: string): void {
-  if (value !== undefined && typeof value !== "string") {
-    throw new Error(`Invalid overrides.${key}.${field}: expected string`);
-  }
-}
-
-function assertOptionalBoolean(value: unknown, field: string, key: string): void {
-  if (value !== undefined && typeof value !== "boolean") {
-    throw new Error(`Invalid overrides.${key}.${field}: expected boolean`);
+function assertOptionalType(
+  value: unknown,
+  expectedType: "string" | "boolean",
+  field: string,
+  key: string,
+): void {
+  if (value !== undefined && typeof value !== expectedType) {
+    throw new Error(`Invalid overrides.${key}.${field}: expected ${expectedType}`);
   }
 }
 
@@ -62,10 +61,10 @@ function validateRiftcodexSetOverrides(raw: unknown): RiftcodexSetOverrides {
   const validated: RiftcodexSetOverrides = {};
   for (const [key, value] of Object.entries(raw)) {
     if (!isRecord(value)) throw new Error(`Invalid riftcodex_sets.${key}: expected object`);
-    assertOptionalString(value.name, "name", key);
-    assertOptionalString(value.parent_set_code, "parent_set_code", key);
-    assertOptionalBoolean(value.is_promo, "is_promo", key);
-    assertOptionalString(value.published_on, "published_on", key);
+    assertOptionalType(value.name, "string", "name", key);
+    assertOptionalType(value.parent_set_code, "string", "parent_set_code", key);
+    assertOptionalType(value.is_promo, "boolean", "is_promo", key);
+    assertOptionalType(value.published_on, "string", "published_on", key);
     validated[key] = {
       name: value.name as string | undefined,
       parent_set_code: value.parent_set_code as string | undefined,
@@ -81,10 +80,10 @@ function validateTcgplayerGroupOverrides(raw: unknown): TcgplayerGroupOverrides 
   const validated: TcgplayerGroupOverrides = {};
   for (const [key, value] of Object.entries(raw)) {
     if (!isRecord(value)) throw new Error(`Invalid tcgplayer_groups.${key}: expected object`);
-    assertOptionalString(value.set_code, "set_code", key);
-    assertOptionalString(value.name, "name", key);
-    assertOptionalString(value.parent_set_code, "parent_set_code", key);
-    assertOptionalBoolean(value.is_promo, "is_promo", key);
+    assertOptionalType(value.set_code, "string", "set_code", key);
+    assertOptionalType(value.name, "string", "name", key);
+    assertOptionalType(value.parent_set_code, "string", "parent_set_code", key);
+    assertOptionalType(value.is_promo, "boolean", "is_promo", key);
     validated[key] = {
       set_code: value.set_code as string | undefined,
       name: value.name as string | undefined,
@@ -100,8 +99,8 @@ function validateCardOverrides(raw: unknown): CardOverrides {
   const validated: CardOverrides = {};
   for (const [key, value] of Object.entries(raw)) {
     if (!isRecord(value)) throw new Error(`Invalid cards.${key}: expected object`);
-    assertOptionalBoolean(value.use_tcgplayer_image, "use_tcgplayer_image", key);
-    assertOptionalString(value.released_at, "released_at", key);
+    assertOptionalType(value.use_tcgplayer_image, "boolean", "use_tcgplayer_image", key);
+    assertOptionalType(value.released_at, "string", "released_at", key);
     validated[key] = {
       use_tcgplayer_image: value.use_tcgplayer_image as boolean | undefined,
       released_at: value.released_at as string | undefined,
