@@ -7,6 +7,7 @@ import { logger } from "../utils.ts";
 
 const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
 const TCGCSV_CATEGORY = 89;
+const GROUP_FETCH_CONCURRENCY = 5;
 
 export interface TCGGroup {
   groupId: number;
@@ -87,12 +88,22 @@ export async function fetchAllGroupResults(
   const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
-    return await Promise.all(
-      groups.map(async (group) => {
-        const { products, prices } = await fetchProductsAndPrices(group.groupId, ctrl.signal);
-        return { groupId: group.groupId, products, prices };
-      }),
+    const results: TCGGroupResult[] = new Array(groups.length);
+    let nextIndex = 0;
+    const workers = Array.from(
+      { length: Math.min(GROUP_FETCH_CONCURRENCY, groups.length) },
+      async () => {
+        while (nextIndex < groups.length) {
+          const current = nextIndex;
+          nextIndex += 1;
+          const group = groups[current];
+          const { products, prices } = await fetchProductsAndPrices(group.groupId, ctrl.signal);
+          results[current] = { groupId: group.groupId, products, prices };
+        }
+      },
     );
+    await Promise.all(workers);
+    return results;
   } finally {
     clearTimeout(timeout);
   }

@@ -7,6 +7,10 @@ function CardThumbnail({ card, isLandscape }: { card: Card; isLandscape: boolean
   const [failed, setFailed] = useState(false);
   const imageUrl = card.media?.media_urls?.normal;
 
+  useEffect(() => {
+    setFailed(false);
+  }, [imageUrl]);
+
   if (!imageUrl || failed) {
     return (
       <div className="w-full aspect-2/3 bg-muted rounded-lg flex flex-col items-center justify-center gap-1.5">

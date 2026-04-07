@@ -190,7 +190,7 @@ export function rawToCard(raw: RawCard): Card {
 
 function makeHeaders(apiKey?: string): Record<string, string> {
   return {
-    "User-Agent": "riftseer-ingest-worker/0.1",
+    "User-Agent": "riftseer-ingest/0.1",
     Accept: "application/json",
     ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
   };
@@ -205,8 +205,24 @@ export async function fetchAllSets(config: RiftCodexConfig): Promise<RawSetInfo[
   try {
     const res = await fetch(url, { signal: ctrl.signal, headers: makeHeaders(apiKey) });
     if (!res.ok) throw new Error(`fetchAllSets: ${res.status} ${res.statusText}`);
-    const raw = (await res.json()) as RawSetInfo[] | { items?: RawSetInfo[] };
-    const sets = Array.isArray(raw) ? raw : (Array.isArray(raw.items) ? raw.items : []);
+    const contentType = res.headers.get("content-type") ?? "unknown";
+    const raw = (await res.json()) as unknown;
+    let sets: RawSetInfo[];
+    if (Array.isArray(raw)) {
+      sets = raw as RawSetInfo[];
+    } else if (
+      raw &&
+      typeof raw === "object" &&
+      "items" in raw &&
+      Array.isArray((raw as { items?: unknown }).items)
+    ) {
+      sets = (raw as { items: RawSetInfo[] }).items;
+    } else {
+      const snippet = JSON.stringify(raw);
+      throw new Error(
+        `fetchAllSets: unexpected payload shape (content-type: ${contentType}) body=${snippet?.slice(0, 500) ?? "<unserializable>"}`,
+      );
+    }
     logger.info("Fetched sets from RiftCodex", { count: sets.length });
     return sets;
   } finally {

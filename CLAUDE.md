@@ -83,6 +83,11 @@ npx devvit settings set siteBaseUrl
 | `UPSTREAM_TIMEOUT_MS` | Timeout for upstream HTTP requests in ms (default: 30000) — optional |
 | `INGEST_SECRET` | Bearer token for POST /ingest (optional) |
 
+### GitHub Actions — ingest worker deploy (`.github/workflows/ingest-worker.yml`)
+| Secret | Purpose |
+|----------|---------|
+| `SUPABASE_DB_URL` | **Postgres** connection URI for `psql` only: confirms every file in `supabase/migrations/` is in `supabase_migrations.schema_migrations`. Prefer **Session** or **Transaction pooler** from **Dashboard → Database → Connection string** — GitHub Actions is usually **IPv4-only**, and Supabase’s **direct** host (`db.*.supabase.co:5432`) may not work without IPv4 support. Put your DB password in the URI. **Not** `https://*.supabase.co` and **not** `SUPABASE_SERVICE_ROLE_KEY`. |
+
 ## Key Architecture Decisions
 - **Provider pattern**: `CardDataProvider` interface in `packages/core`; the only implementation is `SupabaseCardProvider` (data from the ingest pipeline).
 - **Bots delegate to API**: Both the Discord bot and Reddit bot call the external `/api/v1/cards/resolve` endpoint.

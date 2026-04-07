@@ -90,6 +90,24 @@ function tcgPlayerUrlForCard(card: Card): string {
   return tcgPlayerSearchUrl(card.name);
 }
 
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (nextIndex < items.length) {
+      const current = nextIndex;
+      nextIndex += 1;
+      results[current] = await mapper(items[current]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 /** Copy URL to clipboard; show "Copied" feedback. */
 function CopyLink({
   url,
@@ -165,7 +183,7 @@ export function CardPage() {
         if (c) {
           const relatedIds = c.related_printings.map((rp) => rp.id);
           if (relatedIds.length > 0) {
-            const others = await Promise.all(relatedIds.map((rpId) => getCard(rpId)));
+            const others = await mapWithConcurrency(relatedIds, 4, (rpId) => getCard(rpId));
             const all = [c, ...others.filter((r): r is Card => r != null)];
             const getPrintingTime = (c: Card): number => {
               const s = c.set?.published_on ?? c.released_at;

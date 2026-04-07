@@ -11,9 +11,15 @@ import { normalizeCardName, logger } from "../utils.ts";
 const TOKEN_REF_RE = /\b([A-Z][A-Za-z\s]+?)\s+[Tt]okens?\b/g;
 
 export function linkTokens(cards: Card[]): void {
-  const tokenByNorm = new Map<string, Card>();
+  const tokenByNorm = new Map<string, Card[]>();
   for (const card of cards) {
-    if (card.is_token) tokenByNorm.set(card.name_normalized, card);
+    if (!card.is_token) continue;
+    const existing = tokenByNorm.get(card.name_normalized);
+    if (existing) {
+      existing.push(card);
+    } else {
+      tokenByNorm.set(card.name_normalized, [card]);
+    }
   }
 
   if (tokenByNorm.size === 0) {
@@ -31,8 +37,13 @@ export function linkTokens(cards: Card[]): void {
     const seen = new Set<string>();
     for (const match of text.matchAll(TOKEN_REF_RE)) {
       const tokenNorm = normalizeCardName(match[1].trim());
-      const token = tokenByNorm.get(tokenNorm);
-      if (!token || seen.has(token.id)) continue;
+      const tokenCandidates = tokenByNorm.get(tokenNorm);
+      if (!tokenCandidates?.length) continue;
+
+      const token =
+        tokenCandidates.find((t) => t.set?.set_code === card.set?.set_code) ??
+        tokenCandidates[0];
+      if (seen.has(token.id)) continue;
       seen.add(token.id);
 
       card.all_parts.push({

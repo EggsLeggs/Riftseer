@@ -26,7 +26,11 @@ BEGIN
       s->>'set_name',
       s->>'set_uri',
       s->>'set_search_uri',
-      (s->>'published_on')::date,
+      CASE
+        WHEN NULLIF(s->>'published_on', '') ~ '^\d{4}-\d{2}-\d{2}$'
+          THEN (s->>'published_on')::date
+        ELSE NULL
+      END,
       coalesce((s->>'is_promo')::boolean, false),
       s->>'parent_set_code',
       coalesce(s->'external_ids', '{}'::jsonb)
@@ -122,9 +126,22 @@ BEGIN
   END LOOP;
 
   -- ── 4. Refresh set card_count ───────────────────────────────────────────────
+  WITH target_sets AS (
+    SELECT s3->>'set_code' AS set_code
+    FROM jsonb_array_elements(p_sets) s3
+  ),
+  set_counts AS (
+    SELECT st.set_code, count(*)::int AS card_count
+    FROM cards c2
+    JOIN sets st ON st.id = c2.set_id
+    JOIN target_sets ts ON ts.set_code = st.set_code
+    GROUP BY st.set_code
+  )
   UPDATE sets s
-  SET card_count = (SELECT count(*) FROM cards c2 WHERE c2.set_id = s.id)
-  WHERE s.set_code IN (SELECT s3->>'set_code' FROM jsonb_array_elements(p_sets) s3);
+  SET card_count = coalesce(sc.card_count, 0)
+  FROM target_sets ts
+  LEFT JOIN set_counts sc ON sc.set_code = ts.set_code
+  WHERE s.set_code = ts.set_code;
 
 END;
 $$;

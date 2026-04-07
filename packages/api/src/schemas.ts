@@ -2,7 +2,7 @@ import { t } from "elysia";
 
 export const RelatedCardSchema = t.Object({
   object: t.Literal("related_card"),
-  id: t.String({ description: "UUID of the referenced card" }),
+  id: t.String({ description: "ID of the referenced card" }),
   name: t.String(),
   component: t.String({ description: "Relationship role, e.g. 'token', 'meld_part'" }),
   uri: t.Optional(t.String({ description: "API URI for the referenced card" })),

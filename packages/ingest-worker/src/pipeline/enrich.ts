@@ -244,6 +244,14 @@ export function enrichCards(
         low_normal: product.normal.low,
         low_foil: product.foil.low,
       },
+      cardmarket: {
+        // Cardmarket feed is not currently available from the upstream source.
+        // Keep a stable nested object shape with nullable values.
+        normal: card.prices?.cardmarket?.normal ?? null,
+        foil: card.prices?.cardmarket?.foil ?? null,
+        low_normal: card.prices?.cardmarket?.low_normal ?? null,
+        low_foil: card.prices?.cardmarket?.low_foil ?? null,
+      },
     };
     if (!card.released_at && product.releasedOn) card.released_at = product.releasedOn;
 

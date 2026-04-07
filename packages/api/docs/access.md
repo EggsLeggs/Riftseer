@@ -23,7 +23,7 @@ const { cards } = await res.json();
 
 If your site uses a CSP, add the following directives:
 
-```
+```text
 connect-src https://riftseer-api.thinkhuman-21f.workers.dev;
 img-src https://*.riftcodex.com;
 ```
