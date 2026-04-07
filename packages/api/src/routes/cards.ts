@@ -114,8 +114,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         if (!query.name?.trim()) {
           set.status = 400;
           return {
-            error:
-              "Query parameter `name` is required (or use `set` alone to list cards in a set)",
+            error: "Missing required query parameter: name",
             code: "MISSING_PARAM",
           };
         }
@@ -139,8 +138,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           collector: t.Optional(t.String({ description: "Collector number filter" })),
           fuzzy: t.Optional(
             t.String({
-              description:
-                "Autocomplete and fuzzy matching are used when this parameter is omitted or set to any value except the literal strings `false` or `0` (e.g. `true`, `1`, `yes` all keep the default behavior). Pass `false` or `0` to opt out and require an exact normalized name match only.",
+              description: "Pass `false` or `0` to disable fuzzy/autocomplete matching (exact name only).",
             }),
           ),
           limit: t.Optional(t.String({ description: "Max results (default 10)" })),

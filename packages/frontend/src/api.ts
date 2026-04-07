@@ -1,15 +1,13 @@
 import { treaty } from "@elysiajs/eden";
 import type { App } from "@riftseer/api";
+import type { Card } from "@riftseer/types";
+
+export type { Card };
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? window.location.origin;
 const client = treaty<App>(API_BASE);
 
-// Derive types from the Eden client's route signatures (not from wrapper
-// functions) to avoid circular references. Routes are under /api/v1.
-type RandomCardData = Awaited<ReturnType<typeof client.api.v1.cards.random.get>>["data"];
 type SetsData = Awaited<ReturnType<typeof client.api.v1.sets.get>>["data"];
-
-export type Card = NonNullable<RandomCardData>;
 export type CardSet = NonNullable<SetsData>["sets"][number];
 
 export function apiUrl(path: string): string {

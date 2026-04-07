@@ -418,14 +418,4 @@ export class SupabaseCardProvider implements CardDataProvider {
   getStats(): { lastRefresh: number; cardCount: number } {
     return { lastRefresh: this.lastRefresh, cardCount: this.cardCount };
   }
-
-  /** @deprecated Use getStats() */
-  getLastRefresh(): number {
-    return this.lastRefresh;
-  }
-
-  /** @deprecated Use getStats() */
-  getCacheSize(): number {
-    return this.cardCount;
-  }
 }
