@@ -46,10 +46,6 @@ export async function getSets(): Promise<{ count: number; sets: CardSet[] }> {
   return data;
 }
 
-// TODO: prices route removed from API — re-enable once restored
-// export type TCGPlayerPrice = { usdMarket: number | null; usdLow: number | null; url: string | null };
-// export async function getTCGPlayerPrice(name: string): Promise<TCGPlayerPrice> { ... }
-
 export async function getRandomCard(): Promise<Card | null> {
   const { data, error } = await client.api.v1.cards.random.get();
   if (error) return null;

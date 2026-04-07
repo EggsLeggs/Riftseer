@@ -57,6 +57,7 @@ function ensureWarmedUp(): Promise<void> {
     warmupPromise = cardProvider.warmup().catch((err) => {
       console.error("[riftseer-api] Provider warmup failed:", err);
       warmupPromise = null; // allow retry on next request
+      throw err;
     });
   }
   return warmupPromise;
@@ -65,8 +66,13 @@ function ensureWarmedUp(): Promise<void> {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export const app = new Elysia({ adapter: CloudflareAdapter })
-  .onBeforeHandle(async () => {
-    await ensureWarmedUp();
+  .onBeforeHandle(async ({ set }) => {
+    try {
+      await ensureWarmedUp();
+    } catch {
+      set.status = 503;
+      return { error: "Service temporarily unavailable" };
+    }
   })
   .use(
     cors({

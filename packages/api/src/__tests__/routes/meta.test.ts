@@ -37,7 +37,7 @@ describe("API routes", () => {
     it("returns 200 with status ok", async () => {
       const res = await app.handle(new Request("http://localhost/api/v1/health"));
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.status).toBe("ok");
       expect(typeof body.uptimeMs).toBe("number");
     });
@@ -49,7 +49,7 @@ describe("API routes", () => {
     it("returns provider name", async () => {
       const res = await app.handle(new Request("http://localhost/api/v1/meta"));
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = await res.json() as any;
       expect(body.provider).toBe("stub");
     });
   });
