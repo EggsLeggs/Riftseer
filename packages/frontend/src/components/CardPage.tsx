@@ -180,6 +180,7 @@ export function CardPage() {
   const [printings, setPrintings] = useState<Card[]>([]);
   const [tokens, setTokens] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
+  const [printingsLoading, setPrintingsLoading] = useState(false);
   const [rotated, setRotated] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   useEffect(() => {
@@ -191,13 +192,22 @@ export function CardPage() {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
+    setPrintingsLoading(false);
+    setPrintings([]);
     getCard(id)
-      .then(async (c) => {
+      .then((c) => {
         if (cancelled) return;
         setCard(c);
-        if (!c) return;
+        setLoading(false);
+        if (!c) {
+          setPrintings([]);
+          return;
+        }
+        setPrintings([c]);
         const relatedIds = c.related_printings.map((rp) => rp.id);
-        if (relatedIds.length > 0) {
+        if (relatedIds.length === 0) return;
+        setPrintingsLoading(true);
+        (async () => {
           const settled: PromiseSettledResult<Card | null>[] = [];
           for (let i = 0; i < relatedIds.length; i += 4) {
             const chunk = relatedIds.slice(i, i + 4);
@@ -222,19 +232,19 @@ export function CardPage() {
               || a.id.localeCompare(b.id);
           });
           setPrintings(all);
-        } else {
+          setPrintingsLoading(false);
+        })().catch((err) => {
           if (cancelled) return;
-          setPrintings([c]);
-        }
+          console.error("Failed to load related printings", err);
+          setPrintingsLoading(false);
+        });
       })
       .catch((err) => {
         if (cancelled) return;
         console.error("Failed to load card", err);
         setCard(null);
         setPrintings([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -292,6 +302,7 @@ export function CardPage() {
   }
 
   const imageUrl = card.media?.media_urls?.normal;
+  const hasUsableImage = Boolean(imageUrl) && !imageFailed;
   const orientation = card.media?.orientation;
   const typeLine = card.classification?.type;
   const supertype = card.classification?.supertype;
@@ -316,11 +327,11 @@ export function CardPage() {
       <meta property="og:title" content={card.name} />
       <meta property="og:description" content={seoDescription} />
       <meta property="og:type" content="product" />
-      {imageUrl && <meta property="og:image" content={imageUrl} />}
+      {hasUsableImage && <meta property="og:image" content={imageUrl} />}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={card.name} />
       <meta name="twitter:description" content={seoDescription} />
-      {imageUrl && <meta name="twitter:image" content={imageUrl} />}
+      {hasUsableImage && <meta name="twitter:image" content={imageUrl} />}
       <meta property="og:url" content={`${window.location.origin}${location.pathname}${location.search}`} />
 
       {/* Breadcrumb */}
@@ -356,8 +367,10 @@ export function CardPage() {
               : "";
             const wrapperSizeClass = showAsLandscape ? "w-2/3 h-[150%]" : "w-[150%] h-2/3";
             const transitionClass = "transition-transform duration-300 ease-in-out";
-            const onImgError = () => setImageFailed(true);
-            return imageUrl && !imageFailed ? (
+            const onImgError = () => {
+              if (hasUsableImage) setImageFailed(true);
+            };
+            return hasUsableImage ? (
               <div className="space-y-2">
                 <div
                   className={`w-full max-w-[300px] ${containerAspect} overflow-hidden relative rounded-xl shadow-lg mx-auto lg:mx-0 transition-[aspect-ratio] duration-300 ease-in-out`}
@@ -649,6 +662,7 @@ export function CardPage() {
           {/* Printings table */}
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2">
             Prints
+            {printingsLoading && <span className="ml-2 text-xs normal-case text-muted-foreground">Loading related printings...</span>}
           </h3>
           <div className="border rounded-lg overflow-hidden">
             <Table>
@@ -953,15 +967,22 @@ export function CardPage() {
             <h4 className="text-sm font-semibold mb-2">Images & Data</h4>
             <ul className="space-y-1">
               <li>
-                <a
-                  href={imageUrl ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                >
-                  <Download className="w-3 h-3" />
-                  Download image
-                </a>
+                {hasUsableImage ? (
+                  <a
+                    href={imageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                  >
+                    <Download className="w-3 h-3" />
+                    Download image
+                  </a>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                    <Download className="w-3 h-3" />
+                    Download image unavailable
+                  </span>
+                )}
               </li>
               <li>
                 <a
