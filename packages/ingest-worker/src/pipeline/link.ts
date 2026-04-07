@@ -5,10 +5,10 @@
  *   3. linkRelatedPrintings — populate related_printings (same card, different art/print)
  */
 
-import type { Card, RelatedCard } from "@riftseer/types";
-import { normalizeCardName, logger } from "../utils.ts";
+import { normalizeCardName, type Card, type RelatedCard } from "@riftseer/types";
+import { logger } from "../utils.ts";
 
-const TOKEN_REF_RE = /\b([A-Z][A-Za-z\s]+?)\s+[Tt]okens?\b/g;
+const TOKEN_REF_RE = /\b((?:[A-Z][a-zA-Z'/-]*)(?:\s+[A-Z][a-zA-Z'/-]*)*)\s+[Tt]okens?\b/g;
 
 export function linkTokens(cards: Card[]): void {
   const tokenByNorm = new Map<string, Card[]>();
@@ -166,7 +166,7 @@ export function linkRelatedPrintings(cards: Card[]): void {
   const byBase = new Map<string, Card[]>();
   for (const card of cards) {
     if (card.is_token) continue;
-    const key = baseName(card.name);
+    const key = card.name_normalized || baseName(card.name);
     if (!byBase.has(key)) byBase.set(key, []);
     byBase.get(key)!.push(card);
   }

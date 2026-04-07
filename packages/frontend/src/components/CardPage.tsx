@@ -64,6 +64,8 @@ function cardMarketUrl(name: string): string {
 }
 
 const TCGPLAYER_PRODUCT_LINE = "riftbound-league-of-legends-trading-card-game";
+const TCGPLAYER_HOSTS = new Set(["www.tcgplayer.com", "tcgplayer.com"]);
+const CARDMARKET_HOSTS = new Set(["www.cardmarket.com", "cardmarket.com"]);
 
 const RARITIES_WITH_ICONS = new Set(["common", "showcase", "uncommon", "rare", "epic", "legendary"]);
 
@@ -83,11 +85,28 @@ function tcgPlayerProductUrl(tcgplayerId: string): string {
   return `https://www.tcgplayer.com/product/${tcgplayerId}`;
 }
 
+function validateMarketplaceUrl(url: string | undefined, allowedHosts: Set<string>): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return null;
+    const host = parsed.hostname.toLowerCase();
+    return allowedHosts.has(host) ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function tcgPlayerUrlForCard(card: Card): string {
-  if (card.purchase_uris?.tcgplayer) return card.purchase_uris.tcgplayer;
+  const validatedPurchaseUrl = validateMarketplaceUrl(card.purchase_uris?.tcgplayer, TCGPLAYER_HOSTS);
+  if (validatedPurchaseUrl) return validatedPurchaseUrl;
   const tcgplayerId = card.external_ids?.tcgplayer_id;
   if (tcgplayerId) return tcgPlayerProductUrl(tcgplayerId);
   return tcgPlayerSearchUrl(card.name);
+}
+
+function cardMarketUrlForCard(card: Card): string {
+  return validateMarketplaceUrl(card.purchase_uris?.cardmarket, CARDMARKET_HOSTS) ?? cardMarketUrl(card.name);
 }
 
 /** True when keydown came from an interactive control inside the row (not the row itself). */
@@ -207,6 +226,12 @@ export function CardPage() {
           if (cancelled) return;
           setPrintings([c]);
         }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load card", err);
+        setCard(null);
+        setPrintings([]);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -694,7 +719,7 @@ export function CardPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <a
-                            href={p.purchase_uris?.cardmarket ?? cardMarketUrl(p.name)}
+                            href={cardMarketUrlForCard(p)}
                             target="_blank"
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
@@ -844,7 +869,7 @@ export function CardPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <a
-                              href={t.purchase_uris?.cardmarket ?? cardMarketUrl(t.name)}
+                              href={cardMarketUrlForCard(t)}
                               target="_blank"
                               rel="noreferrer"
                               onClick={(e) => e.stopPropagation()}
@@ -906,7 +931,7 @@ export function CardPage() {
               </li>
               <li className="flex items-center gap-1">
                 <a
-                  href={card.purchase_uris?.cardmarket ?? cardMarketUrl(card.name)}
+                  href={cardMarketUrlForCard(card)}
                   target="_blank"
                   rel="noopener"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
@@ -915,7 +940,7 @@ export function CardPage() {
                   Buy on CardMarket
                 </a>
                 <CopyLink
-                  url={card.purchase_uris?.cardmarket ?? cardMarketUrl(card.name)}
+                  url={cardMarketUrlForCard(card)}
                   title="Copy link (paste in address bar if Card Market rate-limits)"
                   ariaLabel="Copy Card Market link"
                 />

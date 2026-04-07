@@ -154,8 +154,8 @@ supabase db push          # pushes all pending migrations to the linked project
 #    Open https://supabase.com/dashboard → your project → SQL Editor,
 #    paste the contents of each migration file and run.
 
-# 3. psql (direct connection)
-psql "$SUPABASE_URL" -f supabase/migrations/20260221000000_initial_schema.sql
+# 3. psql (direct Postgres connection string)
+psql "$SUPABASE_DB_URL" -f supabase/migrations/20260221000000_initial_schema.sql
 ```
 
 When adding a new migration, create a new file in `supabase/migrations/` with a
