@@ -6,24 +6,27 @@ sidebar_position: 7
 
 ## CORS
 
-The production API allows requests from `https://riftseer.pages.dev` and `https://riftseer.com` by default. Override by setting the `CORS_ORIGIN` worker var (comma-separated) in `wrangler.jsonc` or with the `--var` flag during deploy — it is not a secret and should not be set with `wrangler secret put`:
+The Riftseer API is public. CORS headers are set for **any** request that includes an `Origin` header, so client-side JavaScript on any domain can call the API directly without a proxy.
 
-```jsonc
-// wrangler.jsonc
-{
-  "vars": {
-    "CORS_ORIGIN": "https://riftseer.com,https://staging.riftseer.pages.dev"
-  }
-}
+Allowed methods: `GET`, `HEAD`, `POST`, `OPTIONS`.
+
+### Using the API from client-side JavaScript
+
+No special setup is required. Standard `fetch` calls work from any origin:
+
+```js
+const res = await fetch("https://riftseer-api.thinkhuman-21f.workers.dev/api/v1/cards?name=bard");
+const { cards } = await res.json();
 ```
 
-Or pass it at deploy time:
+### Content Security Policy (CSP)
 
-```bash
-wrangler deploy --var CORS_ORIGIN="https://riftseer.com,https://staging.riftseer.pages.dev"
+If your site uses a CSP, add the following directives:
+
 ```
-
-Allowed methods are `GET`, `POST`, and `OPTIONS`.
+connect-src https://riftseer-api.thinkhuman-21f.workers.dev;
+img-src https://*.riftcodex.com;
+```
 
 ---
 
