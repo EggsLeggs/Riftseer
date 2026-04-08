@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import { getCard, searchCards, apiUrl, type Card } from "../api";
+import { normalizeCardName } from "@riftseer/types";
 import { CardTextRenderer } from "./CardTextRenderer";
 import {
   Table,
@@ -170,6 +171,84 @@ function parseTokenMentions(text: string): string[] {
     names.add(m[1]);
   }
   return Array.from(names);
+}
+
+function baseRelatedName(name: string): string {
+  return name.replace(/\s*\([^)]*\)\s*$/g, "").trim();
+}
+
+type RelatedLinkCard = Card["related_champions"][number];
+
+type RankedName = {
+  id: string;
+  name: string;
+  name_normalized: string;
+};
+
+function rankRelatedIds(items: RankedName[], query: string, limit: number): string[] {
+  const normQuery = normalizeCardName(query);
+  if (!normQuery) return [];
+  const score = (item: RankedName): [number, number] => {
+    const n = item.name_normalized;
+    if (n === normQuery) return [1000, 0];
+    if (n.startsWith(normQuery)) return [900, 0];
+    const words = n.split(" ");
+    let offset = 0;
+    for (let i = 0; i < words.length; i++) {
+      if (words[i].startsWith(normQuery)) return [800 - i * 10, offset];
+      offset += words[i].length + 1;
+    }
+    const idx = n.indexOf(normQuery);
+    if (idx !== -1) return [700 - idx * 2, idx];
+    return [0, Number.MAX_SAFE_INTEGER];
+  };
+
+  return [...items]
+    .map((item) => ({ item, rank: score(item) }))
+    .filter((x) => x.rank[0] > 0)
+    .sort((a, b) => {
+      if (b.rank[0] !== a.rank[0]) return b.rank[0] - a.rank[0];
+      if (a.rank[1] !== b.rank[1]) return a.rank[1] - b.rank[1];
+      const lenDiff = a.item.name_normalized.length - b.item.name_normalized.length;
+      if (lenDiff !== 0) return lenDiff;
+      return a.item.name.localeCompare(b.item.name);
+    })
+    .slice(0, Math.max(0, Math.floor(limit)))
+    .map((x) => x.item.id);
+}
+
+function dedupeRelatedBySearchRanking(relatedCards: RelatedLinkCard[]): RelatedLinkCard[] {
+  const grouped = new Map<string, RelatedLinkCard[]>();
+  for (const rc of relatedCards) {
+    const base = baseRelatedName(rc.name);
+    const key = normalizeCardName(base || rc.name);
+    const arr = grouped.get(key);
+    if (arr) arr.push(rc);
+    else grouped.set(key, [rc]);
+  }
+
+  const selected: RelatedLinkCard[] = [];
+  for (const [key, group] of grouped.entries()) {
+    if (group.length === 1) {
+      selected.push(group[0]);
+      continue;
+    }
+    const rankedIds = rankRelatedIds(
+      group.map((c) => ({
+        id: c.id,
+        name: c.name,
+        name_normalized: normalizeCardName(c.name),
+      })),
+      key,
+      1,
+    );
+    const winner = rankedIds.length
+      ? group.find((c) => c.id === rankedIds[0])
+      : undefined;
+    selected.push(winner ?? group[0]);
+  }
+
+  return selected.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function CardPage() {
@@ -774,9 +853,7 @@ export function CardPage() {
                 : supertype === "champion"
                   ? "Legends"
                   : null;
-            const dedupedCards = Array.from(
-              new Map(relatedCards.map((rc) => [rc.name, rc])).values()
-            );
+            const dedupedCards = dedupeRelatedBySearchRanking(relatedCards);
             if (!dedupedCards.length || !header) return null;
             return (
               <>

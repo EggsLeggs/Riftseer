@@ -54,6 +54,85 @@ const svgDataUriCache = new Map<string, string>();
 
 const INLINE_ICON_SIZE = 16;
 
+function buildParenDepthMap(text: string): Uint16Array {
+  const depth = new Uint16Array(text.length + 1);
+  let current = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") current += 1;
+    else if (ch === ")" && current > 0) current -= 1;
+    depth[i + 1] = current;
+  }
+  return depth;
+}
+
+function collapseNewlinesInsideParentheses(text: string): string {
+  let result = "";
+  let depth = 0;
+  let pendingSpace = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") {
+      if (pendingSpace && result.length > 0 && !result.endsWith(" "))
+        result += " ";
+      pendingSpace = false;
+      depth += 1;
+      result += ch;
+      continue;
+    }
+    if (ch === ")") {
+      pendingSpace = false;
+      if (depth > 0) depth -= 1;
+      result += ch;
+      continue;
+    }
+    if (depth > 0 && /\s/.test(ch)) {
+      pendingSpace = true;
+      continue;
+    }
+    if (pendingSpace && result.length > 0 && !result.endsWith(" "))
+      result += " ";
+    pendingSpace = false;
+    result += ch;
+  }
+
+  if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+  return result;
+}
+
+function normalizeCardTextLayout(
+  text: string,
+  paragraphBreak = "\n\n",
+): string {
+  let normalized = text.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  normalized = collapseNewlinesInsideParentheses(normalized)
+    .replace(/_ \(/g, "_(")
+    .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
+    .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
+
+  const depthMap = buildParenDepthMap(normalized);
+  normalized = normalized.replace(
+    /([.)—])(\s*)(?=(?:[A-Z[]|:rb_))/g,
+    (
+      match: string,
+      punct: string,
+      spacing: string,
+      index: number,
+      fullText: string,
+    ) => {
+      const depthAfterPunct =
+        punct === ")" ? (depthMap[index + 1] ?? 0) : (depthMap[index] ?? 0);
+      if (depthAfterPunct > 0) return match;
+      if (spacing.length > 0) return match;
+      return `${punct}${paragraphBreak}`;
+    },
+  );
+
+  return normalized;
+}
+
 function themedSvgDataUri(assetRelPath: string): string {
   const cacheKey = `${assetRelPath}:${environment.appearance}`;
   const cached = svgDataUriCache.get(cacheKey);
@@ -93,36 +172,30 @@ function themedSvgDataUri(assetRelPath: string): string {
 }
 
 function renderTextForRaycast(text: string): string {
-  // Insert a newline at sentence boundaries that have no space, common in plain
-  // card text: ".)Choose", "—Deal", "base.Kill" all need a break before the
-  // next word.
-  text = text.replace(/([.)—])\s+([A-Z[])/g, "$1\n\n$2");
-  // Fix italic reminder text: "_ (text)_word" → "_(text)_ word"
-  // CommonMark: "_ (" doesn't open emphasis (underscore followed by space),
-  // and ")_Word" doesn't close it (underscore followed by alphanumeric).
-  text = text.replace(/_ \(/g, "_(");
-  text = text.replace(/\)_([^\s_\n])/g, ")_\n\n$1");
-  return text.replace(/:rb_(\w+):/g, (_match, key: string) => {
-    const energyMatch = /^energy_(\d+)$/.exec(key);
-    if (energyMatch) {
-      const n = parseInt(energyMatch[1], 10);
-      return CIRCLED_DIGITS[n] ?? `(${n})`;
-    }
-    const svgAsset = TOKEN_SVG_ASSETS[key];
-    if (svgAsset) {
-      const uri = themedSvgDataUri(svgAsset);
-      if (uri) return `![${key}](${uri})`;
-    }
-    const pngAsset = TOKEN_PNG_ASSETS[key];
-    if (pngAsset) {
-      const filePath = join(environment.assetsPath, pngAsset);
-      const fileUrl = pathToFileURL(filePath);
-      fileUrl.searchParams.set("raycast-width", String(INLINE_ICON_SIZE));
-      fileUrl.searchParams.set("raycast-height", String(INLINE_ICON_SIZE));
-      return `![${key}](${fileUrl.href})`;
-    }
-    return TOKEN_TEXT_FALLBACKS[key] ?? `[${key}]`;
-  });
+  return normalizeCardTextLayout(text).replace(
+    /:rb_(\w+):/g,
+    (_match, key: string) => {
+      const energyMatch = /^energy_(\d+)$/.exec(key);
+      if (energyMatch) {
+        const n = parseInt(energyMatch[1], 10);
+        return CIRCLED_DIGITS[n] ?? `(${n})`;
+      }
+      const svgAsset = TOKEN_SVG_ASSETS[key];
+      if (svgAsset) {
+        const uri = themedSvgDataUri(svgAsset);
+        if (uri) return `![${key}](${uri})`;
+      }
+      const pngAsset = TOKEN_PNG_ASSETS[key];
+      if (pngAsset) {
+        const filePath = join(environment.assetsPath, pngAsset);
+        const fileUrl = pathToFileURL(filePath);
+        fileUrl.searchParams.set("raycast-width", String(INLINE_ICON_SIZE));
+        fileUrl.searchParams.set("raycast-height", String(INLINE_ICON_SIZE));
+        return `![${key}](${fileUrl.href})`;
+      }
+      return TOKEN_TEXT_FALLBACKS[key] ?? `[${key}]`;
+    },
+  );
 }
 
 const TYPE_ICONS: Record<string, string> = {

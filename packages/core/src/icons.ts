@@ -53,6 +53,87 @@ export const TOKEN_DISCORD_FALLBACK: Record<string, string> = {
   energy_5: "⑤",
 };
 
+function buildParenDepthMap(text: string): Uint16Array {
+  const depth = new Uint16Array(text.length + 1);
+  let current = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") current += 1;
+    else if (ch === ")" && current > 0) current -= 1;
+    depth[i + 1] = current;
+  }
+  return depth;
+}
+
+function collapseNewlinesInsideParentheses(text: string): string {
+  let result = "";
+  let depth = 0;
+  let pendingSpace = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") {
+      if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+      pendingSpace = false;
+      depth += 1;
+      result += ch;
+      continue;
+    }
+    if (ch === ")") {
+      pendingSpace = false;
+      if (depth > 0) depth -= 1;
+      result += ch;
+      continue;
+    }
+    if (depth > 0 && /\s/.test(ch)) {
+      pendingSpace = true;
+      continue;
+    }
+    if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+    pendingSpace = false;
+    result += ch;
+  }
+
+  if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+  return result;
+}
+
+/**
+ * Normalizes card rules text formatting for clients that render plain text.
+ *
+ * - fixes malformed reminder italics markers around parentheticals
+ * - inserts paragraph breaks between sentences in compressed text
+ * - never inserts breaks inside parenthetical reminder text
+ */
+export function normalizeCardTextLayout(
+  text: string,
+  paragraphBreak = "\n",
+): string {
+  let normalized = text
+    .trim()
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
+  normalized = collapseNewlinesInsideParentheses(normalized)
+    .replace(/_ \(/g, "_(")
+    .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
+    .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
+
+  const depthMap = buildParenDepthMap(normalized);
+  normalized = normalized.replace(
+    /([.)—])(\s*)(?=(?:[A-Z[]|:rb_))/g,
+    (match: string, punct: string, spacing: string, index: number, fullText: string) => {
+      const depthAfterPunct =
+        punct === ")" ? depthMap[index + 1] ?? 0 : depthMap[index] ?? 0;
+      if (depthAfterPunct > 0) return match;
+      if (spacing.length > 0) return match;
+      return `${punct}${paragraphBreak}`;
+    },
+  );
+
+  return normalized;
+}
+
 // ─── Discord text renderer ────────────────────────────────────────────────────
 
 /**
@@ -68,7 +149,7 @@ export function renderTextForDiscord(
   text: string,
   emojiMap: Record<string, string>,
 ): string {
-  return text.replace(/:rb_(\w+):/g, (match, key: string) => {
+  return normalizeCardTextLayout(text).replace(/:rb_(\w+):/g, (match, key: string) => {
     const id = emojiMap[key];
     if (id) {
       const entry = EMOJI_FILES.find((e) => e.tokenKey === key);

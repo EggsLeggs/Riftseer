@@ -1,15 +1,12 @@
 import React from "react";
-import { TOKEN_ICON_MAP, TOKEN_REGEX } from "@riftseer/core/icons";
+import { normalizeCardTextLayout, TOKEN_ICON_MAP, TOKEN_REGEX } from "@riftseer/core/icons";
 
 interface Props {
   text: string;
 }
 
 export function CardTextRenderer({ text }: Props) {
-  const normalized = text
-    .replace(/_ \(/g, "_(")
-    .replace(/\)_([^\s_\n])/g, ")_\n$1")
-    .replace(/([.)—])\s+([A-Z\[])/g, "$1\n$2");
+  const normalized = normalizeCardTextLayout(text);
 
   const lines = normalized.split("\n");
 
