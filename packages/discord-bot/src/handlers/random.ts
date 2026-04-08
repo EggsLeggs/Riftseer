@@ -9,7 +9,7 @@ export async function handleRandom(
   interaction: APIChatInputApplicationCommandInteraction,
   env: Env,
 ): Promise<void> {
-  const client = createClient(env.API_BASE_URL);
+  const client = createClient(env);
   const { data, error } = await client.api.v1.cards.random.get();
 
   if (error || !data) {

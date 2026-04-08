@@ -27,9 +27,9 @@ export async function handleCard(
   const imageOnly =
     imageOpt && "value" in imageOpt ? (imageOpt as { value: boolean }).value : false;
 
-  const client = createClient(env.API_BASE_URL);
   const request = setCode ? `${cardName}|${setCode}` : cardName;
 
+  const client = createClient(env);
   const { data, error } = await client.api.v1.cards.resolve.post({ requests: [request] });
 
   if (error || !data || data.results.length === 0 || !data.results[0].card) {

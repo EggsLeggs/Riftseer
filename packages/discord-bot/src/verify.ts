@@ -11,7 +11,7 @@ export async function verifySignature(
   try {
     const key = await crypto.subtle.importKey(
       "raw",
-      hexToBytes(publicKey),
+      Uint8Array.from(hexToBytes(publicKey)),
       { name: "Ed25519" },
       false,
       ["verify"],
@@ -20,7 +20,7 @@ export async function verifySignature(
     return crypto.subtle.verify(
       "Ed25519",
       key,
-      hexToBytes(signature),
+      Uint8Array.from(hexToBytes(signature)),
       new TextEncoder().encode(timestamp + body),
     );
   } catch {
