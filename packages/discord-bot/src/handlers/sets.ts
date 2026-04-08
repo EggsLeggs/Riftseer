@@ -8,7 +8,7 @@ export async function handleSets(
   interaction: APIChatInputApplicationCommandInteraction,
   env: Env,
 ): Promise<void> {
-  const client = createClient(env.API_BASE_URL);
+  const client = createClient(env);
   const { data, error } = await client.api.v1.sets.get();
 
   if (error || !data) {

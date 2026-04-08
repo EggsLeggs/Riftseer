@@ -36,16 +36,9 @@ import { patchResponse } from "./response.ts";
 import { handleCard } from "./handlers/card.ts";
 import { handleRandom } from "./handlers/random.ts";
 import { handleSets } from "./handlers/sets.ts";
+import type { Env } from "./env.ts";
 
-export interface Env {
-  DISCORD_PUBLIC_KEY: string;
-  DISCORD_BOT_TOKEN: string;
-  DISCORD_APPLICATION_ID: string;
-  /** Base URL of the Riftseer API (e.g. https://riftseer-api.thinkhuman-21f.workers.dev) */
-  API_BASE_URL: string;
-  /** Base URL of the Riftseer site for card links */
-  SITE_BASE_URL: string;
-}
+export type { Env } from "./env.ts";
 
 export default {
   async fetch(
