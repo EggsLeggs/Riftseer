@@ -108,7 +108,8 @@ function normalizeCardTextLayout(
 
   normalized = collapseNewlinesInsideParentheses(normalized)
     .replace(/_ \(/g, "_(")
-    .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`);
+    .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
+    .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
 
   const depthMap = buildParenDepthMap(normalized);
   normalized = normalized.replace(
