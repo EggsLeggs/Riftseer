@@ -26,7 +26,10 @@ function bindingAwareFetch(env: Env) {
           ? input.href
           : (input as Request).url;
     const normalized = normalizeRequestUrl(url);
-    const req = new Request(normalized, init);
+    const req =
+      input instanceof Request
+        ? new Request(new Request(normalized, input), init)
+        : new Request(normalized, init);
     if (env.RIFTSEER_API) {
       return env.RIFTSEER_API.fetch(req);
     }
