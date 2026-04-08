@@ -94,6 +94,7 @@ function collapseNewlinesInsideParentheses(text: string): string {
     result += ch;
   }
 
+  if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
   return result;
 }
 
