@@ -116,9 +116,36 @@ export function buildCardImageEmbed(card: Card, siteBaseUrl: string): APIEmbed {
 
 /** Sets list embed. */
 export function buildSetsEmbed(sets: CardSet[]): APIEmbed {
-  const description = sets
-    .map((s) => `**${s.setCode}** — ${s.setName} (${s.cardCount} cards)`)
-    .join("\n");
+  const byDateDesc = (a: CardSet, b: CardSet): number => {
+    const aDate = a.publishedOn ?? "";
+    const bDate = b.publishedOn ?? "";
+    if (aDate && bDate) {
+      if (bDate > aDate) return 1;
+      if (bDate < aDate) return -1;
+      return a.setName.localeCompare(b.setName);
+    }
+    if (aDate) return -1;
+    if (bDate) return 1;
+    return a.setName.localeCompare(b.setName);
+  };
+
+  const formatSetLine = (s: CardSet): string => {
+    const released = s.publishedOn ? ` · ${s.publishedOn}` : "";
+    return `**${s.setCode}** — ${s.setName} (${s.cardCount} cards${released})`;
+  };
+
+  const mainSets = sets.filter((s) => !s.isPromo).sort(byDateDesc);
+  const promoSets = sets.filter((s) => s.isPromo).sort(byDateDesc);
+
+  const sections: string[] = [];
+  if (mainSets.length > 0) {
+    sections.push(["__Main Sets__", ...mainSets.map(formatSetLine)].join("\n"));
+  }
+  if (promoSets.length > 0) {
+    sections.push(["__Promo & Special Sets__", ...promoSets.map(formatSetLine)].join("\n"));
+  }
+
+  const description = sections.join("\n\n");
 
   return {
     title: "Riftbound Card Sets",

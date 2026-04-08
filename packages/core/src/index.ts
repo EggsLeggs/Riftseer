@@ -54,6 +54,7 @@ export {
   EMOJI_PREFIX,
   EMOJI_FILES,
   TOKEN_DISCORD_FALLBACK,
+  normalizeCardTextLayout,
   renderTextForDiscord,
 } from "./icons.ts";
 export type { EmojiFile } from "./icons.ts";
