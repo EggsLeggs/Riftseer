@@ -123,11 +123,7 @@ function normalizeCardTextLayout(
       const depthAfterPunct =
         punct === ")" ? (depthMap[index + 1] ?? 0) : (depthMap[index] ?? 0);
       if (depthAfterPunct > 0) return match;
-      const nextSlice = fullText.slice(index + match.length);
-      const nextIsBracketKeyword = nextSlice.startsWith("[");
-      const nextIsToken = nextSlice.startsWith(":rb_");
-      if (spacing.length > 0 && !nextIsBracketKeyword && !nextIsToken)
-        return match;
+      if (spacing.length > 0) return match;
       return `${punct}${paragraphBreak}`;
     },
   );
