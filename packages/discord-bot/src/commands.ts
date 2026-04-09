@@ -2,13 +2,32 @@
  * Slash command definitions.
  * Import and POST to the Discord API via src/register.ts.
  */
-import { ApplicationCommandOptionType } from "discord-api-types/v10";
+import {
+  ApplicationCommandOptionType,
+  ApplicationIntegrationType,
+  InteractionContextType,
+} from "discord-api-types/v10";
 import type { RESTPostAPIApplicationCommandsJSONBody } from "discord-api-types/v10";
+
+// Allow commands in guilds, bot DMs, and private channels (friend DMs / Group DMs).
+// Requires both Guild Install (0) and User Install (1) to be enabled in the
+// Discord Developer Portal under your app's Installation settings.
+const INTEGRATION_TYPES: ApplicationIntegrationType[] = [
+  ApplicationIntegrationType.GuildInstall,
+  ApplicationIntegrationType.UserInstall,
+];
+const CONTEXTS: InteractionContextType[] = [
+  InteractionContextType.Guild,
+  InteractionContextType.BotDM,
+  InteractionContextType.PrivateChannel,
+];
 
 export const COMMANDS: RESTPostAPIApplicationCommandsJSONBody[] = [
   {
     name: "card",
     description: "Look up a Riftbound card by name",
+    integration_types: INTEGRATION_TYPES,
+    contexts: CONTEXTS,
     options: [
       {
         type: ApplicationCommandOptionType.String,
@@ -33,9 +52,13 @@ export const COMMANDS: RESTPostAPIApplicationCommandsJSONBody[] = [
   {
     name: "random",
     description: "Get a random Riftbound card",
+    integration_types: INTEGRATION_TYPES,
+    contexts: CONTEXTS,
   },
   {
     name: "sets",
     description: "List all Riftbound card sets",
+    integration_types: INTEGRATION_TYPES,
+    contexts: CONTEXTS,
   },
 ];
