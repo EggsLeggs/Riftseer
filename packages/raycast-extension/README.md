@@ -18,7 +18,7 @@ The extension works out of the box — no configuration required. It points to t
 If you're self-hosting, open Raycast preferences and override:
 
 - **API Base URL** — Base URL of your Riftseer API server (default: `https://riftseer-api.thinkhuman-21f.workers.dev`)
-- **Site Base URL** — Base URL of the Riftseer frontend for card links (default: `https://riftseer.thinkhuman.dev`)
+- **Site Base URL** — Base URL of the Riftseer frontend for card links (default: `https://riftseer.com`)
 - **Max Recent History** — How many recently viewed cards to remember (default: `50`, set to `0` to disable)
 
 ## Commands
@@ -31,7 +31,7 @@ Instantly fetch and display a random Riftbound TCG card with all metadata.
 
 ## Privacy
 
-For up-to-date privacy information, see the [Riftseer Privacy Policy](https://riftseer.thinkhuman.dev/docs/privacy).
+For up-to-date privacy information, see the [Riftseer Privacy Policy](https://riftseer.com/docs/privacy).
 
 ## Support
 

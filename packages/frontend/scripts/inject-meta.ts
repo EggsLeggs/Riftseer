@@ -8,7 +8,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 
-const SITE = "https://riftseer.thinkhuman.dev";
+const SITE = "https://riftseer.com";
 const dist = join(import.meta.dir, "..", "dist");
 
 const template = readFileSync(join(dist, "index.html"), "utf-8");

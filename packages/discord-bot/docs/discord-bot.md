@@ -66,4 +66,4 @@ bun run type-check
 
 ## Privacy
 
-The bot does **not** persist user data. It forwards the requested card name (and optional set hint) to the public API and returns the result. If logging or storage is added later, update the site [Privacy Policy](https://riftseer.thinkhuman.dev/docs/privacy) accordingly.
+The bot does **not** persist user data. It forwards the requested card name (and optional set hint) to the public API and returns the result. If logging or storage is added later, update the site [Privacy Policy](https://riftseer.com/docs/privacy) accordingly.

@@ -41,8 +41,8 @@
       "description": "Base URL of the Riftseer frontend (used for card links).",
       "type": "textfield",
       "required": true,
-      "default": "https://riftseer.thinkhuman.dev",
-      "placeholder": "https://riftseer.thinkhuman.dev"
+      "default": "https://riftseer.com",
+      "placeholder": "https://riftseer.com"
     },
     {
       "name": "maxRecentHistory",

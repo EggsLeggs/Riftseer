@@ -230,7 +230,7 @@ npx devvit login        # one-time auth with your Reddit account
 
 # Set the API and site URLs (stored as app-level secrets, shared across subreddits)
 npx devvit settings set apiBaseUrl   # e.g. https://riftseer-api.thinkhuman-21f.workers.dev
-npx devvit settings set siteBaseUrl  # e.g. https://riftseer.thinkhuman.dev
+npx devvit settings set siteBaseUrl  # e.g. https://riftseer.com
 
 npx devvit upload       # deploy to Reddit
 npx devvit playtest r/yoursubreddit  # live testing against a real subreddit
@@ -284,7 +284,7 @@ Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server)
 
 ## Deployment
 
-- **API:** Use the root `Dockerfile` and `railway.toml` (or any Node/Bun host). Set `PORT`, `API_BASE_URL`, `SITE_BASE_URL`, and optionally `CARD_PROVIDER`, `DB_PATH`, etc.
+- **API:** Use the root `Dockerfile` (or any Node/Bun host). Set `PORT`, `API_BASE_URL`, `SITE_BASE_URL`, and optionally `CARD_PROVIDER`, `DB_PATH`, etc.
 - **Frontend:** Build with `bun run build:frontend`; deploy the `packages/frontend/dist` output (e.g. Cloudflare Pages via `wrangler`, or any static host). Set `VITE_API_URL` at build time if the API is on another origin.
 - **Discord bot:** Deploy with `wrangler deploy` from `packages/discord-bot`. Secrets set via `wrangler secret put`.
 - **Ingest worker:** Deploy with `wrangler deploy` from `packages/ingest-worker`. Set secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` via `wrangler secret put`. Optionally set `INGEST_SECRET` to guard the manual POST `/ingest` trigger.

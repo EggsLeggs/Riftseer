@@ -16,7 +16,7 @@ The bot replies with the card image, a link to the full card page, and API/text 
 
 ## Card data
 
-Card data is sourced from [RiftCodex](https://riftcodex.com) and kept continuously up to date. The bot resolves card names via the **Riftseer API** — the same backend that powers the [Riftseer](https://riftseer.thinkhuman.dev) card browser.
+Card data is sourced from [RiftCodex](https://riftcodex.com) and kept continuously up to date. The bot resolves card names via the **Riftseer API** — the same backend that powers the [Riftseer](https://riftseer.com) card browser.
 
 ---
 

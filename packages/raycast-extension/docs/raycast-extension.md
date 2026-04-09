@@ -77,7 +77,7 @@ Set these in Raycast preferences for the extension:
 | Preference | Default | Description |
 | --- | --- | --- |
 | `apiBaseUrl` | `https://riftseer-api.thinkhuman-21f.workers.dev` | Riftseer API base URL |
-| `siteBaseUrl` | `https://riftseer.thinkhuman.dev` | Riftseer site URL (used for card page links) |
+| `siteBaseUrl` | `https://riftseer.com` | Riftseer site URL (used for card page links) |
 | `maxRecentHistory` | `50` | Recent cards to keep locally; `0` disables recording and the empty-query Recent section |
 
 ---
@@ -90,4 +90,4 @@ Set these in Raycast preferences for the extension:
 
 ## Privacy
 
-The extension makes read-only HTTP requests to the configured API. It may store recently viewed card data in Raycast local storage (bounded by `maxRecentHistory`); that data remains on your device. No analytics or tracking. If this ever changes, update the site [Privacy Policy](https://riftseer.thinkhuman.dev/docs/privacy).
+The extension makes read-only HTTP requests to the configured API. It may store recently viewed card data in Raycast local storage (bounded by `maxRecentHistory`); that data remains on your device. No analytics or tracking. If this ever changes, update the site [Privacy Policy](https://riftseer.com/docs/privacy).

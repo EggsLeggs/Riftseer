@@ -61,4 +61,4 @@ Riftbound card data is maintained by the ingest pipeline and exposed only throug
 
 - Triggers: **CommentCreate** and **PostCreate** (self-post text + title).
 - **KV** stores dedupe keys (`replied:…`) so the same comment or post is not answered twice across restarts.
-- If new data is stored in KV or new fields are logged, update the site [Privacy Policy](https://riftseer.thinkhuman.dev/docs/privacy).
+- If new data is stored in KV or new fields are logged, update the site [Privacy Policy](https://riftseer.com/docs/privacy).
