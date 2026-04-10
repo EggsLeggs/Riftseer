@@ -69,46 +69,61 @@ Devvit.addTrigger({
 
   async onEvent(event, context) {
     const comment = event.comment;
-    if (!comment) return;
-
-    // Skip spam, deleted, and apparent bot accounts
-    if (comment.spam || comment.deleted) return;
-    if (comment.author.toLowerCase().endsWith("bot")) return;
-
-    // Skip if we already replied (survives re-deploys via KV store)
-    const kvKey = `replied:c:${comment.id}`;
-    if (await context.kvStore.get(kvKey)) return;
-
-    // Parse [[...]] tokens; mark as seen even if none found (avoids re-checking)
-    const requests = parseCardRequests(comment.body);
-    await context.kvStore.put(kvKey, "1");
-
-    if (requests.length === 0) return;
-
-    // Resolve via external API
-    const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
-    const siteBaseUrl =
-      (await context.settings.get<string>("siteBaseUrl")) ||
-      "https://example.com";
-
-    if (!apiBaseUrl) {
-      console.error(
-        "[Riftseer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
-      );
-      return;
-    }
-
-    const reply = await buildReply(requests, apiBaseUrl, siteBaseUrl);
-    if (!reply) return;
-
-    await context.reddit.submitComment({
-      id: `t1_${comment.id}`,
-      text: reply,
-    });
-
     console.log(
-      `[Riftseer] Replied to comment t1_${comment.id} (${requests.length} card(s))`,
+      `[Riftseer] CommentCreate fired — id=${comment?.id} author=${comment?.author} body=${comment?.body?.slice(0, 80)}`,
     );
+    try {
+      if (!comment) return;
+
+      if (comment.spam || comment.deleted) return;
+      if (comment.author.toLowerCase().endsWith("bot")) return;
+
+      const kvKey = `replied:c:${comment.id}`;
+      if (await context.kvStore.get(kvKey)) {
+        console.log(`[Riftseer] Skipping comment ${comment.id} — already replied`);
+        return;
+      }
+
+      const requests = parseCardRequests(comment.body);
+      await context.kvStore.put(kvKey, "1");
+
+      if (requests.length === 0) {
+        console.log(`[Riftseer] No [[...]] tokens in comment ${comment.id}`);
+        return;
+      }
+
+      console.log(`[Riftseer] Found ${requests.length} card request(s): ${requests.map((r) => r.raw).join(", ")}`);
+
+      const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
+      const siteBaseUrl =
+        (await context.settings.get<string>("siteBaseUrl")) ||
+        "https://example.com";
+
+      console.log(`[Riftseer] apiBaseUrl=${apiBaseUrl ? "(set)" : "(empty)"} siteBaseUrl=${siteBaseUrl}`);
+
+      if (!apiBaseUrl) {
+        console.error(
+          "[Riftseer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
+        );
+        return;
+      }
+
+      const reply = await buildReply(requests, apiBaseUrl, siteBaseUrl);
+      if (!reply) {
+        console.log("[Riftseer] buildReply returned null");
+        return;
+      }
+
+      const commentId = comment.id.startsWith("t1_") ? comment.id : `t1_${comment.id}`;
+      await context.reddit.submitComment({
+        id: commentId,
+        text: reply,
+      });
+
+      console.log(`[Riftseer] Replied to comment ${commentId} (${requests.length} card(s))`);
+    } catch (err) {
+      console.error(`[Riftseer] CommentCreate handler error: ${err}`);
+    }
   },
 });
 
@@ -119,49 +134,57 @@ Devvit.addTrigger({
 
   async onEvent(event, context) {
     const post = event.post;
-    if (!post) return;
-
-    // Only process self-posts (text posts, not link posts)
-    if (!post.isSelf) return;
-    if (post.spam || post.deleted) return;
-
-    // Use event.author for the username (PostV2.authorId is an ID, not a name)
-    const authorName = event.author?.name ?? "";
-    if (authorName.toLowerCase().endsWith("bot")) return;
-
-    const kvKey = `replied:p:${post.id}`;
-    if (await context.kvStore.get(kvKey)) return;
-
-    // Scan both title and selftext for card calls
-    const combined = `${post.title}\n\n${post.selftext}`;
-    const requests = parseCardRequests(combined);
-    await context.kvStore.put(kvKey, "1");
-
-    if (requests.length === 0) return;
-
-    const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
-    const siteBaseUrl =
-      (await context.settings.get<string>("siteBaseUrl")) ||
-      "https://example.com";
-
-    if (!apiBaseUrl) {
-      console.error(
-        "[Riftseer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
-      );
-      return;
-    }
-
-    const reply = await buildReply(requests, apiBaseUrl, siteBaseUrl);
-    if (!reply) return;
-
-    await context.reddit.submitComment({
-      id: `t3_${post.id}`,
-      text: reply,
-    });
-
     console.log(
-      `[Riftseer] Replied to post t3_${post.id} (${requests.length} card(s))`,
+      `[Riftseer] PostCreate fired — id=${post?.id} title=${post?.title?.slice(0, 80)}`,
     );
+    try {
+      if (!post) return;
+
+      if (!post.isSelf) return;
+      if (post.spam || post.deleted) return;
+
+      const authorName = event.author?.name ?? "";
+      if (authorName.toLowerCase().endsWith("bot")) return;
+
+      const kvKey = `replied:p:${post.id}`;
+      if (await context.kvStore.get(kvKey)) return;
+
+      const combined = `${post.title}\n\n${post.selftext}`;
+      const requests = parseCardRequests(combined);
+      await context.kvStore.put(kvKey, "1");
+
+      if (requests.length === 0) return;
+
+      console.log(`[Riftseer] Found ${requests.length} card request(s) in post: ${requests.map((r) => r.raw).join(", ")}`);
+
+      const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
+      const siteBaseUrl =
+        (await context.settings.get<string>("siteBaseUrl")) ||
+        "https://example.com";
+
+      if (!apiBaseUrl) {
+        console.error(
+          "[Riftseer] apiBaseUrl secret is not set. Run: npx devvit settings set apiBaseUrl",
+        );
+        return;
+      }
+
+      const reply = await buildReply(requests, apiBaseUrl, siteBaseUrl);
+      if (!reply) {
+        console.log("[Riftseer] buildReply returned null");
+        return;
+      }
+
+      const postId = post.id.startsWith("t3_") ? post.id : `t3_${post.id}`;
+      await context.reddit.submitComment({
+        id: postId,
+        text: reply,
+      });
+
+      console.log(`[Riftseer] Replied to post ${postId} (${requests.length} card(s))`);
+    } catch (err) {
+      console.error(`[Riftseer] PostCreate handler error: ${err}`);
+    }
   },
 });
 

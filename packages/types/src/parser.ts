@@ -18,8 +18,11 @@ const INLINE_CODE = /`[^`\n]+`/g;
  * - Supports SET, SET-123 and SET 123 (space) as collector formats.
  */
 export function parseCardRequests(text: string): CardRequest[] {
+  // Strip markdown backslash escapes on brackets (Reddit's editor produces \[\[ \]\])
+  const unescaped = text.replace(/\\([[\]])/g, "$1");
+
   // Remove code blocks so we don't pick up [[...]] inside them
-  const sanitised = text
+  const sanitised = unescaped
     .replace(FENCED_CODE, (m) => " ".repeat(m.length))
     .replace(INLINE_CODE, (m) => " ".repeat(m.length));
 

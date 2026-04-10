@@ -16,7 +16,7 @@ The bot replies with the card image, a link to the full card page, and API/text 
 
 ## Card data
 
-Card data is sourced from [RiftCodex](https://riftcodex.com) and kept continuously up to date. The bot resolves card names via the **Riftseer API** — the same backend that powers the [Riftseer](https://riftseer.com) card browser.
+Card data is sourced via the [Riftseer API](https://api.riftseer.com) — the same backend that powers the [Riftseer](https://riftseer.com) card browser. The API's data is kept continuously up to date from [RiftCodex](https://riftcodex.com) and [TCGPlayer](https://tcgplayer.com) via a scheduled ingest pipeline.
 
 ---
 
@@ -56,11 +56,8 @@ Riftbound TCG is not served by any globally-approved card API. The globally-appr
 - Usage is limited to card lookup functionality required for the bot to operate.
 - Terms and Conditions and Privacy Policy links are provided in the Reddit app configuration form.
 
-## App icon
+## Changelog
 
-Devvit app icons are configured via `marketingAssets.icon` in `devvit.json`.
+### 0.0.9
 
-- This repo points to `assets/riftseer-logo.png`.
-- The icon should be a square PNG (Reddit docs specify 1024x1024).
-- Keep it under 500 KB.
-- This sets the app icon/marketing asset, not the Reddit profile picture.
+- Add changelog.

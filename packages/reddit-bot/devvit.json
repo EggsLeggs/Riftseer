@@ -2,12 +2,17 @@
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "riftseer-bot",
   "blocks": {
-    "entry": "src/main.ts"
+    "entry": "src/main.ts",
+    "triggers": ["onCommentCreate", "onPostCreate"]
   },
   "permissions": {
     "http": {
       "enable": true,
       "domains": ["api.riftseer.com"]
+    },
+    "redis": true,
+    "reddit": {
+      "enable": true
     }
   },
   "marketingAssets": {
