@@ -229,7 +229,7 @@ npm install
 npx devvit login        # one-time auth with your Reddit account
 
 # Set the API and site URLs (stored as app-level secrets, shared across subreddits)
-npx devvit settings set apiBaseUrl   # e.g. https://riftseer-api.thinkhuman-21f.workers.dev
+npx devvit settings set apiBaseUrl   # e.g. https://api.riftseer.com
 npx devvit settings set siteBaseUrl  # e.g. https://riftseer.com
 
 npx devvit upload       # deploy to Reddit

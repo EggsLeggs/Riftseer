@@ -9,6 +9,7 @@ import { SetsPage } from "./components/SetsPage";
 import { SyntaxPage } from "./components/SyntaxPage";
 import { TermsPage } from "./components/TermsPage";
 import { PrivacyPage } from "./components/PrivacyPage";
+import { RedditBotInfoPage } from "./components/RedditBotInfoPage";
 
 export function App() {
   return (
@@ -23,6 +24,7 @@ export function App() {
               <Route path="/card/:id" element={<CardPage />} />
               <Route path="/sets" element={<SetsPage />} />
               <Route path="/syntax" element={<SyntaxPage />} />
+              <Route path="/docs/reddit-bot" element={<RedditBotInfoPage />} />
               <Route path="/docs/terms" element={<TermsPage />} />
               <Route path="/docs/privacy" element={<PrivacyPage />} />
             </Routes>

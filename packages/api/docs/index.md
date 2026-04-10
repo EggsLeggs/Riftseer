@@ -6,7 +6,7 @@ sidebar_position: 1
 
 The Riftseer API is a read-mostly REST API that exposes Riftbound TCG card data. It powers the Riftseer frontend, Discord bot, and Reddit bot. It can also be used directly by third-party tools.
 
-- **Base URL:** `https://riftseer-api.thinkhuman-21f.workers.dev`
+- **Base URL:** `https://api.riftseer.com`
 - **All versioned routes:** `/api/v1/...`
 
 ---

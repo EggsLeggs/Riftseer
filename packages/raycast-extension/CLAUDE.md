@@ -41,7 +41,7 @@ Set `author` in `package.json` to your [Raycast Store](https://www.raycast.com/)
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `apiBaseUrl` | `https://riftseer-api.thinkhuman-21f.workers.dev` | Riftseer API base URL |
+| `apiBaseUrl` | `https://api.riftseer.com` | Riftseer API base URL |
 | `siteBaseUrl` | `https://riftseer.com` | Riftseer site base URL for card links |
 | `maxRecentHistory` | `50` | Max recently viewed cards kept in Raycast local storage (`0` = off). Shown when Search Cards has an empty query. |
 

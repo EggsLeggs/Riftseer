@@ -4,7 +4,9 @@ import type { Card } from "@riftseer/types";
 
 export type { Card };
 
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? window.location.origin;
+const API_BASE =
+  (import.meta.env.VITE_API_URL as string | undefined) ??
+  window.location.origin;
 const client = treaty<App>(API_BASE);
 
 type SetsData = Awaited<ReturnType<typeof client.api.v1.sets.get>>["data"];
@@ -16,7 +18,10 @@ export function apiUrl(path: string): string {
   return `${base}${p}`;
 }
 
-export async function getCard(id: string, opts: { includePrices?: boolean } = {}): Promise<Card | null> {
+export async function getCard(
+  id: string,
+  opts: { includePrices?: boolean } = {},
+): Promise<Card | null> {
   const { data, error } = await client.api.v1.cards({ id }).get({
     query: { include: opts.includePrices ? "prices" : undefined },
   });
@@ -26,7 +31,7 @@ export async function getCard(id: string, opts: { includePrices?: boolean } = {}
 
 export async function searchCards(
   name: string,
-  opts: { limit?: number; set?: string; fuzzy?: boolean } = {}
+  opts: { limit?: number; set?: string; fuzzy?: boolean } = {},
 ): Promise<{ count: number; cards: Card[] }> {
   const { data, error } = await client.api.v1.cards.get({
     query: {

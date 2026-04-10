@@ -47,13 +47,13 @@ cd packages/reddit-bot
 npx devvit upload
 ```
 
-Run `npm install` first if dependencies or the lockfile changed. If you edit `devvit.yaml` (permissions, HTTP domains, version metadata), you must redeploy for those changes to apply. Per-install **settings** (`apiBaseUrl`, `siteBaseUrl`) persist across uploads unless you change them with `npx devvit settings set …` again.
+Run `npm install` first if dependencies or the lockfile changed. If you edit `devvit.json` (permissions, HTTP domains, marketing assets, version metadata), you must redeploy for those changes to apply. Per-install **settings** (`apiBaseUrl`, `siteBaseUrl`) persist across uploads unless you change them with `npx devvit settings set …` again.
 
 ---
 
 ## Why the API must be reachable
 
-Riftbound card data is maintained by the ingest pipeline and exposed only through the API (search, resolve, relationships, image URLs). There is no globally pre-approved third-party host for Riftbound analogous to Scryfall for Magic. The Reddit app’s `devvit.yaml` must list the exact API hostname under HTTP permissions; **policy approval** is the current blocker, not missing code.
+Riftbound card data is maintained by the ingest pipeline and exposed only through the API (search, resolve, relationships, image URLs). There is no globally pre-approved third-party host for Riftbound analogous to Scryfall for Magic. The Reddit app’s `devvit.json` must list the exact API hostname under HTTP permissions; **policy approval** is the current blocker, not missing code.
 
 ---
 

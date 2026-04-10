@@ -15,8 +15,11 @@ interface ApiCard {
   id: string;
   name: string;
   set?: { set_code?: string };
-  collector_number?: string;
-  media?: { media_urls?: { normal?: string } };
+  media?: {
+    media_urls?: {
+      normal?: string;
+    };
+  };
 }
 
 interface ApiResolvedCard {
@@ -71,13 +74,13 @@ export async function buildReply(
 
   if (!data.results?.length) return null;
 
-  const lines = data.results.map((r) => formatCard(r, api, site));
+  const lines = data.results.map((r) => formatCard(r, site, api));
 
   return [
     ...lines,
     "",
     "---",
-    "*^(I am a bot | Riftbound card data via [RiftCodex](https://riftcodex.com))*",
+    `*[info](${site}/docs/reddit-bot)*`,
   ].join("\n");
 }
 
@@ -86,36 +89,33 @@ export async function buildReply(
 /**
  * Format one resolved card as a Reddit Markdown line.
  *
- * Found:      **[Card Name](imgUrl)** — [img](...), [api](...), [site](...), [txt](...)
- * Not found:  **Card Name** — not found.
- * Fuzzy:      **[Card Name](imgUrl)** *(fuzzy: Actual Name)* — ...
+ * Found:      [Card Name](image) *(fuzzy: Actual Name)* — [(RS)](...), [(txt)](...)
+ * Not found:  Card Name — not found.
  */
 function formatCard(
   result: ApiResolvedCard,
-  apiBase: string,
   siteBase: string,
+  apiBase: string,
 ): string {
   const displayName = result.request.name;
 
   if (!result.card) {
-    return `**${esc(displayName)}** — not found.`;
+    return `${esc(displayName)} — not found.`;
   }
 
   const { id, name: cardName } = result.card;
-  const img = result.card.media?.media_urls?.normal ?? "";
-  const apiUrl = `${apiBase}/api/v1/cards/${id}`;
+  const imageUrl = result.card.media?.media_urls?.normal;
   const siteUrl = `${siteBase}/card/${id}`;
-  const txtUrl = `${siteBase}/card/${id}/text`;
+  const txtUrl = `${apiBase}/api/v1/cards/${id}/text`;
 
-  const nameLink = img ? `[${esc(displayName)}](${img})` : esc(displayName);
   const fuzzyNote =
     result.matchType === "fuzzy" ? ` *(fuzzy: ${esc(cardName)})*` : "";
 
-  return (
-    `**${nameLink}**${fuzzyNote} — ` +
-    (img ? `[img](${img}), ` : "") +
-    `[api](${apiUrl}), [site](${siteUrl}), [txt](${txtUrl})`
-  );
+  const namePart = imageUrl
+    ? `[${esc(displayName)}](${imageUrl})`
+    : esc(displayName);
+
+  return `${namePart}${fuzzyNote} — [(RS)](${siteUrl}), [(txt)](${txtUrl})`;
 }
 
 function esc(text: string): string {

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "riftseer-bot",
+  "blocks": {
+    "entry": "src/main.ts"
+  },
+  "permissions": {
+    "http": {
+      "enable": true,
+      "domains": ["api.riftseer.com"]
+    }
+  },
+  "marketingAssets": {
+    "icon": "assets/riftseer-logo.png"
+  }
+}

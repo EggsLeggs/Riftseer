@@ -6,7 +6,7 @@ A Reddit bot that replies to comments and posts with **Riftbound TCG card data**
 
 Type a card name inside double brackets anywhere in a comment or post:
 
-```
+```text
 [[Sun Disc]]             → card image, links, and stats
 [[Sun Disc|OGN]]         → specific set
 [[Sun Disc|OGN-021]]     → specific printing by collector number
@@ -24,9 +24,11 @@ Card data is sourced from [RiftCodex](https://riftcodex.com) and kept continuous
 
 The following external domains are required by this app (submitted for [Reddit's HTTP Fetch Policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy) approval):
 
-### `riftseer-api.thinkhuman-21f.workers.dev`
+### `api.riftseer.com`
 
 This is the **only domain** the app fetches, and it is the app's own backend — not a third-party service.
+
+- API reference (Swagger): [http://docs.riftseer.com/api-reference](http://docs.riftseer.com/api-reference)
 
 **What it does:**
 When a user writes `[[Card Name]]`, the bot POSTs the token to `/api/v1/cards/resolve` on this host. The API performs:
@@ -40,7 +42,25 @@ When a user writes `[[Card Name]]`, the bot POSTs the token to `/api/v1/cards/re
 Riftbound TCG is not served by any globally-approved card API. The globally-approved `api.scryfall.com` covers Magic: The Gathering only. This app is the analogous community-built infrastructure for Riftbound — identical use case, different game. Without this single fetch, the bot has no card data at all and is entirely non-functional.
 
 **Compliance:**
+
 - Only the exact hostname above is used; no wildcards.
 - The single endpoint called is `POST /api/v1/cards/resolve`.
 - No user data is forwarded — only the card name string extracted from the comment.
 - The domain is the app developer's own production deployment (Cloudflare Workers).
+- The fetch domain entry uses hostname-only format (`api.riftseer.com`): no protocol and no path.
+
+## Policy checklist (for Reddit approval)
+
+- Domain is requested in README with clear purpose and endpoint scope.
+- Domain is configured as an exact hostname in `devvit.json` under `permissions.http.domains`.
+- Usage is limited to card lookup functionality required for the bot to operate.
+- Terms and Conditions and Privacy Policy links are provided in the Reddit app configuration form.
+
+## App icon
+
+Devvit app icons are configured via `marketingAssets.icon` in `devvit.json`.
+
+- This repo points to `assets/riftseer-logo.png`.
+- The icon should be a square PNG (Reddit docs specify 1024x1024).
+- Keep it under 500 KB.
+- This sets the app icon/marketing asset, not the Reddit profile picture.

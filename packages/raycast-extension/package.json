@@ -32,8 +32,8 @@
       "description": "Base URL of the Riftseer API server (where /api/v1 routes live).",
       "type": "textfield",
       "required": true,
-      "default": "https://riftseer-api.thinkhuman-21f.workers.dev",
-      "placeholder": "https://riftseer-api.thinkhuman-21f.workers.dev"
+      "default": "https://api.riftseer.com",
+      "placeholder": "https://api.riftseer.com"
     },
     {
       "name": "siteBaseUrl",

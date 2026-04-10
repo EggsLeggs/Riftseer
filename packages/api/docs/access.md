@@ -15,7 +15,7 @@ Allowed methods: `GET`, `HEAD`, `POST`, `OPTIONS`.
 No special setup is required. Standard `fetch` calls work from any origin:
 
 ```js
-const res = await fetch("https://riftseer-api.thinkhuman-21f.workers.dev/api/v1/cards?name=bard");
+const res = await fetch("https://api.riftseer.com/api/v1/cards?name=bard");
 const { cards } = await res.json();
 ```
 
@@ -24,7 +24,7 @@ const { cards } = await res.json();
 If your site uses a CSP, add the following directives:
 
 ```text
-connect-src https://riftseer-api.thinkhuman-21f.workers.dev;
+connect-src https://api.riftseer.com;
 img-src https://*.riftcodex.com;
 ```
 

@@ -21,7 +21,7 @@ npx devvit playtest <subreddit>      # Live testing against a real subreddit
 | `src/main.ts` | Devvit entry point — registers triggers and settings |
 | `src/handler.ts` | `buildReply()` — calls API, formats Markdown response |
 | `src/parser.ts` | `parseCardRequests()` — mirrors `packages/core/src/parser.ts` |
-| `devvit.yaml` | App manifest (name, permissions, HTTP domains) |
+| `devvit.json` | App manifest (name, permissions, HTTP domains, marketing assets) |
 
 ## Triggers
 - **`CommentCreate`** — fires on new comments; checks `.body` for `[[...]]` tokens
@@ -66,13 +66,13 @@ await reddit.submitComment({
 ## Settings (per-install, configured by mod)
 | Key | Description |
 |-----|-------------|
-| `apiBaseUrl` | Base URL of the Riftseer API (e.g., `https://riftseer-api.thinkhuman-21f.workers.dev`) |
+| `apiBaseUrl` | Base URL of the Riftseer API (e.g., `https://api.riftseer.com`) |
 | `siteBaseUrl` | Base URL of the Riftseer site for card links |
 
 Settings are accessed via `context.settings.get('apiBaseUrl')`.
 
 ## HTTP Fetch
-The bot calls `/api/v1/cards/resolve` on the external API. The fetch domain must be listed in `devvit.yaml` under `permissions.http`. If the API domain changes, update `devvit.yaml` **and** redeploy.
+The bot calls `/api/v1/cards/resolve` on the external API. The fetch domain must be listed in `devvit.json` under `permissions.http`. If the API domain changes, update `devvit.json` **and** redeploy.
 
 ## Deduplication
 Replied comment/post IDs are stored in the KV store to prevent duplicate replies across restarts and re-deploys. The KV key pattern is `replied:<type>:<id>`.
