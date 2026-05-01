@@ -81,12 +81,13 @@ function parseToken(inner: string): CardRequest {
 
 /**
  * Normalize a card name for consistent lookups.
- * Lowercases, removes apostrophes/hyphens, strips non-word chars.
+ * Lowercases, removes apostrophes, replaces hyphens with spaces, strips non-word chars.
  */
 export function normalizeCardName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/['\u2019-]/g, "") // apostrophes, right-single-quote, hyphens
+    .replace(/['\u2019]/g, "") // apostrophes, right-single-quote
+    .replace(/-/g, " ") // hyphens \u2192 spaces so "Thousand-Tailed" matches "Thousand Tailed"
     .replace(/[^\w\s]/g, "")
     .replace(/\s+/g, " ")
     .trim();

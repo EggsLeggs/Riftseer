@@ -7,7 +7,8 @@
 export function normalizeCardName(name: string): string {
   return name
     .toLowerCase()
-    .replace(/['\u2019-]/g, "") // apostrophes, right-single-quote, hyphens
+    .replace(/['\u2019]/g, "") // apostrophes, right-single-quote
+    .replace(/-/g, " ") // hyphens \u2192 spaces so "Thousand-Tailed" matches "Thousand Tailed"
     .replace(/[^\w\s]/g, "")
     .replace(/\s+/g, " ")
     .trim();
