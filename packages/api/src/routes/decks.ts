@@ -12,6 +12,8 @@ import {
   SimplifiedDeckResponseSchema,
   SimplifiedDeckSchema,
 } from "../schemas";
+import { authPlugin } from "../plugins/auth";
+import { optionalAuthPlugin } from "../plugins/optional-auth";
 
 /** Validate and parse an "id:qty" entry from the request body. */
 export function parseCardEntry(entry: string): { id: string; quantity: number } {
@@ -47,9 +49,14 @@ function simplifiedDeckToSchema(deck: SimplifiedDeck): any {
 
 export function decksRoutes(deckProvider: SimplifiedDeckProvider) {
   return new Elysia()
-    // ── GET /decks/u/:shortForm ───────────────────────────────────────────────
-    .get(
-      "/decks/u/:shortForm",
+    // ── Optional auth — visibility check will go here once deck model supports it
+    .use(
+      new Elysia()
+        .use(optionalAuthPlugin)
+
+        // ── GET /decks/u/:shortForm ─────────────────────────────────────────
+        .get(
+          "/decks/u/:shortForm",
       async ({ params, set }) => {
         try {
           const { deck, shortForm } = await deckProvider.getDeckFromShortForm(params.shortForm);
@@ -78,11 +85,17 @@ export function decksRoutes(deckProvider: SimplifiedDeckProvider) {
           description: "Decode a short form deck string back to full deck data.",
         },
       },
+        ),
     )
 
-    // ── POST /decks/u/:shortForm ──────────────────────────────────────────────
-    .post(
-      "/decks/u/:shortForm",
+    // ── Required auth — ownership checks will go here once deck model supports it
+    .use(
+      new Elysia()
+        .use(authPlugin)
+
+        // ── POST /decks/u/:shortForm ──────────────────────────────────────────
+        .post(
+          "/decks/u/:shortForm",
       async ({ body, params, set }) => {
         if (!body.cardsToAdd && !body.cardsToRemove) {
           set.status = 400;
@@ -130,11 +143,11 @@ export function decksRoutes(deckProvider: SimplifiedDeckProvider) {
             "Decode a short form deck string, replace the main deck cards with the provided ones, and return the updated short form and full deck data. Used for sharing decks with custom card lists.",
         },
       },
-    )
+        )
 
-    // ── POST /decks/u ─────────────────────────────────────────────────────────
-    .post(
-      "/decks/u",
+        // ── POST /decks/u ───────────────────────────────────────────────────
+        .post(
+          "/decks/u",
       async ({ body, set }) => {
         if (!body.cardsToAdd) {
           set.status = 400;
@@ -174,5 +187,6 @@ export function decksRoutes(deckProvider: SimplifiedDeckProvider) {
             "Create a new short form deck string from a provided list of card IDs and quantities. Used for sharing decks with custom card lists without needing an initial short form.",
         },
       },
+        ),
     );
 }

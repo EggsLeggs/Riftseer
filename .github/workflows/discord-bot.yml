@@ -34,10 +34,11 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: cloudflare/wrangler-action@v3
         with:
+          packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: packages/discord-bot
-          command: deploy --dry-run
+          command: deploy --dry-run --config wrangler.jsonc
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -56,10 +57,11 @@ jobs:
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
+          packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: packages/discord-bot
-          command: deploy
+          command: deploy --config wrangler.jsonc
 
   upload-emojis:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

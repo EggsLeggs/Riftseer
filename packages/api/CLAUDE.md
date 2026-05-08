@@ -42,6 +42,7 @@ See [`packages/api/docs/`](./docs/) for endpoint reference:
 - [`search.md`](./docs/search.md) — `GET /cards` search mechanics, params, fuzzy/autocomplete
 - [`decks.md`](./docs/decks.md) — deck short-form endpoints
 - [`meta.md`](./docs/meta.md) — health and provider state
+- [`auth.md`](./docs/auth.md) — register, login, refresh, logout
 
 ## Elysia Patterns
 - Define routes on the versioned sub-app (`v1`, `v2`, …), not directly on the root app
@@ -72,7 +73,10 @@ const json = await res.json()
 ## Cloudflare Workers Notes
 - `@elysiajs/swagger` is NOT included — it requires `fs` which is unavailable on CF Workers
 - `process.env` is populated from worker vars/secrets via the `nodejs_compat` flag
-- Secrets set with `wrangler secret put`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+- Secrets set with `wrangler secret put`: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+- Auth routes (`/api/v1/auth/*`) skip card provider warmup and do not require `SUPABASE_SERVICE_ROLE_KEY` — they use `SUPABASE_ANON_KEY` via `@supabase/supabase-js` (register/login/refresh) or direct Supabase REST (logout)
+- **Protected routes**: use `authPlugin` from `src/plugins/auth.ts` — `.use(authPlugin)` injects `user: User` into the handler context via `.resolve({ as: 'scoped' })`. Scope is `scoped` so the middleware only runs for routes in the Elysia instance that explicitly uses the plugin; public routes in the same chain are unaffected. The shared Supabase client lives in `src/lib/supabase.ts`
+- **In Elysia v1.4.x**: use `status(code, body)` (not `error(code, body)`) to return early responses from `resolve`/`derive` — the context has `status`, not `error`
 - CF Workers forbid async I/O (fetch) in global scope — `warmup()` is deferred to the first request via `onBeforeHandle` using a lazy promise singleton (retries on failure)
 - `setInterval` in `warmup()` may not persist across isolate recycles; `/meta` stats can be stale after a cold start
 
@@ -80,6 +84,7 @@ const json = await res.json()
 - `elysia` — server framework (with CloudflareAdapter)
 - `@elysiajs/cors` — CORS headers
 - `@riftseer/core` — workspace dep (provider, types)
+- `@supabase/supabase-js` — Supabase client used by auth routes
 
 ## Testing
 ```bash

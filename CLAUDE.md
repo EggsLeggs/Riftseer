@@ -72,6 +72,7 @@ npx devvit settings set siteBaseUrl
 | `CARD_PROVIDER` | `supabase` (only; data from ingest pipeline) — set in `wrangler.jsonc` vars |
 | `SUPABASE_URL` | Supabase project URL — required |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required |
+| `SUPABASE_ANON_KEY` | Supabase anon/public key — required for auth routes (`/api/v1/auth/*`) |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
 | `CORS_ORIGIN` | Comma-separated allowed origins (default: `https://riftseer.pages.dev,https://riftseer.com`) |
