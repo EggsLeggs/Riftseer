@@ -59,7 +59,7 @@ export function authRoutes() {
             token_type: data.session.token_type,
             user: {
               id: data.user!.id,
-              email: data.user?.email,
+              email: data.user!.email,
               created_at: data.user!.created_at,
             },
           };
@@ -158,7 +158,7 @@ export function authRoutes() {
             token_type: data.session.token_type,
             user: {
               id: data.user!.id,
-              email: data.user?.email,
+              email: data.user!.email,
               created_at: data.user!.created_at,
             },
           };

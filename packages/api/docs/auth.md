@@ -107,7 +107,7 @@ Invalidates the current session server-side. Both the access token and refresh t
 
 **Headers**
 
-```
+```http
 Authorization: Bearer <access_token>
 ```
 
@@ -132,7 +132,7 @@ Returns the authenticated user's profile. Used by clients to restore a session o
 
 **Headers**
 
-```
+```http
 Authorization: Bearer <access_token>
 ```
 

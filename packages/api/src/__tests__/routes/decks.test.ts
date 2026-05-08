@@ -11,10 +11,10 @@ mock.module("../../lib/supabase", () => ({
   supabaseAnonKey: "test-key",
   authClient: {
     auth: {
-      getUser: async (_token: string) => ({
-        data: { user: { id: "test-user-id", email: "test@example.com" } },
-        error: null,
-      }),
+      getUser: async (token: string) =>
+        token === "test-token"
+          ? { data: { user: { id: "test-user-id", email: "test@example.com" } }, error: null }
+          : { data: { user: null }, error: null },
     },
   },
 }));
@@ -120,6 +120,28 @@ describe("Deck routes", () => {
   // ── POST /decks/u/:shortForm ──────────────────────────────────────────────
 
   describe("POST /decks/u/:shortForm", () => {
+    it("returns 401 when Authorization header is missing", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
+        }),
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 401 when Authorization token is invalid", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer bad-token" },
+          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
+        }),
+      );
+      expect(res.status).toBe(401);
+    });
+
     it("returns 400 when no cardsToAdd or cardsToRemove provided", async () => {
       const res = await app.handle(
         new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
@@ -191,6 +213,28 @@ describe("Deck routes", () => {
   // ── POST /decks/u ─────────────────────────────────────────────────────────
 
   describe("POST /decks/u", () => {
+    it("returns 401 when Authorization header is missing", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/decks/u", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
+        }),
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 401 when Authorization token is invalid", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/decks/u", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: "Bearer bad-token" },
+          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
+        }),
+      );
+      expect(res.status).toBe(401);
+    });
+
     it("creates a new deck with the provided cards", async () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/decks/u", {
