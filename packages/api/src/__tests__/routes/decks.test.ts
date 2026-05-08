@@ -4,7 +4,20 @@
  * or card lookups happen.
  */
 
-import { describe, it, expect, beforeAll } from "bun:test";
+import { describe, it, expect, beforeAll, mock } from "bun:test";
+
+mock.module("../../lib/supabase", () => ({
+  supabaseUrl: "http://localhost",
+  supabaseAnonKey: "test-key",
+  authClient: {
+    auth: {
+      getUser: async (_token: string) => ({
+        data: { user: { id: "test-user-id", email: "test@example.com" } },
+        error: null,
+      }),
+    },
+  },
+}));
 import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import type { SimplifiedDeck, SimplifiedDeckProvider } from "@riftseer/core";
@@ -111,7 +124,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({}),
         }),
       );
@@ -124,7 +137,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({
             cardsToAdd: ["aaaaaaaa-0000-0000-0000-000000000001:1"],
           }),
@@ -140,7 +153,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({
             cardsToRemove: ["bf1bafdc-2739-469b-bde6-c24a868f4979:2"],
           }),
@@ -156,7 +169,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({ cardsToAdd: ["notavalidentry"] }),
         }),
       );
@@ -167,7 +180,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/decks/u/badinput", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
         }),
       );
@@ -182,7 +195,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/decks/u", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({
             cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:2"],
           }),
@@ -198,7 +211,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/decks/u", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({}),
         }),
       );
@@ -211,7 +224,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/decks/u", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({
             cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"],
             cardsToRemove: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"],
@@ -227,7 +240,7 @@ describe("Deck routes", () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/decks/u", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
           body: JSON.stringify({ cardsToAdd: ["notavalidentry"] }),
         }),
       );
