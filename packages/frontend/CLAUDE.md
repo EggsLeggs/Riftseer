@@ -1,3 +1,5 @@
+> **DEPRECATED** — this package is being replaced by `packages/web` and will be removed. Do not add features here; implement new work in `packages/web` instead. The one exception is legal pages (`PrivacyPage.tsx`, `TermsPage.tsx`) — keep them accurate until migrated.
+
 # packages/frontend — Context for Claude
 
 ## Purpose

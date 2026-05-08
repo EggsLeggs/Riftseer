@@ -1,7 +1,7 @@
 # Riftseer — Project Context for Claude
 
 ## Overview
-Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a React frontend, a Discord bot, and a Reddit bot that all share a common card data model.
+Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a Next.js frontend, a Discord bot, and a Reddit bot that all share a common card data model.
 
 ## Monorepo Structure
 ```
@@ -9,13 +9,14 @@ riftseer/
 ├── packages/types/          # Zero-dependency types, parser, icon tokens (@riftseer/types)
 ├── packages/core/           # Provider interface, Supabase provider, search, deck model (@riftseer/core)
 ├── packages/api/            # ElysiaJS REST API — Cloudflare Worker (wrangler dev/deploy)
-├── packages/frontend/       # React 19 + Vite SPA
+├── packages/web/            # Next.js App Router SPA — Cloudflare Workers via OpenNext (@riftseer/web)
+├── packages/frontend/       # React 19 + Vite SPA — DEPRECATED, to be removed (replaced by packages/web)
 ├── packages/discord-bot/    # Discord bot on Cloudflare Workers (Bun workspace member)
 ├── packages/ingest-worker/  # Cloudflare Worker — scheduled ingest (RiftCodex → Supabase, no API)
 └── packages/reddit-bot/     # Devvit Reddit bot (NOT a Bun workspace member)
 ```
 
-`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/types`, `packages/core`, `packages/api`, `packages/frontend`, `packages/discord-bot`, and `packages/ingest-worker` are workspace members.
+`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/types`, `packages/core`, `packages/api`, `packages/web`, `packages/frontend`, `packages/discord-bot`, and `packages/ingest-worker` are workspace members.
 
 ## Stack
 | Layer | Technology |
@@ -23,7 +24,8 @@ riftseer/
 | Runtime | Bun ≥ 1.2 (workspace tooling) + Cloudflare Workers (API runtime) |
 | API | ElysiaJS 1.4+ with CloudflareAdapter + @elysiajs/cors |
 | DB | bun:sqlite (built-in, no extra dep) |
-| Frontend | React 19, React Router 7, Tailwind CSS 4, Vite 6 |
+| Web (packages/web) | Next.js App Router, Tailwind CSS 4, Cloudflare Workers via OpenNext |
+| Frontend (deprecated) | React 19, React Router 7, Tailwind CSS 4, Vite 6 — replaced by packages/web |
 | Card name search | Postgres `tsvector` full-text search (Supabase) |
 | API client | @elysiajs/eden (type-safe, Eden Treaty) |
 | Testing | bun test (Jest-compatible) |
@@ -34,7 +36,9 @@ riftseer/
 ```bash
 bun dev             # API (wrangler dev) + frontend together
 bun dev:api         # API only via wrangler dev (http://localhost:8789)
-bun dev:frontend    # Frontend only
+bun dev:web         # packages/web Next.js dev server
+bun build:web       # packages/web production build
+bun dev:frontend    # packages/frontend (deprecated)
 bun test            # Run all tests
 bun typecheck       # Type-check all workspace packages
 
@@ -138,7 +142,8 @@ RiftCodex /sets + /cards
 
 ## Deployment
 - **API**: Cloudflare Workers via `cd packages/api && wrangler deploy`. Secrets set with `wrangler secret put`. Worker name: `riftseer-api`.
-- **Frontend**: Cloudflare Pages (separate deployment).
+- **Web (packages/web)**: Cloudflare Workers via `@opennextjs/cloudflare`. Run `bun run deploy` from `packages/web`. Build-time env vars must be set in the Workers Builds dashboard.
+- **Frontend (deprecated)**: Cloudflare Pages (separate deployment) — will be removed when packages/web is complete.
 - **Discord bot**: Cloudflare Workers via `wrangler deploy`. Secrets set with `wrangler secret put`.
 - **Reddit bot**: Devvit upload (`npx devvit upload`). The bot's HTTP fetch domain must be registered in `devvit.yaml`.
 
@@ -168,7 +173,7 @@ migration files.
 - ~656 cards across 14 pages (as of 2026-02)
 
 ## Legal Pages — IMPORTANT
-`packages/frontend/src/components/PrivacyPage.tsx` and `TermsPage.tsx` are the **authoritative** privacy policy and terms of service shown to users. If any of the following change, **both the relevant page component AND this notice** must be updated:
+`packages/frontend/src/components/PrivacyPage.tsx` and `TermsPage.tsx` are the **authoritative** privacy policy and terms of service shown to users until they are migrated to `packages/web`. When that migration happens, update this notice to point to the new location. If any of the following change, **both the relevant page component AND this notice** must be updated:
 - Data collected (e.g., new analytics, new fields stored in KV or DB)
 - Third-party services added or removed (hosting, analytics, data providers)
 - Bot behaviour (new triggers, new data logged, new KV keys)
