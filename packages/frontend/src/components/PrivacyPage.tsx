@@ -16,7 +16,7 @@ export function PrivacyPage() {
         <Shield className="w-6 h-6 text-primary" />
         <h1 className="text-2xl font-bold">Privacy Policy</h1>
       </div>
-      <p className="text-sm text-muted-foreground mb-6">Last Updated: 5 April 2026</p>
+      <p className="text-sm text-muted-foreground mb-6">Last Updated: 9 May 2026</p>
 
       <p className="text-foreground leading-relaxed mb-8">
         This Privacy Policy describes how Riftseer collects, uses, and protects information when
@@ -45,7 +45,25 @@ export function PrivacyPage() {
           <ul className="space-y-3 text-foreground">
             <li>
               <strong>No account required.</strong> You can use the site and API without signing in.
-              We do not collect names, emails, or passwords.
+            </li>
+            <li>
+              <strong>Optional accounts.</strong> If you choose to register, we collect your{" "}
+              <strong>email address and password</strong> to create and authenticate your account.
+              Passwords are hashed and stored securely by{" "}
+              <a
+                href="https://supabase.com/privacy"
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline"
+              >
+                Supabase
+              </a>
+              {" "}(our authentication provider) — we never store plaintext passwords. Upon login,
+              Supabase issues a short-lived <strong>access token</strong> and a long-lived{" "}
+              <strong>refresh token</strong>; these are stored client-side and sent with authenticated
+              requests. You can revoke your session at any time via the logout endpoint
+              (<code className="bg-muted px-1 py-0.5 rounded text-xs">POST /api/v1/auth/logout</code>).
+              To delete your account, contact us through the project repository.
             </li>
             <li>
               <strong>Local storage (site only).</strong> The website stores one preference in your
@@ -169,6 +187,19 @@ export function PrivacyPage() {
               (e.g. IP, logs) as part of running the service.
             </li>
             <li>
+              <strong>Supabase (authentication).</strong> If you create an account, your email and
+              hashed password are stored and managed by Supabase. Supabase's own{" "}
+              <a
+                href="https://supabase.com/privacy"
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline"
+              >
+                privacy policy
+              </a>{" "}
+              applies to that data.
+            </li>
+            <li>
               <strong>PostHog.</strong> As described above, we use PostHog for site analytics.
               PostHog processes the analytics data according to their privacy policy.
             </li>
@@ -197,7 +228,9 @@ export function PrivacyPage() {
             data according to their policy and your settings. Stored Reddit comment/post IDs
             (used to prevent double-replies) are kept indefinitely so the bot continues to avoid
             duplicate replies. Logs of card requests by subreddit and Reddit username are retained
-            for as long as we use them for analytics and product improvement.
+            for as long as we use them for analytics and product improvement. Account data (email
+            and hashed password) is retained by Supabase for as long as your account exists; contact
+            us to request account deletion.
           </p>
         </section>
 
@@ -206,12 +239,13 @@ export function PrivacyPage() {
           <h2 className="text-lg font-semibold border-b border-border pb-2 mb-3">Your Rights</h2>
           <p className="text-foreground leading-relaxed mb-2">
             Depending on where you live, you may have rights to access, correct, or delete personal
-            data. Because we do not maintain user accounts, we have no login-based profile to
-            provide or delete. You can clear the theme preference by clearing local storage for
-            this site. PostHog may offer opt-out or privacy controls—see their privacy policy. For
-            Reddit-related data (including our logs of card requests by subreddit and username),
-            you can contact us to ask what we hold or to request deletion. Reddit’s own tools and
-            privacy policy also apply to your activity on Reddit.
+            data. If you have an account, you can contact us through the project repository to
+            request access to or deletion of your account data. You can clear the theme preference
+            by clearing local storage for this site. PostHog may offer opt-out or privacy
+            controls—see their privacy policy. For Reddit-related data (including our logs of card
+            requests by subreddit and username), you can contact us to ask what we hold or to
+            request deletion. Reddit’s own tools and privacy policy also apply to your activity on
+            Reddit.
           </p>
         </section>
 

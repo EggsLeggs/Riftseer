@@ -23,6 +23,7 @@ import { metaRoutes } from "../src/routes/meta";
 import { cardsRoutes } from "../src/routes/cards";
 import { setsRoutes } from "../src/routes/sets";
 import { decksRoutes } from "../src/routes/decks";
+import { authRoutes } from "../src/routes/auth";
 
 const cardProvider = createProvider();
 try {
@@ -46,7 +47,8 @@ const app = new Elysia()
       .use(metaRoutes(cardProvider, Date.now()))
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
-      .use(decksRoutes(deckProvider)),
+      .use(decksRoutes(deckProvider))
+      .use(authRoutes()),
   )
   .use(
     swagger({
@@ -58,6 +60,7 @@ const app = new Elysia()
           { name: "Cards", description: "Card lookup and search" },
           { name: "Sets", description: "Card set listing" },
           { name: "Decks", description: "Deck building and sharing" },
+          { name: "Auth", description: "User registration and session management" },
         ],
       },
     }),

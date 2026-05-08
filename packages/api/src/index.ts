@@ -13,11 +13,16 @@
  *   GET  /api/v1/decks/u/:shortForm
  *   POST /api/v1/decks/u/:shortForm
  *   POST /api/v1/decks/u
+ *   POST /api/v1/auth/register  body: { email, password }
+ *   POST /api/v1/auth/login     body: { email, password }
+ *   POST /api/v1/auth/refresh   body: { refresh_token }
+ *   POST /api/v1/auth/logout    Authorization: Bearer <access_token>
+ *   GET  /api/v1/auth/me        Authorization: Bearer <access_token>  (protected)
  *
  * Deploy: wrangler deploy
  * Dev:    wrangler dev
  * Secrets (wrangler secret put): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
- *   UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+ *   SUPABASE_ANON_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
  */
 
 import { Elysia } from "elysia";
@@ -33,6 +38,7 @@ import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
 import { setsRoutes } from "./routes/sets";
 import { decksRoutes } from "./routes/decks";
+import { authRoutes } from "./routes/auth";
 
 // ─── Singletons ───────────────────────────────────────────────────────────────
 // CF Workers forbid async I/O (fetch) in global scope — only inside handlers.
@@ -67,7 +73,7 @@ function ensureWarmedUp(): Promise<void> {
 
 export const app = new Elysia({ adapter: CloudflareAdapter })
   .onBeforeHandle(async ({ path, set }) => {
-    if (path === "/api/v1/health") return;
+    if (path === "/api/v1/health" || path.startsWith("/api/v1/auth/")) return;
     try {
       await ensureWarmedUp();
     } catch {
@@ -86,7 +92,8 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
       .use(metaRoutes(cardProvider, startTime))
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
-      .use(decksRoutes(deckProvider)),
+      .use(decksRoutes(deckProvider))
+      .use(authRoutes()),
   )
   .compile();
 
