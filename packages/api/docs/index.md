@@ -13,7 +13,7 @@ The Riftseer API is a read-mostly REST API that exposes Riftbound TCG card data.
 
 ## Authentication
 
-No authentication is required. All endpoints are publicly accessible.
+Most endpoints are publicly accessible and require no authentication. The `/api/v1/auth` endpoints manage user sessions; authenticated requests should include `Authorization: Bearer <access_token>` where required.
 
 ---
 
@@ -65,10 +65,9 @@ Errors return a JSON body with `error` (human-readable message) and `code` (mach
 | Status | Meaning |
 | --- | --- |
 | `400` | Bad request — missing or invalid parameter |
+| `401` | Unauthenticated — missing or invalid token (auth routes only) |
 | `404` | Resource not found |
 | `500` | Internal server error |
-
-There is no 401 or 403 — the API has no authentication layer.
 
 ---
 
@@ -109,6 +108,7 @@ Route modules live in `packages/api/src/routes/`:
 | `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve` |
 | `sets.ts` | `/sets` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
+| `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` |
 
 ---
 
@@ -145,3 +145,8 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `GET` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
 | `POST` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
 | `POST` | `/api/v1/decks/u` | [Decks](./decks.md) |
+| `POST` | `/api/v1/auth/register` | [Auth](./auth.md) |
+| `POST` | `/api/v1/auth/login` | [Auth](./auth.md) |
+| `POST` | `/api/v1/auth/refresh` | [Auth](./auth.md) |
+| `POST` | `/api/v1/auth/logout` | [Auth](./auth.md) |
+| `GET` | `/api/v1/auth/me` | [Auth](./auth.md) |
