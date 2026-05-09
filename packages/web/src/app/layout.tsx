@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { ConsentManager } from "@/components/consent-manager";
 import { Providers } from "@/providers";
 import "./globals.css";
 
@@ -47,7 +48,9 @@ export default function RootLayout({
       className={`${genInterfaceJP.variable} ${genInterfaceJPDisplay.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <Providers>{children}</Providers>
+        <ConsentManager>
+          <Providers>{children}</Providers>
+        </ConsentManager>
       </body>
     </html>
   );

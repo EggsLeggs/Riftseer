@@ -9,6 +9,7 @@ declare namespace Cloudflare {
 		ASSETS: Fetcher;
 		NEXT_PUBLIC_API_URL: "https://api.riftseer.com";
 		NEXT_PUBLIC_APP_URL: "https://riftseer.com";
+		C15T_DATABASE_URL: string;
 		WORKER_SELF_REFERENCE: Service<typeof import("./.open-next/worker").default>;
 	}
 }
@@ -17,5 +18,5 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NEXT_PUBLIC_API_URL" | "NEXT_PUBLIC_APP_URL">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "NEXT_PUBLIC_API_URL" | "NEXT_PUBLIC_APP_URL" | "C15T_DATABASE_URL">> {}
 }

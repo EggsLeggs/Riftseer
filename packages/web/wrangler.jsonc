@@ -42,5 +42,9 @@
 	"vars": {
 		"NEXT_PUBLIC_API_URL": "https://api.riftseer.com",
 		"NEXT_PUBLIC_APP_URL": "https://riftseer.com"
+	},
+	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
+	"secrets": {
+		"required": ["C15T_DATABASE_URL"]
 	}
 }
