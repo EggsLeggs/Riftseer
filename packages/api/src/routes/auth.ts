@@ -78,6 +78,15 @@ export function authRoutes() {
             });
             if (adminError) {
               console.error("[auth/register] app_metadata update failed:", adminError.message);
+              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(data.user.id);
+              if (deleteError) {
+                console.error("[auth/register] rollback deleteUser failed:", deleteError.message);
+              }
+              set.status = 500;
+              return {
+                error: "Registration could not be completed. Please try again.",
+                code: "CONSENT_RECORD_FAILED",
+              };
             }
           }
 
@@ -115,6 +124,7 @@ export function authRoutes() {
             200: SessionSchema,
             202: ConfirmationSchema,
             400: ErrorSchema,
+            500: ErrorSchema,
             503: ErrorSchema,
           },
           detail: {

@@ -2,6 +2,7 @@ import { defineConfig } from '@c15t/backend';
 import { kyselyAdapter } from '@c15t/backend/db/adapters/kysely';
 import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
+import { parseC15tTrustedOrigins } from './packages/web/src/lib/c15t-trusted-origins';
 
 const databaseUrl = process.env.C15T_DATABASE_URL;
 if (!databaseUrl) {
@@ -17,10 +18,10 @@ const db = new Kysely({
 	}),
 });
 
-const trustedOrigins = (process.env.C15T_TRUSTED_ORIGINS ?? process.env.NEXT_PUBLIC_APP_URL ?? '')
-	.split(',')
-	.map((s) => s.trim())
-	.filter(Boolean);
+const trustedOrigins = parseC15tTrustedOrigins(
+	process.env.C15T_TRUSTED_ORIGINS,
+	process.env.NEXT_PUBLIC_APP_URL ?? '',
+);
 
 export default defineConfig({
 	adapter: kyselyAdapter({ provider: 'postgresql', db }),

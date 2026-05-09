@@ -3,16 +3,18 @@
 import { type ReactNode } from "react";
 import { ConsentManagerProvider, ConsentDialog } from "@c15t/nextjs";
 
+import { env } from "@/lib/env";
+
 import { CustomConsentBanner } from "./custom-consent-banner";
 
-export default function ConsentManagerClient({
+export function ConsentManagerClient({
   children,
 }: {
   children: ReactNode;
 }) {
-  const overrideCountry = process.env.NEXT_PUBLIC_CONSENT_OVERRIDE_COUNTRY;
+  const overrideCountry = env.NEXT_PUBLIC_CONSENT_OVERRIDE_COUNTRY;
   const allowOverride =
-    process.env.NODE_ENV !== "production" && Boolean(overrideCountry);
+    env.NODE_ENV !== "production" && Boolean(overrideCountry);
 
   return (
     <ConsentManagerProvider
