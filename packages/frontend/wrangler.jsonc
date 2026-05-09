@@ -1,11 +1,15 @@
+/**
+ * Static SPA (Vite build → ./dist). API origin is compile-time: set VITE_API_URL when running `vite build`
+ * (CI / local), not Worker vars — this Worker only serves assets.
+ */
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "riftseer-frontend",
-  "compatibility_date": "2026-02-19",
-  "assets": {
-    "directory": "./dist",
-    "not_found_handling": "single-page-application"
-  }
-  // Secrets — set once with:
-  //   npx wrangler pages secret put VITE_API_URL --project-name riftseer-frontend
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "riftseer-frontend",
+	"compatibility_date": "2026-02-19",
+	"workers_dev": false,
+	"preview_urls": false,
+	"assets": {
+		"directory": "./dist",
+		"not_found_handling": "single-page-application"
+	}
 }

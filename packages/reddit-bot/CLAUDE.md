@@ -81,7 +81,7 @@ Replied comment/post IDs are stored in the KV store to prevent duplicate replies
 `tsconfig.json` overrides `"types": []` to suppress a vitest/globals conflict that Devvit's base tsconfig introduces. Do not remove this override.
 
 ## Privacy Implications
-If the bot begins storing new data in the KV store or logging additional fields (e.g., user IDs, subreddit names, card request text), update `PrivacyPage.tsx` in `packages/frontend` to reflect what is collected, why, and how long it is retained.
+If the bot begins storing new data in the KV store or logging additional fields (e.g., user IDs, subreddit names, card request text), update `packages/web/src/views/privacy-view.tsx` to reflect what is collected, why, and how long it is retained.
 
 The current data stored:
 - **KV store**: Replied comment/post IDs only (for deduplication)

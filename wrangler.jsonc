@@ -1,8 +1,14 @@
+/**
+ * Deploy from repo root (paths relative to this file). Prefer `packages/frontend/wrangler.jsonc` when cwd is packages/frontend.
+ */
 {
-  "name": "riftseer-frontend",
-  "compatibility_date": "2026-02-19",
-  "assets": {
-    "directory": "packages/frontend/dist",
-    "not_found_handling": "single-page-application"
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "riftseer-frontend",
+	"compatibility_date": "2026-02-19",
+	"workers_dev": false,
+	"preview_urls": false,
+	"assets": {
+		"directory": "packages/frontend/dist",
+		"not_found_handling": "single-page-application"
+	}
 }

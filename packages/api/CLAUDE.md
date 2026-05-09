@@ -63,7 +63,7 @@ const json = await res.json()
 2. Add Elysia schema annotations (`.query()`, `.body()`, `.response()`) for Eden Treaty types
 3. Write a test in `src/__tests__/routes.test.ts`
 4. Update or add the relevant doc page in `packages/api/docs/`
-5. If the route exposes new personal data or logs new information, update `PrivacyPage.tsx`
+5. If the route exposes new personal data or logs new information, update `packages/web/src/views/privacy-view.tsx`
 
 ## Error Handling
 - Return `{ error: string }` with appropriate HTTP status codes

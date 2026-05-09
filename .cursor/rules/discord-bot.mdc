@@ -59,4 +59,4 @@ bun run register  # Re-register commands after changes to src/commands.ts
 ```
 
 ## Privacy
-The bot does not persist data. If any logging or storage is added, update `packages/frontend/src/components/PrivacyPage.tsx`.
+The bot does not persist data. If any logging or storage is added, update `packages/web/src/views/privacy-view.tsx`.

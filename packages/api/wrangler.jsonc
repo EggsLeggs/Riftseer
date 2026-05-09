@@ -1,22 +1,20 @@
 {
-  "name": "riftseer-api",
-  "main": "src/index.ts",
-  "compatibility_date": "2025-06-01",
-  "workers_dev": true,
-  "preview_urls": false,
-  "dev": { "port": 8789 },
-  "compatibility_flags": ["nodejs_compat"],
-  "observability": { "enabled": true },
-  "vars": {
-    "CARD_PROVIDER": "supabase"
-    // Secrets — set once with:
-    //   wrangler secret put SUPABASE_URL
-    //   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-    //   wrangler secret put SUPABASE_ANON_KEY          ← required for auth routes
-    //   wrangler secret put UPSTASH_REDIS_REST_URL
-    //   wrangler secret put UPSTASH_REDIS_REST_TOKEN
-    // Affiliate — set your Impact.com publisher ID to enable affiliate links:
-    //   wrangler secret put TCGPLAYER_AFFILIATE_ID
-    //   (deep link format: https://partner.tcgplayer.com/c/{id}/1780961/21018?u={productUrl})
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "riftseer-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-06-01",
+	"workers_dev": false,
+	"preview_urls": false,
+	"dev": { "port": 8789 },
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+	"vars": {
+		"CARD_PROVIDER": "supabase"
+	},
+	// Required for core API + Supabase auth routes.
+	// Optional secrets (omit from required): UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, TCGPLAYER_AFFILIATE_ID
+	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
+	"secrets": {
+		"required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"]
+	}
 }

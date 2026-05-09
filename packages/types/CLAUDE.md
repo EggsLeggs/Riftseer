@@ -39,7 +39,7 @@ If a new field is added to the canonical `Card` type:
 - Update `packages/ingest-worker/src/riftcodex.ts` (`rawToCard`)
 - Update the row mapping in `packages/core/src/providers/supabase.ts` (`dbRowToCard`)
 - Update the field table in `packages/api/docs/cards.md`
-- Check `PrivacyPage.tsx` if the field affects what data is stored or shown
+- Check `packages/web/src/views/privacy-view.tsx` if the field affects what data is stored or shown
 
 ## Documentation
 Doc pages live in `packages/types/docs/`. Keep them up to date when making changes to types, parser behaviour, or the icon map.
