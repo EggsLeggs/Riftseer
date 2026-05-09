@@ -35,16 +35,33 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
-	/**
-	 * Plain vars — available at runtime on the Worker (OpenNext maps them to process.env).
-	 * Must stay in sync with values passed at build time (GitHub Actions / local deploy).
-	 */
-	"vars": {
-		"NEXT_PUBLIC_API_URL": "https://api.riftseer.com",
-		"NEXT_PUBLIC_APP_URL": "https://riftseer.com"
-	},
 	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
 	"secrets": {
 		"required": ["C15T_DATABASE_URL"]
+	},
+	"env": {
+		"production": {
+			/**
+			 * Plain vars — available at runtime on the Worker (OpenNext maps them to process.env).
+			 * Must stay in sync with values passed at build time (GitHub Actions / local deploy).
+			 */
+			"vars": {
+				"NEXT_PUBLIC_API_URL": "https://api.riftseer.com",
+				"NEXT_PUBLIC_APP_URL": "https://riftseer.com"
+			},
+			// Wrangler does not inherit these from the top level when using `--env production`; duplicate here.
+			"secrets": {
+				"required": ["C15T_DATABASE_URL"]
+			},
+			"services": [
+				{
+					"binding": "WORKER_SELF_REFERENCE",
+					"service": "riftseer-web"
+				}
+			],
+			"images": {
+				"binding": "IMAGES"
+			}
+		}
 	}
 }

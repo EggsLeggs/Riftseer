@@ -38,7 +38,7 @@ cd packages/ingest-worker
 bun run dev
 ```
 
-This runs `wrangler dev` using the local worker code. Check `wrangler.toml` in this package for the exact configuration of the worker name, routes, and schedule.
+This runs `wrangler dev` using the local worker code. Check `wrangler.jsonc` in this package for the exact configuration of the worker name, routes, and schedule.
 
 ## Triggering ingest
 

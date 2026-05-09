@@ -9,7 +9,9 @@
 	"compatibility_flags": ["nodejs_compat"],
 	"observability": { "enabled": true },
 	"vars": {
-		"CARD_PROVIDER": "supabase"
+		"CARD_PROVIDER": "supabase",
+		"LEGAL_TERMS_VERSION": "1",
+		"LEGAL_PRIVACY_VERSION": "1"
 	},
 	// Required for core API + Supabase auth routes.
 	// Optional secrets (omit from required): UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, TCGPLAYER_AFFILIATE_ID

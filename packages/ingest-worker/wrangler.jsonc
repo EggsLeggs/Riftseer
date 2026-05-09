@@ -1,0 +1,23 @@
+/**
+ * Riftseer ingest worker — runs full ingestion pipeline on a schedule (no Elysia API).
+ * Required secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (see secrets.required below).
+ * Optional: wrangler secret put RIFTCODEX_API_KEY, INGEST_SECRET (manual POST /ingest auth).
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "riftseer-ingest",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-01-01",
+	"workers_dev": true,
+	"preview_urls": false,
+	"triggers": {
+		"crons": ["0 */6 * * *"]
+	},
+	"vars": {
+		"RIFTCODEX_BASE_URL": "https://api.riftcodex.com"
+	},
+	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
+	"secrets": {
+		"required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]
+	}
+}

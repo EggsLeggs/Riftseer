@@ -88,6 +88,12 @@ export function authRoutes() {
                 code: "CONSENT_RECORD_FAILED",
               };
             }
+          } else if (data.user && !authAdminClient) {
+            console.warn(
+              "[auth/register] authAdminClient is not configured: app_metadata could not be written; " +
+                "consent was recorded only in user_metadata (editable client-side). user id:",
+              data.user.id,
+            );
           }
 
           if (!data.session) {

@@ -17,7 +17,7 @@ riftseer/
 └── packages/reddit-bot/     # Devvit Reddit bot (NOT a Bun workspace member)
 ```
 
-`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace. `packages/types`, `packages/core`, `packages/api`, `packages/web`, `packages/frontend`, `packages/discord-bot`, and `packages/ingest-worker` are workspace members.
+`packages/reddit-bot` is a standalone npm project excluded from the root Bun workspace (managed separately). Workspace members are `packages/types`, `packages/core`, `packages/api`, `packages/web`, `packages/discord-bot`, and `packages/ingest-worker`. (`packages/frontend` remains in the tree as deprecated Vite SPA; prefer `packages/web`.)
 
 ## Stack
 
@@ -78,6 +78,8 @@ npx devvit settings set siteBaseUrl
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
 | `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
+| `LEGAL_TERMS_VERSION` | Version string stored with new users’ Terms acceptance at registration (`POST /auth/register`). **Set in `packages/api/wrangler.jsonc` → `vars`.** When you publish material Terms updates, bump this value and redeploy the API Worker so new signups record the new version. (Code still defaults to `1` if the binding is missing.) |
+| `LEGAL_PRIVACY_VERSION` | Same for Privacy Policy acceptance. **Set in `packages/api/wrangler.jsonc` → `vars`** — bump alongside material Privacy policy updates and redeploy. |
 
 ### Ingest Worker (packages/ingest-worker)
 | Variable | Purpose |
@@ -90,7 +92,7 @@ npx devvit settings set siteBaseUrl
 | `INGEST_SECRET` | Bearer token for POST /ingest (optional) |
 
 ### Web (packages/web)
-Plain vars defined in `packages/web/wrangler.jsonc` and mirrored in `.env.example` — must match the values passed at build time (`opennextjs-cloudflare build`) and in `.github/workflows/web.yml`.
+Production plain vars live under `env.production.vars` in `packages/web/wrangler.jsonc` (deploy with `opennextjs-cloudflare deploy --env production`). Mirror them in `.env.example` / local `.env` — they must match the values passed at build time (`opennextjs-cloudflare build`) and in `.github/workflows/web.yml`.
 
 | Variable | Purpose |
 |----------|---------|
@@ -184,9 +186,11 @@ migration files.
 - ~656 cards across 14 pages (as of 2026-02)
 
 ## Legal Pages — IMPORTANT
-**Privacy Policy** — `packages/web/src/views/privacy-view.tsx` (route `/privacy`). **Terms of Service** — `packages/web/src/views/terms-view.tsx` (route `/terms`). Shared layout primitives for both live in `packages/web/src/views/legal-document.tsx`.
+Authoritative policy copy lives in **`packages/web/src/views/privacy-view.tsx`** (route `/privacy`) and **`packages/web/src/views/terms-view.tsx`** (route `/terms`). Shared layout primitives for both live in `packages/web/src/views/legal-document.tsx`.
 
 The deprecated SPA (`packages/frontend`) keeps `/docs/privacy` and `/docs/terms` as short stubs linking to the canonical URLs on the main site.
+
+When policy content changes, update **both** the relevant view component (`privacy-view.tsx` or `terms-view.tsx`) **and** its “Last updated” line; if routes or filenames change, update **this notice** too. For **material** changes that should distinguish new user consent, **bump `LEGAL_TERMS_VERSION` and/or `LEGAL_PRIVACY_VERSION` in `packages/api/wrangler.jsonc`** (`vars`) and redeploy the API Worker (`cd packages/api && wrangler deploy`).
 
 If any of the following change, **update the relevant legal page (and this notice if paths change)**:
 - Data collected (e.g., new analytics, new fields stored in KV or DB)

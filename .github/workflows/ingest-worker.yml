@@ -41,7 +41,7 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: packages/ingest-worker
-          command: deploy --dry-run --config wrangler.toml
+          command: deploy --dry-run --config wrangler.jsonc
 
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -131,4 +131,4 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: packages/ingest-worker
-          command: deploy --config wrangler.toml
+          command: deploy --config wrangler.jsonc

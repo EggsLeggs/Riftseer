@@ -18,3 +18,9 @@ export const env = schema.parse({
   C15T_DATABASE_URL: process.env.C15T_DATABASE_URL,
   NEXT_PUBLIC_CONSENT_OVERRIDE_COUNTRY: process.env.NEXT_PUBLIC_CONSENT_OVERRIDE_COUNTRY,
 });
+
+/** Same URL rule as `schema`, without throwing — for Edge middleware when env may be incomplete. */
+export function getValidatedPublicApiUrl(): string | undefined {
+  const r = z.string().url().safeParse(process.env.NEXT_PUBLIC_API_URL);
+  return r.success ? r.data : undefined;
+}

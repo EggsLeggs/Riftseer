@@ -9,7 +9,7 @@ export function TermsView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Terms of Service</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 4 April 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 9 May 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>

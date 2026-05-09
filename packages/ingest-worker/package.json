@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config wrangler.toml --port 8788",
-    "deploy": "wrangler deploy --config wrangler.toml",
+    "dev": "wrangler dev --config wrangler.jsonc --port 8788",
+    "deploy": "wrangler deploy --config wrangler.jsonc",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
