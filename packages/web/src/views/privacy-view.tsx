@@ -45,8 +45,8 @@ export function PrivacyView() {
               register, we collect your{" "}
               <strong className="font-semibold">email address and password</strong> to create and
               authenticate your account. Passwords are hashed and stored securely by{" "}
-              <InlineLink href="https://supabase.com/privacy">Supabase</InlineLink> (our
-              authentication provider); we never store plaintext passwords. Upon login, Supabase
+              <InlineLink href="https://supabase.com/privacy">Supabase</InlineLink>{" "}
+              (our authentication provider); we never store plaintext passwords. Upon login, Supabase
               issues a short-lived <strong className="font-semibold">access token</strong> and a
               long-lived <strong className="font-semibold">refresh token</strong>; these are stored
               client-side and sent with authenticated requests. You can revoke your session at any
@@ -77,15 +77,15 @@ export function PrivacyView() {
             </ListItem>
             <ListItem>
               <strong className="font-semibold">PostHog (site analytics).</strong> We use{" "}
-              <InlineLink href="https://posthog.com">PostHog</InlineLink>
-              {" "}
+              <InlineLink href="https://posthog.com">PostHog</InlineLink>{" "}
               to record site activity, for example page views, search usage, and how people navigate
               the site, so we can understand usage and improve the product. PostHog may collect
               information such as your
               IP address, device and browser type, and interaction data. PostHog&apos;s own privacy
               policy applies:{" "}
-              <InlineLink href="https://posthog.com/privacy">posthog.com/privacy</InlineLink>. We do
-              not use this data for advertising.
+              <InlineLink href="https://posthog.com/privacy">posthog.com/privacy</InlineLink>
+              .{" "}
+              We do not use this data for advertising.
             </ListItem>
           </UnorderedList>
         </div>
@@ -109,19 +109,24 @@ export function PrivacyView() {
             <ListItem>
               <strong className="font-semibold">How we use that data.</strong> We use the text to
               find card references and to call the Riftseer API to resolve them. We use the author
-              username to skip replying to accounts whose username ends with{" "}
+              username only to skip replying to accounts whose username ends with{" "}
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">&quot;bot&quot;</code>
-              . We also use it (together with subreddit and card requests) for analytics as
-              described below.
+              ; we do not persist Reddit usernames in the bot. Card-name and subreddit analytics on
+              our servers are described under{" "}
+              <strong className="font-semibold">What we store</strong>.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">What we store.</strong> We store{" "}
+              <strong className="font-semibold">What we store.</strong> The bot stores only{" "}
               <strong className="font-semibold">Reddit comment and post IDs</strong> (in a key-value
-              store) to remember that we already replied, so we do not reply twice. We also{" "}
-              <strong className="font-semibold">log card requests by subreddit and by Reddit user</strong>
-              {
-                ": when someone triggers the bot with card references, we record which cards were requested, the subreddit where it happened, and the Reddit username of the person who posted. We use this to understand how the bot is used across communities and to improve the service. We do not sell this data or use it for advertising."
-              }
+              store) so we do not reply twice to the same item; it does not persist Reddit usernames,
+              subreddit names, or requested card names. Separately, our{" "}
+              <strong className="font-semibold">server-side API</strong> may log{" "}
+              <strong className="font-semibold">requested card names and subreddit</strong> when the
+              bot calls it to resolve references—for analytics (understanding how the bot is used
+              across communities and improving the service). Those API logs are retained only as long
+              as needed for analytics and product
+              improvement, consistent with how we retain other API and server logs for operation and
+              security. We do not sell this data or use it for advertising.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Replies.</strong> When the bot replies, it does so
@@ -167,8 +172,8 @@ export function PrivacyView() {
               <strong className="font-semibold">Supabase (authentication).</strong> If you create an
               account, your email and hashed password are stored and managed by Supabase. Supabase&apos;s
               own{" "}
-              <InlineLink href="https://supabase.com/privacy">privacy policy</InlineLink> applies to
-              that data.
+              <InlineLink href="https://supabase.com/privacy">privacy policy</InlineLink>{" "}
+              applies to that data.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">PostHog.</strong> As described above, we use PostHog
@@ -200,10 +205,10 @@ export function PrivacyView() {
             kept only as long as needed for operation and security. PostHog retains analytics data
             according to their policy and your settings. Stored Reddit comment and post IDs (used to
             prevent double replies) are kept indefinitely so the bot continues to avoid duplicate
-            replies. Logs of card requests by subreddit and Reddit username are retained for as long
-            as we use them for analytics and product improvement. Account data (email and hashed
-            password) is retained by Supabase for as long as your account exists; contact us to
-            request account deletion.
+            replies. API-side logs of requested card names and subreddit from bot traffic are retained
+            on the same basis as other API analytics and server logs described above. Account data
+            (email and hashed password) is retained by Supabase for as long as your account exists;
+            contact us to request account deletion.
           </Text>
         </div>
 
@@ -214,8 +219,9 @@ export function PrivacyView() {
             data. If you have an account, you can contact us through the project repository to
             request access to or deletion of your account data. You can clear the theme preference by
             clearing local storage for this site. PostHog may offer opt-out or privacy controls; see
-            their privacy policy. For Reddit-related data (including our logs of card requests by
-            subreddit and username), you can contact us to ask what we hold or to request deletion.
+            their privacy policy. For Reddit-related data (including API analytics derived from bot
+            traffic, such as card names and subreddit), you can contact us to ask what we hold or to
+            request deletion where applicable.
             Reddit&apos;s own tools and privacy policy also apply to your activity on Reddit.
           </Text>
         </div>
