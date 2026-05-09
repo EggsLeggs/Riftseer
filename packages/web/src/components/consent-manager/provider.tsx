@@ -1,6 +1,5 @@
 "use client";
 
-import "@c15t/nextjs/styles.css";
 import { type ReactNode } from "react";
 import {
   ConsentManagerProvider,
