@@ -1,21 +1,37 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 
+import type { SessionUser } from "@/features/auth/types";
 import { getValidatedPublicApiUrl } from "@/lib/env";
 
 const FIVE_MINUTES = 300;
 const REFRESH_TIMEOUT_MS = 15_000;
 
-const refreshBodySchema = z.object({
-  access_token: z.string(),
-  refresh_token: z.string(),
-  expires_in: z.number(),
-  user: z.object({
-    id: z.string(),
-    email: z.string().optional(),
-    created_at: z.string(),
-  }),
-});
+/** Matches API session JSON from `POST /api/v1/auth/refresh` (see packages/api SessionSchema). */
+type RefreshTokenResponse = {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  user: SessionUser;
+};
+
+function isRefreshTokenResponse(x: unknown): x is RefreshTokenResponse {
+  if (x === null || typeof x !== "object") return false;
+  const o = x as Record<string, unknown>;
+  const userRaw = o.user;
+  if (userRaw === null || typeof userRaw !== "object") return false;
+  const u = userRaw as Record<string, unknown>;
+
+  const expiresIn = o.expires_in;
+  if (typeof expiresIn !== "number" || !Number.isFinite(expiresIn)) return false;
+
+  return (
+    typeof o.access_token === "string" &&
+    typeof o.refresh_token === "string" &&
+    typeof u.id === "string" &&
+    typeof u.created_at === "string" &&
+    (u.email === undefined || typeof u.email === "string")
+  );
+}
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const accessToken = request.cookies.get("rs_access_token")?.value;
@@ -43,11 +59,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
-
     const response = NextResponse.next();
 
     if (!res.ok) {
+      await res.arrayBuffer().catch(() => {});
+      clearTimeout(timeoutId);
       response.cookies.delete("rs_access_token");
       response.cookies.delete("rs_refresh_token");
       response.cookies.delete("rs_expires_at");
@@ -59,6 +75,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     try {
       json = await res.json();
     } catch (err) {
+      clearTimeout(timeoutId);
       console.warn("[proxy] token refresh failed: invalid JSON from auth/refresh", err);
       response.cookies.delete("rs_access_token");
       response.cookies.delete("rs_refresh_token");
@@ -67,9 +84,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return response;
     }
 
-    const parsed = refreshBodySchema.safeParse(json);
-    if (!parsed.success) {
-      console.warn("[proxy] token refresh failed: unexpected auth/refresh response shape", parsed.error.flatten());
+    clearTimeout(timeoutId);
+
+    if (!isRefreshTokenResponse(json)) {
+      console.warn("[proxy] token refresh failed: unexpected auth/refresh response shape");
       response.cookies.delete("rs_access_token");
       response.cookies.delete("rs_refresh_token");
       response.cookies.delete("rs_expires_at");
@@ -77,7 +95,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return response;
     }
 
-    const data = parsed.data;
+    const data = json;
     const expiresInSec =
       Number.isFinite(data.expires_in) && data.expires_in > 0 ? Math.floor(data.expires_in) : 3600;
 
