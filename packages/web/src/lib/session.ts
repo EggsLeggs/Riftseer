@@ -1,11 +1,12 @@
 import "server-only";
 import { cookies } from "next/headers";
 import type { Session, SessionUser } from "@/features/auth/types";
+import { env } from "@/lib/env";
 
 const COOKIE_OPTS = {
   path: "/",
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  secure: env.NODE_ENV === "production",
 };
 
 const ACCESS_MAX_AGE = 60 * 60; // 1 hour

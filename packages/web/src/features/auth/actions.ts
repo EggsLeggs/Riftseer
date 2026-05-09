@@ -5,10 +5,18 @@ import { createApiClient } from "@/lib/api/client";
 import { getSession, setSessionCookies, clearSessionCookies } from "@/lib/session";
 import { env } from "@/lib/env";
 
+function str(fd: FormData, key: string): string | null {
+  const val = fd.get(key);
+  return typeof val === "string" && val.length > 0 ? val : null;
+}
+
 export async function loginAction(_prev: unknown, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const callbackUrl = (formData.get("callbackUrl") as string) || "/";
+  const email = str(formData, "email");
+  const password = str(formData, "password");
+  if (!email || !password) return { error: "Email and password are required" };
+
+  const rawCallback = formData.get("callbackUrl");
+  const callbackUrl = typeof rawCallback === "string" ? rawCallback : "/";
 
   const api = createApiClient();
   const { data, error } = await api.api.v1.auth.login.post({ email, password });
@@ -29,8 +37,9 @@ export async function loginAction(_prev: unknown, formData: FormData) {
 }
 
 export async function registerAction(_prev: unknown, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+  const email = str(formData, "email");
+  const password = str(formData, "password");
+  if (!email || !password) return { error: "Email and password are required" };
 
   const api = createApiClient();
 
@@ -69,14 +78,19 @@ export async function logoutAction() {
   const session = await getSession();
   if (session) {
     const api = createApiClient(session.accessToken);
-    await api.api.v1.auth.logout.post({} as never);
+    try {
+      await api.api.v1.auth.logout.post({} as never);
+    } catch {
+      // ignore remote error — local cleanup always runs
+    }
   }
   await clearSessionCookies();
   redirect("/");
 }
 
 export async function forgotPasswordAction(_prev: unknown, formData: FormData) {
-  const email = formData.get("email") as string;
+  const email = str(formData, "email");
+  if (!email) return { error: "Email is required" };
 
   const api = createApiClient();
 
@@ -93,11 +107,14 @@ export async function forgotPasswordAction(_prev: unknown, formData: FormData) {
 }
 
 export async function resetPasswordAction(_prev: unknown, formData: FormData) {
-  const password = formData.get("password") as string;
-  const recoveryToken = formData.get("recovery_token") as string;
+  const password = str(formData, "password");
+  const recoveryToken = str(formData, "recovery_token");
 
   if (!recoveryToken) {
     return { error: "Invalid or expired reset link" };
+  }
+  if (!password) {
+    return { error: "Password is required" };
   }
 
   const api = createApiClient(recoveryToken);
