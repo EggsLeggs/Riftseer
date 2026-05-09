@@ -1,4 +1,4 @@
-> **DEPRECATED** — this package is being replaced by `packages/web` and will be removed. Do not add features here; implement new work in `packages/web` instead. The one exception is legal pages (`PrivacyPage.tsx`, `TermsPage.tsx`) — keep them accurate until migrated.
+> **DEPRECATED** — this package is being replaced by `packages/web` and will be removed. Do not add features here; implement new work in `packages/web` instead. **Privacy Policy** and **Terms of Service** live in `packages/web` (`/privacy`, `/terms`). This package keeps stub routes only.
 
 # packages/frontend — Context for Claude
 
@@ -27,8 +27,8 @@ bun build:frontend  # Production build to dist/
 | `/card/:id` | `CardPage` | Single card detail |
 | `/sets` | `SetsPage` | Browse sets |
 | `/syntax` | `SyntaxPage` | Parser syntax + API docs |
-| `/docs/terms` | `TermsPage` | Terms of Service |
-| `/docs/privacy` | `PrivacyPage` | Privacy Policy |
+| `/docs/terms` | `TermsPage` | Redirect stub → canonical terms at `https://riftseer.com/terms` (`packages/web`) |
+| `/docs/privacy` | `PrivacyPage` | Redirect stub → canonical policy at `https://riftseer.com/privacy` (`packages/web`) |
 
 Router is defined in `src/App.tsx`. Theme wraps the entire tree via `src/hooks/useTheme.tsx`.
 
@@ -41,8 +41,8 @@ Router is defined in `src/App.tsx`. Theme wraps the entire tree via `src/hooks/u
 | `src/components/Nav.tsx` | Global nav with inline search box |
 | `src/components/CardPage.tsx` | Card detail: image, stats, text, printings, tokens |
 | `src/components/CardTextRenderer.tsx` | Renders card text with inline SVG icon tokens |
-| `src/components/PrivacyPage.tsx` | **Privacy Policy** — see legal note below |
-| `src/components/TermsPage.tsx` | **Terms of Service** — see legal note below |
+| `src/components/PrivacyPage.tsx` | Stub linking to canonical Privacy Policy on `packages/web` |
+| `src/components/TermsPage.tsx` | Stub linking to canonical Terms of Service on `packages/web` |
 | `src/components/ui/` | Shadcn-style primitives (badge, button, card, input, table) |
 
 ## API Client (Eden)
@@ -66,26 +66,20 @@ If a new API route is added, add a corresponding typed helper in `src/api.ts`.
 - Shadcn-style UI components are in `src/components/ui/` — do not add external UI libraries
 
 ## Legal Pages — CRITICAL
-`PrivacyPage.tsx` and `TermsPage.tsx` are **user-facing legal documents**. They must be kept accurate.
+Authoritative legal copy lives in **`packages/web`**: `src/views/privacy-view.tsx` (`/privacy`) and `src/views/terms-view.tsx` (`/terms`). Keep **`PrivacyPage.tsx`** and **`TermsPage.tsx`** here as stubs only (update `WEB_PRIVACY_URL` / `WEB_TERMS_URL` if production ever differs from `https://riftseer.com`).
 
-**Update `PrivacyPage.tsx` if any of the following change:**
-- A new analytics tool, tracking pixel, or error-monitoring service is added
-- New data is stored in `localStorage`, cookies, or the server DB
-- The Reddit bot begins storing new KV keys or logging new user fields
-- A new third-party service (hosting, CDN, auth) is introduced or an existing one is removed
-- Server log retention policies change
-- PostHog configuration changes (sampling, session recording, etc.)
-
-**Update `TermsPage.tsx` if any of the following change:**
+**Update `packages/web/src/views/terms-view.tsx` if any of the following change:**
 - Acceptable-use rules change (new prohibited behaviours)
 - The age requirement changes
 - Attribution or trademark language needs updating (Riot Games / Riftbound)
 - Liability, warranty, or dispute resolution language changes
 - Contact information or governing jurisdiction changes
 
-**After updating either page, also update the "Last Updated" date at the top of the component.**
+**After updating `terms-view.tsx`, update the "Last updated" line** near the top of that view.
 
 The footer (`Nav.tsx` or a dedicated `Footer` component) links to both pages — if the routes change, update the footer links too.
+
+**Privacy (`packages/web`):** After updating `privacy-view.tsx`, update the "Last updated" line at the top of that view.
 
 ## Documentation
 Doc pages for this package live in `packages/frontend/docs/`. Keep them up to date when making changes — if routes, key components, or the API client interface change, update the relevant doc page alongside the code.

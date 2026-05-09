@@ -74,7 +74,7 @@ npx devvit settings set siteBaseUrl
 | `CARD_PROVIDER` | `supabase` (only; data from ingest pipeline) — set in `wrangler.jsonc` vars |
 | `SUPABASE_URL` | Supabase project URL — required |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required |
-| `SUPABASE_ANON_KEY` | Supabase anon/public key — required for auth routes (`/api/v1/auth/*`) |
+| `SUPABASE_ANON_KEY` | Supabase anon/public JWT — required for `/api/v1/auth/*`. Use root `.env` / `.env.example` for local reference; for the deployed API Worker set via `cd packages/api && wrangler secret put SUPABASE_ANON_KEY` (see `secrets.required` in `packages/api/wrangler.jsonc`). |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
 | `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
@@ -183,7 +183,11 @@ migration files.
 - ~656 cards across 14 pages (as of 2026-02)
 
 ## Legal Pages — IMPORTANT
-`packages/frontend/src/components/PrivacyPage.tsx` and `TermsPage.tsx` are the **authoritative** privacy policy and terms of service shown to users until they are migrated to `packages/web`. When that migration happens, update this notice to point to the new location. If any of the following change, **both the relevant page component AND this notice** must be updated:
+**Privacy Policy** — `packages/web/src/views/privacy-view.tsx` (route `/privacy`). **Terms of Service** — `packages/web/src/views/terms-view.tsx` (route `/terms`). Shared layout primitives for both live in `packages/web/src/views/legal-document.tsx`.
+
+The deprecated SPA (`packages/frontend`) keeps `/docs/privacy` and `/docs/terms` as short stubs linking to the canonical URLs on the main site.
+
+If any of the following change, **update the relevant legal page (and this notice if paths change)**:
 - Data collected (e.g., new analytics, new fields stored in KV or DB)
 - Third-party services added or removed (hosting, analytics, data providers)
 - Bot behaviour (new triggers, new data logged, new KV keys)

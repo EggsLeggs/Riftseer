@@ -5,12 +5,14 @@ on:
     branches: [main]
     paths:
       - "packages/web/**"
+      - "packages/api/**"
       - "packages/types/**"
       - "bun.lock"
       - ".github/workflows/web.yml"
   pull_request:
     paths:
       - "packages/web/**"
+      - "packages/api/**"
       - "packages/types/**"
       - "bun.lock"
       - ".github/workflows/web.yml"
