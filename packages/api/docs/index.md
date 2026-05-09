@@ -19,9 +19,9 @@ Most endpoints are publicly accessible and require no authentication. The `/api/
 
 ## Request format
 
-All requests use standard HTTP. Query parameters are plain strings. The only endpoint that accepts a request body is `POST /api/v1/cards/resolve` and the deck endpoints — these accept `application/json`.
+All requests use standard HTTP. Query parameters are plain strings. Endpoints that accept a request body — `POST /api/v1/cards/resolve`, the deck endpoints, and the auth endpoints (`POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/forgot-password`, `POST /api/v1/auth/reset-password`) — accept `Content-Type: application/json`.
 
-No special headers are required beyond `Content-Type: application/json` on POST requests with a body.
+No special headers are required beyond `Content-Type: application/json` on POST requests with a body. Protected routes additionally require `Authorization: Bearer <access_token>`.
 
 ---
 
@@ -108,7 +108,7 @@ Route modules live in `packages/api/src/routes/`:
 | `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve` |
 | `sets.ts` | `/sets` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
-| `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout` |
+| `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/me`, `/auth/reset-password` |
 
 ---
 
@@ -149,4 +149,6 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `POST` | `/api/v1/auth/login` | [Auth](./auth.md) |
 | `POST` | `/api/v1/auth/refresh` | [Auth](./auth.md) |
 | `POST` | `/api/v1/auth/logout` | [Auth](./auth.md) |
+| `POST` | `/api/v1/auth/forgot-password` | [Auth](./auth.md) |
 | `GET` | `/api/v1/auth/me` | [Auth](./auth.md) |
+| `POST` | `/api/v1/auth/reset-password` | [Auth](./auth.md) |

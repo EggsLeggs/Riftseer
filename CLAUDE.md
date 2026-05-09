@@ -75,7 +75,6 @@ npx devvit settings set siteBaseUrl
 | `SUPABASE_ANON_KEY` | Supabase anon/public key — required for auth routes (`/api/v1/auth/*`) |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
-| `CORS_ORIGIN` | Comma-separated allowed origins (default: `https://riftseer.pages.dev,https://riftseer.com`) |
 | `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
 
 ### Ingest Worker (packages/ingest-worker)
