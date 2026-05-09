@@ -67,6 +67,9 @@ src/
       settings/page.tsx
   layout.tsx
   views/
+    legal-document.tsx   # shared primitives for Privacy / Terms long-form pages
+    privacy-view.tsx
+    terms-view.tsx
     auth/
       login-view.tsx
       register-view.tsx
@@ -216,4 +219,21 @@ Supabase can redirect to the app root with errors in the URL hash (e.g. `/#error
 
 ## Legal pages
 
-When legal pages (`PrivacyPage`, `TermsPage`) are migrated from `packages/frontend`, the root CLAUDE.md legal pages section must be updated to point here. Until then, `packages/frontend` remains authoritative for legal content.
+Shared primitives (`SubHeading`, `Text`, lists, external links): `src/views/legal-document.tsx`.
+
+- **Privacy Policy** — `src/views/privacy-view.tsx`, route `/privacy`, metadata in `src/app/privacy/page.tsx`.
+- **Terms of Service** — `src/views/terms-view.tsx`, route `/terms`, metadata in `src/app/terms/page.tsx`.
+
+Both use the same readable layout (centered column ~800px, clear section headings). Use explicit `{" "}` between closing `</strong>`/`</InlineLink>` and following words where needed so production builds do not collapse spaces.
+
+**Update `privacy-view.tsx` when:**
+- A new analytics tool, tracking pixel, error-monitoring service, or consent vendor is added or removed
+- New data is stored in `localStorage`, cookies, or the server DB (web or API)
+- The Reddit bot begins storing new KV keys or logging new user fields
+- A new third-party service (hosting, CDN, auth) is introduced or an existing one is removed
+- Server log retention policies change
+- PostHog configuration changes (sampling, session recording, etc.)
+
+**Update `terms-view.tsx` when:** acceptable use rules, age requirement, Riot/Riftbound attribution, liability or dispute language, or contact / jurisdiction wording changes.
+
+**Always update the "Last updated" date** in the view you edit.

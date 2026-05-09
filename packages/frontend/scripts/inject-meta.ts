@@ -52,13 +52,13 @@ const routes: Route[] = [
     outPath: "docs/terms/index.html",
     title: "Terms of Service — Riftseer",
     description: "Terms of Service for Riftseer.",
-    ogUrl: `${SITE}/docs/terms`,
+    ogUrl: `${SITE}/terms`,
   },
   {
     outPath: "docs/privacy/index.html",
     title: "Privacy Policy — Riftseer",
     description: "Privacy Policy for Riftseer.",
-    ogUrl: `${SITE}/docs/privacy`,
+    ogUrl: `${SITE}/privacy`,
   },
 ];
 
