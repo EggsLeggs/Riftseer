@@ -177,12 +177,40 @@ Do not use Zod to type API responses — Eden treaty handles that from the Elysi
 
 ## Auth flow
 
-1. User submits login form
-2. Server action calls Elysia `/auth/login`
-3. Elysia handles Supabase Auth and returns a JWT
-4. JWT stored in a cookie via the server action response
-5. `(app)/layout.tsx` validates the session on every render by calling Elysia `/auth/me`
-6. Redirect to `/login` if no valid session
+### Session storage
+Four cookies hold session state (set/read/cleared in `src/lib/session.ts`, server-only):
+
+| Cookie | httpOnly | Purpose |
+|--------|----------|---------|
+| `rs_access_token` | yes | Supabase JWT (1 h) |
+| `rs_refresh_token` | yes | Refresh token (30 d) |
+| `rs_expires_at` | no | Unix expiry — readable by client JS |
+| `rs_user` | no | `{ id, email }` JSON — readable by client JS |
+
+### Login / register
+1. User submits form → server action in `features/auth/actions.ts`
+2. Server action calls Elysia `/api/v1/auth/login` (or `/register`) via Eden client
+3. On success, `setSessionCookies()` writes the four cookies, then `redirect()`
+
+### Session consumption
+- **Server components** call `getSession()` directly at render time (reads cookies)
+- **Client components** receive session data as props from their server parent — they never read cookies themselves
+- Example: `Navbar` (server component) reads the session and passes `email` down to `UserNav` (client component)
+
+### Token refresh
+`middleware.ts` runs on every non-static request. If `rs_expires_at` is within 5 minutes, it calls `POST /api/v1/auth/refresh`, writes fresh cookies onto the response, and continues. On refresh failure it clears all session cookies. No Node.js APIs are used — middleware runs in the Edge/workerd runtime.
+
+### Logout
+`logoutAction()` server action: reads the session to get the access token, calls `POST /api/v1/auth/logout`, clears all session cookies, then redirects to `/`.
+
+### Password reset
+1. User requests reset → `forgotPasswordAction` calls `/api/v1/auth/forgot-password` with `redirect_to: <origin>/auth/callback`
+2. Supabase emails a magic link; on click it redirects to `/auth/callback#type=recovery&access_token=...`
+3. `app/auth/callback/page.tsx` (client component) parses the hash, stores the token in `sessionStorage` as `rs_recovery_token`, and redirects to `/auth/reset-password`
+4. `resetPasswordAction` reads the token from the form and calls `/api/v1/auth/reset-password`
+
+### Supabase callback hash errors
+Supabase can redirect to the app root with errors in the URL hash (e.g. `/#error=access_denied&error_description=...`). Hash fragments are client-side only — middleware cannot see them. The callback page (`app/auth/callback/page.tsx`) handles error hashes when Supabase redirects there, but errors landing on `/` are currently unhandled. **TODO:** add a client component on the root page to detect and surface these errors.
 
 ## Legal pages
 

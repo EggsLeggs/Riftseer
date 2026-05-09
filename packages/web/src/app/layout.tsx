@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Providers } from "@/providers";
 import "./globals.css";
 
 const genInterfaceJP = localFont({
@@ -45,7 +46,9 @@ export default function RootLayout({
       lang="en"
       className={`${genInterfaceJP.variable} ${genInterfaceJPDisplay.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
