@@ -48,6 +48,12 @@ All data fetching and auth go through the Elysia API. **Never import or call Sup
 - `providers/` — React context providers and TanStack Query setup
 - `lib/` — utilities, API client, env validation
 
+### Consent (c15t)
+
+Consent uses **@c15t/nextjs** (UI) and **@c15t/backend** (API). Entry points: `src/components/consent-manager/`, `src/app/api/c15t/[...all]/route.ts`, `src/lib/c15t.ts` (Kysely adapter). Root-level `c15t-backend.config.ts` is for backend CLI/migrations.
+
+When changing consent behavior, styling, or integrations: read **version-matched** docs in `node_modules/@c15t/nextjs/docs/README.md` (and `node_modules/@c15t/backend/docs/README.md` for adapter/backend work) before relying on training data. Deeper workflows (customization ladder, scripts, i18n) are documented in the repository c15t skill at `.claude/skills/c15t/SKILL.md` — prefer that over pasting duplicate guidance into this file.
+
 ## Project structure
 
 ```text

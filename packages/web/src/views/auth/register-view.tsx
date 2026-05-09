@@ -57,6 +57,27 @@ export function RegisterView() {
           </Alert>
         )}
         <form action={action} className="space-y-4">
+          <div className="flex gap-2 rounded-md border p-3 text-sm leading-snug">
+            <input
+              id="accepted_terms"
+              name="accepted_terms"
+              type="checkbox"
+              required
+              className="mt-0.5 size-4 shrink-0 accent-primary"
+              aria-describedby="accepted_terms_description"
+            />
+            <label htmlFor="accepted_terms" id="accepted_terms_description" className="cursor-pointer">
+              I agree to the{" "}
+              <Link href="/terms" className="underline underline-offset-4" target="_blank">
+                Terms of Service
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline underline-offset-4" target="_blank">
+                Privacy Policy
+              </Link>
+              .
+            </label>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
             <Input

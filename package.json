@@ -5,7 +5,8 @@
   "_workspacesExcluded": "packages/reddit-bot (Devvit/npm standalone) and packages/raycast-extension (Raycast/npm standalone) are intentionally excluded — both require npm and are not Bun workspace members.",
   "overrides": {
     "@sinclair/typebox": "0.34.48",
-    "elysia": "1.4.28"
+    "elysia": "1.4.28",
+    "kysely": "0.28.17"
   },
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
@@ -14,6 +15,7 @@
     "build:frontend": "cd packages/frontend && bun run build",
     "dev:web": "cd packages/web && bun run --env-file ../../.env dev",
     "build:web": "cd packages/web && bun run build",
+    "preview:web": "cd packages/web && bun run --env-file ../../.env preview",
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/**/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
     "test:api": "bun test ./packages/api/src/__tests__/**/*.test.ts",
@@ -24,5 +26,9 @@
     "@resvg/resvg-js": "^2.6.2",
     "@types/bun": "^1.3.11",
     "typescript": "6.0.2"
+  },
+  "dependencies": {
+    "kysely": "0.28.17",
+    "pg": "^8.20.0"
   }
 }

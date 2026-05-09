@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { authClient, supabaseUrl, supabaseAnonKey } from "../lib/supabase";
+import { authAdminClient, authClient, supabaseUrl, supabaseAnonKey } from "../lib/supabase";
 import { authPlugin } from "../plugins/auth";
 import { ErrorSchema } from "../schemas";
 
@@ -37,15 +37,59 @@ export function authRoutes() {
             set.status = 503;
             return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
+          if (!body.accepted_terms) {
+            set.status = 400;
+            return {
+              error: "You must accept the Terms of Service and Privacy Policy.",
+              code: "TERMS_REQUIRED",
+            };
+          }
+
+          const acceptedAt = new Date().toISOString();
+          const termsVersion = process.env.LEGAL_TERMS_VERSION ?? "1";
+          const privacyVersion = process.env.LEGAL_PRIVACY_VERSION ?? "1";
+
+          const consentMeta = {
+            terms_accepted_at: acceptedAt,
+            terms_version: termsVersion,
+            privacy_accepted_at: acceptedAt,
+            privacy_version: privacyVersion,
+          };
+
           const { data, error } = await authClient.auth.signUp({
             email: body.email,
             password: body.password,
-            options: { emailRedirectTo: body.options?.redirect_to },
+            options: {
+              emailRedirectTo: body.options?.redirect_to,
+              data: consentMeta,
+            },
           });
           if (error) {
             set.status = (error.status && error.status >= 500) ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
+
+          if (data.user && authAdminClient) {
+            const { error: adminError } = await authAdminClient.auth.admin.updateUserById(data.user.id, {
+              app_metadata: {
+                ...consentMeta,
+                registration_consent_recorded_at: acceptedAt,
+              },
+            });
+            if (adminError) {
+              console.error("[auth/register] app_metadata update failed:", adminError.message);
+              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(data.user.id);
+              if (deleteError) {
+                console.error("[auth/register] rollback deleteUser failed:", deleteError.message);
+              }
+              set.status = 500;
+              return {
+                error: "Registration could not be completed. Please try again.",
+                code: "CONSENT_RECORD_FAILED",
+              };
+            }
+          }
+
           if (!data.session) {
             set.status = 202;
             return {
@@ -69,6 +113,9 @@ export function authRoutes() {
           body: t.Object({
             email: t.String({ description: "User email address" }),
             password: t.String({ minLength: 8, description: "Password (min 8 characters)" }),
+            accepted_terms: t.Boolean({
+              description: "Must be true — records acceptance of Terms and Privacy Policy at signup.",
+            }),
             options: t.Optional(t.Object({
               redirect_to: t.Optional(t.String({ description: "URL to redirect to after email confirmation. Pass window.location.origin + '/auth/callback'." })),
             })),
@@ -77,6 +124,7 @@ export function authRoutes() {
             200: SessionSchema,
             202: ConfirmationSchema,
             400: ErrorSchema,
+            500: ErrorSchema,
             503: ErrorSchema,
           },
           detail: {

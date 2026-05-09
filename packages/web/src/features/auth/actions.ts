@@ -41,11 +41,20 @@ export async function registerAction(_prev: unknown, formData: FormData) {
   const password = str(formData, "password");
   if (!email || !password) return { error: "Email and password are required" };
 
+  const acceptedRaw = formData.get("accepted_terms");
+  const acceptedTerms = acceptedRaw === "on" || acceptedRaw === "true";
+  if (!acceptedTerms) {
+    return {
+      error: "You must accept the Terms of Service and Privacy Policy to create an account.",
+    };
+  }
+
   const api = createApiClient();
 
   const { data, error, status } = await api.api.v1.auth.register.post({
     email,
     password,
+    accepted_terms: true,
     options: { redirect_to: `${env.NEXT_PUBLIC_APP_URL}/auth/callback` },
   });
 
