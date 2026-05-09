@@ -40,6 +40,7 @@ export function authRoutes() {
           const { data, error } = await authClient.auth.signUp({
             email: body.email,
             password: body.password,
+            options: { emailRedirectTo: body.options?.redirect_to },
           });
           if (error) {
             set.status = error.status ?? 400;
@@ -68,6 +69,9 @@ export function authRoutes() {
           body: t.Object({
             email: t.String({ description: "User email address" }),
             password: t.String({ minLength: 8, description: "Password (min 8 characters)" }),
+            options: t.Optional(t.Object({
+              redirect_to: t.Optional(t.String({ description: "URL to redirect to after email confirmation. Pass window.location.origin + '/auth/callback'." })),
+            })),
           }),
           response: {
             200: SessionSchema,
@@ -230,6 +234,45 @@ export function authRoutes() {
         },
       )
 
+      // ── POST /auth/forgot-password ───────────────────────────────────────
+      .post(
+        "/auth/forgot-password",
+        async ({ body, set }) => {
+          if (!authClient) {
+            set.status = 503;
+            return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+          }
+          const { error } = await authClient.auth.resetPasswordForEmail(body.email, {
+            redirectTo: body.options?.redirect_to,
+          });
+          if (error) {
+            set.status = error.status ?? 400;
+            return { error: error.message, code: error.code ?? "AUTH_ERROR" };
+          }
+          return { message: "If that email is registered, a password reset link has been sent." };
+        },
+        {
+          body: t.Object({
+            email: t.String({ description: "Email address of the account to reset" }),
+            options: t.Optional(t.Object({
+              redirect_to: t.Optional(t.String({ description: "URL to redirect to after clicking the reset link. Pass window.location.origin + '/auth/reset-password'." })),
+            })),
+          }),
+          response: {
+            200: t.Object({ message: t.String() }),
+            400: ErrorSchema,
+            503: ErrorSchema,
+          },
+          detail: {
+            tags: ["Auth"],
+            summary: "Request password reset",
+            description:
+              "Sends a password reset email. Always returns 200 to avoid leaking whether an " +
+              "email is registered. The link in the email contains a short-lived recovery token.",
+          },
+        },
+      )
+
       // ── Protected routes ──────────────────────────────────────────────────
       // Routes below use authPlugin, which validates the Bearer token and
       // injects `user` into the handler context. Public routes above are
@@ -258,6 +301,55 @@ export function authRoutes() {
                 description:
                   "Returns the authenticated user's profile. " +
                   "Requires a valid `Authorization: Bearer <access_token>` header.",
+              },
+            },
+          )
+
+          // ── POST /auth/reset-password ────────────────────────────────────
+          .post(
+            "/auth/reset-password",
+            async ({ body, headers, set }) => {
+              if (!supabaseUrl || !supabaseAnonKey) {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              const accessToken = headers.authorization!.slice(7);
+              const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+                method: "PATCH",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  apikey: supabaseAnonKey,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ password: body.password }),
+              });
+              if (!res.ok) {
+                const payload = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+                set.status = res.status;
+                return {
+                  error: String(payload.error_description ?? payload.msg ?? "Password update failed"),
+                  code: "UPDATE_FAILED",
+                };
+              }
+              return { message: "Password updated successfully." };
+            },
+            {
+              body: t.Object({
+                password: t.String({ minLength: 8, description: "New password (min 8 characters)" }),
+              }),
+              response: {
+                200: t.Object({ message: t.String() }),
+                400: ErrorSchema,
+                401: ErrorSchema,
+                503: ErrorSchema,
+              },
+              detail: {
+                tags: ["Auth"],
+                summary: "Reset password",
+                description:
+                  "Sets a new password for the authenticated user. " +
+                  "Requires the short-lived recovery token from the reset email as the " +
+                  "`Authorization: Bearer <recovery_token>` header.",
               },
             },
           ),
