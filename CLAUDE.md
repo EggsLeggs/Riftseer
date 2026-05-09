@@ -96,6 +96,7 @@ Plain vars defined in `packages/web/wrangler.jsonc` and mirrored in `.env.exampl
 |----------|---------|
 | `NEXT_PUBLIC_API_URL` | Public API base URL used by the web client (e.g. `http://localhost:8789` locally, `https://api.riftseer.com` in production) |
 | `NEXT_PUBLIC_APP_URL` | Public site/app URL used for OAuth/email `redirect_to` URLs (e.g. `http://localhost:3000` locally, `https://riftseer.com` in production) |
+| `C15T_DATABASE_URL` | Supabase transaction pooler connection string for the c15t consent backend — use port 6543 and append `?prepare=false`. Declared under `secrets.required` in `packages/web/wrangler.jsonc`; set remotely via `cd packages/web && wrangler secret put C15T_DATABASE_URL`, and locally via `packages/web/.dev.vars`. Example: `postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres?prepare=false` |
 
 ### GitHub Actions — ingest worker deploy (`.github/workflows/ingest-worker.yml`)
 
