@@ -89,6 +89,14 @@ npx devvit settings set siteBaseUrl
 | `UPSTREAM_TIMEOUT_MS` | Timeout for upstream HTTP requests in ms (default: 30000) — optional |
 | `INGEST_SECRET` | Bearer token for POST /ingest (optional) |
 
+### Web (packages/web)
+Plain vars defined in `packages/web/wrangler.jsonc` and mirrored in `.env.example` — must match the values passed at build time (`opennextjs-cloudflare build`) and in `.github/workflows/web.yml`.
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_API_URL` | Public API base URL used by the web client (e.g. `http://localhost:8789` locally, `https://api.riftseer.com` in production) |
+| `NEXT_PUBLIC_APP_URL` | Public site/app URL used for OAuth/email `redirect_to` URLs (e.g. `http://localhost:3000` locally, `https://riftseer.com` in production) |
+
 ### GitHub Actions — ingest worker deploy (`.github/workflows/ingest-worker.yml`)
 
 | Secret | Purpose |

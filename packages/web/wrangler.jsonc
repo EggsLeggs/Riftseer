@@ -6,6 +6,9 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "riftseer-web",
 	"main": ".open-next/worker.js",
+	// Production routing only — custom domain on the Worker in Cloudflare (no *.workers.dev / preview URLs)
+	"workers_dev": false,
+	"preview_urls": false,
 	"compatibility_date": "2026-05-08",
 	"compatibility_flags": [
 		"nodejs_compat",
@@ -31,16 +34,13 @@
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
 	/**
-	 * Bindings
-	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
+	 * Plain vars — available at runtime on the Worker (OpenNext maps them to process.env).
+	 * Must stay in sync with values passed at build time (GitHub Actions / local deploy).
 	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 */
-	// "vars": { "NEXT_PUBLIC_API_URL": "https://api.riftseer.com" }
+	"vars": {
+		"NEXT_PUBLIC_API_URL": "https://api.riftseer.com",
+		"NEXT_PUBLIC_APP_URL": "https://riftseer.com"
+	}
 }
