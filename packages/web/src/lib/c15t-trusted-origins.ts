@@ -3,7 +3,11 @@ export function parseC15tTrustedOrigins(
   trustedOriginsEnv: string | undefined,
   fallbackOrigin: string,
 ): string[] {
-  return (trustedOriginsEnv ?? fallbackOrigin)
+  const effective =
+    trustedOriginsEnv != null && trustedOriginsEnv.trim() !== ""
+      ? trustedOriginsEnv
+      : fallbackOrigin;
+  return effective
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
