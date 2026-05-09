@@ -1,15 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { createApiClient } from "@/lib/api/client";
 import { getSession, setSessionCookies, clearSessionCookies } from "@/lib/session";
-
-function getAppOrigin(hdrs: Awaited<ReturnType<typeof headers>>) {
-  const proto = hdrs.get("x-forwarded-proto") ?? "https";
-  const host = hdrs.get("host") ?? "";
-  return `${proto}://${host}`;
-}
+import { env } from "@/lib/env";
 
 export async function loginAction(_prev: unknown, formData: FormData) {
   const email = formData.get("email") as string;
@@ -30,21 +24,20 @@ export async function loginAction(_prev: unknown, formData: FormData) {
     user: data.user,
   });
 
-  redirect(callbackUrl.startsWith("/") ? callbackUrl : "/");
+  const safeCallback = callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : "/";
+  redirect(safeCallback);
 }
 
 export async function registerAction(_prev: unknown, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  const hdrs = await headers();
-  const origin = getAppOrigin(hdrs);
   const api = createApiClient();
 
   const { data, error, status } = await api.api.v1.auth.register.post({
     email,
     password,
-    options: { redirect_to: `${origin}/auth/callback` },
+    options: { redirect_to: `${env.NEXT_PUBLIC_APP_URL}/auth/callback` },
   });
 
   if (error) {
@@ -85,13 +78,11 @@ export async function logoutAction() {
 export async function forgotPasswordAction(_prev: unknown, formData: FormData) {
   const email = formData.get("email") as string;
 
-  const hdrs = await headers();
-  const origin = getAppOrigin(hdrs);
   const api = createApiClient();
 
   const { error } = await api.api.v1.auth["forgot-password"].post({
     email,
-    options: { redirect_to: `${origin}/auth/callback` },
+    options: { redirect_to: `${env.NEXT_PUBLIC_APP_URL}/auth/callback` },
   });
 
   if (error) {

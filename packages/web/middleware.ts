@@ -51,7 +51,7 @@ export async function middleware(request: NextRequest) {
     response.cookies.set(
       "rs_user",
       JSON.stringify({ id: data.user.id, email: data.user.email }),
-      { ...cookieOpts, httpOnly: false, maxAge: 60 * 60 * 24 * 30 },
+      { ...cookieOpts, httpOnly: true, maxAge: 60 * 60 * 24 * 30 },
     );
 
     return response;

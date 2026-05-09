@@ -22,7 +22,7 @@ export default function AuthCallbackPage() {
     const errorDescription = params.get("error_description");
 
     if (errorDescription) {
-      setState({ status: "error", message: decodeURIComponent(errorDescription) });
+      setState({ status: "error", message: errorDescription });
       return;
     }
 

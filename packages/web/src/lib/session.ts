@@ -42,7 +42,7 @@ export async function setSessionCookies(session: {
   jar.set("rs_expires_at", String(expiresAt), { ...COOKIE_OPTS, httpOnly: false, maxAge: REFRESH_MAX_AGE });
   jar.set("rs_user", JSON.stringify({ id: session.user.id, email: session.user.email }), {
     ...COOKIE_OPTS,
-    httpOnly: false,
+    httpOnly: true,
     maxAge: REFRESH_MAX_AGE,
   });
 }

@@ -13,8 +13,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { registerAction } from "@/features/auth/actions";
 
 const schema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().email({ message: "Enter a valid email" }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
 });
 
 type Fields = z.infer<typeof schema>;

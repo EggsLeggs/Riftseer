@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { forgotPasswordAction } from "@/features/auth/actions";
 
 const schema = z.object({
-  email: z.string().email("Enter a valid email"),
+  email: z.string().email({ message: "Enter a valid email" }),
 });
 
 type Fields = z.infer<typeof schema>;

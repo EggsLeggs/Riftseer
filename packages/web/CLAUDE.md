@@ -50,7 +50,7 @@ All data fetching and auth go through the Elysia API. **Never import or call Sup
 
 ## Project structure
 
-```
+```text
 src/
   app/
     (auth)/
@@ -125,6 +125,7 @@ import { z } from 'zod'
 
 const schema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url(),
+  NEXT_PUBLIC_APP_URL: z.string().url(),
 })
 
 export const env = schema.parse(process.env)
@@ -133,6 +134,7 @@ export const env = schema.parse(process.env)
 | Variable | Purpose |
 |----------|---------|
 | `NEXT_PUBLIC_API_URL` | Riftseer API base URL (e.g. `https://api.riftseer.com`) |
+| `NEXT_PUBLIC_APP_URL` | App public origin — used for OAuth/email `redirect_to` URLs (e.g. `https://riftseer.com`) |
 
 Build-time variables must be set in the **Workers Builds dashboard**, not just in `.env.local`.
 
@@ -185,7 +187,7 @@ Four cookies hold session state (set/read/cleared in `src/lib/session.ts`, serve
 | `rs_access_token` | yes | Supabase JWT (1 h) |
 | `rs_refresh_token` | yes | Refresh token (30 d) |
 | `rs_expires_at` | no | Unix expiry — readable by client JS |
-| `rs_user` | no | `{ id, email }` JSON — readable by client JS |
+| `rs_user` | yes | `{ id, email }` JSON — server-only |
 
 ### Login / register
 1. User submits form → server action in `features/auth/actions.ts`
