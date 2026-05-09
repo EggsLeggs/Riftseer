@@ -230,7 +230,7 @@ Both use the same readable layout (centered column ~800px, clear section heading
 - A new analytics tool, tracking pixel, error-monitoring service, or consent vendor is added or removed
 - New data is stored in `localStorage`, cookies, or the server DB (web or API)
 - The Reddit bot begins storing new KV keys or logging new user fields
-- A new third-party service (hosting, CDN, auth) is introduced or an existing one is removed
+- A new third-party service (hosting, CDN, auth) is introduced, or an existing one is removed
 - Server log retention policies change
 - PostHog configuration changes (sampling, session recording, etc.)
 

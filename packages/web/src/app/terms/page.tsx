@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Footer } from "@/components/layout/footer";
+import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/navbar";
 import { env } from "@/lib/env";
 import { TermsView } from "@/views/terms-view";
@@ -9,6 +9,9 @@ const canonical = new URL("/terms", env.NEXT_PUBLIC_APP_URL).toString();
 export const metadata: Metadata = {
   title: "Terms of Service — Riftseer",
   description: "Terms of Service for Riftseer.",
+  alternates: {
+    canonical,
+  },
   openGraph: {
     title: "Terms of Service — Riftseer",
     description: "Terms of Service for Riftseer.",

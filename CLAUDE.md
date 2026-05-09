@@ -74,7 +74,7 @@ npx devvit settings set siteBaseUrl
 | `CARD_PROVIDER` | `supabase` (only; data from ingest pipeline) — set in `wrangler.jsonc` vars |
 | `SUPABASE_URL` | Supabase project URL — required |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service-role JWT — required |
-| `SUPABASE_ANON_KEY` | Supabase anon/public key — required for auth routes (`/api/v1/auth/*`) |
+| `SUPABASE_ANON_KEY` | Supabase anon/public JWT — required for `/api/v1/auth/*`. Use root `.env` / `.env.example` for local reference; for the deployed API Worker set via `cd packages/api && wrangler secret put SUPABASE_ANON_KEY` (see `secrets.required` in `packages/api/wrangler.jsonc`). |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL — optional |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token — required when `UPSTASH_REDIS_REST_URL` is set |
 | `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
