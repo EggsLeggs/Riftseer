@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Footer } from "@/components/layout/Footer";
+import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 import { env } from "@/lib/env";
 import { PrivacyView } from "@/views/privacy-view";
