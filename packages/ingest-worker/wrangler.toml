@@ -5,7 +5,7 @@
 name = "riftseer-ingest"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
-workers_dev = false
+workers_dev = true
 preview_urls = false
 
 # Scheduled events: run every 6 hours (see Miniflare /cdn-cgi/mf/scheduled for local testing)
@@ -18,4 +18,4 @@ RIFTCODEX_BASE_URL = "https://api.riftcodex.com"
 
 # https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
 [secrets]
-required = [ "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY" ]
+required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"]

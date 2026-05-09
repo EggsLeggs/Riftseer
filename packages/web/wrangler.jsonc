@@ -7,7 +7,7 @@
 	"name": "riftseer-web",
 	"main": ".open-next/worker.js",
 	// Production routing only — custom domain on the Worker in Cloudflare (no *.workers.dev / preview URLs)
-	"workers_dev": false,
+	"workers_dev": true,
 	"preview_urls": false,
 	"compatibility_date": "2026-05-08",
 	"compatibility_flags": [
