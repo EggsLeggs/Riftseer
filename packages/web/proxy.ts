@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 
 const FIVE_MINUTES = 300;
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const accessToken = request.cookies.get("rs_access_token")?.value;
   const refreshToken = request.cookies.get("rs_refresh_token")?.value;
   const expiresAt = request.cookies.get("rs_expires_at")?.value;

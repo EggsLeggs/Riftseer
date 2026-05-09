@@ -115,7 +115,7 @@ src/
     api/
       client.ts   # Eden treaty client
     env.ts        # Zod env validation — only place process.env is accessed
-middleware.ts
+proxy.ts
 ```
 
 ## Environment variables
@@ -144,7 +144,7 @@ Build-time variables must be set in the **Workers Builds dashboard**, not just i
 ## Cloudflare Workers constraints
 
 - Deployed via `@opennextjs/cloudflare` — do **not** add `export const runtime = 'edge'` to any route file; the adapter handles this
-- Node.js in Middleware is not yet supported — keep `middleware.ts` minimal and Edge-compatible
+- Next.js 16 uses `proxy.ts` (named export `proxy`) instead of deprecated `middleware.ts` — it runs on the **Node.js** runtime; keep logic bounded (token refresh is fine)
 - Bundle size limit is 3 MiB gzip on free tier, 10 MiB on paid — audit server-side deps if builds start failing
 - Always test with `bun run preview` before deploying — `bun dev` runs in Node.js and will not catch Workers-specific issues
 - `nodejs_compat` flag must be set in `wrangler.jsonc` — do not remove it
@@ -203,7 +203,7 @@ Four cookies hold session state (set/read/cleared in `src/lib/session.ts`, serve
 - Example: `Navbar` (server component) reads the session and passes `email` down to `UserNav` (client component)
 
 ### Token refresh
-`middleware.ts` runs on every non-static request. If `rs_expires_at` is within 5 minutes, it calls `POST /api/v1/auth/refresh`, writes fresh cookies onto the response, and continues. On refresh failure it clears all session cookies. No Node.js APIs are used — middleware runs in the Edge/workerd runtime.
+`proxy.ts` runs on every non-static request (Next.js 16 proxy layer, Node.js runtime). If `rs_expires_at` is within 5 minutes, it calls `POST /api/v1/auth/refresh`, writes fresh cookies onto the response, and continues. On refresh failure it clears all session cookies.
 
 ### Logout
 `logoutAction()` server action: reads the session to get the access token, calls `POST /api/v1/auth/logout`, clears all session cookies, then redirects to `/`.
@@ -215,7 +215,7 @@ Four cookies hold session state (set/read/cleared in `src/lib/session.ts`, serve
 4. `resetPasswordAction` reads the token from the form and calls `/api/v1/auth/reset-password`
 
 ### Supabase callback hash errors
-Supabase can redirect to the app root with errors in the URL hash (e.g. `/#error=access_denied&error_description=...`). Hash fragments are client-side only — middleware cannot see them. The callback page (`app/auth/callback/page.tsx`) handles error hashes when Supabase redirects there, but errors landing on `/` are currently unhandled. **TODO:** add a client component on the root page to detect and surface these errors.
+Supabase can redirect to the app root with errors in the URL hash (e.g. `/#error=access_denied&error_description=...`). Hash fragments are client-side only — the proxy cannot see them. The callback page (`app/auth/callback/page.tsx`) handles error hashes when Supabase redirects there, but errors landing on `/` are currently unhandled. **TODO:** add a client component on the root page to detect and surface these errors.
 
 ## Legal pages
 

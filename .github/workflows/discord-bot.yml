@@ -28,7 +28,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Build (dry run)
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -52,7 +52,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
@@ -85,7 +85,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Upload icons as Discord application emojis
         if: steps.check-icons.outputs.icons_changed == 'true'

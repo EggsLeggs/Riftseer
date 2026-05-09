@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# @riftseer/web
 
-## Getting Started
+Next.js App Router frontend for Riftseer — deployed to **Cloudflare Workers** using [`@opennextjs/cloudflare`](https://opennext.js.org/cloudflare) and [Wrangler](https://developers.cloudflare.com/workers/wrangler/).
 
-First, run the development server:
+This package is **not** deployed on Vercel. Use the scripts below for local dev, preview (workerd), and production deploy.
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) (workspace package manager)
+- Cloudflare account (for `deploy` / Workers Builds)
+
+## Setup
+
+From the monorepo root (after `bun install`):
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd packages/web
+cp .env.local.example .env.local
+# Edit .env.local — see packages/web/CLAUDE.md for variable meanings
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Script | Purpose |
+|--------|---------|
+| `bun dev` | Next.js dev server (Node.js) |
+| `bun run preview` | OpenNext build + local workerd preview — **use before shipping** |
+| `bun run deploy` | OpenNext build + deploy via Wrangler |
+| `bun run upload` | Build + upload artifacts (CI-friendly) |
+| `bun run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` |
+| `bun run typecheck` | `tsc --noEmit` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Configure the Worker in `wrangler.jsonc`. Public env vars for the Next.js build must also be set in [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) (or your CI) — `.env.local` alone does not affect remote builds.
 
-## Learn More
+## Security / dependency baseline
 
-To learn more about Next.js, take a look at the following resources:
+The app pins **Next.js 16.2.6**, which includes fixes for [CVE-2026-29057](https://github.com/advisories/GHSA-ggv3-7p47-pfv8) (HTTP request smuggling in rewrites). Stay on patched minors per the [Next.js security advisories](https://github.com/vercel/next.js/security/advisories).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Package conventions, auth flow, and Cloudflare constraints: **`CLAUDE.md`** in this directory.
