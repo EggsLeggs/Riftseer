@@ -56,7 +56,7 @@ Card types (`Card`, `RelatedCard`, etc.) are imported directly from `@riftseer/t
 Do not upgrade `@types/react` without checking `@raycast/api`'s peer deps first — version mismatches cause widespread JSX type errors.
 
 ## Privacy
-This extension makes read-only HTTP requests to the Riftseer API. It stores a bounded list of recently viewed card payloads in Raycast local storage (for the Search Cards empty state and history cap); that data stays on the device and is not sent to Riftseer. No analytics or tracking. If this ever changes, update `packages/frontend/src/components/PrivacyPage.tsx`.
+This extension makes read-only HTTP requests to the Riftseer API. It stores a bounded list of recently viewed card payloads in Raycast local storage (for the Search Cards empty state and history cap); that data stays on the device and is not sent to Riftseer. No analytics or tracking. If this ever changes, update `packages/web/src/views/privacy-view.tsx`.
 
 ## Documentation
 Doc pages for this extension live in `packages/raycast-extension/docs/raycast-extension.md`. The dev docs site copies this file into `docs/doc-pages/clients-bots/` when you run `bun run build` or `bun run start` in `docs/` (see `sync-clients-bots-docs`). Keep the doc up to date when commands, preferences, or the API call change.

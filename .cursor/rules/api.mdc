@@ -36,7 +36,7 @@ const data = await res.json()
 ## New Routes Checklist
 1. Add handler in `src/index.ts` with Elysia schema
 2. Add test in `src/__tests__/routes.test.ts`
-3. If the route exposes or logs new user/request data, update `packages/frontend/src/components/PrivacyPage.tsx`
+3. If the route exposes or logs new user/request data, update `packages/web/src/views/privacy-view.tsx`
 
 ## Provider Access
 - The provider is initialized once at startup via `createProvider()` from `@riftseer/core`
