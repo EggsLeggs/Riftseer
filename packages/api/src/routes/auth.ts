@@ -43,7 +43,7 @@ export function authRoutes() {
             options: { emailRedirectTo: body.options?.redirect_to },
           });
           if (error) {
-            set.status = error.status ?? 400;
+            set.status = (error.status && error.status >= 500) ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
           if (!data.session) {
@@ -102,7 +102,7 @@ export function authRoutes() {
             password: body.password,
           });
           if (error) {
-            set.status = error.status ?? 400;
+            set.status = error.status === 401 ? 401 : (error.status && error.status >= 500) ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
           return {
@@ -148,7 +148,7 @@ export function authRoutes() {
             refresh_token: body.refresh_token,
           });
           if (error) {
-            set.status = error.status ?? 401;
+            set.status = (error.status && error.status >= 500) ? 503 : 401;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
           if (!data.session) {
@@ -200,17 +200,23 @@ export function authRoutes() {
             return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
           const accessToken = authHeader.slice(7);
-          const res = await fetch(`${supabaseUrl}/auth/v1/logout`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              apikey: supabaseAnonKey,
-              "Content-Type": "application/json",
-            },
-          });
+          let res: Response;
+          try {
+            res = await fetch(`${supabaseUrl}/auth/v1/logout`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                apikey: supabaseAnonKey,
+                "Content-Type": "application/json",
+              },
+            });
+          } catch {
+            set.status = 503;
+            return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+          }
           if (!res.ok) {
             const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-            set.status = res.status;
+            set.status = res.status >= 500 ? 503 : 401;
             return {
               error: String(body.error_description ?? body.msg ?? "Logout failed"),
               code: "LOGOUT_FAILED",
@@ -246,7 +252,7 @@ export function authRoutes() {
             redirectTo: body.options?.redirect_to,
           });
           if (error) {
-            set.status = error.status ?? 400;
+            set.status = (error.status && error.status >= 500) ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
           return { message: "If that email is registered, a password reset link has been sent." };
@@ -314,18 +320,24 @@ export function authRoutes() {
                 return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
               }
               const accessToken = headers.authorization!.slice(7);
-              const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-                method: "PATCH",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  apikey: supabaseAnonKey,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ password: body.password }),
-              });
+              let res: Response;
+              try {
+                res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+                  method: "PATCH",
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    apikey: supabaseAnonKey,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ password: body.password }),
+                });
+              } catch {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
               if (!res.ok) {
                 const payload = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-                set.status = res.status;
+                set.status = res.status >= 500 ? 503 : res.status === 401 ? 401 : 400;
                 return {
                   error: String(payload.error_description ?? payload.msg ?? "Password update failed"),
                   code: "UPDATE_FAILED",

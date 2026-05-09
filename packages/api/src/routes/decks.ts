@@ -133,8 +133,10 @@ export function decksRoutes(deckProvider: SimplifiedDeckProvider) {
         response: {
           200: SimplifiedDeckResponseSchema,
           400: ErrorSchema,
+          401: ErrorSchema,
           404: ErrorSchema,
           500: ErrorSchema,
+          503: ErrorSchema,
         },
         detail: {
           tags: ["Decks"],
@@ -177,8 +179,10 @@ export function decksRoutes(deckProvider: SimplifiedDeckProvider) {
         response: {
           200: SimplifiedDeckResponseSchema,
           400: ErrorSchema,
+          401: ErrorSchema,
           404: ErrorSchema,
           500: ErrorSchema,
+          503: ErrorSchema,
         },
         detail: {
           tags: ["Decks"],
