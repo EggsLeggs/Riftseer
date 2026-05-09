@@ -39,3 +39,5 @@ supabase/.temp/
 # Editor
 .vscode/
 .idea/
+.agents/
+.claude/
