@@ -4,14 +4,15 @@
   "workspaces": ["packages/types", "packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "packages/web", "docs"],
   "_workspacesExcluded": "packages/reddit-bot (Devvit/npm standalone) and packages/raycast-extension (Raycast/npm standalone) are intentionally excluded — both require npm and are not Bun workspace members.",
   "overrides": {
-    "@sinclair/typebox": "0.34.48"
+    "@sinclair/typebox": "0.34.48",
+    "elysia": "1.4.28"
   },
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
     "dev:api": "cd packages/api && wrangler dev",
     "dev:frontend": "cd packages/frontend && bun run dev",
     "build:frontend": "cd packages/frontend && bun run build",
-    "dev:web": "cd packages/web && bun run dev",
+    "dev:web": "cd packages/web && bun run --env-file ../../.env dev",
     "build:web": "cd packages/web && bun run build",
     "test": "bun test ./packages/core/src/__tests__/*.test.ts ./packages/api/src/__tests__/**/*.test.ts",
     "test:core": "bun test ./packages/core/src/__tests__/*.test.ts",
