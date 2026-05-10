@@ -15,6 +15,9 @@ import {
 } from "@riftseer/core";
 import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
 
+/** Hard cap so callers cannot page arbitrarily deep in one request. */
+const MAX_SEARCH_OFFSET = 10_000;
+
 /**
  * Rewrites purchase_uris.tcgplayer to an Impact.com affiliate deep link.
  * Set TCGPLAYER_AFFILIATE_ID to your Impact publisher ID to enable.
@@ -265,6 +268,16 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         }
 
         const parsedOffset = parseInt(query.offset ?? "", 10);
+        if (
+          Number.isFinite(parsedOffset) &&
+          parsedOffset > MAX_SEARCH_OFFSET
+        ) {
+          set.status = 400;
+          return {
+            error: "offset too large",
+            code: "OFFSET_TOO_LARGE",
+          };
+        }
         const offset =
           Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 

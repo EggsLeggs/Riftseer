@@ -222,6 +222,17 @@ export function SearchCardsView() {
     [updateSearchParams],
   );
 
+  const searchPageHref = React.useCallback(
+    (targetPage: number) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (targetPage <= 1) p.delete("page");
+      else p.set("page", String(targetPage));
+      const qs = p.toString();
+      return qs ? `/search?${qs}` : "/search";
+    },
+    [searchParams],
+  );
+
   const pageNumbers = React.useMemo(
     () => (totalPages > 0 ? buildPageRange(page, totalPages) : []),
     [page, totalPages],
@@ -339,7 +350,7 @@ export function SearchCardsView() {
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
-                href="#"
+                href={searchPageHref(Math.max(1, page - 1))}
                 size="default"
                 className={cn(
                   page <= 1 && "pointer-events-none opacity-40",
@@ -347,6 +358,7 @@ export function SearchCardsView() {
                 aria-disabled={page <= 1}
                 tabIndex={page <= 1 ? -1 : undefined}
                 onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                   e.preventDefault();
                   if (page > 1) setPage(page - 1);
                 }}
@@ -360,10 +372,12 @@ export function SearchCardsView() {
               ) : (
                 <PaginationItem key={entry}>
                   <PaginationLink
-                    href="#"
+                    href={searchPageHref(entry)}
                     size="default"
                     isActive={entry === page}
                     onClick={(e) => {
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+                        return;
                       e.preventDefault();
                       setPage(entry);
                     }}
@@ -375,7 +389,7 @@ export function SearchCardsView() {
             )}
             <PaginationItem>
               <PaginationNext
-                href="#"
+                href={searchPageHref(Math.min(totalPages, page + 1))}
                 size="default"
                 className={cn(
                   page >= totalPages && "pointer-events-none opacity-40",
@@ -383,6 +397,7 @@ export function SearchCardsView() {
                 aria-disabled={page >= totalPages}
                 tabIndex={page >= totalPages ? -1 : undefined}
                 onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                   e.preventDefault();
                   if (page < totalPages) setPage(page + 1);
                 }}

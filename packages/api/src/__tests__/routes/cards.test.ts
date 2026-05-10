@@ -162,6 +162,42 @@ describe("API routes", () => {
       expect(body.cards).toEqual([]);
     });
 
+    it("sanitizes malformed and out-of-range numeric query params", async () => {
+      const res = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&limit=500&offset=abc",
+        ),
+      );
+      expect(res.status).toBe(200);
+      let body = await res.json() as any;
+      expect(body.limit).toBe(100);
+      expect(body.offset).toBe(0);
+      expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+
+      const resNeg = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&offset=-1&limit=10",
+        ),
+      );
+      expect(resNeg.status).toBe(200);
+      body = await resNeg.json() as any;
+      expect(body.offset).toBe(0);
+      expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+    });
+
+    it("returns 400 when offset exceeds the allowed maximum", async () => {
+      const res = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&offset=10001&limit=10",
+        ),
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json() as any;
+      expect(body.error).toContain("offset");
+    });
+
     it("returns 400 when name is missing", async () => {
       const res = await app.handle(new Request("http://localhost/api/v1/cards"));
       expect(res.status).toBe(400);

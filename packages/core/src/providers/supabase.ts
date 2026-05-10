@@ -462,31 +462,59 @@ export class SupabaseCardProvider implements CardDataProvider {
       .map((w) => `${w}:*`)
       .join(" & ");
 
-    const fetchLimit = Math.min(Math.max(pageLimit * 20, 100), 500);
+    const fetchLimit = Math.min(
+      Math.max((offset + pageLimit) * 20, 100),
+      500,
+    );
 
-    let ftsQuery = supabase
+    let ftsDataQuery = supabase
       .from("cards")
       .select(SLIM_SELECT)
       .textSearch("name_search", prefixQuery, { config: "simple" });
 
-    if (setId) ftsQuery = ftsQuery.eq("set_id", setId);
+    if (setId) ftsDataQuery = ftsDataQuery.eq("set_id", setId);
     if (opts.collector !== undefined && opts.collector !== null) {
-      ftsQuery = ftsQuery.eq("collector_number", String(opts.collector));
+      ftsDataQuery = ftsDataQuery.eq(
+        "collector_number",
+        String(opts.collector),
+      );
     }
 
-    const { data: ftsData, error: ftsError } = await ftsQuery.limit(fetchLimit);
+    let ftsCountQuery = supabase
+      .from("cards")
+      .select("id", { count: "exact", head: true })
+      .textSearch("name_search", prefixQuery, { config: "simple" });
+
+    if (setId) ftsCountQuery = ftsCountQuery.eq("set_id", setId);
+    if (opts.collector !== undefined && opts.collector !== null) {
+      ftsCountQuery = ftsCountQuery.eq(
+        "collector_number",
+        String(opts.collector),
+      );
+    }
+
+    const [{ count: ftsMatchCount, error: ftsCountError }, { data: ftsData, error: ftsError }] =
+      await Promise.all([ftsCountQuery, ftsDataQuery.limit(fetchLimit)]);
     if (ftsError)
       throw new Error(`legacyTextSearch FTS failed: ${ftsError.message}`);
 
     const ftsRows = (ftsData ?? []) as Nameable[];
     const topIds = rankIds(ftsRows, text, ftsRows.length);
-    if (topIds.length === 0) return { cards: [], total: 0 };
+    const totalFromCount =
+      !ftsCountError &&
+      ftsMatchCount !== null &&
+      ftsMatchCount !== undefined
+        ? ftsMatchCount
+        : null;
+    if (topIds.length === 0) {
+      return { cards: [], total: totalFromCount ?? 0 };
+    }
 
     const orderedRows = await this.hydrateRowsInOrder(topIds);
     const deduped = deduplicateRowsAll(orderedRows);
     return {
       cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
-      total: deduped.length,
+      total: totalFromCount ?? deduped.length,
     };
   }
 

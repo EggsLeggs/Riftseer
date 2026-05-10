@@ -151,5 +151,13 @@ function matchAst(card: Card, ast: CardSearchAst): boolean {
           return false;
       }
     }
+    default: {
+      const unreachable: never = ast;
+      throw new Error(
+        `Unsupported card search AST op in stub provider: ${
+          (unreachable as { op?: string }).op ?? "unknown"
+        }`,
+      );
+    }
   }
 }
