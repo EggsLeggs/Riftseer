@@ -80,6 +80,7 @@ npx devvit settings set siteBaseUrl
 | `CACHE_REFRESH_INTERVAL_MS` | Provider stats refresh interval in ms (default 6h) |
 | `LEGAL_TERMS_VERSION` | Version string stored with new users’ Terms acceptance at registration (`POST /auth/register`). **Set in `packages/api/wrangler.jsonc` → `vars`.** When you publish material Terms updates, bump this value and redeploy the API Worker so new signups record the new version. (Code still defaults to `1` if the binding is missing.) |
 | `LEGAL_PRIVACY_VERSION` | Same for Privacy Policy acceptance. **Set in `packages/api/wrangler.jsonc` → `vars`** — bump alongside material Privacy policy updates and redeploy. |
+| `SITE_ORIGIN` | Public site origin (no trailing slash) used to build absolute `riftseer_uri` values on every card response. **Set in `packages/api/wrangler.jsonc` → `vars`.** When unset, `riftseer_uri` is omitted and clients fall back to the legacy `/card/<id>` path. |
 
 ### Ingest Worker (packages/ingest-worker)
 | Variable | Purpose |
@@ -112,6 +113,7 @@ Production plain vars live under `env.production.vars` in `packages/web/wrangler
 - **Ingest**: Modular pipeline runs as a Cloudflare Worker on a schedule. No ingest endpoint in the API. See [Ingest Pipeline](#ingest-pipeline) below.
 - **Card name search**: Postgres `tsvector` on `name` + `name_normalized`. Exact `name_normalized` match is tried first; full-text search is used as fallback.
 - **Card IDs**: `cards.id` is `text` (MongoDB ObjectIds from RiftCodex — 24-char hex strings).
+- **Public card URLs**: Each printing has a stable `cards.public_slug` (e.g. `ogn/12a/signature/sun-disc`) generated on first ingest and **never overwritten** by subsequent runs — public URLs do not drift when upstream data is corrected. The API computes an absolute `riftseer_uri` on every card response (and on every related-card stub) using `SITE_ORIGIN`. Tools should prefer `card.riftseer_uri` over building URLs by id. Slug rules live in `packages/types/src/slug.ts`.
 
 ## Ingest Pipeline
 
@@ -151,7 +153,7 @@ RiftCodex /sets + /cards
 
 **TCGPlayer enrichment is non-fatal**: if TCGCSV is unavailable, the pipeline continues without prices/images. Cards still get upserted with RiftCodex data only.
 
-**Supabase RPC**: All three tables (sets, artists, cards) are written atomically via `ingest_card_data(p_sets, p_artists, p_cards)`. See `supabase/migrations/20260407160000_fix_ingest_rpc_id_cast.sql` for the current definition.
+**Supabase RPC**: All three tables (sets, artists, cards) are written atomically via `ingest_card_data(p_sets, p_artists, p_cards)`. The current definition lives in `supabase/migrations/20260510030000_add_cards_public_slug.sql` (extends the earlier `20260407160000_fix_ingest_rpc_id_cast.sql` with the `public_slug` column). The `ON CONFLICT` clause `coalesce`s on `public_slug` so URLs are stable across ingest runs but still backfilled when null.
 
 ## Deployment
 - **API**: Cloudflare Workers via `cd packages/api && wrangler deploy`. Secrets set with `wrangler secret put`. Worker name: `riftseer-api`.

@@ -37,6 +37,20 @@ export interface CardDataProvider {
   getCardById(id: string): Promise<Card | null>;
 
   /**
+   * Look up a single card by its persisted public_slug (relative path, no
+   * leading slash, e.g. "ogn/12a/signature/sun-disc"). Returns null if not
+   * found.
+   */
+  getCardByPublicSlug(slug: string): Promise<Card | null>;
+
+  /**
+   * Look up `public_slug` values for many card IDs in one round-trip — used to
+   * hydrate `riftseer_uri` on related-card stubs.  IDs without a stored slug
+   * are simply omitted from the result map.
+   */
+  getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>>;
+
+  /**
    * Full-text + optional set/collector search.
    * Performs exact match first; fuzzy fallback if opts.fuzzy !== false.
    */

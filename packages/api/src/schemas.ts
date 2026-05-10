@@ -6,6 +6,9 @@ export const RelatedCardSchema = t.Object({
   name: t.String(),
   component: t.String({ description: "Relationship role, e.g. 'token', 'meld_part'" }),
   uri: t.Optional(t.String({ description: "API URI for the referenced card" })),
+  riftseer_uri: t.Optional(
+    t.String({ description: "Absolute public site URL for the referenced card" }),
+  ),
 });
 
 export const CardSchema = t.Object({
@@ -92,6 +95,18 @@ export const CardSchema = t.Object({
   related_champions: t.Array(RelatedCardSchema),
   related_legends: t.Array(RelatedCardSchema),
   related_printings: t.Array(RelatedCardSchema),
+  public_slug: t.Optional(
+    t.String({
+      description:
+        "Stable public URL path for the printing (no leading slash), e.g. 'ogn/12a/signature/sun-disc'.",
+    }),
+  ),
+  riftseer_uri: t.Optional(
+    t.String({
+      description:
+        "Absolute public site URL for this card (e.g. https://riftseer.com/card/ogn/12a/sun-disc).",
+    }),
+  ),
   updated_at: t.Optional(t.String()),
   ingested_at: t.Optional(t.String()),
 });

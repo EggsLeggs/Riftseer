@@ -86,12 +86,19 @@ function cardAccessory(card: Card): List.Item.Accessory | null {
   return null;
 }
 
+function cardSiteUrl(card: Card, siteBaseUrl: string): string {
+  return (
+    card.riftseer_uri ??
+    `${siteBaseUrl.replace(/\/$/, "")}/card/${card.id}`
+  );
+}
+
 function cardActions(
   card: Card,
   siteBaseUrl: string,
   onViewCard: (c: Card) => void,
 ) {
-  const siteUrl = `${siteBaseUrl.replace(/\/$/, "")}/card/${card.id}`;
+  const siteUrl = cardSiteUrl(card, siteBaseUrl);
   return (
     <ActionPanel>
       <ActionPanel.Section>
@@ -123,7 +130,7 @@ function CardSidebarDetail({
   card: Card;
   siteBaseUrl: string;
 }) {
-  const siteUrl = `${siteBaseUrl.replace(/\/$/, "")}/card/${card.id}`;
+  const siteUrl = cardSiteUrl(card, siteBaseUrl);
   const isLandscape = card.media?.orientation === "landscape";
   const imgUrl =
     card.media?.media_urls?.small ?? card.media?.media_urls?.normal;

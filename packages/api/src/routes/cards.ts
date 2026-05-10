@@ -1,5 +1,11 @@
 import { Elysia, t } from "elysia";
-import { parseCardRequests, type CardDataProvider, type Card } from "@riftseer/core";
+import {
+  parseCardRequests,
+  finalizeCard,
+  finalizeCards,
+  type CardDataProvider,
+  type Card,
+} from "@riftseer/core";
 import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
 
 /**
@@ -38,9 +44,20 @@ function stripPrices(card: Card): Card {
 
 export function cardsRoutes(cardProvider: CardDataProvider) {
   const affiliateId = process.env.TCGPLAYER_AFFILIATE_ID || undefined;
+  const siteOrigin = process.env.SITE_ORIGIN || undefined;
   const affiliate = (card: Card) => withAffiliateLinks(card, affiliateId);
   const prepare = (card: Card, include: string | undefined) =>
     include === "prices" ? affiliate(card) : stripPrices(affiliate(card));
+
+  /** Apply prepare() (affiliate, prices) and finalize (riftseer_uri hydration). */
+  const finalizeOne = (card: Card, include: string | undefined) =>
+    finalizeCard(prepare(card, include), siteOrigin, cardProvider);
+  const finalizeMany = (cards: Card[], include: string | undefined) =>
+    finalizeCards(
+      cards.map((c) => prepare(c, include)),
+      siteOrigin,
+      cardProvider,
+    );
 
   return new Elysia()
     // ── GET /cards/random ─────────────────────────────────────────────────────
@@ -52,7 +69,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           set.status = 404;
           return { error: "No cards available", code: "NOT_FOUND" };
         }
-        return prepare(card, query.include);
+        return await finalizeOne(card, query.include);
       },
       {
         query: t.Object({
@@ -79,7 +96,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           set.status = 404;
           return { error: "Card not found", code: "NOT_FOUND" };
         }
-        return prepare(card, query.include);
+        return await finalizeOne(card, query.include);
       },
       {
         params: t.Object({ id: t.String({ description: "Card UUID" }) }),
@@ -127,6 +144,39 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
       },
     )
 
+    // ── GET /cards/by-slug/* ──────────────────────────────────────────────────
+    // Look up a card by its persisted public_slug.  The wildcard matches the
+    // full slug path (with slashes), e.g. /cards/by-slug/ogn/12a/sun-disc.
+    .get(
+      "/cards/by-slug/*",
+      async ({ params, query, set }) => {
+        const slug = decodeURIComponent(params["*"] ?? "");
+        const card = await cardProvider.getCardByPublicSlug(slug);
+        if (!card) {
+          set.status = 404;
+          return { error: "Card not found", code: "NOT_FOUND" };
+        }
+        return await finalizeOne(card, query.include);
+      },
+      {
+        query: t.Object({
+          include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
+        }),
+        response: {
+          200: CardSchema,
+          404: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "Get card by public slug",
+          description:
+            "Look up a single printing by the persisted public_slug — e.g. " +
+            "`/cards/by-slug/ogn/12a/signature/sun-disc`. Used by the Next.js " +
+            "card detail route.",
+        },
+      },
+    )
+
     // ── GET /cards ────────────────────────────────────────────────────────────
     .get(
       "/cards",
@@ -139,7 +189,8 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           const cards = await cardProvider.getCardsBySet(query.set, {
             limit: limit ?? 2000,
           });
-          return { count: cards.length, cards: cards.map((c) => prepare(c, query.include)) };
+          const finalized = await finalizeMany(cards, query.include);
+          return { count: finalized.length, cards: finalized };
         }
 
         if (!query.name?.trim()) {
@@ -160,7 +211,8 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           limit: limit ?? 10,
         });
 
-        return { count: cards.length, cards: cards.map((c) => prepare(c, query.include)) };
+        const finalized = await finalizeMany(cards, query.include);
+        return { count: finalized.length, cards: finalized };
       },
       {
         query: t.Object({
@@ -206,9 +258,18 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           requests.map((req) => cardProvider.resolveRequest(req)),
         );
 
+        // Finalize all matched cards in a single batched slug lookup.
+        const matched = results
+          .map((r) => r.card)
+          .filter((c): c is Card => c != null);
+        const finalized = await finalizeMany(matched, body.include);
+        const finalizedById = new Map(finalized.map((c) => [c.id, c]));
+
         return {
           count: results.length,
-          results: results.map((r) => r.card ? { ...r, card: prepare(r.card, body.include) } : r),
+          results: results.map((r) =>
+            r.card ? { ...r, card: finalizedById.get(r.card.id) ?? r.card } : r,
+          ),
         };
       },
       {

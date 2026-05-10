@@ -11,6 +11,8 @@ export interface RelatedCard {
   component: string;
   /** API URI for the referenced card, e.g. /api/v1/cards/:id */
   uri?: string;
+  /** Absolute public site URL for the referenced card. Computed at response time. */
+  riftseer_uri?: string;
 }
 
 export interface CardExternalIds {
@@ -138,6 +140,16 @@ export interface Card {
   related_legends: RelatedCard[];
   /** Other printings/art variants of the same card. */
   related_printings: RelatedCard[];
+  /**
+   * Stable public URL path (no leading slash), e.g. "ogn/12a/signature/sun-disc".
+   * Set on first ingest and never overwritten so links don't drift.
+   */
+  public_slug?: string;
+  /**
+   * Absolute public site URL, e.g. "https://riftseer.com/card/ogn/12a/signature/sun-disc".
+   * Computed at response time from public_slug + the configured site origin.
+   */
+  riftseer_uri?: string;
   updated_at?: string;
   ingested_at?: string;
 }

@@ -20,6 +20,8 @@ interface ApiCard {
       normal?: string;
     };
   };
+  /** Absolute public site URL — provided by the API when SITE_ORIGIN is set. */
+  riftseer_uri?: string;
 }
 
 interface ApiResolvedCard {
@@ -105,7 +107,9 @@ function formatCard(
 
   const { id, name: cardName } = result.card;
   const imageUrl = result.card.media?.media_urls?.normal;
-  const siteUrl = `${siteBase}/card/${id}`;
+  // Prefer the API-provided absolute URL so we follow whatever public path
+  // shape the API decides on; fall back to /card/<id> for older API responses.
+  const siteUrl = result.card.riftseer_uri ?? `${siteBase}/card/${id}`;
   const txtUrl = `${apiBase}/api/v1/cards/${id}/text`;
 
   const fuzzyNote =

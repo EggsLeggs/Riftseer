@@ -30,9 +30,24 @@ export { createProvider } from "./providers/index.ts";
 export type { ProviderName } from "./providers/index.ts";
 
 export { normalizeCardName } from "./normalize.ts";
+export {
+  slugifyCardName,
+  buildPublicSlugSegments,
+  joinPublicSlug,
+  withNameCollisionSuffix,
+  generatePublicSlug,
+  absoluteRiftseerUri,
+  normalizeSiteOrigin,
+  MISSING_COLLECTOR_SEGMENT,
+} from "@riftseer/types/slug";
 export { autocompleteSearch, scoreCard, rankIds } from "./search.ts";
 export type { Nameable } from "./search.ts";
 export { SupabaseCardProvider } from "./providers/supabase.ts";
+export {
+  finalizeCard,
+  finalizeCards,
+  enrichRelatedCardsSiteUris,
+} from "./hydrate.ts";
 
 // Deck provider interface + implementation
 export type { SimplifiedDeckProvider } from "./provider.ts";

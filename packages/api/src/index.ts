@@ -8,6 +8,7 @@
  *   GET  /api/v1/cards/random
  *   GET  /api/v1/cards/:id
  *   GET  /api/v1/cards/:id/text
+ *   GET  /api/v1/cards/by-slug/* — look up a card by its persisted public_slug
  *   POST /api/v1/cards/resolve  body: { requests: string[] }
  *   GET  /api/v1/sets
  *   GET  /api/v1/decks/u/:shortForm
@@ -23,6 +24,8 @@
  * Dev:    wrangler dev
  * Secrets (wrangler secret put): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
  *   SUPABASE_ANON_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+ * Vars (wrangler.jsonc → vars): SITE_ORIGIN — public site origin used to build
+ *   absolute riftseer_uri values on card responses.
  */
 
 import { Elysia } from "elysia";

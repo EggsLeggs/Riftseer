@@ -56,7 +56,8 @@ curl "http://localhost:8787/cdn-cgi/mf/scheduled"
 ## Important notes
 - **`utils.ts` duplicates `normalizeCardName`** from `@riftseer/types`. This is intentional: `@riftseer/core` pulls in ioredis and Node.js built-ins that are incompatible with Cloudflare Workers. Do not import from `@riftseer/core` here.
 - **Card IDs are `text`** (MongoDB ObjectIds — 24-char hex from RiftCodex), not UUIDs.
-- **Supabase RPC** `ingest_card_data` handles FK resolution (set_code → set_id, artist name → artist_id) inside the transaction. See `supabase/migrations/20260407160000_fix_ingest_rpc_id_cast.sql`.
+- **Supabase RPC** `ingest_card_data` handles FK resolution (set_code → set_id, artist name → artist_id) inside the transaction. See `supabase/migrations/20260510030000_add_cards_public_slug.sql` for the current definition (extends the earlier `20260407160000_fix_ingest_rpc_id_cast.sql` with `public_slug`).
+- **`public_slug` assignment** lives in `pipeline/db.ts`. Slug logic comes from `@riftseer/types/slug` (zero-dep, also used by tests). Each card's slug is `<set>/<collector>(/signature)?/<name>`, with `a` appended to numeric collectors for alternate art and a `-2`, `-3`, … suffix on the name segment for collisions. Cards with no collector number get the sentinel segment `x`. The RPC `coalesce`s on conflict so the value persisted on first insert is **never overwritten** — public URLs stay stable across re-runs. Re-runs after a slug-column migration backfill nulls automatically.
 - **Overrides** are the right place to patch upstream data issues — prefer JSON overrides over code changes for set names, group mappings, and image preferences.
 
 ## Adding a new override
