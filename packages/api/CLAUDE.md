@@ -44,6 +44,19 @@ See [`packages/api/docs/`](./docs/) for endpoint reference:
 - [`meta.md`](./docs/meta.md) — health and provider state
 - [`auth.md`](./docs/auth.md) — register, login, refresh, logout
 
+## Card response shape — `riftseer_uri`
+
+Every card response runs through `finalizeCard` / `finalizeCards` in
+`@riftseer/core`, which add an absolute `riftseer_uri` to the card and to
+every related-card stub (`all_parts`, `used_by`, `related_champions`,
+`related_legends`, `related_printings`).  `riftseer_uri` is computed at
+response time from `SITE_ORIGIN` + `public_slug`; it is never persisted.
+Related-card stubs are hydrated in a single batched DB lookup, so the cost
+is one extra query per response regardless of related-card count.
+
+`SITE_ORIGIN` is documented in `wrangler.jsonc` → `vars`. Leave it unset to
+omit `riftseer_uri` entirely (clients fall back to `/card/<id>`).
+
 ## Elysia Patterns
 - Define routes on the versioned sub-app (`v1`, `v2`, …), not directly on the root app
 - Use `.use(cors())` on the **root app only**

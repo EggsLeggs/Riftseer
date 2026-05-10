@@ -39,6 +39,23 @@ All data fetching and auth go through the Elysia API. **Never import or call Sup
 - `(marketing)` — public-facing pages — minimal layout
 - `(app)` — authenticated app shell — full nav, auth guard in `layout.tsx`
 
+### Card detail route
+
+Both routes live under one **`[slug]`** dynamic segment (Next.js forbids sibling
+`[id]` and `[set]` folders — same depth must share one param name). They share
+`features/cards/card-json-view.tsx` (placeholder JSON dump):
+
+- **`app/card/[slug]/page.tsx`** — `/card/<printing-id>` legacy URLs. Fetches by id,
+  then `permanentRedirect`s to `card.riftseer_uri` when present.
+- **`app/card/[slug]/[collector]/[[...slugTail]]/page.tsx`** — canonical slug paths:
+  `/card/<set>/<collector>/<name>` or `/card/<set>/<collector>/signature/<name>`.
+  Builds `public_slug` as `<slug>/<collector>/(signature/)?/<…slugTail>` and calls
+  `GET /api/v1/cards/by-slug/…`. `/card/<set>/<collector>` with no name returns 404.
+
+`features/cards/api.ts` uses `AbortSignal.timeout` (12s) and `cache: "no-store"` so requests fail fast instead of hanging; `app/card/error.tsx` shows user-facing copy (no stack traces or dev jargon).
+
+Build URLs with `card.riftseer_uri` from API responses rather than rolling your own paths.
+
 ### Layer separation
 
 - `app/` — routing and layouts only, no logic — pages import from `views/`

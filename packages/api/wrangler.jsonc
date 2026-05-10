@@ -11,7 +11,10 @@
 	"vars": {
 		"CARD_PROVIDER": "supabase",
 		"LEGAL_TERMS_VERSION": "1",
-		"LEGAL_PRIVACY_VERSION": "1"
+		"LEGAL_PRIVACY_VERSION": "1",
+		// Public site origin used to build absolute riftseer_uri values on every
+		// card response. Override per-environment if needed.
+		"SITE_ORIGIN": "https://riftseer.com"
 	},
 	// Required for core API + Supabase auth routes.
 	// Optional secrets (omit from required): UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, TCGPLAYER_AFFILIATE_ID

@@ -22,6 +22,17 @@ function domainColor(domains?: string[]): number {
   return first ? (DOMAIN_COLORS[first] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
 }
 
+/**
+ * Build the canonical site URL for a card. Prefer the API-provided
+ * `riftseer_uri` so we follow whatever path scheme the API decides on; fall
+ * back to the legacy `/card/<id>` shape only when the API hasn't filled it
+ * in yet (e.g. SITE_ORIGIN unset, or pre-backfill rows).
+ */
+function cardSiteUrl(card: Card, siteBaseUrl: string): string {
+  if (card.riftseer_uri) return card.riftseer_uri;
+  return `${siteBaseUrl.replace(/\/+$/, "")}/card/${card.id}`;
+}
+
 /** Full card embed — image, stats, rules text, links. */
 export function buildCardEmbed(
   card: Card,
@@ -87,7 +98,7 @@ export function buildCardEmbed(
 
   return {
     title: card.name,
-    url: `${siteBaseUrl}/card/${card.id}`,
+    url: cardSiteUrl(card, siteBaseUrl),
     description,
     color: domainColor(domains),
     image: imageUrl ? { url: imageUrl } : undefined,
@@ -102,7 +113,7 @@ export function buildCardImageEmbed(card: Card, siteBaseUrl: string): APIEmbed {
   const domains = card.classification?.domains;
   return {
     title: card.name,
-    url: `${siteBaseUrl}/card/${card.id}`,
+    url: cardSiteUrl(card, siteBaseUrl),
     color: domainColor(domains),
     image: imageUrl ? { url: imageUrl } : undefined,
     footer: {

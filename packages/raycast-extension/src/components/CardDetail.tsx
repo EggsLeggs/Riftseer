@@ -346,7 +346,7 @@ function buildCopyableText(card: Card): string {
 
 export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
   const site = siteBaseUrl.replace(/\/$/, "");
-  const siteUrl = `${site}/card/${card.id}`;
+  const siteUrl = card.riftseer_uri ?? `${site}/card/${card.id}`;
   const markdown = buildMarkdown(card);
   const typeLine = formatTypeLine(
     card.classification?.type,

@@ -4,7 +4,7 @@
  * calls happen.
  */
 
-import { describe, it, expect, beforeAll } from "bun:test";
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { Elysia } from "elysia";
 import type {
   CardDataProvider,
@@ -47,6 +47,7 @@ describe("API routes", () => {
       expect(body.object).toBe("card");
       expect(body.set.set_code).toBe("OGN");
       expect(body.raw).toBeUndefined(); // no raw field in Card
+      expect(body.public_slug).toBe("ogn/21/sun-disc");
       expect(Array.isArray(body.related_champions)).toBe(true);
       expect(body.related_champions).toHaveLength(1);
       expect(body.related_champions[0].object).toBe("related_card");
@@ -63,6 +64,66 @@ describe("API routes", () => {
       expect(res.status).toBe(404);
       const body = await res.json() as any;
       expect(body.code).toBe("NOT_FOUND");
+    });
+  });
+
+  // ── GET /cards/by-slug/* ───────────────────────────────────────────────────
+
+  describe("GET /cards/by-slug/*", () => {
+    it("returns the card for a known slug", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/by-slug/ogn/21/sun-disc"),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.id).toBe(STUB_CARD.id);
+      expect(body.public_slug).toBe("ogn/21/sun-disc");
+    });
+
+    it("returns 404 for an unknown slug", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/by-slug/foo/bar/baz"),
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it("returns 400 when the slug path has malformed percent-encoding", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/by-slug/%E0%A4%A"),
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { code?: string };
+      expect(body.code).toBe("BAD_REQUEST");
+    });
+  });
+
+  // ── riftseer_uri hydration ────────────────────────────────────────────────
+
+  describe("riftseer_uri hydration", () => {
+    const ORIG_SITE_ORIGIN = process.env.SITE_ORIGIN;
+    let appWithSiteOrigin: ReturnType<typeof buildTestApp>;
+
+    beforeAll(() => {
+      process.env.SITE_ORIGIN = "https://riftseer.com";
+      appWithSiteOrigin = buildTestApp(new StubProvider());
+    });
+
+    afterAll(() => {
+      if (ORIG_SITE_ORIGIN === undefined) delete process.env.SITE_ORIGIN;
+      else process.env.SITE_ORIGIN = ORIG_SITE_ORIGIN;
+    });
+
+    it("attaches riftseer_uri to the card and to related stubs whose ids resolve", async () => {
+      const res = await appWithSiteOrigin.handle(
+        new Request(`http://localhost/api/v1/cards/${STUB_CARD.id}`),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.riftseer_uri).toBe(
+        "https://riftseer.com/card/ogn/21/sun-disc",
+      );
+      // The related champion has no slug in the stub, so no riftseer_uri.
+      expect(body.related_champions[0].riftseer_uri).toBeUndefined();
     });
   });
 

@@ -9,6 +9,11 @@ const TCGCSV_BASE = "https://tcgcsv.com/tcgplayer";
 const TCGCSV_CATEGORY = 89;
 const GROUP_FETCH_CONCURRENCY = 5;
 
+/** TCGCSV blocks requests with missing/generic User-Agent (responds 401). See https://tcgcsv.com/docs */
+const TCGCSV_HEADERS = {
+  "User-Agent": "RiftseerIngest/1.0 (+https://riftseer.com)",
+} as const;
+
 export interface TCGGroup {
   groupId: number;
   name: string;
@@ -44,7 +49,10 @@ export async function fetchGroups(timeoutMs: number): Promise<TCGGroup[]> {
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${TCGCSV_BASE}/${TCGCSV_CATEGORY}/groups`, { signal: ctrl.signal });
+    const res = await fetch(`${TCGCSV_BASE}/${TCGCSV_CATEGORY}/groups`, {
+      signal: ctrl.signal,
+      headers: TCGCSV_HEADERS,
+    });
     if (!res.ok) throw new Error(`fetchGroups: ${res.status} ${res.statusText}`);
     const raw = (await res.json()) as { results?: TCGGroup[] };
     const groups = Array.isArray(raw?.results) ? raw.results : [];
@@ -60,10 +68,22 @@ export async function fetchProductsAndPrices(
   signal: AbortSignal,
 ): Promise<{ products: TCGProduct[]; prices: TCGPrice[] }> {
   const base = `${TCGCSV_BASE}/${TCGCSV_CATEGORY}/${groupId}`;
-  const [productsRes, pricesRes] = await Promise.all([
-    fetch(`${base}/products`, { signal }),
-    fetch(`${base}/prices`, { signal }),
-  ]);
+  let productsRes: Response;
+  let pricesRes: Response;
+  try {
+    [productsRes, pricesRes] = await Promise.all([
+      fetch(`${base}/products`, { signal, headers: TCGCSV_HEADERS }),
+      fetch(`${base}/prices`, { signal, headers: TCGCSV_HEADERS }),
+    ]);
+  } catch (err) {
+    logger.error("TCGCSV products/prices fetch failed", {
+      base,
+      signalAborted: signal.aborted,
+      headers: TCGCSV_HEADERS,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return { products: [], prices: [] };
+  }
 
   if (!productsRes.ok || !pricesRes.ok) {
     logger.warn("Skipping TCGPlayer group — fetch failed", { groupId });

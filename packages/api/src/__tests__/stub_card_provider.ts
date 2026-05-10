@@ -31,6 +31,7 @@ export const STUB_CARD: Card = {
   ],
   related_legends: [],
   related_printings: [],
+  public_slug: "ogn/21/sun-disc",
 };
 
 export class StubProvider implements CardDataProvider {
@@ -41,6 +42,20 @@ export class StubProvider implements CardDataProvider {
 
   async getCardById(id: string): Promise<Card | null> {
     return id === STUB_CARD.id ? STUB_CARD : null;
+  }
+
+  async getCardByPublicSlug(slug: string): Promise<Card | null> {
+    return slug === STUB_CARD.public_slug ? STUB_CARD : null;
+  }
+
+  async getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    for (const id of ids) {
+      if (id === STUB_CARD.id && STUB_CARD.public_slug) {
+        result.set(id, STUB_CARD.public_slug);
+      }
+    }
+    return result;
   }
 
   async searchByName(q: string, _opts?: CardSearchOptions): Promise<Card[]> {

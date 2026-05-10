@@ -39,7 +39,19 @@ const REFRESH_INTERVAL_MS = parseInt(
 const CARD_SELECT =
   "*, sets:set_id(set_code, set_name, set_uri, set_search_uri, is_promo, published_on, card_count), artists:artist_id(name)";
 
+// `*` already covers public_slug, but we re-state it here so the dependency
+// is greppable.
+
 const SLIM_SELECT = "id, name, name_normalized";
+
+/** PostgREST `in` filter URL limits — chunk large id lists. */
+const ID_IN_CHUNK_SIZE = 100;
+
+function chunkIds<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
 
 // ─── DB row shape (cards joined with sets + artists) ─────────────────────────
 
@@ -65,6 +77,7 @@ interface DBCardRow {
   related_legends: RelatedCard[];
   related_printings: RelatedCard[];
   is_token: boolean;
+  public_slug: string | null;
   updated_at: string;
   ingested_at: string;
   rulings_id: string | null;
@@ -116,6 +129,7 @@ function dbRowToCard(row: DBCardRow): Card {
     related_champions: row.related_champions ?? [],
     related_legends: row.related_legends ?? [],
     related_printings: row.related_printings ?? [],
+    public_slug: row.public_slug ?? undefined,
     updated_at: row.updated_at,
     ingested_at: row.ingested_at,
   };
@@ -288,6 +302,38 @@ export class SupabaseCardProvider implements CardDataProvider {
 
     if (error) throw new Error(`getCardById failed: ${error.message}`);
     return data ? dbRowToCard(data as DBCardRow) : null;
+  }
+
+  async getCardByPublicSlug(slug: string): Promise<Card | null> {
+    const trimmed = slug.replace(/^\/+|\/+$/g, "");
+    if (!trimmed) return null;
+    const { data, error } = await getSupabaseClient()
+      .from("cards")
+      .select(CARD_SELECT)
+      .eq("public_slug", trimmed)
+      .maybeSingle();
+
+    if (error) throw new Error(`getCardByPublicSlug failed: ${error.message}`);
+    return data ? dbRowToCard(data as DBCardRow) : null;
+  }
+
+  async getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (unique.length === 0) return result;
+
+    for (const idChunk of chunkIds(unique, ID_IN_CHUNK_SIZE)) {
+      const { data, error } = await getSupabaseClient()
+        .from("cards")
+        .select("id, public_slug")
+        .in("id", idChunk);
+
+      if (error) throw new Error(`getPublicSlugsByIds failed: ${error.message}`);
+      for (const row of (data ?? []) as Array<{ id: string; public_slug: string | null }>) {
+        if (row.public_slug) result.set(row.id, row.public_slug);
+      }
+    }
+    return result;
   }
 
   async searchByName(q: string, opts: CardSearchOptions = {}): Promise<Card[]> {

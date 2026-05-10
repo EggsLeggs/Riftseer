@@ -16,6 +16,7 @@ Card endpoints live under `/api/v1/cards`.
 | `GET` | `/api/v1/cards/random` | Random card |
 | `GET` | `/api/v1/cards/:id` | Single card by card ID |
 | `GET` | `/api/v1/cards/:id/text` | Plain-text card summary |
+| `GET` | `/api/v1/cards/by-slug/*` | Single card by `public_slug` (set / collector / name path) |
 | `POST` | `/api/v1/cards/resolve` | Batch resolve card name strings |
 
 ---
@@ -43,6 +44,8 @@ Every card endpoint returns the same card shape. Key fields:
 | `related_champions` | array | Champions linked to this legend |
 | `related_legends` | array | Legends linked to this champion |
 | `related_printings` | array | Array of `RelatedCard` objects — other printings/editions (alternate art, promos, etc.) of the same card |
+| `public_slug` | string \| undefined | Stable public URL path for this printing — e.g. `ogn/12a/signature/sun-disc`. Persisted on first ingest and never overwritten, so URLs do not drift. |
+| `riftseer_uri` | string \| undefined | Absolute public site URL — `${SITE_ORIGIN}/card/${public_slug}`. Computed at response time and also added to every entry in the related-card arrays. Use this instead of building URLs client-side. |
 
 ---
 
@@ -94,6 +97,29 @@ Gear
 
 Equipped Champion gains +2 Power and +2 Might.
 ```
+
+---
+
+## GET /api/v1/cards/by-slug/*
+
+Look up a single printing by its persisted `public_slug`.  The wildcard
+captures the full path (with slashes), so the route is shaped to match the
+public site URL:
+
+```http
+GET /api/v1/cards/by-slug/ogn/12a/signature/sun-disc
+GET /api/v1/cards/by-slug/ogn/21/sun-disc?include=prices
+```
+
+| Parameter | Type | Notes |
+| --- | --- | --- |
+| `*` (path) | string | Slug path, no leading slash |
+| `include` | string (optional) | Pass `prices` to include price data |
+
+Returns `404` when no card has the given slug. The Next.js card detail page
+uses this endpoint to render multi-segment URLs that mirror `public_slug`, for
+example `/card/ogn/21/sun-disc` or `/card/ogn/12a/signature/sun-disc` — i.e.
+`/card/<segment>/<segment>/…`, not a single opaque slug token.
 
 ---
 
