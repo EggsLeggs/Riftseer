@@ -375,16 +375,29 @@ export default function SearchCards() {
     {
       execute: hasQuery,
       parseResponse: async (response) => {
-        const body = (await response.json()) as
-          | CardsSearchResponse
-          | SearchApiError;
-        if (response.ok) return body as CardsSearchResponse;
-        if (isSearchApiError(body)) {
+        const rawText = await response.text();
+        let body: CardsSearchResponse | SearchApiError | null = null;
+        if (rawText) {
+          try {
+            body = JSON.parse(rawText) as CardsSearchResponse | SearchApiError;
+          } catch {
+            body = null;
+          }
+        }
+        if (response.ok) {
+          if (body) return body as CardsSearchResponse;
+          throw new Error(
+            `Request failed (${response.status}): ${rawText || "Empty response body"}`,
+          );
+        }
+        if (body && isSearchApiError(body)) {
           const apiErr = new Error(body.error) as Error & { code?: string };
           apiErr.code = body.code;
           throw apiErr;
         }
-        throw new Error(`Request failed (${response.status})`);
+        throw new Error(
+          `Request failed (${response.status}): ${rawText || "Empty response body"}`,
+        );
       },
       onError: (err) => {
         const { message, code } = parseErrorInfo(err);
