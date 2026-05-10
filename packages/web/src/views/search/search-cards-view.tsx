@@ -119,6 +119,7 @@ export function SearchCardsView() {
   });
 
   const total = trimmed ? (search.data?.total ?? 0) : 0;
+  const cardTotal = trimmed ? (search.data?.count ?? 0) : 0;
   const cards = trimmed ? (search.data?.cards ?? []) : [];
   const totalPages =
     total === 0 ? 0 : Math.max(1, Math.ceil(total / perPage));
@@ -256,7 +257,9 @@ export function SearchCardsView() {
             <p className="mt-1 text-sm text-muted-foreground">
               {total === 0
                 ? "No cards found."
-                : `${total} ${total === 1 ? "card" : "cards"} found.`}
+                : cardTotal === total
+                  ? `${cardTotal} ${cardTotal === 1 ? "card" : "cards"} found.`
+                  : `${cardTotal} ${cardTotal === 1 ? "card" : "cards"} found, ${total} ${total === 1 ? "printing" : "printings"}.`}
             </p>
           )}
           {!trimmed && (

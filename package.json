@@ -12,6 +12,7 @@
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
     "dev:api": "cd packages/api && wrangler dev",
     "dev:frontend": "cd packages/frontend && bun run dev",
+    "dev:raycast": "cd packages/raycast-extension && npm run dev",
     "build:frontend": "cd packages/frontend && bun run build",
     "dev:web": "cd packages/web && bun run --env-file ../../.env dev",
     "build:web": "cd packages/web && bun run build",
