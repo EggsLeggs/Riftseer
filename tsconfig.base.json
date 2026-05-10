@@ -9,6 +9,10 @@
     "esModuleInterop": true,
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "types": ["bun-types"]
+    "types": ["bun-types"],
+    "paths": {
+      "elysia": ["./node_modules/elysia"],
+      "elysia/*": ["./node_modules/elysia/*"]
+    }
   }
 }

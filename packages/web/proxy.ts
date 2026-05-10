@@ -132,7 +132,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         ? "[proxy] token refresh timed out"
         : "[proxy] token refresh failed";
     console.warn(message, err);
-    return NextResponse.next();
+    const response = NextResponse.next();
+    for (const { name } of request.cookies.getAll()) {
+      if (name.startsWith("rs_")) response.cookies.delete(name);
+    }
+    return response;
   }
 }
 
