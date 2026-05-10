@@ -150,7 +150,13 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
     .get(
       "/cards/by-slug/*",
       async ({ params, query, set }) => {
-        const slug = decodeURIComponent(params["*"] ?? "");
+        let slug: string;
+        try {
+          slug = decodeURIComponent(params["*"] ?? "");
+        } catch {
+          set.status = 400;
+          return { error: "Invalid slug", code: "BAD_REQUEST" };
+        }
         const card = await cardProvider.getCardByPublicSlug(slug);
         if (!card) {
           set.status = 404;
@@ -159,11 +165,18 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         return await finalizeOne(card, query.include);
       },
       {
+        params: t.Object({
+          "*": t.String({
+            description:
+              "Wildcard public slug path, e.g. `ogn/12a/signature/sun-disc`",
+          }),
+        }),
         query: t.Object({
           include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
         }),
         response: {
           200: CardSchema,
+          400: ErrorSchema,
           404: ErrorSchema,
         },
         detail: {

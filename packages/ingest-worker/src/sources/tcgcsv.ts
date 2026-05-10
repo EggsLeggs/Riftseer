@@ -68,10 +68,22 @@ export async function fetchProductsAndPrices(
   signal: AbortSignal,
 ): Promise<{ products: TCGProduct[]; prices: TCGPrice[] }> {
   const base = `${TCGCSV_BASE}/${TCGCSV_CATEGORY}/${groupId}`;
-  const [productsRes, pricesRes] = await Promise.all([
-    fetch(`${base}/products`, { signal, headers: TCGCSV_HEADERS }),
-    fetch(`${base}/prices`, { signal, headers: TCGCSV_HEADERS }),
-  ]);
+  let productsRes: Response;
+  let pricesRes: Response;
+  try {
+    [productsRes, pricesRes] = await Promise.all([
+      fetch(`${base}/products`, { signal, headers: TCGCSV_HEADERS }),
+      fetch(`${base}/prices`, { signal, headers: TCGCSV_HEADERS }),
+    ]);
+  } catch (err) {
+    logger.error("TCGCSV products/prices fetch failed", {
+      base,
+      signalAborted: signal.aborted,
+      headers: TCGCSV_HEADERS,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return { products: [], prices: [] };
+  }
 
   if (!productsRes.ok || !pricesRes.ok) {
     logger.warn("Skipping TCGPlayer group — fetch failed", { groupId });

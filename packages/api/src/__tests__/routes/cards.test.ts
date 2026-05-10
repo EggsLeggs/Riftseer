@@ -86,6 +86,15 @@ describe("API routes", () => {
       );
       expect(res.status).toBe(404);
     });
+
+    it("returns 400 when the slug path has malformed percent-encoding", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/by-slug/%E0%A4%A"),
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { code?: string };
+      expect(body.code).toBe("BAD_REQUEST");
+    });
   });
 
   // ── riftseer_uri hydration ────────────────────────────────────────────────

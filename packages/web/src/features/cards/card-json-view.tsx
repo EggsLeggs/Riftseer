@@ -1,7 +1,9 @@
+import type { Card } from "@riftseer/types";
+
 /**
  * Shared placeholder for card detail — swap for the real layout later.
  */
-export function CardJsonView({ card }: { card: unknown }) {
+export function CardJsonView({ card }: { card: Card }) {
   return (
     <main className="container py-12">
       <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">

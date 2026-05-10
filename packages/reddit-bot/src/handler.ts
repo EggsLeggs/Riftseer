@@ -7,26 +7,11 @@
  * of truth for card data, fuzzy matching, and caching.
  */
 
-import type { CardRequest } from "@riftseer/types";
-
-// ─── API response types (mirror of Card shape from packages/core/src/types.ts) ──
-
-interface ApiCard {
-  id: string;
-  name: string;
-  set?: { set_code?: string };
-  media?: {
-    media_urls?: {
-      normal?: string;
-    };
-  };
-  /** Absolute public site URL — provided by the API when SITE_ORIGIN is set. */
-  riftseer_uri?: string;
-}
+import type { Card, CardRequest } from "@riftseer/types";
 
 interface ApiResolvedCard {
   request: { raw: string; name: string; set?: string; collector?: string };
-  card: ApiCard | null;
+  card: Card | null;
   matchType: "exact" | "fuzzy" | "not-found";
   score?: number;
 }

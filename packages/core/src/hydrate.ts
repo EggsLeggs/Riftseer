@@ -86,8 +86,11 @@ export async function finalizeCards(
   if (!siteOrigin || cards.length === 0) return cards;
   const origin = normalizeSiteOrigin(siteOrigin);
 
-  const allIds: string[] = [];
-  for (const card of cards) allIds.push(...collectRelatedIds(card));
+  const idSet = new Set<string>();
+  for (const card of cards) {
+    for (const id of collectRelatedIds(card)) idSet.add(id);
+  }
+  const allIds = [...idSet];
 
   const slugMap =
     allIds.length === 0

@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 
 import { cardsApi } from "@/features/cards/api";
 import { CardJsonView } from "@/features/cards/card-json-view";
@@ -23,7 +23,7 @@ export default async function CardBySlugPage({
 
   const joined = segments.join("/");
   if (card.public_slug && card.public_slug !== joined) {
-    redirect(cardPathFromPublicSlug(card.public_slug));
+    permanentRedirect(cardPathFromPublicSlug(card.public_slug));
   }
 
   return <CardJsonView card={card} />;

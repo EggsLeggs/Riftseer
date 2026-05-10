@@ -117,7 +117,9 @@ GET /api/v1/cards/by-slug/ogn/21/sun-disc?include=prices
 | `include` | string (optional) | Pass `prices` to include price data |
 
 Returns `404` when no card has the given slug. The Next.js card detail page
-uses this endpoint to render `/card/<slug>` URLs.
+uses this endpoint to render multi-segment URLs that mirror `public_slug`, for
+example `/card/ogn/21/sun-disc` or `/card/ogn/12a/signature/sun-disc` — i.e.
+`/card/<segment>/<segment>/…`, not a single opaque slug token.
 
 ---
 
