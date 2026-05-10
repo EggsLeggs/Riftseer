@@ -1,4 +1,4 @@
-import { Card, CardDataProvider, CardRequest, CardSearchOptions, ResolvedCard } from "@riftseer/core";
+import { Card, CardDataProvider, CardRequest, CardSearchOptions, CardSearchResult, ResolvedCard } from "@riftseer/core";
 
 export const STUB_CARD: Card = {
   object: "card",
@@ -58,9 +58,13 @@ export class StubProvider implements CardDataProvider {
     return result;
   }
 
-  async searchByName(q: string, _opts?: CardSearchOptions): Promise<Card[]> {
-    if (q.toLowerCase().includes("sun")) return [STUB_CARD];
-    return [];
+  async searchByName(q: string, opts?: CardSearchOptions): Promise<CardSearchResult> {
+    const matches = q.toLowerCase().includes("sun") ? [STUB_CARD] : [];
+    const offset = Math.max(0, Math.floor(opts?.offset ?? 0));
+    const limit = Math.min(Math.max(Math.floor(Number(opts?.limit ?? 10)), 1), 100);
+    const total = matches.length;
+    const page = matches.slice(offset, offset + limit);
+    return { cards: page, total };
   }
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {

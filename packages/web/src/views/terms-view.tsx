@@ -3,7 +3,7 @@ import { ListItem, SubHeading, Text, UnorderedList } from "@/views/legal-documen
 
 export function TermsView() {
   return (
-    <main className="flex flex-1 flex-col items-center px-4">
+    <div className="flex flex-1 flex-col items-center px-4">
       <div className="flex h-full w-full max-w-[800px] flex-col pb-20 lg:pt-20">
         <div className="flex items-center justify-center py-24 text-center sm:py-36">
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Terms of Service</h1>
@@ -174,6 +174,6 @@ export function TermsView() {
           </Link>
         </p>
       </div>
-    </main>
+    </div>
   );
 }

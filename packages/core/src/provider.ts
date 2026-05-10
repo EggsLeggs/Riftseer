@@ -1,6 +1,13 @@
 import { Deck } from "./deck.ts";
 import { DeckSerializer } from "./serialiser.ts";
-import type { Card, CardRequest, CardSearchOptions, ResolvedCard, SimplifiedDeck } from "./types.ts";
+import type {
+  Card,
+  CardRequest,
+  CardSearchOptions,
+  CardSearchResult,
+  ResolvedCard,
+  SimplifiedDeck,
+} from "./types.ts";
 
 /**
  * The canonical provider interface.
@@ -53,8 +60,9 @@ export interface CardDataProvider {
   /**
    * Full-text + optional set/collector search.
    * Performs exact match first; fuzzy fallback if opts.fuzzy !== false.
+   * Honors {@link CardSearchOptions.offset} and {@link CardSearchOptions.limit} for paging.
    */
-  searchByName(q: string, opts?: CardSearchOptions): Promise<Card[]>;
+  searchByName(q: string, opts?: CardSearchOptions): Promise<CardSearchResult>;
 
   /**
    * Resolve a structured CardRequest to the single best matching printing.

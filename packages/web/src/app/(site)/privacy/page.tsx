@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Footer } from "@/components/layout/footer";
-import { Navbar } from "@/components/layout/navbar";
 import { env } from "@/lib/env";
 import { PrivacyView } from "@/views/privacy-view";
 
@@ -23,11 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return (
-    <div className="flex flex-1 flex-col font-sans">
-      <Navbar />
-      <PrivacyView />
-      <Footer />
-    </div>
-  );
+  return <PrivacyView />;
 }

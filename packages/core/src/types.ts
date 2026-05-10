@@ -16,5 +16,6 @@ export type {
   CardRequest,
   ResolvedCard,
   CardSearchOptions,
+  CardSearchResult,
   SimplifiedDeck,
 } from "@riftseer/types";

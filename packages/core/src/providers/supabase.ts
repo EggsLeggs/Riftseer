@@ -14,6 +14,7 @@ import type {
   Card,
   CardRequest,
   CardSearchOptions,
+  CardSearchResult,
   ResolvedCard,
   CardAttributes,
   CardClassification,
@@ -29,7 +30,7 @@ import type {
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { normalizeCardName } from "../normalize.ts";
-import { autocompleteSearch, rankIds, type Nameable } from "../search.ts";
+import { rankIds, type Nameable } from "../search.ts";
 
 const REFRESH_INTERVAL_MS = parseInt(
   process.env.CACHE_REFRESH_INTERVAL_MS ?? "21600000",
@@ -202,12 +203,10 @@ function pickPreferredPrinting(rows: DBCardRow[]): DBCardRow {
 }
 
 /**
- * Collapse rows into one per unique base card name (trailing parenthetical
- * variant suffixes stripped), preserving encounter order (relevance ranking).
- * Within each group the preferred printing is selected by
- * {@link pickPreferredPrinting}.
+ * Collapse rows into one per unique base card name, preserving encounter order,
+ * returning every group — used for search pagination (slice after dedup).
  */
-function deduplicateRows(rows: DBCardRow[], limit: number): DBCardRow[] {
+function deduplicateRowsAll(rows: DBCardRow[]): DBCardRow[] {
   const groups = new Map<string, DBCardRow[]>();
   const nameOrder: string[] = [];
 
@@ -221,12 +220,7 @@ function deduplicateRows(rows: DBCardRow[], limit: number): DBCardRow[] {
     }
   }
 
-  const result: DBCardRow[] = [];
-  for (const key of nameOrder) {
-    if (result.length >= limit) break;
-    result.push(pickPreferredPrinting(groups.get(key)!));
-  }
-  return result;
+  return nameOrder.map((key) => pickPreferredPrinting(groups.get(key)!));
 }
 
 function sortCardsByCollector(a: Card, b: Card): number {
@@ -336,18 +330,22 @@ export class SupabaseCardProvider implements CardDataProvider {
     return result;
   }
 
-  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<Card[]> {
-    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 10)), 1), 100);
+  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<CardSearchResult> {
+    const pageLimit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 10)), 1), 100);
+    const offset = Math.max(0, Math.floor(Number(opts.offset ?? 0)));
     const norm = normalizeCardName(q);
-    if (norm.length === 0) return [];
+    if (norm.length === 0) return { cards: [], total: 0 };
 
     const supabase = getSupabaseClient();
 
     let setId: string | null = null;
     if (opts.set) {
       setId = await getSetIdByCode(opts.set);
-      if (!setId) return [];
+      if (!setId) return { cards: [], total: 0 };
     }
+
+    /** Enough exact rows to build a stable ranked + deduped list (capped). */
+    const exactFetchCap = Math.min(5000, Math.max(200, (offset + pageLimit) * 25));
 
     let exactQuery = supabase
       .from("cards")
@@ -359,27 +357,25 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
 
     const { data: exactData, error: exactError } =
-      await exactQuery.limit(limit * 5);
+      await exactQuery.limit(exactFetchCap);
     if (exactError)
       throw new Error(`searchByName exact failed: ${exactError.message}`);
     if (exactData && exactData.length > 0) {
-      return deduplicateRows(exactData as DBCardRow[], limit).map(dbRowToCard);
+      const deduped = deduplicateRowsAll(exactData as DBCardRow[]);
+      const total = deduped.length;
+      const slice = deduped.slice(offset, offset + pageLimit).map(dbRowToCard);
+      return { cards: slice, total };
     }
 
-    if (opts.fuzzy === false) return [];
+    if (opts.fuzzy === false) return { cards: [], total: 0 };
 
-    // Build a prefix tsquery so "bar" matches "bard", "barrage", etc.
-    // Each normalized token gets a :* suffix; tokens are AND-joined.
-    // Omitting `type` makes the client use to_tsquery() (raw syntax), which supports :*.
     const prefixQuery = norm
       .split(/\s+/)
       .filter(Boolean)
       .map((w) => `${w}:*`)
       .join(" & ");
 
-    // Fetch more candidates than needed so the in-memory scorer can re-rank properly.
-    // Use a slim projection here — scoreCard only needs id/name/name_normalized.
-    const fetchLimit = Math.min(Math.max(limit * 20, 100), 500);
+    const fetchLimit = Math.min(Math.max(pageLimit * 20, 100), 500);
 
     let ftsQuery = supabase
       .from("cards")
@@ -395,9 +391,9 @@ export class SupabaseCardProvider implements CardDataProvider {
     if (ftsError)
       throw new Error(`searchByName FTS failed: ${ftsError.message}`);
 
-    const dedupHeadroom = Math.min(limit * 5, 200);
-    const topIds = rankIds((ftsData ?? []) as Nameable[], q, dedupHeadroom);
-    if (topIds.length === 0) return [];
+    const ftsRows = (ftsData ?? []) as Nameable[];
+    const topIds = rankIds(ftsRows, q, ftsRows.length);
+    if (topIds.length === 0) return { cards: [], total: 0 };
 
     const { data: fullData, error: fullError } = await supabase
       .from("cards")
@@ -406,8 +402,14 @@ export class SupabaseCardProvider implements CardDataProvider {
     if (fullError) throw new Error(`searchByName hydration failed: ${fullError.message}`);
 
     const rowMap = new Map((fullData as DBCardRow[]).map((r) => [r.id, r]));
-    const orderedRows = topIds.flatMap((id) => { const r = rowMap.get(id); return r ? [r] : []; });
-    return deduplicateRows(orderedRows, limit).map(dbRowToCard);
+    const orderedRows = topIds.flatMap((id) => {
+      const r = rowMap.get(id);
+      return r ? [r] : [];
+    });
+    const deduped = deduplicateRowsAll(orderedRows);
+    const total = deduped.length;
+    const page = deduped.slice(offset, offset + pageLimit).map(dbRowToCard);
+    return { cards: page, total };
   }
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {

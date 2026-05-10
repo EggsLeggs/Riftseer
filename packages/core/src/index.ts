@@ -4,6 +4,7 @@ export type {
   CardRequest,
   ResolvedCard,
   CardSearchOptions,
+  CardSearchResult,
   RelatedCard,
   CardExternalIds,
   CardSet,

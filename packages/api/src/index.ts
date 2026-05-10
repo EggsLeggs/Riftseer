@@ -4,7 +4,7 @@
  * All API endpoints are under /api/v1:
  *   GET  /api/v1/health
  *   GET  /api/v1/meta
- *   GET  /api/v1/cards          ?name&set&collector&fuzzy&limit
+ *   GET  /api/v1/cards          ?name&set&collector&fuzzy&limit&offset
  *   GET  /api/v1/cards/random
  *   GET  /api/v1/cards/:id
  *   GET  /api/v1/cards/:id/text

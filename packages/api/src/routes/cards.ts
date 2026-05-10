@@ -214,18 +214,33 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           };
         }
 
+        const parsedOffset = parseInt(query.offset ?? "", 10);
+        const offset =
+          Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
+
         // Pass fuzzy: false only when the caller explicitly opts out, so the
         // default path runs autocomplete scoring instead of exact-only lookup.
         const exactOnly = query.fuzzy === "0" || query.fuzzy === "false";
-        const cards = await cardProvider.searchByName(query.name, {
+        const pageLimit =
+          Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
+        const clampedLimit = Math.min(Math.max(pageLimit, 1), 100);
+
+        const { cards, total } = await cardProvider.searchByName(query.name, {
           set: query.set,
           collector: query.collector,
           fuzzy: exactOnly ? false : undefined,
-          limit: limit ?? 10,
+          limit: clampedLimit,
+          offset,
         });
 
         const finalized = await finalizeMany(cards, query.include);
-        return { count: finalized.length, cards: finalized };
+        return {
+          count: finalized.length,
+          total,
+          offset,
+          limit: clampedLimit,
+          cards: finalized,
+        };
       },
       {
         query: t.Object({
@@ -237,11 +252,24 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
               description: "Pass `false` or `0` to disable fuzzy/autocomplete matching (exact name only).",
             }),
           ),
-          limit: t.Optional(t.String({ description: "Max results (default 10)" })),
+          limit: t.Optional(t.String({ description: "Max results per page (default 10, max 100)" })),
+          offset: t.Optional(
+            t.String({ description: "0-based offset into the ranked result set (default 0)" }),
+          ),
           include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
         }),
         response: {
-          200: t.Object({ count: t.Number(), cards: t.Array(CardSchema) }),
+          200: t.Object({
+            count: t.Number({ description: "Number of cards in this response" }),
+            cards: t.Array(CardSchema),
+            total: t.Optional(
+              t.Number({
+                description: "Total matching cards for this query (name search only)",
+              }),
+            ),
+            offset: t.Optional(t.Number()),
+            limit: t.Optional(t.Number({ description: "Requested page size (name search only)" })),
+          }),
           400: ErrorSchema,
         },
         detail: {

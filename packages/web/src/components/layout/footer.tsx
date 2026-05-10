@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { FooterCookiePreferencesLink } from "./footer-cookie-preferences";
+import { SitePreferencesFooterTrigger } from "./site-preferences-dialog";
 
 export function Footer() {
   return (
@@ -15,6 +16,7 @@ export function Footer() {
             Terms of Service
           </Link>
           <FooterCookiePreferencesLink />
+          <SitePreferencesFooterTrigger />
         </div>
       </div>
     </footer>

@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { Footer } from "@/components/layout/footer";
-import { Navbar } from "@/components/layout/navbar";
 import { env } from "@/lib/env";
 import { TermsView } from "@/views/terms-view";
 
@@ -26,11 +24,5 @@ export const metadata: Metadata = {
 };
 
 export default function TermsPage() {
-  return (
-    <div className="flex flex-1 flex-col font-sans">
-      <Navbar />
-      <TermsView />
-      <Footer />
-    </div>
-  );
+  return <TermsView />;
 }

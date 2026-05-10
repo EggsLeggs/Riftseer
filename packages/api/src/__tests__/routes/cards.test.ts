@@ -137,11 +137,29 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+      expect(body.offset).toBe(0);
+      expect(body.limit).toBe(10);
       expect(body.cards[0].name).toBe("Sun Disc");
       expect(body.cards[0].set.set_code).toBe("OGN");
       expect(Array.isArray(body.cards[0].related_champions)).toBe(true);
       expect(body.cards[0].related_champions[0].object).toBe("related_card");
       expect(Array.isArray(body.cards[0].related_legends)).toBe(true);
+    });
+
+    it("returns total and an empty page when offset is beyond matches", async () => {
+      const res = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&offset=5&limit=10",
+        ),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.count).toBe(0);
+      expect(body.total).toBe(1);
+      expect(body.offset).toBe(5);
+      expect(body.limit).toBe(10);
+      expect(body.cards).toEqual([]);
     });
 
     it("returns 400 when name is missing", async () => {
@@ -155,6 +173,7 @@ describe("API routes", () => {
       );
       const body = await res.json() as any;
       expect(body.count).toBe(0);
+      expect(body.total).toBe(0);
     });
 
     // ── Exact lookup via ?fuzzy=false ──────────────────────────────────────────
@@ -166,6 +185,7 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
       expect(body.cards[0].name).toBe("Sun Disc");
     });
 
@@ -178,6 +198,7 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(0);
+      expect(body.total).toBe(0);
     });
 
     it("autocomplete mode (default) matches partial names", async () => {
@@ -188,6 +209,7 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
     });
   });
 
