@@ -90,6 +90,15 @@ export interface SearchByNameOptions {
   fuzzy?: boolean;
   /** When true, includes price fields (USD/EUR sources) in each card. Default: false. */
   includePrices?: boolean;
+  /**
+   * Optional explicit type filter. Merged with the typed query as `AND t:value`
+   * by the API. Wired up here so future UI chips can plug in without re-routing.
+   */
+  type?: string;
+  /** Optional explicit artist filter (`AND a:value`). */
+  artist?: string;
+  /** Optional explicit rarity filter (`AND r:value`). */
+  rarity?: string;
 }
 
 export interface SearchByNameResult {
@@ -151,6 +160,9 @@ export const cardsApi = {
           offset: String(offset),
           fuzzy: opts.fuzzy === false ? "false" : undefined,
           include: opts.includePrices ? "prices" : undefined,
+          type: opts.type?.trim() || undefined,
+          artist: opts.artist?.trim() || undefined,
+          rarity: opts.rarity?.trim() || undefined,
         },
         fetch: requestFetchInit(),
       });
@@ -167,6 +179,22 @@ export const cardsApi = {
 /** TanStack Query keys for card fetches. */
 export const cardsQueryKeys = {
   all: ["cards"] as const,
-  search: (name: string, limit: number, offset: number, includePrices = false) =>
-    ["cards", "search", name, limit, offset, includePrices] as const,
+  search: (
+    name: string,
+    limit: number,
+    offset: number,
+    includePrices = false,
+    extras: Pick<SearchByNameOptions, "type" | "artist" | "rarity"> = {},
+  ) =>
+    [
+      "cards",
+      "search",
+      name,
+      limit,
+      offset,
+      includePrices,
+      extras.type ?? "",
+      extras.artist ?? "",
+      extras.rarity ?? "",
+    ] as const,
 };

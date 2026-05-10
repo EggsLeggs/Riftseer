@@ -1,10 +1,17 @@
 import { Elysia, t } from "elysia";
 import {
-  parseCardRequests,
+  BadCardSearchQueryError,
+  andAst,
+  filterLeaf,
   finalizeCard,
   finalizeCards,
-  type CardDataProvider,
+  parseCardRequests,
+  parseCardSearchQuery,
+  validateCardSearchAst,
   type Card,
+  type CardDataProvider,
+  type CardSearchAst,
+  type CardSearchField,
 } from "@riftseer/core";
 import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
 
@@ -197,8 +204,17 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         const parsedLimit = parseInt(query.limit ?? "", 10);
         const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
 
-        // Browse set: GET /cards?set=OGN — return all cards in set, ordered by collector number
-        if (query.set && !query.name?.trim()) {
+        // `q` is an alias for `name`; if both are present, `name` wins so older
+        // clients keep working unchanged.
+        const rawQuery = (query.name ?? query.q ?? "").trim();
+        const hasStructuredFilter = Boolean(
+          query.type?.trim() || query.artist?.trim() || query.rarity?.trim(),
+        );
+
+        // Browse set: GET /cards?set=OGN with no other search input — return
+        // all cards in set, ordered by collector number. Structured filters
+        // count as search input and bypass this branch.
+        if (query.set && !rawQuery && !hasStructuredFilter) {
           const cards = await cardProvider.getCardsBySet(query.set, {
             limit: limit ?? 2000,
           });
@@ -206,12 +222,46 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           return { count: finalized.length, cards: finalized };
         }
 
-        if (!query.name?.trim()) {
+        let parsedAst: CardSearchAst | null;
+        try {
+          parsedAst = parseCardSearchQuery(rawQuery).ast;
+        } catch (err) {
+          if (err instanceof BadCardSearchQueryError) {
+            set.status = 400;
+            return { error: err.message, code: "BAD_QUERY" };
+          }
+          throw err;
+        }
+
+        // Merge optional URL-level filters (`type` / `artist` / `rarity`) as
+        // additional AND conjuncts. UI chips will plug in here later.
+        const extras: CardSearchAst[] = [];
+        const addFilter = (field: CardSearchField, value: string | undefined) => {
+          if (!value) return;
+          const leaf = filterLeaf(field, value);
+          if (leaf) extras.push(leaf);
+        };
+        addFilter("type", query.type);
+        addFilter("artist", query.artist);
+        addFilter("rarity", query.rarity);
+
+        const ast = andAst(parsedAst, ...extras);
+        if (!ast) {
           set.status = 400;
           return {
-            error: "Missing required query parameter: name",
+            error: "Provide a search term (`name` / `q`) or at least one filter.",
             code: "MISSING_PARAM",
           };
+        }
+
+        try {
+          validateCardSearchAst(ast);
+        } catch (err) {
+          if (err instanceof BadCardSearchQueryError) {
+            set.status = 400;
+            return { error: err.message, code: "BAD_QUERY" };
+          }
+          throw err;
         }
 
         const parsedOffset = parseInt(query.offset ?? "", 10);
@@ -225,7 +275,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
         const clampedLimit = Math.min(Math.max(pageLimit, 1), 100);
 
-        const { cards, total } = await cardProvider.searchByName(query.name, {
+        const { cards, total } = await cardProvider.searchByAst(ast, {
           set: query.set,
           collector: query.collector,
           fuzzy: exactOnly ? false : undefined,
@@ -244,7 +294,32 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
       },
       {
         query: t.Object({
-          name: t.Optional(t.String({ description: "Card name to search for" })),
+          name: t.Optional(
+            t.String({
+              description:
+                "Card search query. Plain words run as full-text name search; supports `t:type`, `a:artist`, `r:rarity`, exact `!Name` / `!\"Sun Disc\"`, negation `-t:foo`, explicit `or`, and parentheses `(...)`.",
+            }),
+          ),
+          q: t.Optional(
+            t.String({
+              description: "Alias for `name`. When both are present, `name` wins.",
+            }),
+          ),
+          type: t.Optional(
+            t.String({
+              description: "Optional explicit type filter, merged as `AND t:value` with the parsed query.",
+            }),
+          ),
+          artist: t.Optional(
+            t.String({
+              description: "Optional explicit artist filter, merged as `AND a:value`.",
+            }),
+          ),
+          rarity: t.Optional(
+            t.String({
+              description: "Optional explicit rarity filter, merged as `AND r:value`.",
+            }),
+          ),
           set: t.Optional(t.String({ description: "Set code filter, e.g. OGN" })),
           collector: t.Optional(t.String({ description: "Collector number filter" })),
           fuzzy: t.Optional(
@@ -274,10 +349,12 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         },
         detail: {
           tags: ["Cards"],
-          summary: "Search cards by name",
+          summary: "Search cards",
           description:
-            "Search for cards by name with optional set/collector filters. " +
-            "Autocomplete and fuzzy matching run by default; use `fuzzy=false` or `fuzzy=0` for exact-name-only lookup.",
+            "Search for cards by name and structured filters. The `name` (or `q`) parameter accepts a small Scryfall-inspired " +
+            "query language: `t:`/`a:`/`r:` filters, `!Exact Name`, `-` to negate, lowercase `or`, and `(...)` to group. " +
+            "Optional URL filters (`type`, `artist`, `rarity`) are merged as additional AND conjuncts so future UI chips can " +
+            "compose with the typed query. Pass `fuzzy=false` for exact-name-only lookups.",
         },
       },
     )

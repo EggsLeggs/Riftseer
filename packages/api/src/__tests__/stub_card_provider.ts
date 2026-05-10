@@ -1,4 +1,13 @@
-import { Card, CardDataProvider, CardRequest, CardSearchOptions, CardSearchResult, ResolvedCard } from "@riftseer/core";
+import {
+  parseCardSearchQuery,
+  type Card,
+  type CardDataProvider,
+  type CardRequest,
+  type CardSearchAst,
+  type CardSearchOptions,
+  type CardSearchResult,
+  type ResolvedCard,
+} from "@riftseer/core";
 
 export const STUB_CARD: Card = {
   object: "card",
@@ -59,7 +68,13 @@ export class StubProvider implements CardDataProvider {
   }
 
   async searchByName(q: string, opts?: CardSearchOptions): Promise<CardSearchResult> {
-    const matches = q.toLowerCase().includes("sun") ? [STUB_CARD] : [];
+    const { ast } = parseCardSearchQuery(q);
+    if (!ast) return { cards: [], total: 0 };
+    return this.searchByAst(ast, opts);
+  }
+
+  async searchByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<CardSearchResult> {
+    const matches = matchAst(STUB_CARD, ast) ? [STUB_CARD] : [];
     const offset = Math.max(0, Math.floor(opts?.offset ?? 0));
     const limit = Math.min(Math.max(Math.floor(Number(opts?.limit ?? 10)), 1), 100);
     const total = matches.length;
@@ -93,5 +108,48 @@ export class StubProvider implements CardDataProvider {
 
   getStats() {
     return { lastRefresh: 0, cardCount: 1 };
+  }
+}
+
+/**
+ * Tiny in-memory AST evaluator covering every leaf type the parser produces.
+ * Keeps the stub provider faithful to the production semantics so API-route
+ * tests can exercise the new query language without hitting Postgres.
+ */
+function matchAst(card: Card, ast: CardSearchAst): boolean {
+  switch (ast.op) {
+    case "and":
+      return ast.children.every((c) => matchAst(card, c));
+    case "or":
+      return ast.children.some((c) => matchAst(card, c));
+    case "not":
+      return !matchAst(card, ast.child);
+    case "text": {
+      const needle = ast.value.toLowerCase();
+      return card.name.toLowerCase().includes(needle);
+    }
+    case "exact_name":
+      return card.name_normalized === ast.value;
+    case "filter": {
+      const needle = ast.value.toLowerCase();
+      switch (ast.field) {
+        case "type": {
+          const haystacks = [
+            card.classification?.type ?? "",
+            card.classification?.supertype ?? "",
+            ...(card.classification?.tags ?? []),
+          ];
+          return haystacks.some((h) => h.toLowerCase().includes(needle));
+        }
+        case "rarity":
+          return (card.classification?.rarity ?? "")
+            .toLowerCase()
+            .includes(needle);
+        case "artist":
+          return (card.artist ?? "").toLowerCase().includes(needle);
+        default:
+          return false;
+      }
+    }
   }
 }

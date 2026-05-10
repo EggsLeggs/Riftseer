@@ -251,7 +251,13 @@ export function SearchCardsView() {
           {!trimmed && (
             <p className="mt-1 text-sm text-muted-foreground">
               Use the search bar in the header (or press Cmd/Ctrl + K) to find
-              cards.
+              cards.{" "}
+              <Link
+                href="/syntax"
+                className="text-foreground underline-offset-4 hover:underline"
+              >
+                Search syntax
+              </Link>
             </p>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { Deck } from "./deck.ts";
 import { DeckSerializer } from "./serialiser.ts";
+import type { CardSearchAst } from "./card-search-query.ts";
 import type {
   Card,
   CardRequest,
@@ -59,10 +60,23 @@ export interface CardDataProvider {
 
   /**
    * Full-text + optional set/collector search.
+   *
+   * Compatibility wrapper: parses the raw query into a CardSearchAst with
+   * {@link parseCardSearchQuery} and delegates to {@link searchByAst}.
    * Performs exact match first; fuzzy fallback if opts.fuzzy !== false.
    * Honors {@link CardSearchOptions.offset} and {@link CardSearchOptions.limit} for paging.
    */
   searchByName(q: string, opts?: CardSearchOptions): Promise<CardSearchResult>;
+
+  /**
+   * Structured-AST search — primary entry point used by the HTTP layer once
+   * the user query and any explicit URL filters have been merged.
+   *
+   * Implementations route between fast paths and an RPC depending on AST
+   * shape (see `requiresRpc` / `isExactNameOnly` / `isLegacyTextOnly`).
+   * Same paging / dedup semantics as {@link searchByName}.
+   */
+  searchByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<CardSearchResult>;
 
   /**
    * Resolve a structured CardRequest to the single best matching printing.

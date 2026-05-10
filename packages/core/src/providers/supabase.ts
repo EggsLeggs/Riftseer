@@ -31,6 +31,13 @@ import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { normalizeCardName } from "../normalize.ts";
 import { rankIds, type Nameable } from "../search.ts";
+import {
+  findTextLeafValue,
+  isExactNameOnly,
+  isLegacyTextOnly,
+  parseCardSearchQuery,
+  type CardSearchAst,
+} from "../card-search-query.ts";
 
 const REFRESH_INTERVAL_MS = parseInt(
   process.env.CACHE_REFRESH_INTERVAL_MS ?? "21600000",
@@ -331,20 +338,99 @@ export class SupabaseCardProvider implements CardDataProvider {
   }
 
   async searchByName(q: string, opts: CardSearchOptions = {}): Promise<CardSearchResult> {
-    const pageLimit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 10)), 1), 100);
+    const { ast } = parseCardSearchQuery(q);
+    if (!ast) return { cards: [], total: 0 };
+    return this.searchByAst(ast, opts);
+  }
+
+  /**
+   * Structured-AST entry point. Routes between three execution paths:
+   *
+   *   - **ExactNameOnly** — single `exact_name` leaf → `name_normalized` lookup.
+   *   - **LegacyTextOnly** — single `text` leaf → existing exact-then-FTS path
+   *     (preserves current ranking and dedup behavior for the common case).
+   *   - **RPC** — anything else (filters, OR, NOT, grouping, text+filters)
+   *     → `search_card_ids` RPC with the AST as JSONB; results hydrated and
+   *     deduped in TS to match the legacy semantics.
+   */
+  async searchByAst(
+    ast: CardSearchAst,
+    opts: CardSearchOptions = {},
+  ): Promise<CardSearchResult> {
+    const pageLimit = Math.min(
+      Math.max(Math.floor(Number(opts.limit ?? 10)), 1),
+      100,
+    );
     const offset = Math.max(0, Math.floor(Number(opts.offset ?? 0)));
-    const norm = normalizeCardName(q);
+
+    const setId = await this.resolveSetIdOrNull(opts.set);
+    if (opts.set && setId === null) return { cards: [], total: 0 };
+
+    if (isExactNameOnly(ast)) {
+      return this.exactNameSearch(ast.value, setId, opts, pageLimit, offset);
+    }
+
+    if (isLegacyTextOnly(ast)) {
+      return this.legacyTextSearch(ast.value, setId, opts, pageLimit, offset);
+    }
+
+    return this.rpcSearch(ast, opts, pageLimit, offset);
+  }
+
+  private async resolveSetIdOrNull(setCode?: string): Promise<string | null> {
+    if (!setCode) return null;
+    return await getSetIdByCode(setCode);
+  }
+
+  /**
+   * Single normalized-name lookup with optional set/collector. Used when the
+   * AST is a lone `!exact-name` leaf — the cheapest possible search.
+   */
+  private async exactNameSearch(
+    normalizedName: string,
+    setId: string | null,
+    opts: CardSearchOptions,
+    pageLimit: number,
+    offset: number,
+  ): Promise<CardSearchResult> {
+    const supabase = getSupabaseClient();
+    let q = supabase
+      .from("cards")
+      .select(CARD_SELECT)
+      .eq("name_normalized", normalizedName);
+    if (setId) q = q.eq("set_id", setId);
+    if (opts.collector !== undefined && opts.collector !== null) {
+      q = q.eq("collector_number", String(opts.collector));
+    }
+    const exactFetchCap = Math.min(5000, Math.max(200, (offset + pageLimit) * 25));
+    const { data, error } = await q.limit(exactFetchCap);
+    if (error) throw new Error(`exactNameSearch failed: ${error.message}`);
+    if (!data || data.length === 0) return { cards: [], total: 0 };
+    const deduped = deduplicateRowsAll(data as DBCardRow[]);
+    return {
+      cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
+      total: deduped.length,
+    };
+  }
+
+  /**
+   * The legacy free-text path: exact `name_normalized` first; if no rows and
+   * fuzzy is allowed, fall back to FTS, rank in TS, hydrate, dedupe, paginate.
+   * Behavior identical to the pre-AST `searchByName` so existing callers and
+   * tests are unaffected.
+   */
+  private async legacyTextSearch(
+    text: string,
+    setId: string | null,
+    opts: CardSearchOptions,
+    pageLimit: number,
+    offset: number,
+  ): Promise<CardSearchResult> {
+    const norm = normalizeCardName(text);
     if (norm.length === 0) return { cards: [], total: 0 };
 
     const supabase = getSupabaseClient();
 
-    let setId: string | null = null;
-    if (opts.set) {
-      setId = await getSetIdByCode(opts.set);
-      if (!setId) return { cards: [], total: 0 };
-    }
-
-    /** Enough exact rows to build a stable ranked + deduped list (capped). */
     const exactFetchCap = Math.min(5000, Math.max(200, (offset + pageLimit) * 25));
 
     let exactQuery = supabase
@@ -359,12 +445,13 @@ export class SupabaseCardProvider implements CardDataProvider {
     const { data: exactData, error: exactError } =
       await exactQuery.limit(exactFetchCap);
     if (exactError)
-      throw new Error(`searchByName exact failed: ${exactError.message}`);
+      throw new Error(`legacyTextSearch exact failed: ${exactError.message}`);
     if (exactData && exactData.length > 0) {
       const deduped = deduplicateRowsAll(exactData as DBCardRow[]);
-      const total = deduped.length;
-      const slice = deduped.slice(offset, offset + pageLimit).map(dbRowToCard);
-      return { cards: slice, total };
+      return {
+        cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
+        total: deduped.length,
+      };
     }
 
     if (opts.fuzzy === false) return { cards: [], total: 0 };
@@ -389,27 +476,103 @@ export class SupabaseCardProvider implements CardDataProvider {
 
     const { data: ftsData, error: ftsError } = await ftsQuery.limit(fetchLimit);
     if (ftsError)
-      throw new Error(`searchByName FTS failed: ${ftsError.message}`);
+      throw new Error(`legacyTextSearch FTS failed: ${ftsError.message}`);
 
     const ftsRows = (ftsData ?? []) as Nameable[];
-    const topIds = rankIds(ftsRows, q, ftsRows.length);
+    const topIds = rankIds(ftsRows, text, ftsRows.length);
     if (topIds.length === 0) return { cards: [], total: 0 };
 
-    const { data: fullData, error: fullError } = await supabase
-      .from("cards")
-      .select(CARD_SELECT)
-      .in("id", topIds);
-    if (fullError) throw new Error(`searchByName hydration failed: ${fullError.message}`);
+    const orderedRows = await this.hydrateRowsInOrder(topIds);
+    const deduped = deduplicateRowsAll(orderedRows);
+    return {
+      cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
+      total: deduped.length,
+    };
+  }
 
-    const rowMap = new Map((fullData as DBCardRow[]).map((r) => [r.id, r]));
-    const orderedRows = topIds.flatMap((id) => {
+  /**
+   * RPC path: serialize the AST to JSONB and call `search_card_ids`, which
+   * returns a capped id list plus the unfiltered total. We hydrate, optionally
+   * re-rank against the AST's first text leaf to keep autocomplete behavior
+   * for queries like `bard t:legend`, then dedupe and paginate.
+   */
+  private async rpcSearch(
+    ast: CardSearchAst,
+    opts: CardSearchOptions,
+    pageLimit: number,
+    offset: number,
+  ): Promise<CardSearchResult> {
+    const supabase = getSupabaseClient();
+    const maxIds = Math.min(5000, Math.max(200, (offset + pageLimit) * 25));
+
+    const setCode = opts.set ?? null;
+    const collector =
+      opts.collector !== undefined && opts.collector !== null
+        ? String(opts.collector)
+        : null;
+
+    const { data, error } = await supabase.rpc("search_card_ids", {
+      p_ast: ast as unknown as Record<string, unknown>,
+      p_set: setCode,
+      p_collector: collector,
+      p_max_ids: maxIds,
+    });
+
+    if (error) throw new Error(`searchByAst RPC failed: ${error.message}`);
+
+    const payload = (data ?? { ids: [], total: 0 }) as {
+      ids?: string[];
+      total?: number;
+    };
+    const ids = Array.isArray(payload.ids) ? payload.ids : [];
+    if (ids.length === 0) return { cards: [], total: payload.total ?? 0 };
+
+    const rows = await this.hydrateRowsInOrder(ids);
+    const textValue = findTextLeafValue(ast);
+    let ordered: DBCardRow[] = rows;
+    if (textValue) {
+      const ranked = rankIds(rows as Nameable[], textValue, rows.length);
+      const rowMap = new Map(rows.map((r) => [r.id, r]));
+      // Append any rows the ranker dropped (below MIN_AUTOCOMPLETE_SCORE) so
+      // filtered matches without a name signal still appear, just at the end.
+      const seen = new Set(ranked);
+      const tail = rows.filter((r) => !seen.has(r.id));
+      ordered = [
+        ...ranked.flatMap((id) => {
+          const r = rowMap.get(id);
+          return r ? [r] : [];
+        }),
+        ...tail,
+      ];
+    }
+    const deduped = deduplicateRowsAll(ordered);
+    // Pagination total matches other search paths: one row per base name after
+    // deduplicateRowsAll (`deduped`), not `payload.total` from the RPC (raw SQL
+    // row count before variant merging). Slice/`dbRowToCard` use the same list.
+    return {
+      cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
+      total: deduped.length,
+    };
+  }
+
+  private async hydrateRowsInOrder(ids: string[]): Promise<DBCardRow[]> {
+    if (ids.length === 0) return [];
+    const supabase = getSupabaseClient();
+    const all: DBCardRow[] = [];
+    for (const chunk of chunkIds(ids, ID_IN_CHUNK_SIZE)) {
+      const { data, error } = await supabase
+        .from("cards")
+        .select(CARD_SELECT)
+        .in("id", chunk);
+      if (error)
+        throw new Error(`hydrateRowsInOrder failed: ${error.message}`);
+      if (data) all.push(...(data as DBCardRow[]));
+    }
+    const rowMap = new Map(all.map((r) => [r.id, r]));
+    return ids.flatMap((id) => {
       const r = rowMap.get(id);
       return r ? [r] : [];
     });
-    const deduped = deduplicateRowsAll(orderedRows);
-    const total = deduped.length;
-    const page = deduped.slice(offset, offset + pageLimit).map(dbRowToCard);
-    return { cards: page, total };
   }
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {
