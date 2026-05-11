@@ -4,6 +4,8 @@ export class CardApiError extends Error {
     message: string,
     readonly code: "timeout" | "http" | "network",
     readonly status?: number,
+    /** Human-readable detail from the API response body, if available. */
+    readonly detail?: string,
   ) {
     super(message);
     this.name = "CardApiError";

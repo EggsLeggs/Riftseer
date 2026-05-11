@@ -13,8 +13,18 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { cardsApi, cardsQueryKeys } from "./api";
+import { cardsApi, cardsQueryKeys, CardApiError } from "./api";
 import { cardHref } from "./paths";
+
+function searchErrorMessage(err: unknown): string {
+  if (err instanceof CardApiError) {
+    if (err.code === "timeout") return "Search timed out — please try again.";
+    if (err.code === "network") return "Couldn't reach search — check your connection.";
+    if (err.status === 400 && err.detail) return err.detail;
+    if (err.status != null && err.status >= 500) return "Search is unavailable right now.";
+  }
+  return "Something went wrong — please try again.";
+}
 
 const DEBOUNCE_MS = 250;
 /** Command palette: keep a small cap so the dialog stays scannable. */
@@ -42,7 +52,10 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
   }, [query]);
 
   React.useEffect(() => {
-    if (!open) setQuery("");
+    if (!open) {
+      setQuery("");
+      setDebouncedQuery("");
+    }
   }, [open]);
 
   React.useEffect(() => {
@@ -58,7 +71,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
   });
 
   const cards = trimmed ? search.data?.cards ?? [] : [];
-  const showLoading = trimmed.length > 0 && search.isFetching;
+  const showLoading = trimmed.length > 0 && search.isFetching && !search.isError;
 
   const goToCard = React.useCallback(
     (href: string) => {
@@ -89,7 +102,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             hasNavigated.current = true;
           }
-          if (e.key === "Enter" && !hasNavigated.current && trimmed) {
+          if (e.key === "Enter" && !e.nativeEvent.isComposing && !hasNavigated.current && trimmed) {
             e.preventDefault();
             goToSearchPage();
           }
@@ -105,6 +118,10 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
           {!trimmed ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
               Type to search cards by name.
+            </div>
+          ) : search.isError ? (
+            <div className="px-3 py-6 text-center text-sm text-destructive">
+              {searchErrorMessage(search.error)}
             </div>
           ) : showLoading && cards.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">

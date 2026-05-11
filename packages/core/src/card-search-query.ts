@@ -1,5 +1,5 @@
 /**
- * Card search query language — Scryfall-inspired syntax parsed into an AST.
+ * Card search query language — keyword filters (`t:` / `a:` / `r:`), booleans, and exact names — parsed into an AST.
  *
  * Grammar (v1):
  *   expr     := orExpr

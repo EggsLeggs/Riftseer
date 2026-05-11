@@ -364,8 +364,8 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           tags: ["Cards"],
           summary: "Search cards",
           description:
-            "Search for cards by name and structured filters. The `name` (or `q`) parameter accepts a small Scryfall-inspired " +
-            "query language: `t:`/`a:`/`r:` filters, `!Exact Name`, `-` to negate, lowercase `or`, and `(...)` to group. " +
+            "Search for cards by name and structured filters. The `name` (or `q`) parameter accepts a compact keyword " +
+            "query language: `t:`/`a:`/`r:` filters (Riftbound type, supertype, tags, artist, rarity), `!Exact Name`, `-` to negate, lowercase `or`, and `(...)` to group. " +
             "Optional URL filters (`type`, `artist`, `rarity`) are merged as additional AND conjuncts so future UI chips can " +
             "compose with the typed query. Pass `fuzzy=false` for exact-name-only lookups.",
         },

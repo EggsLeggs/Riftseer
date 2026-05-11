@@ -167,7 +167,11 @@ export const cardsApi = {
         fetch: requestFetchInit(),
       });
       if (error != null) {
-        throw new CardApiError(`Riftseer API ${status}`, "http", status);
+        const detail =
+          typeof (error as Record<string, unknown>)?.error === "string"
+            ? (error as Record<string, unknown>).error as string
+            : undefined;
+        throw new CardApiError(`Riftseer API ${status}`, "http", status, detail);
       }
       return data as SearchByNameResult;
     } catch (err) {

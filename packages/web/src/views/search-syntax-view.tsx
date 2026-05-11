@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { InlineLink, ListItem, SubHeading, Text, UnorderedList } from "@/views/legal-document";
+import { ListItem, SubHeading, Text, UnorderedList } from "@/views/legal-document";
 
 function Code({ children }: { children: string }) {
   return (
@@ -22,10 +22,10 @@ export function SearchSyntaxView() {
         <div className="mb-6">
           <SubHeading>Overview</SubHeading>
           <Text>
-            Riftseer search supports a compact keyword language in the site search bar and in the{" "}
-            <Code>GET /api/v1/cards</Code> <Code>name</Code> (or <Code>q</Code>) parameter. The style is similar to{" "}
-            <InlineLink href="https://scryfall.com/docs/syntax">Scryfall&apos;s syntax guide</InlineLink>, but only the
-            pieces listed on this page are implemented today.
+            Riftseer search supports a compact keyword language in the site search bar (including the quick-search
+            palette). It targets Riftbound card fields: printed type and supertype (for example Unit, Gear, Spell,
+            Champion, Rune, Legend), classification tags, rarity, and artist. Only the constructs listed on this page
+            are available today.
           </Text>
         </div>
 
@@ -36,8 +36,8 @@ export function SearchSyntaxView() {
             match unless you use <Code>or</Code> or group with parentheses.
           </Text>
           <Text>
-            Example: <Code>bard t:legend</Code> finds cards whose names match the word &quot;bard&quot; and whose type line,
-            supertype, or tags match &quot;legend&quot; as a substring (case insensitive).
+            Example: <Code>poro t:unit</Code> finds cards whose names match &quot;poro&quot; and whose type line,
+            supertype, or tags match &quot;unit&quot; as a substring (case insensitive).
           </Text>
         </div>
 
@@ -64,7 +64,7 @@ export function SearchSyntaxView() {
             </ListItem>
           </UnorderedList>
           <Text>
-            Matching is substring based and case insensitive. Example: <Code>t:&quot;legend unit&quot;</Code>.
+            Matching is substring based and case insensitive. Example: <Code>t:&quot;champion unit&quot;</Code>.
           </Text>
         </div>
 
@@ -88,7 +88,7 @@ export function SearchSyntaxView() {
           <SubHeading>Using &quot;or&quot;</SubHeading>
           <Text>
             The lowercase word <Code>or</Code> combines alternatives. Implicit AND still binds tighter than{" "}
-            <Code>or</Code>. Example: <Code>t:fish or t:bird</Code>.
+            <Code>or</Code>. Example: <Code>t:gear or t:spell</Code>.
           </Text>
         </div>
 
@@ -96,23 +96,15 @@ export function SearchSyntaxView() {
           <SubHeading>Parentheses</SubHeading>
           <Text>
             Group conditions when mixing AND and OR. Example:{" "}
-            <Code>t:land (a:titus or a:avon)</Code>.
-          </Text>
-        </div>
-
-        <div className="mb-6">
-          <SubHeading>Extra filters in the URL</SubHeading>
-          <Text>
-            For the HTTP API you can also pass optional query parameters{" "}
-            <Code>type</Code>, <Code>artist</Code>, and <Code>rarity</Code>. They are merged into your query as extra{" "}
-            <Code>t:</Code>, <Code>a:</Code>, and <Code>r:</Code> filters with AND. Use this when building UI chips or tools on top of the API.
+            <Code>t:unit (a:lee or a:kim)</Code>.
           </Text>
         </div>
 
         <div className="mb-6">
           <SubHeading>Limits</SubHeading>
           <Text>
-            Queries are capped for safety (total length, nesting depth, number of nodes, and length of individual values). If you hit a limit you will get an error from the API rather than a silent truncation.
+            Queries are capped for safety (total length, nesting depth, number of parts, and length of individual
+            values). If a query goes past those bounds, search shows an error instead of trimming it quietly.
           </Text>
         </div>
 
@@ -123,7 +115,7 @@ export function SearchSyntaxView() {
             <Link href="/search" className="text-primary underline-offset-4 hover:underline">
               Search
             </Link>{" "}
-            or use the keyboard shortcut from the header to run queries against live data.
+            or use the keyboard shortcut from the header to try these queries.
           </Text>
         </div>
       </div>

@@ -12,7 +12,7 @@ sidebar_position: 3
 
 | Param | Description |
 | --- | --- |
-| `name` | Search query. Accepts a small Scryfall-inspired language (see below). |
+| `name` | Search query. Structured keyword language with `t:` / `a:` / `r:` filters (see below). |
 | `q` | Alias for `name`. When both are present, `name` wins. |
 | `type` | Optional explicit type filter. Merged with the parsed query as `AND t:value`. |
 | `artist` | Optional explicit artist filter (`AND a:value`). |
@@ -32,15 +32,15 @@ The `name` (or `q`) parameter is parsed into an AST and combined with any explic
 
 | Construct | Example | Meaning |
 | --- | --- | --- |
-| Free text | `bard fish` | Full-text name match (multiple words combine). |
-| Type filter | `t:legend`, `t:"legend land"` | Match `classification.type`, `supertype`, or any tag. |
-| Artist filter | `a:titus`, `a:"john avon"` | Match the joined artist name. |
+| Free text | `poro gear` | Full-text name match (multiple words combine). |
+| Type filter | `t:champion`, `t:"champion unit"` | Match `classification.type`, `supertype`, or any tag. |
+| Artist filter | `a:lee`, `a:"kim park"` | Match the joined artist name. |
 | Rarity filter | `r:rare` | Match `classification.rarity`. |
 | Exact name | `!Sun`, `!"Sun Disc"` | Match a single normalized card name. |
-| Negation | `-t:legend`, `-(t:a or t:b)` | Exclude matching cards. |
-| Boolean OR | `t:fish or t:bird` | Union of matches (lowercase `or` keyword). |
-| Grouping | `t:land (a:titus or a:avon)` | Use parentheses to override implicit precedence. |
-| Implicit AND | `bard t:legend` | Adjacent clauses combine with AND. |
+| Negation | `-t:gear`, `-(t:gear or t:spell)` | Exclude matching cards. |
+| Boolean OR | `t:gear or t:spell` | Union of matches (lowercase `or` keyword). |
+| Grouping | `t:unit (a:lee or a:kim)` | Use parentheses to override implicit precedence. |
+| Implicit AND | `poro t:unit` | Adjacent clauses combine with AND. |
 
 Implicit AND binds tighter than `or`. So `t:a or t:b t:c` parses as `t:a OR (t:b AND t:c)` — use parentheses when in doubt. Field aliases: `a` / `artist`, `t` / `type`, `r` / `rarity`.
 
@@ -89,9 +89,9 @@ sequenceDiagram
 ## Examples
 
 ```http
-GET /api/v1/cards?name=bard%20t%3A%22legend%22
-GET /api/v1/cards?name=t%3Afish%20or%20t%3Abird
-GET /api/v1/cards?name=t%3Aland%20(a%3Atitus%20or%20a%3Aavon)
+GET /api/v1/cards?name=poro%20t%3Aunit
+GET /api/v1/cards?name=t%3Agear%20or%20t%3Aspell
+GET /api/v1/cards?name=t%3Aunit%20(a%3Alee%20or%20a%3Akim)
 GET /api/v1/cards?name=%21%22Sun%20Disc%22
 GET /api/v1/cards?name=Sun%20-t%3Agear
 GET /api/v1/cards?type=Gear&rarity=Uncommon
