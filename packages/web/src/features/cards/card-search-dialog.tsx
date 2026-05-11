@@ -16,14 +16,18 @@ import {
 import { cardsApi, cardsQueryKeys, CardApiError } from "./api";
 import { cardHref } from "./paths";
 
-function searchErrorMessage(err: unknown): string {
+function searchErrorInfo(err: unknown): { title: string; detail: string } {
   if (err instanceof CardApiError) {
-    if (err.code === "timeout") return "Search timed out — please try again.";
-    if (err.code === "network") return "Couldn't reach search — check your connection.";
-    if (err.status === 400 && err.detail) return err.detail;
-    if (err.status != null && err.status >= 500) return "Search is unavailable right now.";
+    if (err.code === "timeout")
+      return { title: "Search timed out", detail: "Please try again." };
+    if (err.code === "network")
+      return { title: "Couldn't connect", detail: "Check your connection and try again." };
+    if (err.status === 400 && err.detail)
+      return { title: "Invalid query", detail: err.detail };
+    if (err.status != null && err.status >= 500)
+      return { title: "Search unavailable", detail: "The search service is having issues. Try again shortly." };
   }
-  return "Something went wrong — please try again.";
+  return { title: "Something went wrong", detail: "Please try again." };
 }
 
 const DEBOUNCE_MS = 250;
@@ -68,10 +72,12 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
     enabled: trimmed.length > 0,
     placeholderData: keepPreviousData,
     staleTime: 30_000,
+    retry: false,
   });
 
   const cards = trimmed ? search.data?.cards ?? [] : [];
   const showLoading = trimmed.length > 0 && search.isFetching && !search.isError;
+  const errorInfo = search.isError ? searchErrorInfo(search.error) : null;
 
   const goToCard = React.useCallback(
     (href: string) => {
@@ -119,9 +125,18 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
               Type to search cards by name.
             </div>
-          ) : search.isError ? (
-            <div className="px-3 py-6 text-center text-sm text-destructive">
-              {searchErrorMessage(search.error)}
+          ) : errorInfo ? (
+            <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+              <img
+                src="/lambsheep.png"
+                alt=""
+                aria-hidden="true"
+                className="h-20 w-auto opacity-80"
+              />
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-medium">{errorInfo.title}</p>
+                <p className="text-xs text-muted-foreground">{errorInfo.detail}</p>
+              </div>
             </div>
           ) : showLoading && cards.length === 0 ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">

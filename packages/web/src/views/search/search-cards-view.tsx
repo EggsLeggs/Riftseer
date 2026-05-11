@@ -28,10 +28,24 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
+import { cardsApi, cardsQueryKeys, CardApiError } from "@/features/cards/api";
 import { cardHref } from "@/features/cards/paths";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
 import { cn } from "@/lib/utils";
+
+function searchErrorInfo(err: unknown): { title: string; detail: string } {
+  if (err instanceof CardApiError) {
+    if (err.code === "timeout")
+      return { title: "Search timed out", detail: "Please try again." };
+    if (err.code === "network")
+      return { title: "Couldn't connect", detail: "Check your connection and try again." };
+    if (err.status === 400 && err.detail)
+      return { title: "Invalid query", detail: err.detail };
+    if (err.status != null && err.status >= 500)
+      return { title: "Search unavailable", detail: "The search service is having issues. Try again shortly." };
+  }
+  return { title: "Something went wrong", detail: "Please try again." };
+}
 
 const PAGE_SIZE_OPTIONS = [20, 40, 60, 80, 100] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
@@ -116,11 +130,13 @@ export function SearchCardsView() {
     enabled: trimmed.length > 0,
     placeholderData: keepPreviousData,
     staleTime: 60_000,
+    retry: false,
   });
 
   const total = trimmed ? (search.data?.total ?? 0) : 0;
   const cardTotal = trimmed ? (search.data?.count ?? 0) : 0;
   const cards = trimmed ? (search.data?.cards ?? []) : [];
+  const errorInfo = search.isError ? searchErrorInfo(search.error) : null;
   const totalPages =
     total === 0 ? 0 : Math.max(1, Math.ceil(total / perPage));
   const page = Math.min(requestedPage, Math.max(totalPages, 1));
@@ -253,7 +269,7 @@ export function SearchCardsView() {
               "Search cards"
             )}
           </h1>
-          {trimmed && !search.isFetching && (
+          {trimmed && !search.isFetching && !search.isError && (
             <p className="mt-1 text-sm text-muted-foreground">
               {total === 0
                 ? "No cards found."
@@ -331,7 +347,20 @@ export function SearchCardsView() {
         ) : null}
       </header>
 
-      {trimmed && search.isPending && cards.length === 0 ? (
+      {errorInfo ? (
+        <div className="flex flex-col items-center gap-4 py-20 text-center">
+          <img
+            src="/lambsheep.png"
+            alt=""
+            aria-hidden="true"
+            className="h-28 w-auto opacity-70"
+          />
+          <div className="flex flex-col gap-1.5">
+            <p className="text-base font-semibold">{errorInfo.title}</p>
+            <p className="text-sm text-muted-foreground">{errorInfo.detail}</p>
+          </div>
+        </div>
+      ) : trimmed && search.isPending && cards.length === 0 ? (
         <SearchSkeleton count={perPage} view={resultsView} />
       ) : cards.length > 0 ? (
         resultsView === "images" ? (
