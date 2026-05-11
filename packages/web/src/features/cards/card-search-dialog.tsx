@@ -7,7 +7,6 @@ import { SearchIcon } from "lucide-react";
 import {
   Command,
   CommandDialog,
-  CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
@@ -111,9 +110,22 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
               Searching…
             </div>
-          ) : (
-            <CommandEmpty>No cards found.</CommandEmpty>
-          )}
+          ) : !showLoading && search.data != null && cards.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+              <img
+                src="/lambsheep.png"
+                alt=""
+                aria-hidden="true"
+                className="h-20 w-auto opacity-80"
+              />
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-medium">No cards found</p>
+                <p className="text-xs text-muted-foreground">
+                  Try a different spelling or broaden your search.
+                </p>
+              </div>
+            </div>
+          ) : null}
 
           {cards.length > 0 && (
             <CommandGroup heading="Cards">
