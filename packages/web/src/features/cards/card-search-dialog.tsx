@@ -34,6 +34,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
   const router = useRouter();
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
+  const hasNavigated = React.useRef(false);
   const trimmed = debouncedQuery.trim();
 
   React.useEffect(() => {
@@ -44,6 +45,10 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
   React.useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
+
+  React.useEffect(() => {
+    hasNavigated.current = false;
+  }, [query]);
 
   const search = useQuery({
     queryKey: cardsQueryKeys.search(trimmed, PALETTE_LIMIT, 0),
@@ -77,7 +82,19 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
       title="Search Riftseer"
       description="Search for cards by name. More groups coming soon."
     >
-      <Command shouldFilter={false} loop>
+      <Command
+        shouldFilter={false}
+        loop
+        onKeyDown={(e) => {
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            hasNavigated.current = true;
+          }
+          if (e.key === "Enter" && !hasNavigated.current && trimmed) {
+            e.preventDefault();
+            goToSearchPage();
+          }
+        }}
+      >
         <CommandInput
           value={query}
           onValueChange={setQuery}
