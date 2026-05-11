@@ -81,6 +81,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
       onOpenChange={onOpenChange}
       title="Search Riftseer"
       description="Search for cards by name. More groups coming soon."
+      className="sm:max-w-xl"
     >
       <Command
         shouldFilter={false}
@@ -118,21 +119,42 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
             <CommandGroup heading="Cards">
               {cards.map((card) => {
                 const href = cardHref(card);
-                const setCode = card.set?.set_code;
-                const collector = card.collector_number;
-                const subtitle = [setCode, collector].filter(Boolean).join(" · ");
+                const setCode = [
+                  card.set?.set_code?.toUpperCase(),
+                  card.collector_number,
+                ].filter(Boolean).join(" · ");
+                const imageUrl =
+                  card.media?.media_urls?.small ??
+                  card.media?.media_urls?.normal;
                 return (
                   <CommandItem
                     key={card.id}
                     value={`${card.name} ${card.id}`}
                     onSelect={() => goToCard(href)}
                   >
-                    <span className="truncate">{card.name}</span>
-                    {subtitle && (
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        {subtitle}
-                      </span>
+                    {imageUrl && (
+                      <img
+                        src={imageUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="h-11 w-8 shrink-0 rounded-sm object-cover"
+                      />
                     )}
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="truncate leading-none">{card.name}</span>
+                      {setCode && (
+                        <span className="text-xs leading-none text-muted-foreground">
+                          {setCode}
+                        </span>
+                      )}
+                    </div>
+                    <kbd
+                      aria-hidden="true"
+                      data-slot="command-shortcut"
+                      className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground opacity-0 group-data-[selected=true]/command-item:opacity-100"
+                    >
+                      ↵
+                    </kbd>
                   </CommandItem>
                 );
               })}
@@ -148,12 +170,39 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
                   onSelect={goToSearchPage}
                 >
                   <SearchIcon className="size-4 opacity-60" />
-                  <span>View all results for “{trimmed}”</span>
+                  <span className="flex-1">View all results for "{trimmed}"</span>
+                  <kbd
+                    aria-hidden="true"
+                    data-slot="command-shortcut"
+                    className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground opacity-0 group-data-[selected=true]/command-item:opacity-100"
+                  >
+                    ↵
+                  </kbd>
                 </CommandItem>
               </CommandGroup>
             </>
           )}
         </CommandList>
+        <div className="flex items-center gap-4 border-t border-border px-3 py-2 text-xs text-muted-foreground">
+          {trimmed && search.data?.total != null && (
+            <span>{search.data.total} result{search.data.total !== 1 ? "s" : ""}</span>
+          )}
+          <div className="ml-auto flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1 py-0.5 font-mono text-[10px] font-medium">↑</kbd>
+              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1 py-0.5 font-mono text-[10px] font-medium">↓</kbd>
+              Navigate
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium">↵</kbd>
+              Open
+            </span>
+            <span className="flex items-center gap-1">
+              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium">Esc</kbd>
+              Close
+            </span>
+          </div>
+        </div>
       </Command>
     </CommandDialog>
   );

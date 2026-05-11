@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Backpack } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { UserNav } from "./user-nav";
 import { CardSearchTrigger } from "./card-search-trigger";
@@ -17,6 +18,18 @@ export async function Navbar() {
           <CardSearchTrigger className="w-full max-w-xs" />
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/search">Cards</Link>
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/decks">Decks</Link>
+          </Button>
+          <div className="h-4 w-px bg-border" />
+          <Button variant="ghost" size="icon" className="size-8" asChild>
+            <Link href="/collection" aria-label="Collection">
+              <Backpack className="size-4" />
+            </Link>
+          </Button>
           {session ? (
             <UserNav email={session.user.email} />
           ) : (
