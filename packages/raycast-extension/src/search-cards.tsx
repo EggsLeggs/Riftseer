@@ -67,6 +67,28 @@ const TYPE_ICONS: Record<string, string> = {
   rune: "icons/types/rune.png",
 };
 
+type SearchApiError = {
+  error: string;
+  code: string;
+};
+
+function isSearchApiError(value: unknown): value is SearchApiError {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.error === "string" && typeof candidate.code === "string"
+  );
+}
+
+function parseErrorInfo(err: unknown): { message: string; code?: string } {
+  if (!err || typeof err !== "object") return { message: String(err) };
+  const candidate = err as Record<string, unknown>;
+  const message =
+    typeof candidate.message === "string" ? candidate.message : String(err);
+  const code = typeof candidate.code === "string" ? candidate.code : undefined;
+  return { message, code };
+}
+
 function cardTypeIcon(card: Card): Image.ImageLike | undefined {
   const tl = card.classification?.type?.toLowerCase();
   const st = card.classification?.supertype?.toLowerCase();
@@ -337,20 +359,75 @@ export default function SearchCards() {
   }
 
   const hasQuery = query.trim().length > 0;
+  const trimmedQuery = query.trim();
+  const [queryErrorMessage, setQueryErrorMessage] = useState<string | null>(
+    null,
+  );
+  const [requestErrorMessage, setRequestErrorMessage] = useState<string | null>(
+    null,
+  );
+  const searchPath = hasQuery
+    ? `${api}/api/v1/cards?q=${encodeURIComponent(trimmedQuery)}&fuzzy=true&limit=20`
+    : "";
 
   const { data, isLoading, error } = useFetch<CardsSearchResponse>(
-    `${api}/api/v1/cards?name=${encodeURIComponent(query.trim())}&fuzzy=true&limit=20`,
+    searchPath,
     {
       execute: hasQuery,
+      parseResponse: async (response) => {
+        const rawText = await response.text();
+        let body: CardsSearchResponse | SearchApiError | null = null;
+        if (rawText) {
+          try {
+            body = JSON.parse(rawText) as CardsSearchResponse | SearchApiError;
+          } catch {
+            body = null;
+          }
+        }
+        if (response.ok) {
+          if (body) return body as CardsSearchResponse;
+          throw new Error(
+            `Request failed (${response.status}): ${rawText || "Empty response body"}`,
+          );
+        }
+        if (body && isSearchApiError(body)) {
+          const apiErr = new Error(body.error) as Error & { code?: string };
+          apiErr.code = body.code;
+          throw apiErr;
+        }
+        throw new Error(
+          `Request failed (${response.status}): ${rawText || "Empty response body"}`,
+        );
+      },
       onError: (err) => {
+        const { message, code } = parseErrorInfo(err);
+        if (code === "BAD_QUERY") {
+          setQueryErrorMessage(message);
+          setRequestErrorMessage(null);
+          return;
+        }
+        setQueryErrorMessage(null);
+        setRequestErrorMessage(message);
         showToast({
           style: Toast.Style.Failure,
           title: "Search failed",
-          message: String(err),
+          message,
         });
       },
     },
   );
+
+  useEffect(() => {
+    if (!hasQuery) {
+      setQueryErrorMessage(null);
+      setRequestErrorMessage(null);
+      return;
+    }
+    if (data) {
+      setQueryErrorMessage(null);
+      setRequestErrorMessage(null);
+    }
+  }, [hasQuery, data]);
 
   const cards = data?.cards ?? [];
   const showRecent = !hasQuery && maxRecent > 0;
@@ -399,7 +476,19 @@ export default function SearchCards() {
         {hasQuery && !isLoading && cards.length === 0 && !error && (
           <Grid.EmptyView
             title="No cards found"
-            description={`No results for "${query}".`}
+            description={`No results for "${trimmedQuery}".`}
+          />
+        )}
+        {hasQuery && !isLoading && queryErrorMessage && (
+          <Grid.EmptyView
+            title="Invalid search syntax"
+            description={queryErrorMessage}
+          />
+        )}
+        {hasQuery && !isLoading && !queryErrorMessage && requestErrorMessage && (
+          <Grid.EmptyView
+            title="Search failed"
+            description={requestErrorMessage}
           />
         )}
         {showRecent && displayCards.length > 0 ? (
@@ -447,7 +536,19 @@ export default function SearchCards() {
       {hasQuery && !isLoading && cards.length === 0 && !error && (
         <List.EmptyView
           title="No cards found"
-          description={`No results for "${query}".`}
+          description={`No results for "${trimmedQuery}".`}
+        />
+      )}
+      {hasQuery && !isLoading && queryErrorMessage && (
+        <List.EmptyView
+          title="Invalid search syntax"
+          description={queryErrorMessage}
+        />
+      )}
+      {hasQuery && !isLoading && !queryErrorMessage && requestErrorMessage && (
+        <List.EmptyView
+          title="Search failed"
+          description={requestErrorMessage}
         />
       )}
       {showRecent && displayCards.length > 0 ? (

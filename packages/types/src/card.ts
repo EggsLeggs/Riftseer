@@ -188,6 +188,17 @@ export interface CardSearchOptions {
   fuzzy?: boolean;
   /** Max results to return. Default: 10. */
   limit?: number;
+  /** Skip this many matching cards before returning results (0-based). Default: 0. */
+  offset?: number;
+  /** When true, skip deduplication and return all printings. Default: false. */
+  unique?: boolean;
+}
+
+/** Paged name search: `cards` is one page; `total` is the full match count. */
+export interface CardSearchResult {
+  cards: Card[];
+  /** Total matches for this query (across all pages), after name-dedup ranking. */
+  total: number;
 }
 
 // ─── Deck interfaces ────────────────────────────────────────────────────────────

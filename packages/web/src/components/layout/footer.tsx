@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { FooterCookiePreferencesLink } from "./footer-cookie-preferences";
+import { SitePreferencesFooterTrigger } from "./site-preferences-dialog";
 
 export function Footer() {
   return (
@@ -14,7 +15,11 @@ export function Footer() {
           <Link href="/terms" className="transition-colors hover:text-foreground hover:underline underline-offset-4">
             Terms of Service
           </Link>
+          <Link href="/syntax" className="transition-colors hover:text-foreground hover:underline underline-offset-4">
+            Search syntax
+          </Link>
           <FooterCookiePreferencesLink />
+          <SitePreferencesFooterTrigger />
         </div>
       </div>
     </footer>

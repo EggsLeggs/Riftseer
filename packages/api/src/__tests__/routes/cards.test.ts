@@ -137,11 +137,65 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+      expect(body.offset).toBe(0);
+      expect(body.limit).toBe(10);
       expect(body.cards[0].name).toBe("Sun Disc");
       expect(body.cards[0].set.set_code).toBe("OGN");
       expect(Array.isArray(body.cards[0].related_champions)).toBe(true);
       expect(body.cards[0].related_champions[0].object).toBe("related_card");
       expect(Array.isArray(body.cards[0].related_legends)).toBe(true);
+    });
+
+    it("returns total and an empty page when offset is beyond matches", async () => {
+      const res = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&offset=5&limit=10",
+        ),
+      );
+      expect(res.status).toBe(200);
+      const body = await res.json() as any;
+      expect(body.count).toBe(0);
+      expect(body.total).toBe(1);
+      expect(body.offset).toBe(5);
+      expect(body.limit).toBe(10);
+      expect(body.cards).toEqual([]);
+    });
+
+    it("sanitizes malformed and out-of-range numeric query params", async () => {
+      const res = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&limit=500&offset=abc",
+        ),
+      );
+      expect(res.status).toBe(200);
+      let body = await res.json() as any;
+      expect(body.limit).toBe(100);
+      expect(body.offset).toBe(0);
+      expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+
+      const resNeg = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&offset=-1&limit=10",
+        ),
+      );
+      expect(resNeg.status).toBe(200);
+      body = await resNeg.json() as any;
+      expect(body.offset).toBe(0);
+      expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+    });
+
+    it("returns 400 when offset exceeds the allowed maximum", async () => {
+      const res = await app.handle(
+        new Request(
+          "http://localhost/api/v1/cards?name=Sun&offset=10001&limit=10",
+        ),
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json() as any;
+      expect(body.error).toContain("offset");
     });
 
     it("returns 400 when name is missing", async () => {
@@ -155,6 +209,7 @@ describe("API routes", () => {
       );
       const body = await res.json() as any;
       expect(body.count).toBe(0);
+      expect(body.total).toBe(0);
     });
 
     // ── Exact lookup via ?fuzzy=false ──────────────────────────────────────────
@@ -166,6 +221,7 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
       expect(body.cards[0].name).toBe("Sun Disc");
     });
 
@@ -178,16 +234,93 @@ describe("API routes", () => {
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(0);
+      expect(body.total).toBe(0);
     });
 
     it("autocomplete mode (default) matches partial names", async () => {
-      // "Sunshine" contains "sun" → stub returns the card in autocomplete mode
+      // "Sun" is a prefix of the stub card "Sun Disc" → match in autocomplete mode.
       const res = await app.handle(
-        new Request("http://localhost/api/v1/cards?name=Sunshine"),
+        new Request("http://localhost/api/v1/cards?name=Sun+Di"),
       );
       expect(res.status).toBe(200);
       const body = await res.json() as any;
       expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+    });
+
+    // ── New: search query language ─────────────────────────────────────────────
+
+    it("supports the t: type filter", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?name=t%3Agear"),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.count).toBe(1);
+      expect(body.cards[0].name).toBe("Sun Disc");
+    });
+
+    it("combines free text and a filter via implicit AND", async () => {
+      const res = await app.handle(
+        new Request('http://localhost/api/v1/cards?name=Sun+t%3A%22Gear%22'),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.count).toBe(1);
+    });
+
+    it("supports !exact-name lookup", async () => {
+      const res = await app.handle(
+        new Request('http://localhost/api/v1/cards?name=%21%22Sun+Disc%22'),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.cards[0].name).toBe("Sun Disc");
+    });
+
+    it("returns empty when -t:foo excludes the only matching card", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?name=Sun+-t%3Agear"),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.total).toBe(0);
+    });
+
+    it("treats ?q as an alias for ?name", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?q=Sun"),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.cards[0].name).toBe("Sun Disc");
+    });
+
+    it("returns 400 with BAD_QUERY for malformed syntax", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?name=foo%3Abar"),
+      );
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as any;
+      expect(body.code).toBe("BAD_QUERY");
+    });
+
+    it("merges explicit ?type filter with the parsed query", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?name=Sun&type=Gear"),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.count).toBe(1);
+    });
+
+    it("allows filter-only queries (no name, no q)", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards?type=Gear"),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.cards[0].name).toBe("Sun Disc");
     });
   });
 

@@ -3,13 +3,13 @@ import { InlineLink, ListItem, SubHeading, Text, UnorderedList } from "@/views/l
 
 export function PrivacyView() {
   return (
-    <main className="flex flex-1 flex-col items-center px-4">
+    <div className="flex flex-1 flex-col items-center px-4">
       <div className="flex h-full w-full max-w-[800px] flex-col pb-20 lg:pt-20">
         <div className="flex items-center justify-center py-24 text-center sm:py-36">
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 9 May 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 10 May 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -58,9 +58,15 @@ export function PrivacyView() {
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Local storage (site only).</strong> The website
-              stores one preference in your browser&apos;s local storage: your{" "}
-              <strong className="font-semibold">theme choice</strong> (light or dark mode). This is
-              not personally identifiable and is not sent to our servers. You can clear it by
+              stores preferences in your browser&apos;s local storage, including your{" "}
+              <strong className="font-semibold">theme choice</strong> (light or dark mode) and, if
+              you accept functional cookies, your{" "}
+              <strong className="font-semibold">cards-per-page search preference</strong> and{" "}
+              <strong className="font-semibold">
+                optional site accessibility preferences
+              </strong>{" "}
+              (for example how card names appear on search). These are
+              not personally identifiable and are not sent to our servers. You can clear them by
               clearing your browser&apos;s local storage for this site.
             </ListItem>
             <ListItem>
@@ -201,9 +207,10 @@ export function PrivacyView() {
         <div className="mb-6">
           <SubHeading>Retention</SubHeading>
           <Text>
-            Theme preference in your browser stays until you clear it. Server logs (if any) are
-            kept only as long as needed for operation and security. PostHog retains analytics data
-            according to their policy and your settings. Stored Reddit comment and post IDs (used to
+            Site preferences in your browser stay until you clear them or withdraw the related cookie
+            consent. Server logs (if any) are kept only as long as needed for operation and security.
+            PostHog retains analytics data according to their policy and your settings. Stored Reddit
+            comment and post IDs (used to
             prevent double replies) are kept indefinitely so the bot continues to avoid duplicate
             replies. API-side logs of requested card names and subreddit from bot traffic are retained
             on the same basis as other API analytics and server logs described above. Account data
@@ -217,11 +224,11 @@ export function PrivacyView() {
           <Text>
             Depending on where you live, you may have rights to access, correct, or delete personal
             data. If you have an account, you can contact us through the project repository to
-            request access to or deletion of your account data. You can clear the theme preference by
-            clearing local storage for this site. PostHog may offer opt-out or privacy controls; see
-            their privacy policy. For Reddit-related data (including API analytics derived from bot
-            traffic, such as card names and subreddit), you can contact us to ask what we hold or to
-            request deletion where applicable.
+            request access to or deletion of your account data. You can clear site preferences by
+            clearing local storage for this site or changing your cookie preferences. PostHog may
+            offer opt-out or privacy controls; see their privacy policy. For Reddit-related data
+            (including API analytics derived from bot traffic, such as card names and subreddit), you
+            can contact us to ask what we hold or to request deletion where applicable.
             Reddit&apos;s own tools and privacy policy also apply to your activity on Reddit.
           </Text>
         </div>
@@ -253,6 +260,6 @@ export function PrivacyView() {
           </Link>
         </p>
       </div>
-    </main>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ export type {
   CardRequest,
   ResolvedCard,
   CardSearchOptions,
+  CardSearchResult,
   RelatedCard,
   CardExternalIds,
   CardSet,
@@ -55,6 +56,29 @@ export { SimplifiedDeckProviderImpl } from "./providers/simplified_deck_provider
 
 // Parser
 export { parseCardRequests } from "./parser.ts";
+
+// Card search query language
+export {
+  BadCardSearchQueryError,
+  CARD_SEARCH_LIMITS,
+  andAst,
+  exactNameLeaf,
+  filterLeaf,
+  findTextLeafValue,
+  isExactNameOnly,
+  isLegacyTextOnly,
+  notAst,
+  orAst,
+  parseCardSearchQuery,
+  requiresRpc,
+  textLeaf,
+  validateCardSearchAst,
+} from "./card-search-query.ts";
+export type {
+  CardSearchAst,
+  CardSearchField,
+  ParsedCardSearch,
+} from "./card-search-query.ts";
 
 // Logger
 export { logger } from "./logger.ts";

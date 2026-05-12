@@ -1,12 +1,24 @@
 import { Elysia, t } from "elysia";
 import {
-  parseCardRequests,
+  BadCardSearchQueryError,
+  andAst,
+  filterLeaf,
   finalizeCard,
   finalizeCards,
-  type CardDataProvider,
+  parseCardRequests,
+  parseCardSearchQuery,
+  validateCardSearchAst,
   type Card,
+  type CardDataProvider,
+  type CardSearchAst,
+  type CardSearchField,
 } from "@riftseer/core";
 import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
+
+/** Hard cap so callers cannot page arbitrarily deep in one request. */
+const MAX_SEARCH_OFFSET = 10_000;
+/** Hard cap on per-set fetches to prevent oversized reads. */
+const MAX_SET_BROWSE_LIMIT = 2_000;
 
 /**
  * Rewrites purchase_uris.tcgplayer to an Impact.com affiliate deep link.
@@ -195,41 +207,148 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
       "/cards",
       async ({ query, set }) => {
         const parsedLimit = parseInt(query.limit ?? "", 10);
-        const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
+        const parsedOffset = parseInt(query.offset ?? "", 10);
+        const offset =
+          Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
-        // Browse set: GET /cards?set=OGN — return all cards in set, ordered by collector number
-        if (query.set && !query.name?.trim()) {
+        // browse=all: paginated all-cards browse, no search term required.
+        if (query.browse === "all") {
+          const pageLimit = Math.min(Math.max(Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 60, 1), 100);
+          if (Number.isFinite(parsedOffset) && parsedOffset > MAX_SEARCH_OFFSET) {
+            set.status = 400;
+            return { error: "offset too large", code: "OFFSET_TOO_LARGE" };
+          }
+          const { cards: browseCards, total } = await cardProvider.browseCards({ limit: pageLimit, offset });
+          const finalized = await finalizeMany(browseCards, query.include);
+          return { count: finalized.length, total, offset, limit: pageLimit, cards: finalized };
+        }
+
+        const rawQuery = (query.name ?? query.q ?? "").trim();
+        const hasStructuredFilter = Boolean(
+          query.type?.trim() || query.artist?.trim() || query.rarity?.trim(),
+        );
+
+        // Browse set: GET /cards?set=OGN with no other search input — return
+        // all cards in set, ordered by collector number. Structured filters
+        // count as search input and bypass this branch.
+        if (query.set && !rawQuery && !hasStructuredFilter) {
+          const setLimit = Math.min(
+            Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : MAX_SET_BROWSE_LIMIT,
+            MAX_SET_BROWSE_LIMIT,
+          );
           const cards = await cardProvider.getCardsBySet(query.set, {
-            limit: limit ?? 2000,
+            limit: setLimit,
           });
           const finalized = await finalizeMany(cards, query.include);
           return { count: finalized.length, cards: finalized };
         }
 
-        if (!query.name?.trim()) {
+        let parsedAst: CardSearchAst | null;
+        try {
+          parsedAst = parseCardSearchQuery(rawQuery).ast;
+        } catch (err) {
+          if (err instanceof BadCardSearchQueryError) {
+            set.status = 400;
+            return { error: err.message, code: "BAD_QUERY" };
+          }
+          throw err;
+        }
+
+        // Merge optional URL-level filters (`type` / `artist` / `rarity`) as
+        // additional AND conjuncts. UI chips will plug in here later.
+        const extras: CardSearchAst[] = [];
+        const addFilter = (field: CardSearchField, value: string | undefined) => {
+          if (!value) return;
+          const leaf = filterLeaf(field, value);
+          if (leaf) extras.push(leaf);
+        };
+        addFilter("type", query.type);
+        addFilter("artist", query.artist);
+        addFilter("rarity", query.rarity);
+
+        const ast = andAst(parsedAst, ...extras);
+        if (!ast) {
           set.status = 400;
           return {
-            error: "Missing required query parameter: name",
+            error: "Provide a search term (`name` / `q`) or at least one filter.",
             code: "MISSING_PARAM",
+          };
+        }
+
+        try {
+          validateCardSearchAst(ast);
+        } catch (err) {
+          if (err instanceof BadCardSearchQueryError) {
+            set.status = 400;
+            return { error: err.message, code: "BAD_QUERY" };
+          }
+          throw err;
+        }
+
+        if (
+          Number.isFinite(parsedOffset) &&
+          parsedOffset > MAX_SEARCH_OFFSET
+        ) {
+          set.status = 400;
+          return {
+            error: "offset too large",
+            code: "OFFSET_TOO_LARGE",
           };
         }
 
         // Pass fuzzy: false only when the caller explicitly opts out, so the
         // default path runs autocomplete scoring instead of exact-only lookup.
         const exactOnly = query.fuzzy === "0" || query.fuzzy === "false";
-        const cards = await cardProvider.searchByName(query.name, {
+        const pageLimit =
+          Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
+        const clampedLimit = Math.min(Math.max(pageLimit, 1), 100);
+
+        const { cards, total } = await cardProvider.searchByAst(ast, {
           set: query.set,
           collector: query.collector,
           fuzzy: exactOnly ? false : undefined,
-          limit: limit ?? 10,
+          limit: clampedLimit,
+          offset,
+          unique: query.unique === "prints" ? true : undefined,
         });
 
         const finalized = await finalizeMany(cards, query.include);
-        return { count: finalized.length, cards: finalized };
+        return {
+          count: finalized.length,
+          total,
+          offset,
+          limit: clampedLimit,
+          cards: finalized,
+        };
       },
       {
         query: t.Object({
-          name: t.Optional(t.String({ description: "Card name to search for" })),
+          name: t.Optional(
+            t.String({
+              description:
+                "Card search query. Plain words run as full-text name search; supports `t:type`, `a:artist`, `r:rarity`, exact `!Name` / `!\"Sun Disc\"`, negation `-t:foo`, explicit `or`, and parentheses `(...)`.",
+            }),
+          ),
+          q: t.Optional(
+            t.String({
+              description: "Alias for `name`. When both are present, `name` wins.",
+            }),
+          ),
+          type: t.Optional(
+            t.String({
+              description: "Optional explicit type filter, merged as `AND t:value` with the parsed query.",
+            }),
+          ),
+          artist: t.Optional(
+            t.String({
+              description: "Optional explicit artist filter, merged as `AND a:value`.",
+            }),
+          ),
+          rarity: t.Optional(
+            t.String({
+              description: "Optional explicit rarity filter, merged as `AND r:value`.",
+            }),
+          ),
           set: t.Optional(t.String({ description: "Set code filter, e.g. OGN" })),
           collector: t.Optional(t.String({ description: "Collector number filter" })),
           fuzzy: t.Optional(
@@ -237,19 +356,36 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
               description: "Pass `false` or `0` to disable fuzzy/autocomplete matching (exact name only).",
             }),
           ),
-          limit: t.Optional(t.String({ description: "Max results (default 10)" })),
+          browse: t.Optional(t.String({ description: "Pass `all` to browse all cards without a search query." })),
+          unique: t.Optional(t.String({ description: "Pass `prints` to return all printings without deduplication." })),
+          limit: t.Optional(t.String({ description: "Max results per page (default 10, max 100)" })),
+          offset: t.Optional(
+            t.String({ description: "0-based offset into the ranked result set (default 0)" }),
+          ),
           include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
         }),
         response: {
-          200: t.Object({ count: t.Number(), cards: t.Array(CardSchema) }),
+          200: t.Object({
+            count: t.Number({ description: "Number of cards in this response" }),
+            cards: t.Array(CardSchema),
+            total: t.Optional(
+              t.Number({
+                description: "Total matching cards for this query (name search only)",
+              }),
+            ),
+            offset: t.Optional(t.Number()),
+            limit: t.Optional(t.Number({ description: "Requested page size (name search only)" })),
+          }),
           400: ErrorSchema,
         },
         detail: {
           tags: ["Cards"],
-          summary: "Search cards by name",
+          summary: "Search cards",
           description:
-            "Search for cards by name with optional set/collector filters. " +
-            "Autocomplete and fuzzy matching run by default; use `fuzzy=false` or `fuzzy=0` for exact-name-only lookup.",
+            "Search for cards by name and structured filters. The `name` (or `q`) parameter accepts a compact keyword " +
+            "query language: `t:`/`a:`/`r:` filters (Riftbound type, supertype, tags, artist, rarity), `!Exact Name`, `-` to negate, lowercase `or`, and `(...)` to group. " +
+            "Optional URL filters (`type`, `artist`, `rarity`) are merged as additional AND conjuncts so future UI chips can " +
+            "compose with the typed query. Pass `fuzzy=false` for exact-name-only lookups.",
         },
       },
     )

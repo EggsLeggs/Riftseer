@@ -38,7 +38,7 @@ export default function CardRouteError({
   const title = isTimeout ? "Taking too long" : "Couldn't load this card";
 
   return (
-    <main className="container flex max-w-lg flex-col gap-4 py-16">
+    <div className="container flex max-w-lg flex-col gap-4 py-16">
       <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
         {title}
       </h1>
@@ -55,6 +55,6 @@ export default function CardRouteError({
       >
         Try again
       </button>
-    </main>
+    </div>
   );
 }
