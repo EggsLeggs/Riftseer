@@ -43,6 +43,12 @@ export const STUB_CARD: Card = {
   public_slug: "ogn/21/sun-disc",
 };
 
+const STUB_CARDS: Card[] = Array.from({ length: 5 }, (_, i) => ({
+  ...STUB_CARD,
+  id: `bf1bafdc-2739-469b-bde6-c24a868f49${70 + i}`,
+  collector_number: String(21 + i),
+}));
+
 export class StubProvider implements CardDataProvider {
   readonly sourceName = "stub";
 
@@ -106,8 +112,11 @@ export class StubProvider implements CardDataProvider {
     return STUB_CARD;
   }
 
-  async browseCards(_opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }> {
-    return { cards: [STUB_CARD], total: 1 };
+  async browseCards(opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }> {
+    const total = STUB_CARDS.length;
+    const start = opts.offset;
+    const end = opts.offset + opts.limit;
+    return { cards: STUB_CARDS.slice(start, end), total };
   }
 
   getStats() {

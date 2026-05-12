@@ -17,6 +17,8 @@ import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
 
 /** Hard cap so callers cannot page arbitrarily deep in one request. */
 const MAX_SEARCH_OFFSET = 10_000;
+/** Hard cap on per-set fetches to prevent oversized reads. */
+const MAX_SET_BROWSE_LIMIT = 2_000;
 
 /**
  * Rewrites purchase_uris.tcgplayer to an Impact.com affiliate deep link.
@@ -230,7 +232,10 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         // all cards in set, ordered by collector number. Structured filters
         // count as search input and bypass this branch.
         if (query.set && !rawQuery && !hasStructuredFilter) {
-          const setLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 2000;
+          const setLimit = Math.min(
+            Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : MAX_SET_BROWSE_LIMIT,
+            MAX_SET_BROWSE_LIMIT,
+          );
           const cards = await cardProvider.getCardsBySet(query.set, {
             limit: setLimit,
           });
