@@ -205,10 +205,22 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
       "/cards",
       async ({ query, set }) => {
         const parsedLimit = parseInt(query.limit ?? "", 10);
-        const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : undefined;
+        const parsedOffset = parseInt(query.offset ?? "", 10);
+        const offset =
+          Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
-        // `q` is an alias for `name`; if both are present, `name` wins so older
-        // clients keep working unchanged.
+        // browse=all: paginated all-cards browse, no search term required.
+        if (query.browse === "all") {
+          const pageLimit = Math.min(Math.max(Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 60, 1), 100);
+          if (Number.isFinite(parsedOffset) && parsedOffset > MAX_SEARCH_OFFSET) {
+            set.status = 400;
+            return { error: "offset too large", code: "OFFSET_TOO_LARGE" };
+          }
+          const { cards: browseCards, total } = await cardProvider.browseCards({ limit: pageLimit, offset });
+          const finalized = await finalizeMany(browseCards, query.include);
+          return { count: finalized.length, total, offset, limit: pageLimit, cards: finalized };
+        }
+
         const rawQuery = (query.name ?? query.q ?? "").trim();
         const hasStructuredFilter = Boolean(
           query.type?.trim() || query.artist?.trim() || query.rarity?.trim(),
@@ -218,8 +230,9 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         // all cards in set, ordered by collector number. Structured filters
         // count as search input and bypass this branch.
         if (query.set && !rawQuery && !hasStructuredFilter) {
+          const setLimit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 2000;
           const cards = await cardProvider.getCardsBySet(query.set, {
-            limit: limit ?? 2000,
+            limit: setLimit,
           });
           const finalized = await finalizeMany(cards, query.include);
           return { count: finalized.length, cards: finalized };
@@ -267,7 +280,6 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           throw err;
         }
 
-        const parsedOffset = parseInt(query.offset ?? "", 10);
         if (
           Number.isFinite(parsedOffset) &&
           parsedOffset > MAX_SEARCH_OFFSET
@@ -278,8 +290,6 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
             code: "OFFSET_TOO_LARGE",
           };
         }
-        const offset =
-          Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0;
 
         // Pass fuzzy: false only when the caller explicitly opts out, so the
         // default path runs autocomplete scoring instead of exact-only lookup.
@@ -294,6 +304,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           fuzzy: exactOnly ? false : undefined,
           limit: clampedLimit,
           offset,
+          unique: query.unique === "prints" ? true : undefined,
         });
 
         const finalized = await finalizeMany(cards, query.include);
@@ -340,6 +351,8 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
               description: "Pass `false` or `0` to disable fuzzy/autocomplete matching (exact name only).",
             }),
           ),
+          browse: t.Optional(t.String({ description: "Pass `all` to browse all cards without a search query." })),
+          unique: t.Optional(t.String({ description: "Pass `prints` to return all printings without deduplication." })),
           limit: t.Optional(t.String({ description: "Max results per page (default 10, max 100)" })),
           offset: t.Optional(
             t.String({ description: "0-based offset into the ranked result set (default 0)" }),

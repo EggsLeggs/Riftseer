@@ -190,6 +190,8 @@ export interface CardSearchOptions {
   limit?: number;
   /** Skip this many matching cards before returning results (0-based). Default: 0. */
   offset?: number;
+  /** When true, skip deduplication and return all printings. Default: false. */
+  unique?: boolean;
 }
 
 /** Paged name search: `cards` is one page; `total` is the full match count. */

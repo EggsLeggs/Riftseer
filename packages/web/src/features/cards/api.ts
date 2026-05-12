@@ -99,6 +99,10 @@ export interface SearchByNameOptions {
   artist?: string;
   /** Optional explicit rarity filter (`AND r:value`). */
   rarity?: string;
+  /** Set code filter (`AND set:OGN`). Passed as `?set=` URL param. */
+  set?: string;
+  /** When true, skip deduplication and return all printings. */
+  unique?: boolean;
 }
 
 export interface SearchByNameResult {
@@ -163,6 +167,8 @@ export const cardsApi = {
           type: opts.type?.trim() || undefined,
           artist: opts.artist?.trim() || undefined,
           rarity: opts.rarity?.trim() || undefined,
+          set: opts.set?.trim() || undefined,
+          unique: opts.unique ? "prints" : undefined,
         },
         fetch: requestFetchInit(),
       });
@@ -178,6 +184,68 @@ export const cardsApi = {
       handleRequestFailure(err);
     }
   },
+
+  /**
+   * Fetch all cards for a set (all printings, sorted by collector number).
+   * Backed by `GET /api/v1/cards?set=CODE&limit=2000`.
+   */
+  async getSetCards(
+    setCode: string,
+    opts: { includePrices?: boolean } = {},
+  ): Promise<SearchByNameResult> {
+    try {
+      const { data, error, status } = await cardsClient.api.v1.cards.get({
+        query: {
+          set: setCode.toUpperCase(),
+          limit: "2000",
+          include: opts.includePrices ? "prices" : undefined,
+        },
+        fetch: requestFetchInit(),
+      });
+      if (error != null) {
+        throw new CardApiError(`Riftseer API ${status}`, "http", status);
+      }
+      const result = data as { count: number; cards: Card[] };
+      return { count: result.count, cards: result.cards, total: result.count, offset: 0, limit: 2000 };
+    } catch (err) {
+      handleRequestFailure(err);
+    }
+  },
+
+  /**
+   * Browse all cards paginated (no search term required).
+   * Backed by `GET /api/v1/cards?browse=all`.
+   */
+  async browseAll(
+    opts: { limit?: number; offset?: number; includePrices?: boolean } = {},
+  ): Promise<SearchByNameResult> {
+    const limit = Math.min(Math.max(Math.floor(opts.limit ?? 60), 1), MAX_SEARCH_LIMIT);
+    const offset = Math.max(0, Math.floor(opts.offset ?? 0));
+    try {
+      const { data, error, status } = await cardsClient.api.v1.cards.get({
+        query: {
+          browse: "all",
+          limit: String(limit),
+          offset: String(offset),
+          include: opts.includePrices ? "prices" : undefined,
+        },
+        fetch: requestFetchInit(),
+      });
+      if (error != null) {
+        throw new CardApiError(`Riftseer API ${status}`, "http", status);
+      }
+      return data as SearchByNameResult;
+    } catch (err) {
+      handleRequestFailure(err);
+    }
+  },
+
+  /** Fetch a random card. Returns null when no cards exist. */
+  async getRandom(): Promise<Card | null> {
+    return getJsonFromTreaty(() =>
+      cardsClient.api.v1.cards.random.get({ fetch: requestFetchInit() }),
+    );
+  },
 };
 
 /** TanStack Query keys for card fetches. */
@@ -188,7 +256,7 @@ export const cardsQueryKeys = {
     limit: number,
     offset: number,
     includePrices = false,
-    extras: Pick<SearchByNameOptions, "type" | "artist" | "rarity"> = {},
+    extras: Pick<SearchByNameOptions, "type" | "artist" | "rarity" | "set" | "unique"> = {},
   ) =>
     [
       "cards",
@@ -200,5 +268,11 @@ export const cardsQueryKeys = {
       extras.type ?? "",
       extras.artist ?? "",
       extras.rarity ?? "",
+      extras.set ?? "",
+      extras.unique ?? false,
     ] as const,
+  setCards: (setCode: string, includePrices = false) =>
+    ["cards", "set", setCode, includePrices] as const,
+  browse: (limit: number, offset: number, includePrices = false) =>
+    ["cards", "browse", limit, offset, includePrices] as const,
 };

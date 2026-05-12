@@ -106,6 +106,10 @@ export class StubProvider implements CardDataProvider {
     return STUB_CARD;
   }
 
+  async browseCards(_opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }> {
+    return { cards: [STUB_CARD], total: 1 };
+  }
+
   getStats() {
     return { lastRefresh: 0, cardCount: 1 };
   }

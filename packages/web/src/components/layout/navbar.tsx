@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { UserNav } from "./user-nav";
 import { CardSearchTrigger } from "./card-search-trigger";
 import { Button } from "@/components/ui/button";
+import { CardsNavMenu } from "./cards-nav-menu";
 
 export async function Navbar() {
   const session = await getSession();
@@ -18,9 +19,7 @@ export async function Navbar() {
           <CardSearchTrigger className="w-full max-w-xs" />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/search">Cards</Link>
-          </Button>
+          <CardsNavMenu />
           <Button variant="ghost" size="sm" asChild>
             <Link href="/decks">Decks</Link>
           </Button>

@@ -17,7 +17,7 @@ export function SearchSyntaxView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Card search syntax</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 10 May 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 12 May 2026</p>
 
         <div className="mb-6">
           <SubHeading>Overview</SubHeading>
@@ -97,6 +97,51 @@ export function SearchSyntaxView() {
           <Text>
             Group conditions when mixing AND and OR. Example:{" "}
             <Code>t:unit (a:lee or a:kim)</Code>.
+          </Text>
+        </div>
+
+        <div className="mb-6">
+          <SubHeading>Set filter</SubHeading>
+          <Text>
+            Use <Code>set:value</Code> to restrict results to a specific set by its code. The value is matched
+            case-insensitively. Example: <Code>set:OGN t:unit</Code> finds units from the Origins set.
+          </Text>
+        </div>
+
+        <div className="mb-6">
+          <SubHeading>All printings</SubHeading>
+          <Text>
+            By default, results are deduplicated to show one printing per card. To include all art variants and
+            reprints, add <Code>unique:prints</Code> or the shorthand <Code>++</Code> anywhere in the query.
+          </Text>
+          <Text>
+            Examples: <Code>poro unique:prints</Code>, <Code>poro ++</Code>.
+          </Text>
+        </div>
+
+        <div className="mb-6">
+          <SubHeading>Ordering</SubHeading>
+          <Text>
+            Add <Code>order:field</Code> to sort results client-side. Combine with{" "}
+            <Code>direction:asc</Code> (default) or <Code>direction:desc</Code> to control the direction. Null
+            values always sort last regardless of direction.
+          </Text>
+          <Text>Valid order fields:</Text>
+          <UnorderedList>
+            <ListItem><Code>collector</Code>: collector number within the set (default when browsing a set)</ListItem>
+            <ListItem><Code>energy</Code>: card energy cost</ListItem>
+            <ListItem><Code>power</Code>: card power value</ListItem>
+            <ListItem><Code>might</Code>: card might value</ListItem>
+            <ListItem><Code>rarity</Code>: print rarity</ListItem>
+            <ListItem><Code>artist</Code>: illustrator name</ListItem>
+            <ListItem><Code>usd</Code>: TCGPlayer USD price</ListItem>
+            <ListItem><Code>eur</Code>: Cardmarket EUR price</ListItem>
+            <ListItem><Code>domain</Code>: primary domain</ListItem>
+            <ListItem><Code>set</Code>: set code</ListItem>
+          </UnorderedList>
+          <Text>
+            Example: <Code>poro order:energy direction:desc</Code> shows poro cards sorted by energy, highest
+            first.
           </Text>
         </div>
 

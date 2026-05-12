@@ -98,6 +98,12 @@ export interface CardDataProvider {
   getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<Card[]>;
 
   /**
+   * Return all cards paginated, ordered by release date then collector number.
+   * No deduplication — all printings are included.
+   */
+  browseCards(opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }>;
+
+  /**
    * Return a single random card from the provider's index.
    * Returns null if the index is empty.
    */

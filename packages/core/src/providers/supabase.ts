@@ -406,10 +406,11 @@ export class SupabaseCardProvider implements CardDataProvider {
     const { data, error } = await q.limit(exactFetchCap);
     if (error) throw new Error(`exactNameSearch failed: ${error.message}`);
     if (!data || data.length === 0) return { cards: [], total: 0 };
-    const deduped = deduplicateRowsAll(data as DBCardRow[]);
+    const rows = data as DBCardRow[];
+    const result = opts.unique ? rows : deduplicateRowsAll(rows);
     return {
-      cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
-      total: deduped.length,
+      cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
+      total: result.length,
     };
   }
 
@@ -447,10 +448,11 @@ export class SupabaseCardProvider implements CardDataProvider {
     if (exactError)
       throw new Error(`legacyTextSearch exact failed: ${exactError.message}`);
     if (exactData && exactData.length > 0) {
-      const deduped = deduplicateRowsAll(exactData as DBCardRow[]);
+      const rows = exactData as DBCardRow[];
+      const result = opts.unique ? rows : deduplicateRowsAll(rows);
       return {
-        cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
-        total: deduped.length,
+        cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
+        total: result.length,
       };
     }
 
@@ -511,10 +513,10 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
 
     const orderedRows = await this.hydrateRowsInOrder(topIds);
-    const deduped = deduplicateRowsAll(orderedRows);
+    const result = opts.unique ? orderedRows : deduplicateRowsAll(orderedRows);
     return {
-      cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
-      total: totalFromCount ?? deduped.length,
+      cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
+      total: totalFromCount ?? result.length,
     };
   }
 
@@ -573,13 +575,13 @@ export class SupabaseCardProvider implements CardDataProvider {
         ...tail,
       ];
     }
-    const deduped = deduplicateRowsAll(ordered);
+    const result = opts.unique ? ordered : deduplicateRowsAll(ordered);
     // Pagination total matches other search paths: one row per base name after
-    // deduplicateRowsAll (`deduped`), not `payload.total` from the RPC (raw SQL
+    // deduplicateRowsAll (`result`), not `payload.total` from the RPC (raw SQL
     // row count before variant merging). Slice/`dbRowToCard` use the same list.
     return {
-      cards: deduped.slice(offset, offset + pageLimit).map(dbRowToCard),
-      total: deduped.length,
+      cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
+      total: result.length,
     };
   }
 
@@ -725,6 +727,22 @@ export class SupabaseCardProvider implements CardDataProvider {
     const cards = (data as DBCardRow[]).map(dbRowToCard);
     cards.sort(sortCardsByCollector);
     return cards.slice(0, limit);
+  }
+
+  async browseCards(opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }> {
+    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 60)), 1), 100);
+    const offset = Math.max(0, Math.floor(Number(opts.offset ?? 0)));
+
+    const supabase = getSupabaseClient();
+    const { data, count, error } = await supabase
+      .from("cards")
+      .select(CARD_SELECT, { count: "exact" })
+      .order("released_at", { ascending: true, nullsFirst: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw new Error(`browseCards failed: ${error.message}`);
+    const cards = ((data ?? []) as DBCardRow[]).map(dbRowToCard);
+    return { cards, total: count ?? 0 };
   }
 
   async getRandomCard(): Promise<Card | null> {
