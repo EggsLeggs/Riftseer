@@ -41,11 +41,16 @@ export async function setSessionCookies(session: {
   jar.set("rs_access_token", session.access_token, { ...COOKIE_OPTS, httpOnly: true, maxAge: ACCESS_MAX_AGE });
   jar.set("rs_refresh_token", session.refresh_token, { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE });
   jar.set("rs_expires_at", String(expiresAt), { ...COOKIE_OPTS, httpOnly: false, maxAge: REFRESH_MAX_AGE });
-  jar.set("rs_user", JSON.stringify({ id: session.user.id, email: session.user.email }), {
-    ...COOKIE_OPTS,
-    httpOnly: true,
-    maxAge: REFRESH_MAX_AGE,
-  });
+  jar.set(
+    "rs_user",
+    JSON.stringify({
+      id: session.user.id,
+      email: session.user.email,
+      handle: session.user.handle,
+      username: session.user.username,
+    }),
+    { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE },
+  );
 }
 
 export async function clearSessionCookies() {

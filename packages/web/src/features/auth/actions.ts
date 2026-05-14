@@ -39,7 +39,11 @@ export async function loginAction(_prev: unknown, formData: FormData) {
 export async function registerAction(_prev: unknown, formData: FormData) {
   const email = str(formData, "email");
   const password = str(formData, "password");
+  const username = str(formData, "username");
+  const handle = str(formData, "handle")?.toLowerCase() ?? null;
   if (!email || !password) return { error: "Email and password are required" };
+  if (!username) return { error: "Display name is required" };
+  if (!handle) return { error: "Handle is required" };
 
   const acceptedRaw = formData.get("accepted_terms");
   const acceptedTerms = acceptedRaw === "on" || acceptedRaw === "true";
@@ -54,11 +58,16 @@ export async function registerAction(_prev: unknown, formData: FormData) {
   const { data, error, status } = await api.api.v1.auth.register.post({
     email,
     password,
+    username,
+    handle,
     accepted_terms: true,
     options: { redirect_to: `${env.NEXT_PUBLIC_APP_URL}/auth/callback` },
   });
 
   if (error) {
+    if (status === 409) {
+      return { error: "That handle is already taken. Please choose another." };
+    }
     return { error: (error.value as { error?: string })?.error ?? "Registration failed" };
   }
 
@@ -70,7 +79,7 @@ export async function registerAction(_prev: unknown, formData: FormData) {
     access_token: string;
     refresh_token: string;
     expires_in: number;
-    user: { id: string; email?: string; created_at: string };
+    user: { id: string; email?: string; created_at: string; handle?: string; username?: string };
   };
 
   await setSessionCookies({

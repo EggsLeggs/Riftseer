@@ -30,7 +30,7 @@ export async function Navbar() {
             </Link>
           </Button>
           {session ? (
-            <UserNav email={session.user.email} />
+            <UserNav handle={session.user.handle} />
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>

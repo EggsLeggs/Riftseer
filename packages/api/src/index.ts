@@ -42,6 +42,7 @@ import { cardsRoutes } from "./routes/cards";
 import { setsRoutes } from "./routes/sets";
 import { decksRoutes } from "./routes/decks";
 import { authRoutes } from "./routes/auth";
+import { usersRoutes } from "./routes/users";
 
 // ─── Singletons ───────────────────────────────────────────────────────────────
 // CF Workers forbid async I/O (fetch) in global scope — only inside handlers.
@@ -76,7 +77,7 @@ function ensureWarmedUp(): Promise<void> {
 
 export const app = new Elysia({ adapter: CloudflareAdapter })
   .onBeforeHandle(async ({ path, set }) => {
-    if (path === "/api/v1/health" || path.startsWith("/api/v1/auth/")) return;
+    if (path === "/api/v1/health" || path.startsWith("/api/v1/auth/") || path.startsWith("/api/v1/users/")) return;
     try {
       await ensureWarmedUp();
     } catch {
@@ -87,7 +88,7 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
   .use(
     cors({
       origin: true, // Reflect any Origin — public API, browser requests from any site are allowed
-      methods: ["GET", "HEAD", "POST", "OPTIONS"],
+      methods: ["GET", "HEAD", "POST", "DELETE", "OPTIONS"],
     }),
   )
   .use(
@@ -96,7 +97,8 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
       .use(decksRoutes(deckProvider))
-      .use(authRoutes()),
+      .use(authRoutes())
+      .use(usersRoutes()),
   )
   .compile();
 

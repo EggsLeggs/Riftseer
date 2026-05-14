@@ -13,6 +13,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { registerAction } from "@/features/auth/actions";
 
 const schema = z.object({
+  username: z.string().min(1, { message: "Display name is required" }).max(50),
+  handle: z
+    .string()
+    .min(3, { message: "Handle must be at least 3 characters" })
+    .max(30, { message: "Handle must be 30 characters or fewer" })
+    .regex(/^[a-z0-9_]+$/, { message: "Only lowercase letters, numbers, and underscores" })
+    .transform((v) => v.toLowerCase()),
   email: z.string().email({ message: "Enter a valid email" }),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }),
 });
@@ -77,6 +84,37 @@ export function RegisterView() {
               </Link>
               .
             </label>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="username">Display name</Label>
+            <Input
+              id="username"
+              type="text"
+              autoComplete="name"
+              aria-invalid={!!errors.username}
+              {...register("username")}
+            />
+            {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="handle">Username</Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted-foreground text-sm select-none">
+                @
+              </span>
+              <Input
+                id="handle"
+                type="text"
+                autoComplete="username"
+                className="pl-7"
+                aria-invalid={!!errors.handle}
+                {...register("handle")}
+              />
+            </div>
+            {errors.handle
+              ? <p className="text-xs text-destructive">{errors.handle.message}</p>
+              : <p className="text-xs text-muted-foreground">Your unique handle — letters, numbers, underscores</p>
+            }
           </div>
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>

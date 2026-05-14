@@ -12,6 +12,8 @@ const SessionSchema = t.Object({
     id: t.String({ description: "User UUID" }),
     email: t.Optional(t.String()),
     created_at: t.String(),
+    handle: t.Optional(t.String({ description: "Unique @handle" })),
+    username: t.Optional(t.String({ description: "Display name" })),
   }),
 });
 
@@ -33,7 +35,7 @@ export function authRoutes() {
       .post(
         "/auth/register",
         async ({ body, set }) => {
-          if (!authClient) {
+          if (!authClient || !authAdminClient) {
             set.status = 503;
             return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
@@ -42,6 +44,15 @@ export function authRoutes() {
             return {
               error: "You must accept the Terms of Service and Privacy Policy.",
               code: "TERMS_REQUIRED",
+            };
+          }
+
+          const handle = body.handle.toLowerCase().trim();
+          if (!/^[a-z0-9_]{3,30}$/.test(handle)) {
+            set.status = 400;
+            return {
+              error: "Handle must be 3–30 characters and contain only lowercase letters, numbers, and underscores.",
+              code: "INVALID_HANDLE",
             };
           }
 
@@ -69,7 +80,7 @@ export function authRoutes() {
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
 
-          if (data.user && authAdminClient) {
+          if (data.user) {
             const { error: adminError } = await authAdminClient.auth.admin.updateUserById(data.user.id, {
               app_metadata: {
                 ...consentMeta,
@@ -88,12 +99,23 @@ export function authRoutes() {
                 code: "CONSENT_RECORD_FAILED",
               };
             }
-          } else if (data.user && !authAdminClient) {
-            console.warn(
-              "[auth/register] authAdminClient is not configured: app_metadata could not be written; " +
-                "consent was recorded only in user_metadata (editable client-side). user id:",
-              data.user.id,
-            );
+
+            const { error: profileError } = await authAdminClient
+              .from("profiles")
+              .insert({ id: data.user.id, username: body.username.trim(), handle });
+            if (profileError) {
+              console.error("[auth/register] profile insert failed:", profileError.message);
+              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(data.user.id);
+              if (deleteError) {
+                console.error("[auth/register] rollback deleteUser failed:", deleteError.message);
+              }
+              if (profileError.code === "23505") {
+                set.status = 409;
+                return { error: "That handle is already taken.", code: "HANDLE_TAKEN" };
+              }
+              set.status = 500;
+              return { error: "Registration could not be completed. Please try again.", code: "PROFILE_CREATE_FAILED" };
+            }
           }
 
           if (!data.session) {
@@ -112,6 +134,8 @@ export function authRoutes() {
               id: data.user!.id,
               email: data.user!.email,
               created_at: data.user!.created_at,
+              handle,
+              username: body.username.trim(),
             },
           };
         },
@@ -122,6 +146,8 @@ export function authRoutes() {
             accepted_terms: t.Boolean({
               description: "Must be true — records acceptance of Terms and Privacy Policy at signup.",
             }),
+            username: t.String({ minLength: 1, maxLength: 50, description: "Display name (non-unique)" }),
+            handle: t.String({ minLength: 3, maxLength: 30, description: "Unique @handle (lowercase letters, numbers, underscores)" }),
             options: t.Optional(t.Object({
               redirect_to: t.Optional(t.String({ description: "URL to redirect to after email confirmation. Pass window.location.origin + '/auth/callback'." })),
             })),
@@ -130,6 +156,7 @@ export function authRoutes() {
             200: SessionSchema,
             202: ConfirmationSchema,
             400: ErrorSchema,
+            409: ErrorSchema,
             500: ErrorSchema,
             503: ErrorSchema,
           },
@@ -159,6 +186,17 @@ export function authRoutes() {
             set.status = error.status === 401 ? 401 : (error.status && error.status >= 500) ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
+
+          let profile: { handle: string; username: string } | null = null;
+          if (authAdminClient) {
+            const { data: prof } = await authAdminClient
+              .from("profiles")
+              .select("handle, username")
+              .eq("id", data.user.id)
+              .single();
+            profile = prof;
+          }
+
           return {
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
@@ -168,6 +206,8 @@ export function authRoutes() {
               id: data.user.id,
               email: data.user.email,
               created_at: data.user.created_at,
+              handle: profile?.handle ?? undefined,
+              username: profile?.username ?? undefined,
             },
           };
         },
