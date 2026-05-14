@@ -16,7 +16,7 @@ export function ProfileView({ profile, isOwnProfile }: ProfileViewProps) {
   const initials = profile.username.slice(0, 2).toUpperCase();
 
   return (
-    <div className="container max-w-2xl py-10">
+    <div className="container py-8">
       <div className="flex items-start gap-6">
         <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-muted text-lg font-semibold select-none">
           {initials}

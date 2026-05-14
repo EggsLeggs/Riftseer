@@ -28,13 +28,14 @@ export function UserNav({ handle }: UserNavProps) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {handle && (
-          <>
-            <DropdownMenuItem asChild>
-              <Link href={`/u/${handle}`}>Profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
+          <DropdownMenuItem asChild>
+            <Link href={`/u/${handle}`}>Profile</Link>
+          </DropdownMenuItem>
         )}
+        <DropdownMenuItem asChild>
+          <Link href="/settings">Settings</Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={() => startTransition(() => logoutAction())}
           disabled={pending}
