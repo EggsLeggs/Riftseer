@@ -9,7 +9,7 @@
     "kysely": "0.28.17"
   },
   "scripts": {
-    "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/frontend' dev & wait",
+    "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait",
     "dev:api": "cd packages/api && wrangler dev",
     "dev:frontend": "cd packages/frontend && bun run dev",
     "dev:raycast": "cd packages/raycast-extension && npm run dev",

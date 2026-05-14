@@ -1,5 +1,42 @@
 import React from "react";
-import { normalizeCardTextLayout, TOKEN_ICON_MAP, TOKEN_REGEX } from "@riftseer/core/icons";
+import { TOKEN_ICON_MAP, TOKEN_REGEX } from "@riftseer/types/icons";
+
+function normalizeCardTextLayout(text: string, paragraphBreak = "\n"): string {
+  let normalized = text.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  let depth = 0;
+  let result = "";
+  let pendingSpace = false;
+  for (let i = 0; i < normalized.length; i++) {
+    const ch = normalized[i];
+    if (ch === "(") { if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " "; pendingSpace = false; depth++; result += ch; continue; }
+    if (ch === ")") { pendingSpace = false; if (depth > 0) depth--; result += ch; continue; }
+    if (depth > 0 && /\s/.test(ch)) { pendingSpace = true; continue; }
+    if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+    pendingSpace = false;
+    result += ch;
+  }
+  if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+  normalized = result
+    .replace(/_ \(/g, "_(")
+    .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
+    .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
+  const depthMap = new Uint16Array(normalized.length + 1);
+  let d = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    if (normalized[i] === "(") d++;
+    else if (normalized[i] === ")" && d > 0) d--;
+    depthMap[i + 1] = d;
+  }
+  normalized = normalized.replace(
+    /([.)—])(\s*)(?=(?:[A-Z[]|:rb_))/g,
+    (match: string, punct: string, spacing: string, index: number) => {
+      const depthAfter = punct === ")" ? depthMap[index + 1] ?? 0 : depthMap[index] ?? 0;
+      if (depthAfter > 0 || spacing.length > 0) return match;
+      return `${punct}${paragraphBreak}`;
+    },
+  );
+  return normalized;
+}
 
 interface Props {
   text: string;
