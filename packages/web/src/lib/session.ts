@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import type { Session, SessionUser } from "@/features/auth/types";
 import { env } from "@/lib/env";
 
@@ -51,6 +52,15 @@ export async function setSessionCookies(session: {
     }),
     { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE },
   );
+}
+
+export async function requireAuth(next?: string): Promise<Session> {
+  const session = await getSession();
+  if (!session) {
+    const params = next ? `?next=${encodeURIComponent(next)}` : "";
+    redirect(`/auth/login${params}`);
+  }
+  return session;
 }
 
 export async function clearSessionCookies() {

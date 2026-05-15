@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Star, Users } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { FollowButton } from "@/components/profile/follow-button";
 import type { ProfileData } from "@/features/profile/api";
@@ -25,7 +26,21 @@ export function ProfileView({ profile, isOwnProfile }: ProfileViewProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3">
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-semibold leading-tight">{profile.username}</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="truncate text-xl font-semibold leading-tight">{profile.username}</h1>
+                {profile.is_supporter && (
+                  <span className="flex items-center gap-1 text-xs font-medium text-violet-500 shrink-0">
+                    <Star className="size-3 fill-current" />
+                    Supporter
+                  </span>
+                )}
+                {!profile.is_supporter && profile.is_member && (
+                  <span className="flex items-center gap-1 text-xs font-medium text-blue-500 shrink-0">
+                    <Users className="size-3" />
+                    Member
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">@{profile.handle}</p>
             </div>
             {!isOwnProfile && (

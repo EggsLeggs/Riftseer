@@ -8,6 +8,8 @@ export interface ProfileData {
   following_count: number;
   created_at: string;
   is_following?: boolean;
+  is_supporter: boolean;
+  is_member: boolean;
 }
 
 export async function getProfile(handle: string, accessToken?: string): Promise<ProfileData | null> {

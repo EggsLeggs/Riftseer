@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Backpack } from "lucide-react";
 import { getSession } from "@/lib/session";
+import { metafyApi } from "@/features/metafy/api";
 import { UserNav } from "./user-nav";
 import { CardSearchTrigger } from "./card-search-trigger";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,14 @@ import { CardsNavMenu } from "./cards-nav-menu";
 
 export async function Navbar() {
   const session = await getSession();
+
+  let isSupporter = false;
+  let isMember = false;
+  if (session) {
+    const metafy = await metafyApi.getStatus(session.accessToken);
+    isSupporter = metafy?.linked === true && metafy.is_supporter;
+    isMember = metafy?.linked === true && metafy.is_member;
+  }
 
   return (
     <header className="border-b border-border">
@@ -30,7 +39,7 @@ export async function Navbar() {
             </Link>
           </Button>
           {session ? (
-            <UserNav handle={session.user.handle} />
+            <UserNav handle={session.user.handle} isSupporter={isSupporter} isMember={isMember} />
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>

@@ -12,3 +12,13 @@ UPSTASH_REDIS_REST_TOKEN=
 
 # Optional — set to your Impact.com publisher ID to enable TCGPlayer affiliate links
 TCGPLAYER_AFFILIATE_ID=
+
+# Metafy OAuth — https://metafy.gg/account/settings/developers
+# Authorization URL: https://metafy.gg/auth/authorize
+# Token URL: https://metafy.gg/irk/oauth/token
+METAFY_CLIENT_ID=
+METAFY_CLIENT_SECRET=
+METAFY_COMMUNITY_ID=
+METAFY_REDIRECT_URI=http://localhost:3000/auth/metafy/callback
+# Optional — only available to Metafy Partners (set in Metafy account settings)
+METAFY_WEBHOOK_SECRET=

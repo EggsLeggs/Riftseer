@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
+import { Star, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,15 +15,19 @@ import { logoutAction } from "@/features/auth/actions";
 
 interface UserNavProps {
   handle?: string;
+  isSupporter?: boolean;
+  isMember?: boolean;
 }
 
-export function UserNav({ handle }: UserNavProps) {
+export function UserNav({ handle, isSupporter, isMember }: UserNavProps) {
   const [pending, startTransition] = useTransition();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm">
+        <Button variant="ghost" size="sm" className="gap-1.5">
+          {isSupporter && <Star className="size-3 fill-violet-500 text-violet-500" />}
+          {!isSupporter && isMember && <Users className="size-3 text-blue-500" />}
           {handle ? `@${handle}` : "Account"}
         </Button>
       </DropdownMenuTrigger>

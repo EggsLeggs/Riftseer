@@ -237,6 +237,31 @@ Four cookies hold session state (set/read/cleared in `src/lib/session.ts`, serve
 3. `app/auth/callback/page.tsx` (client component) parses the hash, stores the token in `sessionStorage` as `rs_recovery_token`, and redirects to `/auth/reset-password`
 4. `resetPasswordAction` reads the token from the form and calls `/api/v1/auth/reset-password`
 
+### Protecting routes
+
+Use `requireAuth(next?: string)` from `src/lib/session.ts` — never use middleware for this.
+
+**Protect an entire route subtree** — add a `layout.tsx` that calls `requireAuth`:
+```ts
+// app/(site)/settings/layout.tsx
+import { requireAuth } from "@/lib/session";
+
+export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
+  await requireAuth("/settings");
+  return <>{children}</>;
+}
+```
+
+**Protect a single page** — call `requireAuth` at the top of the page function:
+```ts
+export default async function SomePage() {
+  const session = await requireAuth("/some/path");
+  // session is typed Session — use it if you need user data
+}
+```
+
+`requireAuth` redirects unauthenticated users to `/auth/login?next=<path>`. After login, `loginAction` reads `next` and redirects there. Do not use `proxy.ts` or middleware for auth gating — use this pattern.
+
 ### Supabase callback hash errors
 Supabase can redirect to the app root with errors in the URL hash (e.g. `/#error=access_denied&error_description=...`). Hash fragments are client-side only — the proxy cannot see them. The callback page (`app/auth/callback/page.tsx`) handles error hashes when Supabase redirects there, but errors landing on `/` are currently unhandled. **TODO:** add a client component on the root page to detect and surface these errors.
 

@@ -11,6 +11,8 @@ const ProfileSchema = t.Object({
   following_count: t.Number(),
   created_at: t.String(),
   is_following: t.Optional(t.Boolean()),
+  is_supporter: t.Boolean(),
+  is_member: t.Boolean(),
 });
 
 const ProfileStubSchema = t.Object({
@@ -79,6 +81,13 @@ export function usersRoutes() {
             }
           }
 
+          const { data: linked } = await authAdminClient
+            .from("linked_accounts")
+            .select("is_supporter, is_member")
+            .eq("user_id", profile.id)
+            .eq("provider", "metafy")
+            .maybeSingle();
+
           return {
             id: profile.id as string,
             handle: profile.handle as string,
@@ -86,6 +95,8 @@ export function usersRoutes() {
             follower_count: followerCount ?? 0,
             following_count: followingCount ?? 0,
             created_at: profile.created_at as string,
+            is_supporter: (linked?.is_supporter as boolean | null) ?? false,
+            is_member: (linked?.is_member as boolean | null) ?? false,
             ...(isFollowing !== undefined ? { is_following: isFollowing } : {}),
           };
         },

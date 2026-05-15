@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import { authAdminClient, authClient, supabaseUrl, supabaseAnonKey } from "../lib/supabase";
 import { authPlugin } from "../plugins/auth";
 import { ErrorSchema } from "../schemas";
+import { refreshMetafySupporterStatus } from "../lib/metafy";
 
 const SessionSchema = t.Object({
   access_token: t.String({ description: "JWT access token (short-lived)" }),
@@ -197,7 +198,7 @@ export function authRoutes() {
             profile = prof;
           }
 
-          return {
+          const result = {
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
             expires_in: data.session.expires_in,
@@ -210,6 +211,33 @@ export function authRoutes() {
               username: profile?.username ?? undefined,
             },
           };
+
+          // Best-effort: refresh Metafy supporter status in the background on login.
+          // Does not block or affect the login response.
+          const communityId = process.env.METAFY_COMMUNITY_ID;
+          if (authAdminClient && communityId) {
+            void (async () => {
+              try {
+                const { data: linked } = await authAdminClient
+                  .from("linked_accounts")
+                  .select("access_token")
+                  .eq("user_id", data.user.id)
+                  .eq("provider", "metafy")
+                  .maybeSingle();
+                if (linked?.access_token) {
+                  await refreshMetafySupporterStatus(
+                    data.user.id,
+                    linked.access_token as string,
+                    communityId,
+                  );
+                }
+              } catch {
+                // never fail login due to Metafy status check
+              }
+            })();
+          }
+
+          return result;
         },
         {
           body: t.Object({
