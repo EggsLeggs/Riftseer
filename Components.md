@@ -14,22 +14,22 @@ Invisible TTS objects that define hand zones and scripting regions.
 | 360dc1, 640235, a11f20, 7295a1 | HandTrigger ×4 (seats 1–4) |
 | b798d6, 350f7f, 993f89, bb8c76 | HandTrigger ×4 (seats 5–8) |
 
-The ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes the deck and trash GUIDs; renaming or deleting them breaks Draw/Mill/Scry.
+The ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes the `mainDeckZone` and `trash` GUIDs; renaming or deleting them breaks Draw/Mill/Predict.
 
 | GUID | Role | Seats |
 |------|------|-------|
-| 166036 | deck (libraryZone) | White |
-| 2365d0 | deck (libraryZone) | Red |
-| 033b34 | deck (libraryZone) | Yellow |
-| c04462 | deck (libraryZone) | Blue |
-| 68549d | trash (graveyard) | White |
-| 07dd80 | trash (graveyard) | Red |
-| 8b439a | trash (graveyard) | Yellow |
-| debc40 | trash (graveyard) | Blue |
-| bf0002 | battlefield | White |
-| bf0001 | battlefield | Red |
-| bf0003 | battlefield | Yellow |
-| bf0004 | battlefield | Blue |
+| 166036 | main deck (mainDeckZone) | White |
+| 2365d0 | main deck (mainDeckZone) | Red |
+| 033b34 | main deck (mainDeckZone) | Yellow |
+| c04462 | main deck (mainDeckZone) | Blue |
+| 68549d | trash | White |
+| 07dd80 | trash | Red |
+| 8b439a | trash | Yellow |
+| debc40 | trash | Blue |
+| bf0002 | banished zone | White |
+| bf0001 | banished zone | Red |
+| bf0003 | banished zone | Yellow |
+| bf0004 | banished zone | Blue |
 | f1e001 | legend | White |
 | 1e9001 | legend | Red |
 | e1e001 | legend | Yellow |
@@ -67,10 +67,10 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 
 ## Per-player UI — 4× symmetrical sets
 
-> **Needs Riftbound layout work.** Zone names (Untap/Scry/Mill) and the
-> overall action buttons will need updating for Riftbound's turn structure.
-> The infrastructure (life trackers, hand counters, timers, highlight mats,
-> reveal) is reusable as-is. Mulligan rules updated (4-card friendly only).
+> **Needs Riftbound layout work.** The Mill button label and keybind broadcasts
+> still use upstream terminology. The infrastructure (life trackers, hand counters,
+> timers, highlight mats, reveal) is reusable as-is. Mulligan rules updated
+> (4-card friendly only). Ready/Predict/Draw buttons renamed.
 
 | GUID | Object |
 |------|--------|
@@ -81,9 +81,9 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 | 809133, 29f427, 57b8f3, 9df6a3 | Timer ×4 |
 | 5cb175, 40b95f, a42baa, d1ae7b | Highlight Mat ×4 |
 | c53ac6, 3b07ae, 47645d, e0a3bc | Mulligan tile ×4 |
-| 86e447, 18fb5d, e2f7ae, 1f3e4a | Untap button ×4 |
+| 86e447, 18fb5d, e2f7ae, 1f3e4a | Ready button ×4 |
 | 885f49, 26775a, b49d50, 305c12 | Draw button ×4 |
-| ffa67c, 614515, 4e19c8, 8a4c8b | Scry button ×4 |
+| ffa67c, 614515, 4e19c8, 8a4c8b | Predict button ×4 |
 | da5d0d, 57914a, d06889, 67b4a5 | Mill button ×4 |
 | d67eb4, 0ad181, 59ab68, c489e1 | Reveal button ×4 |
 
@@ -101,6 +101,7 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 | b02684, 7eeb77 | Text + Counter bags ×2 |
 | 855d09, 195243 | Notecard bags ×2 |
 | 3c7ad3, 82e64d | Drop-On-Card Counter bags ×2 |
+| 3cba4d/30f3c2/94b67a, bfceec/30f3c2/e6f47f | Experience Counter bags ×2 — re-added from legacy side-table counter pile template; converted to plain custom-card objects using Riftbound experience front/back art |
 
 ---
 
@@ -110,7 +111,7 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 |------|--------|------|
 | b653d2, 05b07c | Turn Skipper Puck ×2 | |
 | cafe01, cafe02 | Turn Order card ×2 | Updated for Riftbound (new face/back art, unlocked; legacy GUIDs: aea3f4, 633ed3) |
-| ~~dc2d88~~ | ~~Smart Mulligan~~ | Deleted — toggled MTG-specific land-check logic removed from `global.lua`. |
+| ~~dc2d88~~ | ~~Smart Mulligan~~ | Deleted — toggled legacy land-check logic removed from `global.lua`. |
 
 ---
 
@@ -172,12 +173,12 @@ Components fully rewritten for Riftbound and no longer pending migration.
 |------|--------|
 | 80c03d | Riftbound Card Importer — API handler; do not move or delete |
 | 25dbaf | Riftbound Deck Loader — companion to Card Importer |
-| c91a72, f4d8be | Riftbound Deck Loader ×2 (infinite bag) — overhauled for Riftbound; MTG auto-update removed (legacy GUIDs: 5aebeb, 3ede22) |
-| 7ae211/be93f0, daebb2/8e1f05, b991d5/a90926, 887dd2/63e4e1, 52e44b/a7dc6e, 389c4d/2c49c6 (set 1) + 4783af, cdbccc, 220d2f, 1c4a59, aeeb11, cd8bb6 (set 2) | Domain Counter bags ×12 — retextured and relabeled from MTG mana colours to Riftbound domains: Calm, Body, Fury, Chaos, Mind, Order |
+| c91a72, f4d8be | Riftbound Deck Loader ×2 (infinite bag) — overhauled for Riftbound; upstream auto-update removed (legacy GUIDs: 5aebeb, 3ede22) |
+| 7ae211/be93f0, daebb2/8e1f05, b991d5/a90926, 887dd2/63e4e1, 52e44b/a7dc6e, 389c4d/2c49c6 (set 1) + 4783af, cdbccc, 220d2f, 1c4a59, aeeb11, cd8bb6 (set 2) | Domain Counter bags ×12 — retextured and relabeled from upstream mana colours to Riftbound domains: Calm, Body, Fury, Chaos, Mind, Order |
 
 ### Keyword tokens
 
-MTG keyword tokens (Defender, Flying, Hexproof, etc.). Keep the infinite bag
+Legacy keyword tokens (Defender, Flying, Hexproof, etc.). Keep the infinite bag
 + token infrastructure; replace artwork and labels with Riftbound status
 keywords once the keyword set is known.
 
@@ -195,21 +196,21 @@ Two full sets (one per table half).
 
 | Objects |
 |---------|
-| Suspend Counter ×2 sets — still labelled as MTG suspend; retexture/relabel for Riftbound if needed |
+| Suspend Counter ×2 sets — still labelled as legacy suspend; retexture/relabel for Riftbound if needed |
 
 ### πKeywords (ae12d3)
 
-TyrantNomad keyword reference popup. Currently shows MTG keyword definitions
+TyrantNomad keyword reference popup. Currently shows legacy keyword definitions
 on right-click. Update the keyword list and definitions to match Riftbound's
 keyword set.
 
 ### Chat Commands tile (7b59f7)
 
-Currently lists MTG-specific chat commands. Update to document Riftbound
+Currently lists legacy chat commands. Update to document Riftbound
 chat commands.
 
 ### Table Instructions tile (e40450)
 
-Currently shows MTG rules and setup instructions. Rewrite for Riftbound.
+Currently shows legacy rules and setup instructions. Rewrite for Riftbound.
 The × button that removes table clutter will need its `unnecessaryStuff`
 GUID list updated as more objects are removed.
