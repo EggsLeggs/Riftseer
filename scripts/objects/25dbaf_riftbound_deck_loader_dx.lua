@@ -68,6 +68,15 @@ local function printError(str, pc)
 	lockSelf(false)
 end
 
+-- Non-fatal warning: prints in orange-red but does NOT unlock the importer.
+local function printWarn(str, pc)
+	if pc then
+		printToColor(str, pc, {r=1, g=0.4, b=0})
+	else
+		printToAll(str, {r=1, g=0.4, b=0})
+	end
+end
+
 local function printInfo(str, pc)
 	if pc then
 		printToColor(str, pc)
@@ -300,8 +309,10 @@ local function spawnDeckIfAny(decklist, options)
 		tryNext()
 	end
 
-	-- Phase 1: HEAD-check each unique image URL concurrently.
-	-- Phase 2: for any that fail, try the card's related printings.
+	-- Phase 1: HEAD-check each unique non-nil image URL concurrently.
+	--          For any that fail, try the card's related printings.
+	-- Phase 1b: For cards whose primary resolve had no image URL at all,
+	--           try their related printings directly (e.g. OPP promo runes).
 	-- Spawn only once all URLs are resolved.
 	local uniqueURLs = {}
 	local seen = {}
@@ -313,21 +324,40 @@ local function spawnDeckIfAny(decklist, options)
 		end
 	end
 
-	if #uniqueURLs == 0 then
+	-- Entries with no imageURL but with related printings to try.
+	local nilImageEntries = {}
+	local seenNilName = {}
+	for _, entry in ipairs(decklist) do
+		if (not entry.imageURL or entry.imageURL == "") and
+		   entry.relatedPrintings and #entry.relatedPrintings > 0 and
+		   not seenNilName[entry.name] then
+			seenNilName[entry.name] = true
+			nilImageEntries[#nilImageEntries+1] = entry
+		end
+	end
+
+	if #uniqueURLs == 0 and #nilImageEntries == 0 then
 		doSpawn(decklist)
 		return
 	end
 
-	local resolvedURLs = {}  -- original imageURL -> final URL (nil = use card back)
-	local remaining = #uniqueURLs
+	local resolvedURLs = {}       -- original imageURL -> final URL (nil = use card back)
+	local nilEntryResolvedURLs = {} -- entry.name -> resolved URL for nil-imageURL entries
+	local remaining = #uniqueURLs + #nilImageEntries
 
 	local function onAllResolved()
 		local validatedDecklist = {}
 		for _, entry in ipairs(decklist) do
+			local finalURL
+			if entry.imageURL and entry.imageURL ~= "" then
+				finalURL = resolvedURLs[entry.imageURL]
+			else
+				finalURL = nilEntryResolvedURLs[entry.name]
+			end
 			validatedDecklist[#validatedDecklist+1] = {
 				name        = entry.name,
 				description = entry.description,
-				imageURL    = entry.imageURL and resolvedURLs[entry.imageURL] or nil,
+				imageURL    = finalURL,
 				qty         = entry.qty,
 			}
 		end
@@ -361,6 +391,15 @@ local function spawnDeckIfAny(decklist, options)
 					if remaining == 0 then onAllResolved() end
 				end
 			end
+		end)
+	end
+
+	-- For nil-imageURL entries, go straight to related printings.
+	for _, entry in ipairs(nilImageEntries) do
+		fetchPrintingFallback(entry, function(fallbackURL)
+			nilEntryResolvedURLs[entry.name] = fallbackURL
+			remaining = remaining - 1
+			if remaining == 0 then onAllResolved() end
 		end)
 	end
 end
@@ -411,7 +450,7 @@ function postDeckLoad(bundledData)
 	for _, cardMapData in pairs(cardMap) do
 		local card = resolvedByName[cardMapData.name]
 		if not card then
-			printError(ERROR_MESSAGE_DECKLOADER .. "Card not found in Riftseer: " .. tostring(cardMapData.name), playerColor)
+			printWarn("Card not found, skipping: " .. tostring(cardMapData.name), playerColor)
 		else
 			local function push(list, qtyField)
 				local qty = cardMapData[qtyField] or 0
