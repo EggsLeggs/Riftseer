@@ -13,8 +13,25 @@ Invisible TTS objects that define hand zones and scripting regions.
 |------|--------|
 | 360dc1, 640235, a11f20, 7295a1 | HandTrigger ×4 (seats 1–4) |
 | b798d6, 350f7f, 993f89, bb8c76 | HandTrigger ×4 (seats 5–8) |
-| c20e3f, 8b3401, 56cd9d, 129eaa, 2365d0, 166036 | ScriptingTrigger ×6 |
-| c04462, 033b34, 07dd80, 8b439a, debc40, 68549d | ScriptingTrigger ×6 |
+
+The 12 ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes these GUIDs; renaming or deleting them breaks Draw/Mill/Scry.
+
+> **Needs Riftbound layout work.** These zones still sit at MTG table coordinates. They need to be repositioned (Path B TTS edit) to match the Riftbound playmat art. See GitHub issue for task.
+
+| GUID | Role | Seats |
+|------|------|-------|
+| 166036 | libraryZone (deck) | White |
+| 2365d0 | libraryZone (deck) | Red |
+| 033b34 | libraryZone (deck) | Yellow |
+| c04462 | libraryZone (deck) | Blue |
+| 68549d | graveyard | White |
+| 07dd80 | graveyard | Red |
+| 8b439a | graveyard | Yellow |
+| debc40 | graveyard | Blue |
+| 8b3401 | playmat | White |
+| c20e3f | playmat | Red |
+| 129eaa | playmat | Yellow |
+| 56cd9d | playmat | Blue |
 
 ---
 
@@ -80,7 +97,6 @@ Invisible TTS objects that define hand zones and scripting regions.
 | b653d2, 05b07c | Turn Skipper Puck ×2 | |
 | cafe01, cafe02 | Turn Order card ×2 | Updated for Riftbound (new face/back art, unlocked; legacy GUIDs: aea3f4, 633ed3) |
 | dc2d88 | Smart Mulligan | |
-| 0ae315 | 4p playmat enabler | Chat command: `playmat <url>` / `playmat none` — game-agnostic |
 
 ---
 
@@ -174,7 +190,7 @@ keyword set.
 ### Chat Commands tile (7b59f7)
 
 Currently lists MTG-specific chat commands. Update to document Riftbound
-chat commands (including `playmat`).
+chat commands.
 
 ### Table Instructions tile (e40450)
 

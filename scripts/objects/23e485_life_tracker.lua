@@ -216,13 +216,13 @@ function onload(s)
   ref_type = 'life'--self.getName():gsub('%s.+','')
   txt = owner..' [999999]%s %s '..ref_type..'[-] |%s|'
 
-  self.setColorTint(ownerRGB)
+  self.setColorTint({0, 0, 0, 0})
   self.interactable=true
 
   if s~='' then
     local ld=JSON.decode(s); count=ld.c
   else
-    count=40
+    count=0
   end
 
   self.clearButtons()
@@ -276,10 +276,8 @@ function onload(s)
   })
 
   for i,v in ipairs({             -- the side buttons
-      {n=1,l='▲',p={x*0.95,y,z+0.2}},
-      {n=-1,l='▼',p={-x,y,z+0.2}},
-      {n=20,l='+20',p={x*1.05,y,z-0.4}},
-      {n=-20,l='-20',p={-x*1.1,y,z-0.4}}}) do
+      {n=1,l='▲',p={x,y,z+0.2}},
+      {n=-1,l='▼',p={-x,y,z+0.2}}}) do
 
     local fn='valueChange'..i
     self.setVar(fn, function(o,c,a) local b=1 if a then b=5 end click_changeValue(o,c,v.n*b) end)
@@ -299,12 +297,12 @@ function onload(s)
     })
   end
 
-	self.createButton({            -- reset life to 40 button
+	self.createButton({            -- reset life to 0 button
 		label='[R]',
 		click_function='resetLife',
 		tooltip='Reset Life',
 		function_owner=self,
-		position={x*0.72,y,z-1.05},
+		position={x*0.70,y,z-0.80},
 		height=800,
 		width=800,
 		alignment = 3,
@@ -317,8 +315,8 @@ function onload(s)
 end
 
 function resetLife(obj,color)
-	sL(40,0)
-	count=40
+	sL(0,0)
+	count=0
 	printToAll(owner..'[999999] reset their life to [-]|'..count..'|',ownerRGB)
 	updateSave()
 end
