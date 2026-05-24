@@ -1,0 +1,139 @@
+Riftbound TCG — Tabletop Simulator Table
+Third-party notices and license scope
+
+This file is not legal advice. If you redistribute or publish derivatives,
+confirm rights for upstream Workshop content, embedded assets, and game IP
+before relying on any license here.
+
+================================================================================
+Licensed under MIT
+================================================================================
+
+The MIT License in LICENSE applies to the following.
+
+Repository files:
+
+  tools/extract.py
+  tools/inject.py
+  README.md
+  AGENTS.md
+  CLAUDE.md
+  Components.md
+  scripts/objects/80c03d_riftbound_card_importer.lua
+  scripts/objects/25dbaf_riftbound_deck_loader.lua
+  scripts/objects/c91a72_riftbound_deck_loader_dx.lua
+  scripts/objects/f4d8be_riftbound_deck_loader_dx.lua
+
+Original visual assets (amory):
+
+  Visual art created for this fork and referenced by Steam Cloud URL in
+  mod/Riftbound.json, including but not limited to:
+    - Playmat / table art
+    - Domain counter bag and token art
+    - Turn order card faces
+    - Card back textures used by the deck loader
+    - Other reskinned table visuals authored for this project
+
+  Asset binaries are hosted on Steam Cloud, not checked into this repo. MIT
+  applies to these works themselves; when redistributing copies of the art,
+  include the LICENSE and this NOTICE.
+
+When copying any MIT-licensed file or asset, include the LICENSE and this NOTICE.
+
+================================================================================
+Everything else — not under MIT
+================================================================================
+
+Unless a separate license is stated in a file header, the following are
+NOT covered by LICENSE and retain their upstream terms:
+
+  mod/Riftbound.json
+      The TTS save/build artifact. Embeds upstream Lua/XmlUI plus asset URLs.
+      Most visual URLs in this fork point to original art by amory (see below);
+      inherited script content remains upstream-licensed.
+
+  scripts/global.lua
+  scripts/objects/*.lua   (except the three Riftbound deck loader paths above)
+  ui/global.xml
+
+  vendor/
+      Third-party software (patched VS Code extension). See that package's
+      own license; this repo only redistributes the .vsix for convenience.
+
+================================================================================
+Upstream Tabletop Simulator mod (primary fork)
+================================================================================
+
+Forked from:
+  "MTG 4 player table - scripted"
+  Steam Workshop ID 2296042369
+  https://steamcommunity.com/sharedfiles/filedetails/?id=2296042369
+
+Original authors (no explicit license found in upstream):
+  Oops I Baked a Pie — table design, global script, life trackers, core UX
+  TyrantNomad — Easy Modules Unified; πMenu, πNotepad, πScry, πKeywords, etc.
+  rikrassen — MTG Deck / Draft / Cube Importer (removed or replaced in fork)
+  Encoder API — author unattributed in source
+
+Upstream is distributed via Steam Workshop without a stated open-source
+license. Treat inherited scripts and the save JSON as personal-use /
+workshop-derivative unless you obtain permission from those authors.
+
+================================================================================
+Riftbound Deck Loader lineage (partial MIT, partial upstream)
+================================================================================
+
+The three MIT-scoped deck loader scripts above are derived from and/or
+incorporate architecture from:
+
+  DXHHH101 — "Infinite Bag" / MTG Importer deck loader family
+  https://github.com/DXHHH101/TabletopSimulatorScripts/tree/main/MTGImporter
+
+  Omes and Amuzet — original importer architecture (credited in upstream)
+
+MIT on those files covers this fork's Riftbound-specific changes and
+documentation in-repo. It does not replace any license or permission that
+may apply to DXHHH101's or the original importer's code outside this repo.
+
+================================================================================
+Domain counters and other reskins (not MIT)
+================================================================================
+
+Domain counter bags (Calm, Body, Fury, Chaos, Mind, Order) use scripts
+derived from the fork's MTG mana-colour counter bags. They are reskinned and
+relabeled for Riftbound but are not listed under MIT. Credit the upstream
+table authors above.
+
+================================================================================
+Visual assets — not under MIT
+================================================================================
+
+Asset files are not stored in this git repo — mod/Riftbound.json references
+them by URL. Only original assets by amory (listed above) are MIT-licensed.
+
+Legacy / third-party assets (still present)
+  Some URLs may still reference inherited upstream workshop content, or a
+  small subset adapted from other community Workshop mods (see README.md →
+  Credits). Credit remains with those authors; not licensed under MIT.
+
+Imported card faces
+  Cards spawned by the deck loader pull faces from import sources (e.g.
+  piltoverarchive.com). Those images are separate works; rights belong to
+  their respective owners. This table does not bundle official Riftbound card
+  art in the repository.
+
+================================================================================
+Riftbound game IP
+================================================================================
+
+"Riftbound" and related game names, card text, and official art are
+trademarks and/or copyrights of their respective owners. This project is
+an unofficial fan Tabletop Simulator table, not affiliated with or
+endorsed by the game's rights holders.
+
+================================================================================
+Contact
+================================================================================
+
+If you are an upstream author and want attribution changes or licensing
+clarification, open an issue in this repository.

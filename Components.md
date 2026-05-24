@@ -14,20 +14,34 @@ Invisible TTS objects that define hand zones and scripting regions.
 | 360dc1, 640235, a11f20, 7295a1 | HandTrigger ×4 (seats 1–4) |
 | b798d6, 350f7f, 993f89, bb8c76 | HandTrigger ×4 (seats 5–8) |
 
-The 12 ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes these GUIDs; renaming or deleting them breaks Draw/Mill/Scry.
-
-> **Needs Riftbound layout work.** These zones still sit at MTG table coordinates. They need to be repositioned (Path B TTS edit) to match the Riftbound playmat art. See GitHub issue for task.
+The ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes the deck and trash GUIDs; renaming or deleting them breaks Draw/Mill/Scry.
 
 | GUID | Role | Seats |
 |------|------|-------|
-| 166036 | libraryZone (deck) | White |
-| 2365d0 | libraryZone (deck) | Red |
-| 033b34 | libraryZone (deck) | Yellow |
-| c04462 | libraryZone (deck) | Blue |
-| 68549d | graveyard | White |
-| 07dd80 | graveyard | Red |
-| 8b439a | graveyard | Yellow |
-| debc40 | graveyard | Blue |
+| 166036 | deck (libraryZone) | White |
+| 2365d0 | deck (libraryZone) | Red |
+| 033b34 | deck (libraryZone) | Yellow |
+| c04462 | deck (libraryZone) | Blue |
+| 68549d | trash (graveyard) | White |
+| 07dd80 | trash (graveyard) | Red |
+| 8b439a | trash (graveyard) | Yellow |
+| debc40 | trash (graveyard) | Blue |
+| bf0002 | battlefield | White |
+| bf0001 | battlefield | Red |
+| bf0003 | battlefield | Yellow |
+| bf0004 | battlefield | Blue |
+| f1e001 | legend | White |
+| 1e9001 | legend | Red |
+| e1e001 | legend | Yellow |
+| b1e001 | legend | Blue |
+| f4c001 | champion | White |
+| c4a001 | champion | Red |
+| e4c001 | champion | Yellow |
+| b4c001 | champion | Blue |
+| f4d001 | rune deck | White |
+| 4d0001 | rune deck | Red |
+| e4d001 | rune deck | Yellow |
+| b4d001 | rune deck | Blue |
 | 8b3401 | playmat | White |
 | c20e3f | playmat | Red |
 | 129eaa | playmat | Yellow |
@@ -156,7 +170,9 @@ Components fully rewritten for Riftbound and no longer pending migration.
 
 | GUID | Object |
 |------|--------|
-| c91a72, f4d8be | Riftbound Deck Loader ×2 — completely overhauled for Riftbound (legacy GUIDs: 5aebeb, 3ede22) |
+| 80c03d | Riftbound Card Importer — API handler; do not move or delete |
+| 25dbaf | Riftbound Deck Loader — companion to Card Importer |
+| c91a72, f4d8be | Riftbound Deck Loader ×2 (infinite bag) — overhauled for Riftbound; MTG auto-update removed (legacy GUIDs: 5aebeb, 3ede22) |
 | 7ae211/be93f0, daebb2/8e1f05, b991d5/a90926, 887dd2/63e4e1, 52e44b/a7dc6e, 389c4d/2c49c6 (set 1) + 4783af, cdbccc, 220d2f, 1c4a59, aeeb11, cd8bb6 (set 2) | Domain Counter bags ×12 — retextured and relabeled from MTG mana colours to Riftbound domains: Calm, Body, Fury, Chaos, Mind, Order |
 
 ### Keyword tokens

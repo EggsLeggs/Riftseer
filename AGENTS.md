@@ -46,6 +46,8 @@ scripts/objects/*.lua    One file per scripted object. Filename is {GUID}_{slug}
 ui/global.xml            Global XmlUI (extracted from the JSON).
 tools/extract.py         Pull scripts/UI out of the JSON into source files.
 tools/inject.py          Push scripts/UI back into the JSON.
+LICENSE                  MIT license (scoped — see NOTICE).
+NOTICE                   License scope, upstream credits, MIT file list.
 vendor/                  Patched VS Code extension (.vsix) and other vendored deps.
 ```
 
@@ -100,6 +102,36 @@ attempting it yourself.
   `camelCase` for functions and tabs for indentation. Don't reformat
   existing code; new code matches existing style.
 
+## Zone placement and mirroring
+
+When placing ScriptingTrigger zones or snap points symmetrically across all
+four player seats, use this two-pass workflow:
+
+**Pass 1 — mirror from Red (the hand-placed reference).**
+Red is always positioned manually in TTS first. Then compute:
+- White  = negate X, keep Z, rotY unchanged
+- Yellow = negate Z, keep X, rotY = 180
+- Blue   = negate both X and Z, rotY = 180
+
+**Pass 2 — propagate Blue's fine-tuning corrections.**
+After pass 1, the user adjusts Blue by eye in TTS. Then:
+- Blue's adjusted X → apply to White (they share the +X side of the board)
+- Blue's adjusted Z → apply to Yellow (they share the +Z side of the board)
+- Red stays unchanged.
+
+**Snap points:** Always add a single centre snap point per zone (at the
+zone's posX/posZ). Never add only the ±spread pair — cards snap to the
+side rather than the centre. Use rotY=180 for near side (posZ < 0) and
+rotY=0 for far side (posZ > 0).
+
+**TTS save workflow:** TTS saves to `TS_Save_3.json`, not through the
+symlink, unless the user explicitly loads from `Riftbound.json`. After any
+TTS session, copy with:
+```
+cp ~/Library/Tabletop\ Simulator/Saves/TS_Save_3.json mod/Riftbound.json
+python3 tools/extract.py
+```
+
 ## Things to be careful with
 
 - **Do not delete the Encoder object** (GUID `02e062`). Many scripts depend
@@ -126,14 +158,78 @@ attempting it yourself.
 
 ## Credits and licensing
 
-The original mod is the work of multiple authors over five years:
+This repo uses a **split license**. Read `LICENSE` and `NOTICE` before
+committing licensing-sensitive changes.
+
+- **MIT** — original repo files and visual assets listed under
+  `Licensed under MIT` in `NOTICE`.
+- **Not MIT** — inherited Workshop Lua/XmlUI, upstream-derived scripts not
+  listed in `NOTICE`, third-party assets, imported card faces, Riftbound game IP.
+
+Upstream authors (credit in `README.md` and `NOTICE`; preserve attribution):
 - Oops I Baked a Pie (table, global script, life trackers)
 - TyrantNomad (Easy Modules Unified, the πMenu/πNotepad/πScry/πKeywords suite)
 - rikrassen (the MTG Deck/Draft/Cube Importer — being removed)
 
-Attribution lives in `README.md`. Preserve it. If a change removes one of
-these authors' work entirely, note it in the commit message but leave the
-README credit in place — they still contributed to the lineage.
+If a change removes one of these authors' work entirely, note it in the commit
+message but leave the README credit in place — they still contributed to the
+lineage.
 
-The original mod has no explicit license. Treat the fork as personal-use
-with attribution, same as upstream.
+### When to update NOTICE (and README License if scope changes)
+
+Update `NOTICE` in the **same commit** whenever work is brought under MIT or
+removed from MIT scope. Do **not** edit the MIT boilerplate in `LICENSE`
+unless the legal text itself changes — scope lives in `NOTICE`.
+
+**Add to MIT scope** when you create or promote:
+
+| Kind | Qualifies if… | NOTICE update |
+|------|----------------|---------------|
+| Repo file | Original tool, doc, or substantially **new** Riftbound Lua (not a thin reskin of upstream) | Add path under `Repository files:` |
+| Visual asset | Original art by amory, referenced via Steam Cloud URL in the save | Add a `-` bullet under `Original visual assets (amory):` |
+| Derivative script | Fork rewrite with clear upstream lineage (e.g. deck loaders from DXHHH101) | Add path under `Repository files:` **and** add or extend an upstream-lineage subsection |
+
+**Do not add to MIT scope** without maintainer intent:
+
+- Inherited upstream scripts (`global.lua`, life trackers, πMenu, Encoder, etc.)
+- Reskins that only change labels/textures on upstream Lua (e.g. domain counters)
+- Third-party or Workshop-adapted art (credit under `Visual assets — not under MIT`)
+- Imported card faces (piltoverarchive, etc.)
+
+**Remove from MIT scope** when deleting or reverting to upstream: remove the
+path or bullet from `NOTICE` and update the `Everything else — not under MIT`
+exclusion list if the wildcard exception note needs changing.
+
+### NOTICE edit format
+
+Match the existing `NOTICE` structure exactly:
+
+```
+================================================================================
+Licensed under MIT
+================================================================================
+
+Repository files:
+
+  tools/extract.py
+  scripts/objects/{guid}_{slug}.lua    ← two-space indent, one path per line
+
+Original visual assets (amory):
+
+  Visual art created for this fork ...
+    - Playmat / table art              ← hyphen bullets for asset categories
+    - New asset type you added
+
+When copying any MIT-licensed file or asset, include the LICENSE and this NOTICE.
+```
+
+For **new derivative scripts**, also add a subsection (after the MIT list or
+under existing lineage sections) naming upstream authors and URLs, following
+the `Riftbound Deck Loader lineage` block as a template.
+
+For **upstream or third-party material**, add credits under the appropriate
+`Everything else`, `Upstream`, or `Visual assets — not under MIT` section —
+never under `Licensed under MIT`.
+
+After editing `NOTICE`, skim `README.md` → License and ensure it still
+accurately summarizes scope.

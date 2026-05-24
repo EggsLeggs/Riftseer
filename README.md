@@ -23,11 +23,12 @@ scripted infrastructure in this repo is mine in origin:
 - **rikrassen** — MTG Deck/Draft/Cube Importer
 - Encoder API author (unattributed in source — happy to credit if identified)
 
-Additional attribution for reused assets:
+Visual assets:
 
-- A small subset of visual assets in this fork (notably some card back art variants)
-  is adapted from a community Tabletop Simulator Workshop mod. Full credit remains
-  with the original Workshop author(s).
+- **amory** — most reskin art in this fork (playmat, domain counters, turn order
+  cards, card backs, etc.) is original work, hosted via Steam Cloud URLs in the save.
+- A **small subset** of remaining visuals (notably some card back art variants) is
+  adapted from other community Workshop mods. Full credit remains with those authors.
 
 If you're one of the above and want changes to attribution or licensing here, open an issue.
 
@@ -150,6 +151,16 @@ The πKeywords reference popup (GUID `ae12d3`, script `scripts/objects/ae12d3_ke
 
 ## License
 
-The original mod has no explicit license. This fork is published in the same
-spirit — free for personal use and modification, please credit upstream authors
-if you fork further or publish derivatives.
+This repo uses a **split license**:
+
+- **[LICENSE](LICENSE)** — MIT applies to files and works listed in **[NOTICE](NOTICE)**
+  (`tools/`, project docs, Riftbound deck loader scripts, and original table art).
+- **Everything else** — inherited from the forked Workshop mod and other upstream
+  authors; no explicit upstream license. See NOTICE for credits and scope.
+
+The original MTG table mod has no stated open-source license. Treat inherited
+Lua and XmlUI as workshop/personal-use derivatives unless you have permission
+from upstream authors.
+
+Original table art (playmat, counters, card backs, etc.) is MIT-licensed; see
+NOTICE for legacy upstream URLs, imported card faces, and Riftbound game IP.
