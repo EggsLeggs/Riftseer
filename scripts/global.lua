@@ -145,7 +145,7 @@ function buildTableButtons()
     createTableButton(playerData["untapButton"], "Untap","playerUntap", "Untap")
     createTableButtonM(playerData["mulliganButton"], "Mulligan", "playerMulligan", "Mulligan")
     createTableButtonR(playerData["revealButton"])
-    data[color]["mulliganNumber"] = 7
+    data[color]["mulliganNumber"] = 4
 
     playerData["drawButton"].max_typed_number=99
     playerData["scryButton"].max_typed_number=99
@@ -235,7 +235,7 @@ function createTableButtonM(object, name, clickFunction, ttip)
   object.setName(name)
   return object.createButton({
     click_function = clickFunction,
-    tooltip = '           [b]Mulligan[/b]\n  [i]left click[/i] - friendly\n[i]right click[/i] - unfriendly',
+    tooltip = '           [b]Mulligan[/b]\n      [i]click[/i] - draw 4 cards',
     width = 2500,
     height = 850,
     position = {0, 0.1, 0},
@@ -596,14 +596,7 @@ function playerMulligan(button, playerColor, alt)
 
     local deck = getDeckFromZone(data[playerColor]["libraryZone"])
     if deck~=nil then
-      if not(alt) then
-        data[playerColor]["mulliganNumber"] = 7
-      else
-        data[playerColor]["mulliganNumber"] = data[playerColor]["mulliganNumber"]-1
-        if data[playerColor]["mulliganNumber"]<1 then
-          data[playerColor]["mulliganNumber"] = 1
-        end
-      end
+      data[playerColor]["mulliganNumber"] = 4
       local objs=Player[playerColor].getHandObjects(1)
       for _,obj in pairs(objs) do
         if obj.tag=='Card' then
@@ -613,24 +606,6 @@ function playerMulligan(button, playerColor, alt)
       Wait.time(function() deck.shuffle() end, 0.1, 7)
 
       Wait.time(function()
-        if smartMulligan then   -- ensure 2-5 lands in hand
-          local nMulls=0
-          local keepTrying=true
-          while keepTrying do
-            nMulls=nMulls+1
-            deck.shuffle()
-            local nLands=0
-            local cards=deck.getObjects()
-            for i=1,7 do
-              if cards[i].name:lower():find('land') then
-                nLands=nLands+1
-              end
-            end
-            if (nLands>=3 and nLands<=4) or nMulls>=3 then
-              keepTrying=false
-            end
-          end
-        end
         deck.deal(data[playerColor]["mulliganNumber"], playerColor, 1)
       end, 0.8)
       -- Wait.time(function() sortHands(playerColor) end, 1.5)

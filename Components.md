@@ -67,10 +67,10 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 
 ## Per-player UI — 4× symmetrical sets
 
-> **Needs Riftbound layout work.** Zone names (Untap/Scry/Mill), mulligan
-> rules, and the overall action buttons will need updating for Riftbound's
-> turn structure. The infrastructure (life trackers, hand counters, timers,
-> highlight mats, reveal) is reusable as-is.
+> **Needs Riftbound layout work.** Zone names (Untap/Scry/Mill) and the
+> overall action buttons will need updating for Riftbound's turn structure.
+> The infrastructure (life trackers, hand counters, timers, highlight mats,
+> reveal) is reusable as-is. Mulligan rules updated (4-card friendly only).
 
 | GUID | Object |
 |------|--------|
@@ -110,7 +110,7 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 |------|--------|------|
 | b653d2, 05b07c | Turn Skipper Puck ×2 | |
 | cafe01, cafe02 | Turn Order card ×2 | Updated for Riftbound (new face/back art, unlocked; legacy GUIDs: aea3f4, 633ed3) |
-| dc2d88 | Smart Mulligan | |
+| ~~dc2d88~~ | ~~Smart Mulligan~~ | Deleted — toggled MTG-specific land-check logic removed from `global.lua`. |
 
 ---
 
