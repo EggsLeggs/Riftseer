@@ -145,7 +145,7 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 |------|--------|------|
 | fb6538 | hold alt (context-menu helper) | |
 | 716ee6 | Is it a token? | |
-| 7cf430 | Custom_Tile (scripted) | Purpose unknown — do not remove until identified |
+| 7cf430 | Steam Workshop link tile | Click to reveal copyable links: [Riftbound TTS table](https://steamcommunity.com/sharedfiles/filedetails/?id=3732199052) and [Riftbound Card Importer](https://steamcommunity.com/sharedfiles/filedetails/?id=3717685169) |
 
 ---
 

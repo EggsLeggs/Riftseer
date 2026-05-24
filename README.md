@@ -10,7 +10,10 @@ instead of Scryfall, no mana bags, etc.
 
 ## Workshop Items
 
-- Riftbound Importer Toolkit (ID `3717685169`):
+- **Riftbound 4-Player Table** (ID `3732199052`):
+  [https://steamcommunity.com/sharedfiles/filedetails/?id=3732199052](https://steamcommunity.com/sharedfiles/filedetails/?id=3732199052)
+
+- **Riftbound Card Importer** (ID `3717685169`):
   [https://steamcommunity.com/sharedfiles/filedetails/?id=3717685169](https://steamcommunity.com/sharedfiles/filedetails/?id=3717685169)
 
 ## Credits

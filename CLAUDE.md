@@ -102,36 +102,6 @@ attempting it yourself.
   `camelCase` for functions and tabs for indentation. Don't reformat
   existing code; new code matches existing style.
 
-## Zone placement and mirroring
-
-When placing ScriptingTrigger zones or snap points symmetrically across all
-four player seats, use this two-pass workflow:
-
-**Pass 1 — mirror from Red (the hand-placed reference).**
-Red is always positioned manually in TTS first. Then compute:
-- White  = negate X, keep Z, rotY unchanged
-- Yellow = negate Z, keep X, rotY = 180
-- Blue   = negate both X and Z, rotY = 180
-
-**Pass 2 — propagate Blue's fine-tuning corrections.**
-After pass 1, the user adjusts Blue by eye in TTS. Then:
-- Blue's adjusted X → apply to White (they share the +X side of the board)
-- Blue's adjusted Z → apply to Yellow (they share the +Z side of the board)
-- Red stays unchanged.
-
-**Snap points:** Always add a single centre snap point per zone (at the
-zone's posX/posZ). Never add only the ±spread pair — cards snap to the
-side rather than the centre. Use rotY=180 for near side (posZ < 0) and
-rotY=0 for far side (posZ > 0).
-
-**TTS save workflow:** TTS saves to `TS_Save_3.json`, not through the
-symlink, unless the user explicitly loads from `Riftbound.json`. After any
-TTS session, copy with:
-```
-cp ~/Library/Tabletop\ Simulator/Saves/TS_Save_3.json mod/Riftbound.json
-python3 tools/extract.py
-```
-
 ## Things to be careful with
 
 - **Do not delete the Encoder object** (GUID `02e062`). Many scripts depend

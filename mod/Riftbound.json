@@ -11737,7 +11737,7 @@
           "Stretch": true
         }
       },
-      "LuaScript": "function onLoad()\r\n  link='https://steamcommunity.com/sharedfiles/filedetails/?id=2296042369',\r\n\r\n  self.setName(link)\r\n  self.setDescription(link)\r\n\r\n  self.createButton({\r\n    click_function='showLink',\r\n    function_owner=self,\r\n    position={0,0.1,0},\r\n    width=10,\r\n    height=10,\r\n    scale={100,100,100},\r\n    color={1,1,1,0},\r\n    hover_color={1,1,1,0.25},\r\n    tooltip='show link to this table\\nin the steam workshop'\r\n  })\r\nend\r\n\r\nfunction showLink()\r\n  self.createInput({\r\n    input_function='null',\r\n    function_owner=self,\r\n    label=link,\r\n    position={0,1,-1.5},\r\n    width=4200,\r\n    height=170,\r\n    font_size=140,\r\n    scale={2,2,2},\r\n    color={0.1,0.1,0.1},\r\n    font_color={1,1,1},\r\n    alignment=3,\r\n    value=link,\r\n    tooltip='ctrl-C'\r\n  })\r\n\r\n  self.clearButtons()\r\n\r\n  self.createButton({\r\n    click_function='hideLink',\r\n    function_owner=self,\r\n    position={0,0.1,0},\r\n    width=10,\r\n    height=10,\r\n    scale={100,100,100},\r\n    color={1,1,1,0},\r\n    hover_color={1,1,1,0.25},\r\n    tooltip='hide link'\r\n  })\r\n\r\n  wid=Wait.time(hideLink,10)\r\nend\r\n\r\nfunction hideLink()\r\n  if wid then\r\n    Wait.stop(wid)\r\n  end\r\n\r\n  self.clearInputs()\r\n  self.clearButtons()\r\n  self.createButton({\r\n    click_function='showLink',\r\n    function_owner=self,\r\n    position={0,0.1,0},\r\n    width=10,\r\n    height=10,\r\n    scale={100,100,100},\r\n    color={1,1,1,0},\r\n    hover_color={1,1,1,0.25},\r\n    tooltip='show link to this table\\nin the steam workshop'\r\n  })\r\nend\r\n\r\nfunction null()\r\nend",
+      "LuaScript": "function onLoad()\r\n  link='https://steamcommunity.com/sharedfiles/filedetails/?id=3732199052'\r\n  importerLink='https://steamcommunity.com/sharedfiles/filedetails/?id=3717685169'\r\n\r\n  self.setName(link)\r\n  self.setDescription(link)\r\n\r\n  self.createButton({\r\n    click_function='showLink',\r\n    function_owner=self,\r\n    position={0,0.1,0},\r\n    width=10,\r\n    height=10,\r\n    scale={100,100,100},\r\n    color={1,1,1,0},\r\n    hover_color={1,1,1,0.25},\r\n    tooltip='show link to this table\\nin the steam workshop'\r\n  })\r\nend\r\n\r\nfunction showLink()\r\n  self.createInput({\r\n    input_function='null',\r\n    function_owner=self,\r\n    label='',\r\n    position={0,1,-2.5},\r\n    width=4200,\r\n    height=170,\r\n    font_size=140,\r\n    scale={2,2,2},\r\n    color={0.1,0.1,0.1},\r\n    font_color={1,1,1},\r\n    alignment=3,\r\n    value=link,\r\n    tooltip='ctrl-C'\r\n  })\r\n  self.createInput({\r\n    input_function='null',\r\n    function_owner=self,\r\n    label='',\r\n    position={0,1,-4.8},\r\n    width=4200,\r\n    height=170,\r\n    font_size=140,\r\n    scale={2,2,2},\r\n    color={0.1,0.1,0.1},\r\n    font_color={1,1,1},\r\n    alignment=3,\r\n    value=importerLink,\r\n    tooltip='ctrl-C'\r\n  })\r\n\r\n  self.clearButtons()\r\n\r\n  self.createButton({\r\n    click_function='hideLink',\r\n    function_owner=self,\r\n    position={0,0.1,0},\r\n    width=10,\r\n    height=10,\r\n    scale={100,100,100},\r\n    color={1,1,1,0},\r\n    hover_color={1,1,1,0.25},\r\n    tooltip='hide links'\r\n  })\r\n  self.createButton({\r\n    click_function='null',\r\n    function_owner=self,\r\n    label='Riftbound 4-Player Table',\r\n    position={0,1,-1.7},\r\n    width=4000,\r\n    height=120,\r\n    font_size=110,\r\n    scale={2,2,2},\r\n    color={0,0,0,0.6},\r\n    font_color={1,1,1}\r\n  })\r\n  self.createButton({\r\n    click_function='null',\r\n    function_owner=self,\r\n    label='Riftbound Card Importer',\r\n    position={0,1,-4.0},\r\n    width=4000,\r\n    height=120,\r\n    font_size=110,\r\n    scale={2,2,2},\r\n    color={0,0,0,0.6},\r\n    font_color={1,1,1}\r\n  })\r\n\r\n  wid=Wait.time(hideLink,10)\r\nend\r\n\r\nfunction hideLink()\r\n  if wid then\r\n    Wait.stop(wid)\r\n  end\r\n\r\n  self.clearInputs()\r\n  self.clearButtons()\r\n  self.createButton({\r\n    click_function='showLink',\r\n    function_owner=self,\r\n    position={0,0.1,0},\r\n    width=10,\r\n    height=10,\r\n    scale={100,100,100},\r\n    color={1,1,1,0},\r\n    hover_color={1,1,1,0.25},\r\n    tooltip='show link to this table\\nin the steam workshop'\r\n  })\r\nend\r\n\r\nfunction null()\r\nend",
       "LuaScriptState": "",
       "XmlUI": "",
       "Nickname": ""
@@ -13827,9 +13827,9 @@
       "GUID": "bfceec",
       "Name": "Custom_Model_Infinite_Bag",
       "Transform": {
-        "posX": 45.50001,
+        "posX": 45.92,
         "posY": 1.1,
-        "posZ": 7.00001049,
+        "posZ": -9.35,
         "rotX": -2.07030625e-05,
         "rotY": 90.01446,
         "rotZ": -4.841635e-05,
@@ -13944,9 +13944,9 @@
       "GUID": "e6f47f",
       "Name": "Card",
       "Transform": {
-        "posX": 45.50001,
-        "posY": 1.05,
-        "posZ": 7.000008,
+        "posX": 45.92,
+        "posY": 1.1,
+        "posZ": -9.35,
         "rotX": 1.04394412e-05,
         "rotY": 270.014954,
         "rotZ": 9.659921e-06,

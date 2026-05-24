@@ -1,5 +1,6 @@
 function onLoad()
-  link='https://steamcommunity.com/sharedfiles/filedetails/?id=2296042369',
+  link='https://steamcommunity.com/sharedfiles/filedetails/?id=3732199052'
+  importerLink='https://steamcommunity.com/sharedfiles/filedetails/?id=3717685169'
 
   self.setName(link)
   self.setDescription(link)
@@ -21,8 +22,8 @@ function showLink()
   self.createInput({
     input_function='null',
     function_owner=self,
-    label=link,
-    position={0,1,-1.5},
+    label='',
+    position={0,1,-2.5},
     width=4200,
     height=170,
     font_size=140,
@@ -31,6 +32,21 @@ function showLink()
     font_color={1,1,1},
     alignment=3,
     value=link,
+    tooltip='ctrl-C'
+  })
+  self.createInput({
+    input_function='null',
+    function_owner=self,
+    label='',
+    position={0,1,-4.8},
+    width=4200,
+    height=170,
+    font_size=140,
+    scale={2,2,2},
+    color={0.1,0.1,0.1},
+    font_color={1,1,1},
+    alignment=3,
+    value=importerLink,
     tooltip='ctrl-C'
   })
 
@@ -45,7 +61,31 @@ function showLink()
     scale={100,100,100},
     color={1,1,1,0},
     hover_color={1,1,1,0.25},
-    tooltip='hide link'
+    tooltip='hide links'
+  })
+  self.createButton({
+    click_function='null',
+    function_owner=self,
+    label='Riftbound 4-Player Table',
+    position={0,1,-1.7},
+    width=4000,
+    height=120,
+    font_size=110,
+    scale={2,2,2},
+    color={0,0,0,0.6},
+    font_color={1,1,1}
+  })
+  self.createButton({
+    click_function='null',
+    function_owner=self,
+    label='Riftbound Card Importer',
+    position={0,1,-4.0},
+    width=4000,
+    height=120,
+    font_size=110,
+    scale={2,2,2},
+    color={0,0,0,0.6},
+    font_color={1,1,1}
   })
 
   wid=Wait.time(hideLink,10)
