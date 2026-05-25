@@ -135,7 +135,7 @@ cards from `runeDeckZone` via the Channel button (`ch0001`–`ch0004`).
 | 4256ba, 917dc3 | Generic Counter bags ×2 |
 | b02684, 7eeb77 | Text + Counter bags ×2 |
 | 855d09, 195243 | Notecard bags ×2 |
-| 3c7ad3, 82e64d | Drop-On-Card Counter bags ×2 |
+| 3c7ad3, 82e64d | Drop-On-Card Counter bags ×2 — draggable chip (`7071ce`, `f62d00`, `4f684b`, `c1ae57`) retextured to Riftbound UI; infinite-bag mesh/diffuse still upstream |
 | 3cba4d/30f3c2/94b67a, bfceec/30f3c2/e6f47f | Experience Counter bags ×2 — re-added from legacy side-table counter pile template; converted to plain custom-card objects using Riftbound experience front/back art |
 
 ---
