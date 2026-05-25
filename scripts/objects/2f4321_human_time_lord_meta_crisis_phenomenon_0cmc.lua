@@ -71,8 +71,8 @@ function spawnTokens()
 end
 function setOracle(cardDat)
   local n='\n[b]'
-  if cardDat.power then
-    n=n..cardDat.power..'/'..cardDat.toughness
+  if cardDat.might then
+    n=n..'Might: '..cardDat.might
   elseif cardDat.loyalty then
     n=n..tostring(cardDat.loyalty)
   else

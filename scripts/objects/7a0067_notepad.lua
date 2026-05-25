@@ -27,7 +27,7 @@ function registerModule()
   if enc ~= nil then
 		properties = {
 		propID = pID,
-		name = "Notepad[sup][i]π[/i][/sup]",
+		name = "Notepad",
 		values = {'note'},
     funcOwner = self,
 		tags='tool',

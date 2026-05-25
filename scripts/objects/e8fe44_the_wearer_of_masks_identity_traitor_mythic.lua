@@ -267,7 +267,7 @@ traitorJSON=[[
           "scaleZ": 1.0
         },
         "Nickname": "The Ferryman\nIdentity — Traitor\n[i]Mythic[/i]",
-        "Description": "Unveil {1}\n\nWhen The Ferryman is unveiled, choose target permanent. When that permanent is put into a graveyard this turn, return another target card that shares a card type with it from its owner’s graveyard to the battlefield under your control.\n\n{3}: Turn The Ferryman face down. Activate only during your turn and only once each turn.",
+        "Description": "Unveil {1}\n\nWhen The Ferryman is unveiled, choose target permanent. When that permanent is put into trash this turn, return another target card that shares a card type with it from its owner’s trash to the battlefield under your control.\n\n{3}: Turn The Ferryman face down. Activate only during your turn and only once each turn.",
         "GMNotes": "",
         "Memo": "",
         "ColorDiffuse": {
@@ -483,7 +483,7 @@ traitorJSON=[[
           "scaleZ": 1.0
         },
         "Nickname": "The Oneiromancer\nIdentity — Traitor\n[i]Uncommon[/i]",
-        "Description": "Unveil {X}{X} [i](Start the game with this identity face down in the command zone. Turn it face up any time for its unveil cost.)[/i]\n\nWhen The Oneiromancer is unveiled, each player exiles the top X cards of their library face down.\n\nYou may look at cards exiled with The Oneiromancer, and you may cast spells among those cards without paying their mana costs. You can’t cast more than one spell this way each turn.",
+        "Description": "Unveil {X}{X} [i](Start the game with this identity face down in the command zone. Turn it face up any time for its unveil cost.)[/i]\n\nWhen The Oneiromancer is unveiled, each player exiles the top X cards of their library face down.\n\nYou may look at cards exiled with The Oneiromancer, and you may play spells among those cards without paying their mana costs. You can’t play more than one spell this way each turn.",
         "GMNotes": "",
         "Memo": "",
         "ColorDiffuse": {
@@ -645,7 +645,7 @@ traitorJSON=[[
           "scaleZ": 1.0
         },
         "Nickname": "The Time Bender\nIdentity — Traitor\n[i]Rare[/i]",
-        "Description": "Unveil {6}\n\nWhen The Time Bender is unveiled, choose two —\n\n• Each player shuffles their hand and graveyard into their library, then draws seven cards.\n\n• Take an extra turn after this one.\n\n• End the turn.",
+        "Description": "Unveil {6}\n\nWhen The Time Bender is unveiled, choose two —\n\n• Each player shuffles their hand and trash into their library, then draws seven cards.\n\n• Take an extra turn after this one.\n\n• End the turn.",
         "GMNotes": "",
         "Memo": "",
         "ColorDiffuse": {

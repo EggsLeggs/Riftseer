@@ -28,6 +28,24 @@ function registerModule()
   end
 end
 
+function getPlayerData(playerColor)
+  tableGUIDs = Global.getTable('data')
+  if tableGUIDs==nil then return nil end
+  return tableGUIDs[playerColor]
+end
+
+function getMainDeckZone(playerColor)
+  local playerData = getPlayerData(playerColor)
+  if playerData==nil then return nil end
+  return playerData["mainDeckZone"]
+end
+
+function getTrashZone(playerColor)
+  local playerData = getPlayerData(playerColor)
+  if playerData==nil then return nil end
+  return playerData["trash"]
+end
+
 function toggleProp(obj,ply)
   enc.call("APItoggleProperty",{obj=obj,propID=pID})
   enc.call("APIrebuildButtons",{obj=obj})
@@ -131,8 +149,8 @@ function createButtons(t)
   }
 
   local lab='▲'
-  local tip='move to top of library'
-  local fun='move2TopLib'
+  local tip='move to top of main deck'
+  local fun='move2TopMainDeck'
   local pos={-0.8, 0.1, -2.2}
   forgpars.label=lab
   forgpars.tooltip=tip
@@ -143,8 +161,8 @@ function createButtons(t)
   card.createButton(forgpars)
 
   local lab='▼'
-  local tip='move to bottom of library'
-  local fun='move2BotLib'
+  local tip='move to bottom of main deck'
+  local fun='move2BotMainDeck'
   local pos={-0.8, 0.1, -1.77}
   forgpars.label=lab
   forgpars.tooltip=tip
@@ -155,8 +173,8 @@ function createButtons(t)
   card.createButton(forgpars)
 
   local lab='☠'
-  local tip='move to graveyard'
-  local fun='move2Grav'
+  local tip='move to trash'
+  local fun='move2Trash'
   local pos={-0.8, 0.1, 1.77}
   forgpars.label=lab
   forgpars.tooltip=tip
@@ -167,19 +185,22 @@ function createButtons(t)
   card.createButton(forgpars)
 end
 
--- leftClick=top, rightClick=bottom of library function, currently unused
-function move2Lib(card, playerColor, alt)
+-- leftClick=top, rightClick=bottom of main deck function, currently unused
+function move2MainDeck(card, playerColor, alt)
   if not(alt) then
-    move2TopLib(card,playerColor)
+    move2TopMainDeck(card,playerColor)
   else
-    move2BotLib(card,playerColor)
+    move2BotMainDeck(card,playerColor)
   end
 end
 
-function move2TopLib(card, playerColor)
+function move2TopMainDeck(card, playerColor)
   enc = Global.getVar('Encoder')
+  if enc==nil or card==nil then return end
+  local deckZone = getMainDeckZone(playerColor)
+  if deckZone==nil then return end
   enc.call("APIobjDisableProp",{obj=card,propID=pID})
-  local deckPos = tableGUIDs[playerColor]["libraryZone"].getPosition()
+  local deckPos = deckZone.getPosition()
   local target = {x=deckPos.x, y=3, z=deckPos.z}    -- above deck
   card.clearButtons()
   card.setHiddenFrom(allBut(playerColor))
@@ -193,17 +214,20 @@ function move2TopLib(card, playerColor)
   selected = Player[playerColor].getSelectedObjects()
   for i,obj in ipairs(shuffleList(selected)) do
     if enc.call("APIobjIsPropEnabled",{obj=obj,propID=pID}) then
-      Wait.frames(function() move2TopLib(obj, playerColor) end,i)
+      Wait.frames(function() move2TopMainDeck(obj, playerColor) end,i)
     end
   end
   Player[playerColor].clearSelectedObjects()
 
 end
 
-function move2BotLib(card, playerColor)
+function move2BotMainDeck(card, playerColor)
   enc = Global.getVar('Encoder')
+  if enc==nil or card==nil then return end
+  local deckZone = getMainDeckZone(playerColor)
+  if deckZone==nil then return end
   enc.call("APIobjDisableProp",{obj=card,propID=pID})
-  local deckPos = tableGUIDs[playerColor]["libraryZone"].getPosition()
+  local deckPos = deckZone.getPosition()
   local target  = {x=deckPos.x, y=0.95, z=deckPos.z}    -- below deck
   card.clearButtons()
   card.setHiddenFrom(allBut(playerColor))
@@ -217,17 +241,20 @@ function move2BotLib(card, playerColor)
   selected = Player[playerColor].getSelectedObjects()
   for i,obj in ipairs(shuffleList(selected)) do
     if enc.call("APIobjIsPropEnabled",{obj=obj,propID=pID}) then
-      Wait.frames(function() move2BotLib(obj, playerColor) end, i)
+      Wait.frames(function() move2BotMainDeck(obj, playerColor) end, i)
     end
   end
   Player[playerColor].clearSelectedObjects()
 end
 
-function move2Grav(card, playerColor)
+function move2Trash(card, playerColor)
   enc = Global.getVar('Encoder')
+  if enc==nil or card==nil then return end
+  local trashZone = getTrashZone(playerColor)
+  if trashZone==nil then return end
   enc.call("APIobjDisableProp",{obj=card,propID=pID})
-  local gravPos = tableGUIDs[playerColor]["graveyard"].getPosition()
-  local target  = {x=gravPos.x, y=3, z=gravPos.z}
+  local trashPos = trashZone.getPosition()
+  local target  = {x=trashPos.x, y=3, z=trashPos.z}
   card.clearButtons()
   local cardRot = card.getRotation()
   cardRot.z = 0
@@ -238,7 +265,7 @@ function move2Grav(card, playerColor)
   selected = Player[playerColor].getSelectedObjects()
   for i,obj in ipairs(shuffleList(selected)) do
     if enc.call("APIobjIsPropEnabled",{obj=obj,propID=pID}) then
-      Wait.frames(function() move2Grav(obj, playerColor) end, i)
+      Wait.frames(function() move2Trash(obj, playerColor) end, i)
     end
   end
   Player[playerColor].clearSelectedObjects()

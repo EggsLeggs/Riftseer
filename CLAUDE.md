@@ -11,8 +11,10 @@ table — replacing zones, removing MTG-specific mechanics (mana, commander
 damage, planechase, dungeons), and eventually adding a Riftseer-backed deck
 importer.
 
-The fork is in early stages. Most of the codebase is still the original
-authors' work. Treat their code as load-bearing legacy until proven otherwise.
+The fork is mid-migration: core zones, rune channeling, domain counters,
+πKeywords, and Riftseer import are in place, but much Lua/XmlUI is still
+upstream MTG lineage. Treat unfamiliar code as load-bearing legacy until proven
+otherwise. Use `Components.md` for GUID inventory and what is already Riftbound-native.
 
 ## How a TTS mod works (essential context)
 
@@ -46,10 +48,19 @@ scripts/objects/*.lua    One file per scripted object. Filename is {GUID}_{slug}
 ui/global.xml            Global XmlUI (extracted from the JSON).
 tools/extract.py         Pull scripts/UI out of the JSON into source files.
 tools/inject.py          Push scripts/UI back into the JSON.
+Components.md            GUID inventory — kept objects and migration status.
 LICENSE                  MIT license (scoped — see NOTICE).
 NOTICE                   License scope, upstream credits, MIT file list.
 vendor/                  Patched VS Code extension (.vsix) and other vendored deps.
 ```
+
+**Riftbound-specific wiring (do not break casually):**
+
+- `global.lua:registerObjectGUIDs()` — `mainDeckZone`, `trash`, `banishmentZone`,
+  `runeDeckZone`, `runeZones`, playboard tags (`playboard{color}`), Channel buttons
+  (`ch0001`–`ch0004`).
+- Encoder πKeywords (`ae12d3`) — `rb_*` counter/status keys; not legacy `mtg_*`.
+- Domain Module (`b8b8df`, `RB_Domain`) — six domains, not MTG colours.
 
 The `.lua` and `.xml` files under `scripts/` and `ui/` are **the readable
 source of truth for code review and diffs**. The JSON is the build artifact.
@@ -139,7 +150,8 @@ committing licensing-sensitive changes.
 Upstream authors (credit in `README.md` and `NOTICE`; preserve attribution):
 - Oops I Baked a Pie (table, global script, life trackers)
 - TyrantNomad (Easy Modules Unified, the πMenu/πNotepad/πScry/πKeywords suite)
-- rikrassen (the MTG Deck/Draft/Cube Importer — being removed)
+- Tipsy Hobbit (Keyword Abilities module — πKeywords / Ready-button lineage)
+- rikrassen (the MTG Deck/Draft/Cube Importer — replaced on-table by Riftbound loaders)
 
 If a change removes one of these authors' work entirely, note it in the commit
 message but leave the README credit in place — they still contributed to the

@@ -1,6 +1,6 @@
 --Token Desginator
 --By Tipsy Hobbit
-pID = "MTG_Token"
+pID = "RB_Token"
 version = '1.7.1'
 Style={}
 
@@ -16,16 +16,16 @@ function registerModule()
     properties = {
     propID = pID,
     name = "Is Token",
-    values = {'mtg_token'},
+    values = {'rb_token'},
     funcOwner = self,
     tags='tool',
     activateFunc ='tToken'
     }
     enc.call("APIregisterProperty",properties)
     value = {
-    valueID = 'mtg_token',
+    valueID = 'rb_token',
     validType = 'boolean',
-    desc = 'MTG:is this a token? Tokens are non-card permanents.',
+    desc = 'Is this a token? Tokens are non-card permanents.',
     default = false
     }
     enc.call("APIregisterValue",value)
@@ -39,7 +39,7 @@ function createButtons(t)
     flip = enc.call("APIgetFlip",{obj=t.obj})
     t.obj.createButton({
     label='Token', click_function='toggleToken', function_owner=self,
-    scale={0.5,0.5,0.5}, position={0,0.28*flip,-1.7}, height=300, width=800, font_size=250,
+    scale={0.5,0.5,0.5}, position={0,0.35*flip,-1.50}, height=300, width=800, font_size=250,
     rotation={0,0,90-90*flip}, font_color={1,1,1}, color={0.1,0.1,0.1}
     })
   end
@@ -50,10 +50,10 @@ function tToken(obj,ply)
   if enc ~= nil then
     enc.call("APItoggleProperty",{obj=obj,propID=pID})
     data = enc.call("APIobjGetPropData",{obj=obj,propID=pID})
-    if data.mtg_token ~= true then
-      data.mtg_token = true
+    if data.rb_token ~= true then
+      data.rb_token = true
     else
-      data.mtg_token = false
+      data.rb_token = false
     end
     enc.call("APIrebuildButtons",{obj=obj})
   end
@@ -63,7 +63,7 @@ function toggleToken(obj,ply)
   enc = Global.getVar('Encoder')
   if enc ~= nil then
     data = enc.call("APIobjGetPropData",{obj=obj,propID=pID})
-    data.mtg_token = false
+    data.rb_token = false
     enc.call("APIobjDisableProp",{obj=obj,propID=pID})
     enc.call("APIobjSetPropData",{obj=obj,propID=pID,data=data})
 

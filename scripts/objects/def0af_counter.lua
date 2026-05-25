@@ -19,7 +19,7 @@ function registerModule()
   if enc ~= nil then
 		properties = {
 		propID = pID,
-		name = "Counter[sup][i]π[/i][/sup]",
+		name = "Counter",
 		values = {'picounter'},
     funcOwner = self,
 		tags='basic',

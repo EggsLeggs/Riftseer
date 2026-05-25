@@ -1,28 +1,29 @@
---[[Color Module
+--[[Domain Module
 by Tipsy Hobbit//STEAM_0:1:13465982
-This module adds color Designators.
+This module adds Domain Designators for Riftbound.
 ]]
-pID = "MTG_Colors"
-UPDATE_URL='https://raw.githubusercontent.com/Jophire/Tabletop-Simulator-Workshop-Items/master/Encoder/Modules/Encoder_Color_Addon.lua'
+pID = "RB_Domain"
 version = '1.12'
 Style = {}
-colors={
-w={c=Color(0.988,0.988,0.757),n="White"},
-u={c=Color(0.404,0.757,0.961),n="Blue"},
-b={c=Color(0.518,0.518,0.518),n="Black"},
-r={c=Color(0.973,0.333,0.333),n="Red"},
-g={c=Color(0.149,0.710,0.412),n="Green"}
+domains={
+f={c=Color(0.827,0.184,0.184),n="Fury"},
+c={c=Color(0.298,0.686,0.314),n="Calm"},
+m={c=Color(0.129,0.588,0.953),n="Mind"},
+b={c=Color(1.000,0.596,0.000),n="Body"},
+x={c=Color(0.482,0.122,0.635),n="Chaos"},
+o={c=Color(0.984,0.753,0.176),n="Order"}
 }
+domainOrder={'f','c','m','b','x','o'}
 
 function onload()
-  Color.Add("mtg_white",colors.w.c)
-  Color.Add("mtg_blue",colors.u.c)
-  Color.Add("mtg_black",colors.b.c)
-  Color.Add("mtg_red",colors.r.c)
-  Color.Add("mtg_green",colors.g.c)
-  Color.Add("mtg_colorless",Color(0.7,0.7,0.7))
-  
-  self.addContextMenuItem('Register Module', function(p) 
+  Color.Add("rb_fury",domains.f.c)
+  Color.Add("rb_calm",domains.c.c)
+  Color.Add("rb_mind",domains.m.c)
+  Color.Add("rb_body",domains.b.c)
+  Color.Add("rb_chaos",domains.x.c)
+  Color.Add("rb_order",domains.o.c)
+
+  self.addContextMenuItem('Register Module', function(p)
     registerModule()
   end)
   Wait.condition(registerModule,function() return Global.getVar('Encoder') ~= nil and true or false end)
@@ -31,10 +32,12 @@ function registerModule(obj,ply)
   enc = Global.getVar('Encoder')
   if enc ~= nil then
 
+    enc.call("APIremoveProperty", {propID="RB_Colors"})
+
     properties = {
     propID = pID,
-    name = "MTG Colors",
-    values = {'mtg_colors'},
+    name = "Domain",
+    values = {'rb_domain'},
     funcOwner = self,
     tags='basic,face_prop',
     activateFunc ='callEditor'
@@ -42,17 +45,18 @@ function registerModule(obj,ply)
     enc.call("APIregisterProperty",properties)
 
     value = {
-    valueID = 'mtg_colors',
-    validType = 'pattern(^[wubrg]*$)',
-    desc = "MTG:Color Identity of the card.",
+    valueID = 'rb_domain',
+    validType = 'pattern(^[fcmbxo]*$)',
+    desc = "Domain Identity of the card.",
     default = ''
     }
     enc.call("APIregisterValue",value)
-    
-    for c,t in pairs(colors) do 
-      _G['toggle'..c]=function(obj,ply,alt) toggleStatus(obj,ply,alt,c) end
+
+    for _,d in ipairs(domainOrder) do
+      local t=domains[d]
+      _G['toggle'..d]=function(obj,ply,alt) toggleStatus(obj,ply,alt,d) end
     end
-    
+
     Style.proto = enc.call("APIgetStyleTable",nil)
     Style.mt = {}
     Style.mt.__index = Style.proto
@@ -74,12 +78,12 @@ function toggleStatus(obj,ply,alt,val)
   enc = Global.getVar('Encoder')
   if enc ~= nil then
     data = enc.call("APIobjGetPropData",{obj=obj,propID=pID})
-    if string.find(data['mtg_colors'],val) then
-      data['mtg_colors']=string.gsub(data['mtg_colors'],val,'')
+    if string.find(data['rb_domain'],val) then
+      data['rb_domain']=string.gsub(data['rb_domain'],val,'')
     else
-      data['mtg_colors']=data['mtg_colors']..val
+      data['rb_domain']=data['rb_domain']..val
     end
-    
+
     enc.call("APIobjSetPropData",{obj=obj,propID=pID,data=data})
     enc.call("APIrebuildButtons",{obj=obj})
   end
@@ -118,54 +122,29 @@ function createButtons(t)
   if enc ~= nil then
     data = enc.call("APIobjGetPropData",{obj=t.obj,propID=pID})
     flip = enc.call("APIgetFlip",{obj=t.obj})
-    scaler = {x=1,y=1,z=1}--t.obj.getScale()
+    scaler = {x=1,y=1,z=1}
     editing = enc.call("APIgetEditing",{obj=t.obj})
-    
+
     i = 0
-    for c,a in pairs(colors) do
+    for _,d in ipairs(domainOrder) do
+      local a=domains[d]
       if editing == nil then
-        if string.find(data['mtg_colors'],c) then
+        if string.find(data['rb_domain'],d) then
           t.obj.createButton({
           label=temp, click_function='toggleEditor', function_owner=self,
-          position={1.0*flip*scaler.x,0.28*flip*scaler.z,(-1.4+i*0.1)*scaler.y}, height=50, width=75, font_size=0,
-          rotation={0,0,90-90*flip}, color=a.c, tooltip='Color Identity: '..a.n
+          position={1.0*flip*scaler.x,0.28*flip*scaler.z,(1.4-i*0.1)*scaler.y}, height=50, width=75, font_size=0,
+          rotation={0,0,90-90*flip}, color=a.c, tooltip='Domain Identity: '..a.n
           })
           i = i+1
         end
       elseif editing == pID then
         t.obj.createButton({
-        label='', click_function='toggle'..c, function_owner=self,
+        label='', click_function='toggle'..d, function_owner=self,
         position={-0*flip,0.28*flip*scaler.z,(-1.2+i*0.4)*scaler.y}, height=100, width=300, font_size=0,
-        rotation={0,0,90-90*flip}, color=a.c, tooltip='Color Identity: '..a.n
+        rotation={0,0,90-90*flip}, color=a.c, tooltip='Domain Identity: '..a.n
         })
         i = i+1
       end
-    end
-    if editing == nil and i == 0 then
-      t.obj.createButton(Style.new{
-      label=temp, click_function='toggleEditor', function_owner=self,
-      position={1.0*flip*scaler.x,0.25*flip*scaler.z,(-1.4+3*0.1)*scaler.y}, height=150, width=77, font_size=0,
-      rotation={0,0,90-90*flip}, color=Color.mtg_colorless, tooltip='Color Identity: Colorless'
-      })
-    end
-  end
-end
-function updateModule(wr)
-  enc = Global.getVar('Encoder')
-  if enc ~= nil then
-    wr = wr.text
-    wrv = string.match(wr,"version = '(.-)'")
-    if wrv == 'DEPRECIATED' then
-      enc.call("APIremoveProperty",{propID=pID})
-      self.destruct()
-    end
-    local ver = enc.call("APIversionComp",{wv=wrv,cv=version})
-    if ''..ver ~= ''..version then
-      broadcastToAll("An update has been found for "..pID..". Reloading Module.")
-      self.script_code = wr
-      self.reload()
-    else
-      broadcastToAll("No update found for "..pID..". Carry on.")
     end
   end
 end

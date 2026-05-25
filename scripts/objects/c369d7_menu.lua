@@ -141,7 +141,7 @@ function createMenu(t)
         ['no']=1,
         ['ke']=2,     -- keywords
         ['ca']=3,     -- card importer
-        ['mt']=4.5,   -- mtg colors
+        ['do']=4.5,   -- domain
         ['ph']=5.5,   -- phasing
         ['is']=6.5,   -- is token
         ['ma']=7.5,     -- manifest
@@ -167,8 +167,8 @@ function createMenu(t)
           end
 
           propName = v.name
-          propName_repPi = propName:gsub('%[sup%]%[i%]π%[/i%]%[/sup%]','p') -- replace my π with p
-          width,xOffset = getWidthOffset(propName_repPi,-1,Style.proto.font_size,Style.proto.scale[1])
+          propName_plain = propName:gsub('%[.-%]', '')
+          width,xOffset = getWidthOffset(propName_plain,-1,Style.proto.font_size,Style.proto.scale[1])
 
           t2 = propName:sub(1,2):lower()  -- force a specific menu order by using the first 2 letters of the props name
           pos = propOrder[t2]
@@ -185,7 +185,7 @@ function createMenu(t)
 
       if nOrder+count<10 then count=10-nOrder end -- if small amount of props, keep flip menu and disable encoding at the bottom of card
 
-      propName = "Flip Menu"
+      propName = "Flip"
       width,xOffset = getWidthOffset(propName,-1,Style.proto.font_size,Style.proto.scale[1])
       pos=nOrder+count; count=count+1
       o.createButton(Style.new{

@@ -6,14 +6,14 @@ After it does so (if it needs to), it will attempt to let the
 deck loader inside of it.
 
 Feel free to contribute if you spot a bug or something to improve!
-https://github.com/DXHHH101/TabletopSimulatorScripts/tree/main/MTGImporter
+https://github.com/DXHHH101/TabletopSimulatorScripts
 ]]
 
 -- ============================================================================
 -- Variables GITHUB AUTO-UPDATE
 -- ============================================================================
 local ScriptVersion = "1.0.0"
-local ScriptClass = 'MTGImporter.InfiniteDeckloaderMat'
+local ScriptClass = 'RiftboundImporter.InfiniteDeckloaderMat'
 local checkUpdateTimeout = 1
 
 -- ============================================================================
@@ -28,64 +28,44 @@ local function isNewerVersion(r,l)
 end
 
 local function installUpdate(newVersion)
-	--print('[33ff33]Installing Upgrade to Riftbound Deck Loader ['..tostring(newVersion)..']')
-	WebRequest.get('https://raw.githubusercontent.com/DXHHH101/TabletopSimulatorScripts/refs/heads/main/MTGImporter/InfiniteDeckloaderMat.lua' .. "?t=" .. tostring(os.time()), function(res)
-        if (not(res.is_error)) then
-            local state = {}
-
-            if self.script_state ~= "" then
-                state = JSON.decode(self.script_state)
-            end
-
-            state.updatedTo = newVersion
-
-            self.script_state = JSON.encode(state)
-
-            self.script_code = res.text
-            self.reload()
-            --print('[33ff33]Installation Successful[-]')
-        else
-            error(res)
-        end
-        self.setVar("updateFinished", "reload")
-    end)
+    self.setVar("updateFinished", true)
 end
 
 local function checkForUpdates()
-    if Global.getVar("DXMTGScriptVersions_fetchFailed") then
+    if Global.getVar("DXRiftboundScriptVersions_fetchFailed") then
         error("Remote version check previously failed.")
         self.setVar("updateFinished", true) --used for the infinite bag object
         return
     end
 
 
-    if Global.getVar("DXMTGScriptVersions_isFetching") then
+    if Global.getVar("DXRiftboundScriptVersions_isFetching") then
         if checkUpdateTimeout <= 5 then
             Wait.time(checkForUpdates, 1)
             checkUpdateTimeout = checkUpdateTimeout + 1
             return
         else 
-            error("Failed to check for DX MTG Script updates.")
+            error("Failed to check for DX Riftbound script updates.")
         end
     else
-        local allRemoteVersions = Global.getTable("DXMTGScriptVersions")
+        local allRemoteVersions = Global.getTable("DXRiftboundScriptVersions")
         if not allRemoteVersions then
-            Global.setVar("DXMTGScriptVersions_isFetching", true)
+            Global.setVar("DXRiftboundScriptVersions_isFetching", true)
             WebRequest.get('https://raw.githubusercontent.com/DXHHH101/TabletopSimulatorScripts/refs/heads/main/ScriptVersions.json' .. "?t=" .. tostring(os.time()), function(res)
                 if (not(res.is_error)) then
                     local response = JSON.decode(res.text)
-                    Global.setTable("DXMTGScriptVersions", response)
-                    Global.setVar("DXMTGScriptVersions_isFetching", false)
+                    Global.setTable("DXRiftboundScriptVersions", response)
+                    Global.setVar("DXRiftboundScriptVersions_isFetching", false)
 
                     local remoteVersion = response[ScriptClass]
                     if not remoteVersion then
-                        error("Remote version not found for " .. ScriptClass)
+                        self.setVar("updateFinished", true)
                     elseif isNewerVersion(remoteVersion, ScriptVersion) then
                         installUpdate(remoteVersion)
                     end
                 else
-                    Global.setVar("DXMTGScriptVersions_fetchFailed", true)
-                    Global.setVar("DXMTGScriptVersions_isFetching", false)
+                    Global.setVar("DXRiftboundScriptVersions_fetchFailed", true)
+                    Global.setVar("DXRiftboundScriptVersions_isFetching", false)
                     error(res)
                     self.setVar("updateFinished", true) --used for the infinite bag object
                 end
@@ -94,7 +74,7 @@ local function checkForUpdates()
         else
             local remoteVersion = allRemoteVersions[ScriptClass]
             if not remoteVersion then
-                error("Remote version not found for " .. ScriptClass)
+                self.setVar("updateFinished", true)
             elseif isNewerVersion(remoteVersion, ScriptVersion) then
                 installUpdate(remoteVersion)
                 return

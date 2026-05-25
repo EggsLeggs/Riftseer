@@ -14,20 +14,20 @@
     <Text
       id="STtext"
       offsetXY="0 -5"
-      fontSize="40"
+      fontSize="34"
       color="rgb(1,1,1)"
-      text="select type(s)    to look for"
+      text="select type/tag(s) to look for"
       alignment="UpperCenter" />
 
     <InputField
       color="rgb(0.25,0.25,0.25)"
       textColor="rgb(1,1,1)"
       caretColor="rgb(1,1,1)"
-      placeholder="enter custom type"
-      characterValidation="Alphanumeric"
+      placeholder="custom type, subtype, or tag"
+      characterValidation="None"
       onEndEdit="UItypeCustom"
       id="typeCustom"
-      width="140"
+      width="210"
       height="30"
       fontSize="15"
       offsetXY="0 70"
@@ -40,29 +40,14 @@
       colors="rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)"
       selectedBackgroundColor="rgb(0.5,0.5,0.2)"
       deselectedBackgroundColor="rgb(0.25,0.25,0.25)"
-      width="60"
+      width="110"
       height="27.5"
       fontSize="20"
-      offsetXY="-90 37.5"
-      id="land"
+      offsetXY="-55 37.5"
+      id="champion"
       textColor="rgb(1,1,1)"
       alignment="MiddleCenter"
-      text="Land"
-    />
-    <ToggleButton
-      isOn="false"
-      onValueChanged="UItypeToggle"
-      colors="rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)"
-      selectedBackgroundColor="rgb(0.5,0.5,0.2)"
-      deselectedBackgroundColor="rgb(0.25,0.25,0.25)"
-      width="90"
-      height="27.5"
-      fontSize="20"
-      offsetXY="-10 37.5"
-      id="creature"
-      textColor="rgb(1,1,1)"
-      alignment="MiddleCenter"
-      text="Creature"
+      text="Champion"
     />
     <ToggleButton
       isOn="false"
@@ -73,11 +58,11 @@
       width="80"
       height="27.5"
       fontSize="20"
-      offsetXY="80 37.5"
-      id="artifact"
+      offsetXY="60 37.5"
+      id="unit"
       textColor="rgb(1,1,1)"
       alignment="MiddleCenter"
-      text="Artifact"
+      text="Unit"
     />
     <ToggleButton
       isOn="false"
@@ -85,14 +70,14 @@
       colors="rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)"
       selectedBackgroundColor="rgb(0.5,0.5,0.2)"
       deselectedBackgroundColor="rgb(0.25,0.25,0.25)"
-      width="130"
+      width="80"
       height="27.5"
       fontSize="20"
-      offsetXY="-67.5 5"
-      id="enchantment"
+      offsetXY="-80 5"
+      id="gear"
       textColor="rgb(1,1,1)"
       alignment="MiddleCenter"
-      text="Enchantment"
+      text="Gear"
     />
     <ToggleButton
       isOn="false"
@@ -100,14 +85,14 @@
       colors="rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)"
       selectedBackgroundColor="rgb(0.5,0.5,0.2)"
       deselectedBackgroundColor="rgb(0.25,0.25,0.25)"
-      width="130"
+      width="80"
       height="27.5"
       fontSize="20"
-      offsetXY="67.5 5"
-      id="planeswalker"
+      offsetXY="0 5"
+      id="rune"
       textColor="rgb(1,1,1)"
       alignment="MiddleCenter"
-      text="Planeswalker"
+      text="Rune"
     />
     <ToggleButton
       isOn="false"
@@ -115,31 +100,15 @@
       colors="rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)"
       selectedBackgroundColor="rgb(0.5,0.5,0.2)"
       deselectedBackgroundColor="rgb(0.25,0.25,0.25)"
-      width="90"
+      width="80"
       height="27.5"
       fontSize="20"
-      offsetXY="-47.5 -27.5"
-      id="instant"
+      offsetXY="80 5"
+      id="spell"
       textColor="rgb(1,1,1)"
       alignment="MiddleCenter"
-      text="Instant"
+      text="Spell"
     />
-    <ToggleButton
-      isOn="false"
-      onValueChanged="UItypeToggle"
-      colors="rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)|rgb(0.3,0.3,0.3)"
-      selectedBackgroundColor="rgb(0.5,0.5,0.2)"
-      deselectedBackgroundColor="rgb(0.25,0.25,0.25)"
-      width="90"
-      height="27.5"
-      fontSize="20"
-      offsetXY="47.5 -27.5"
-      id="sorcery"
-      textColor="rgb(1,1,1)"
-      alignment="MiddleCenter"
-      text="Sorcery"
-    />
-
     <HorizontalLayout
       width="165"
       height="30"
@@ -227,30 +196,6 @@
       onEndEdit="CMgetVal"
     />
 
-    <HorizontalLayout
-      width="165"
-      height="30"
-      spacing="-15"
-      offsetXY="-5 -50"
-      alignment="LowerCenter"
-      childAlignment="MiddleCenter">
-        <Text fontSize="20" color="rgb(1,1,1)">repeat</Text>
-        <InputField
-          id="repeatCascadeX"
-          color="rgb(0.3,0.3,0.3)"
-          textOffset="8 8 5 0"
-          textColor="rgb(1,1,1)"
-          caretColor="rgb(1,1,1)"
-          characterValidation="Integer"
-          onEndEdit="UIrepeatCascade"
-          placeholder="X"
-          tooltip="enter number to repeat the search procedure that many times"
-          tooltipPosition="Below"
-          tooltipBorderColor="rgba(0,0,0,0)"
-          fontSize="20"/>
-        <Text fontSize="20" color="rgb(1,1,1)">times</Text>
-    </HorizontalLayout>
-
     <Button
       onClick="CMokay"
       offsetXY="50 10"
@@ -291,7 +236,7 @@
 </Defaults>
 <Panel id="SearchPanel" class="WindowBorder" width="385" height="310" rectAlignment="MiddleCenter" showAnimation="FadeIn" hideAnimation="FadeOut" returnToOriginalPositionWhenReleased="false" allowDragging="true" color="#666666" visibility="" active="False">
     <Row id="MenuBar" class="MenuBar" width="385">
-        <Text id="WindowTitle" class="UIText" text="MTG Card Spawner" color="#FFFFFF" rectAlignment="UpperCenter" alignment="LowerCenter" width="230" height="80" offsetXY="0 55" />
+        <Text id="WindowTitle" class="UIText" text="Riftbound Card Spawner" color="#FFFFFF" rectAlignment="UpperCenter" alignment="LowerCenter" width="230" height="80" offsetXY="0 55" />
         <Button id="closeButton" class="topButtons" rectAlignment="UpperRight" color="#990000" textColor="#FFFFFF" text="X" onClick="close" />
     </Row>
     <TableLayout id="SearchTable" class="SearchTable" height="280">
@@ -313,18 +258,10 @@
         </Row>
         <Row class="SearchTableRow">
             <Cell>
-                <Text>Power</Text>
+                <Text>Might</Text>
             </Cell>
             <Cell>
-                <InputField id="vPower" class="UIInputField" onEndEdit="updateText" />
-            </Cell>
-        </Row>
-        <Row class="SearchTableRow">
-            <Cell>
-                <Text>Toughness</Text>
-            </Cell>
-            <Cell>
-                <InputField id="vToughness" class="UIInputField" onEndEdit="updateText" />
+                <InputField id="vMight" class="UIInputField" onEndEdit="updateText" />
             </Cell>
         </Row>
         <Row class="SearchTableRow">
@@ -333,12 +270,12 @@
             </Cell>
             <Cell>
                 <HorizontalLayout spacing="5">
-                    <ToggleButton id="vWhite" class="UIToggleButton" icon="whiteMana" color="#fffbd5" onValueChanged="updatevColor" />
-                    <ToggleButton id="vBlue" class="UIToggleButton" icon="blueMana" color="#aae0fa" onValueChanged="updatevColor" />
-                    <ToggleButton id="vBlack" class="UIToggleButton" icon="blackMana" color="#cbc2bf" onValueChanged="updatevColor" />
-                    <ToggleButton id="vRed" class="UIToggleButton" icon="redMana" color="#f9aa8f" onValueChanged="updatevColor" />
-                    <ToggleButton id="vGreen" class="UIToggleButton" icon="greenMana" color="#9bd3ae" onValueChanged="updatevColor" />
-                    <ToggleButton id="vColorless" class="UIToggleButton" icon="colorlessMana" color="#ccc2c0" onValueChanged="updatevColor" />
+                    <ToggleButton id="vWhite" class="UIToggleButton" text="W" textColor="#000000" color="#fffbd5" onValueChanged="updatevColor" />
+                    <ToggleButton id="vBlue" class="UIToggleButton" text="U" textColor="#000000" color="#aae0fa" onValueChanged="updatevColor" />
+                    <ToggleButton id="vBlack" class="UIToggleButton" text="B" textColor="#000000" color="#cbc2bf" onValueChanged="updatevColor" />
+                    <ToggleButton id="vRed" class="UIToggleButton" text="R" textColor="#000000" color="#f9aa8f" onValueChanged="updatevColor" />
+                    <ToggleButton id="vGreen" class="UIToggleButton" text="G" textColor="#000000" color="#9bd3ae" onValueChanged="updatevColor" />
+                    <ToggleButton id="vColorless" class="UIToggleButton" text="C" textColor="#000000" color="#ccc2c0" onValueChanged="updatevColor" />
                 </HorizontalLayout>
             </Cell>
         </Row>
@@ -370,7 +307,7 @@
 <!--DECK IMPORTER-->
 <Panel id="ListPanel" class="WindowBorder" width="385" height="490" rectAlignment="MiddleCenter" showAnimation="FadeIn" hideAnimation="FadeOut" returnToOriginalPositionWhenReleased="false" allowDragging="true" color="#666666" visibility="" active="False">
     <Row id="ListMenuBar" class="MenuBar" width="385">
-        <Text id="ListWindowTitle" class="UIText" text="MTG Deck Importer" color="#FFFFFF" rectAlignment="UpperCenter" alignment="LowerCenter" width="230" height="80" offsetXY="0 55" />
+        <Text id="ListWindowTitle" class="UIText" text="Riftbound Deck Importer" color="#FFFFFF" rectAlignment="UpperCenter" alignment="LowerCenter" width="230" height="80" offsetXY="0 55" />
         <Button id="ListCloseButton" class="topButtons" rectAlignment="UpperRight" color="#990000" textColor="#FFFFFF" text="X" onClick="close" />
     </Row>
     <TableLayout id="ListTable" class="SearchTable" height="460" width="385" columnWidths="385">

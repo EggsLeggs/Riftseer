@@ -2,6 +2,10 @@
 function onload()
   buildDataStructure()
   registerObjectGUIDs()
+  cachePlayboardZones()
+  Wait.frames(function()
+    cachePlayboardZones()
+  end, 3)
   buildTableButtons()
   addZoneContextMenus()
   for _,guid in pairs({'cb1610', 'a7a029', '4c02f8', 'a3e6a8', '9c553c', 'eb479b','3d4319','540e21'}) do
@@ -35,8 +39,6 @@ function onload()
   revealUpS=3.1
   revealRi=1.5
   banishRot=-180
-  banishFor=4.16
-  trashFor=-4.14
 end
 
 -- Ensure data structure exists
@@ -47,6 +49,91 @@ function buildDataStructure()
     Yellow  = {deck = nil},
     Blue    = {deck = nil},
   }
+end
+
+-- Playboard zones: three ScriptingTriggers per seat, each tagged playboard{color}.
+playboardZonesByColor = {}
+
+function playboardPlayerTag(color)
+  return 'playboard' .. color
+end
+
+function playboardColorForZone(zone)
+  if zone == nil then return nil end
+  for _, color in ipairs(Player.getColors()) do
+    if zone.hasTag(playboardPlayerTag(color)) then return color end
+  end
+  return nil
+end
+
+function cachePlayboardZones()
+  playboardZonesByColor = {}
+  for _, color in ipairs(Player.getColors()) do
+    playboardZonesByColor[color] = getObjectsWithTag(playboardPlayerTag(color))
+  end
+end
+
+function getPlayboardZones(color)
+  if playboardZonesByColor == nil then
+    cachePlayboardZones()
+  end
+  local zones = playboardZonesByColor[color]
+  if zones == nil or #zones == 0 then
+    cachePlayboardZones()
+    zones = playboardZonesByColor[color] or {}
+  end
+  return zones
+end
+
+-- Tagged zones only report untagged cards when ignore_tags is true.
+function getPlayboardZoneObjects(zone)
+  return zone.getObjects(true)
+end
+
+function getPlayboardObjects(color)
+  local seen = {}
+  local result = {}
+  for _, zone in ipairs(getPlayboardZones(color)) do
+    for _, obj in ipairs(getPlayboardZoneObjects(zone)) do
+      if not seen[obj] then
+        seen[obj] = true
+        table.insert(result, obj)
+      end
+    end
+  end
+  return result
+end
+
+-- Lowest playmat row per seat (nickname "* Rune" in the save).
+function getPlayboardRuneZone(color)
+  for _, zone in ipairs(getPlayboardZones(color)) do
+    local nick = zone.getNickname() or ''
+    if nick:find('Rune') then return zone end
+  end
+  return nil
+end
+
+function getPlayboardReadyRotationY(color)
+  if props[color] and props[color].spawns and props[color].spawns.main then
+    return tonumber(props[color].spawns.main.rotY)
+  end
+  return 0
+end
+
+function isObjectInPlayboard(obj, color)
+  for _, zone in ipairs(getPlayboardZones(color)) do
+    for _, o in ipairs(getPlayboardZoneObjects(zone)) do
+      if o == obj then return true end
+    end
+  end
+  return false
+end
+
+function isObjectOnAnyPlayboard(obj)
+  for _, color in ipairs(Player.getColors()) do
+    if isObjectInPlayboard(obj, color) then return true end
+  end
+  return false
 end
 
 -- Get pointers to in-game objects so we can script them
@@ -61,10 +148,75 @@ function registerObjectGUIDs()
   data["Yellow"]["trash"]     = getObjectFromGUID("8b439a")
   data["Blue"]["trash"]       = getObjectFromGUID("debc40")
 
-  data["White"]["playmat"]        = getObjectFromGUID("8b3401")
-  data["Red"]["playmat"]          = getObjectFromGUID("c20e3f")
-  data["Yellow"]["playmat"]       = getObjectFromGUID("129eaa")
-  data["Blue"]["playmat"]         = getObjectFromGUID("56cd9d")
+  data["White"]["runeZones"] = {
+    getObjectFromGUID("f4a001"),
+    getObjectFromGUID("f4a002"),
+    getObjectFromGUID("f4a003"),
+    getObjectFromGUID("f4a004"),
+    getObjectFromGUID("f4a005"),
+    getObjectFromGUID("f4a006"),
+    getObjectFromGUID("f4a007"),
+    getObjectFromGUID("f4a008"),
+    getObjectFromGUID("f4a009"),
+    getObjectFromGUID("f4a00a"),
+    getObjectFromGUID("f4a00b"),
+    getObjectFromGUID("f4a00c"),
+  }
+
+  data["Red"]["runeZones"] = {
+    getObjectFromGUID("4da001"),
+    getObjectFromGUID("4da002"),
+    getObjectFromGUID("4da003"),
+    getObjectFromGUID("4da004"),
+    getObjectFromGUID("4da005"),
+    getObjectFromGUID("4da006"),
+    getObjectFromGUID("4da007"),
+    getObjectFromGUID("4da008"),
+    getObjectFromGUID("4da009"),
+    getObjectFromGUID("4da00a"),
+    getObjectFromGUID("4da00b"),
+    getObjectFromGUID("4da00c"),
+  }
+
+  data["Yellow"]["runeZones"] = {
+    getObjectFromGUID("e4a001"),
+    getObjectFromGUID("e4a002"),
+    getObjectFromGUID("e4a003"),
+    getObjectFromGUID("e4a004"),
+    getObjectFromGUID("e4a005"),
+    getObjectFromGUID("e4a006"),
+    getObjectFromGUID("e4a007"),
+    getObjectFromGUID("e4a008"),
+    getObjectFromGUID("e4a009"),
+    getObjectFromGUID("e4a00a"),
+    getObjectFromGUID("e4a00b"),
+    getObjectFromGUID("e4a00c"),
+  }
+
+  data["Blue"]["runeZones"] = {
+    getObjectFromGUID("b4a001"),
+    getObjectFromGUID("b4a002"),
+    getObjectFromGUID("b4a003"),
+    getObjectFromGUID("b4a004"),
+    getObjectFromGUID("b4a005"),
+    getObjectFromGUID("b4a006"),
+    getObjectFromGUID("b4a007"),
+    getObjectFromGUID("b4a008"),
+    getObjectFromGUID("b4a009"),
+    getObjectFromGUID("b4a00a"),
+    getObjectFromGUID("b4a00b"),
+    getObjectFromGUID("b4a00c"),
+  }
+
+  data["White"]["runeDeckZone"]    = getObjectFromGUID("f4d001")
+  data["Red"]["runeDeckZone"]      = getObjectFromGUID("4d0001")
+  data["Yellow"]["runeDeckZone"]   = getObjectFromGUID("e4d001")
+  data["Blue"]["runeDeckZone"]     = getObjectFromGUID("b4d001")
+
+  data["White"]["banishmentZone"]  = getObjectFromGUID("bf0002")
+  data["Red"]["banishmentZone"]    = getObjectFromGUID("bf0001")
+  data["Yellow"]["banishmentZone"] = getObjectFromGUID("bf0003")
+  data["Blue"]["banishmentZone"]   = getObjectFromGUID("bf0004")
 
   data["White"]["mulliganButton"] = getObjectFromGUID("3b07ae")
   data["Red"]["mulliganButton"]   = getObjectFromGUID("c53ac6")
@@ -75,6 +227,11 @@ function registerObjectGUIDs()
   data["Red"]["untapButton"]      = getObjectFromGUID("86e447")
   data["Yellow"]["untapButton"]   = getObjectFromGUID("1f3e4a")
   data["Blue"]["untapButton"]     = getObjectFromGUID("e2f7ae")
+
+  data["White"]["channelButton"]  = getObjectFromGUID("ch0001")
+  data["Red"]["channelButton"]    = getObjectFromGUID("ch0002")
+  data["Yellow"]["channelButton"] = getObjectFromGUID("ch0003")
+  data["Blue"]["channelButton"]   = getObjectFromGUID("ch0004")
 
   data["White"]["drawButton"]     = getObjectFromGUID("26775a")
   data["Red"]["drawButton"]       = getObjectFromGUID("885f49")
@@ -144,6 +301,7 @@ function buildTableButtons()
     createTableButton(playerData["scryButton"],  "Predict", "playerPredict",  "Predict")
     createTableButton(playerData["millButton"],  "Mill", "playerMill",  "Mill")
     createTableButton(playerData["untapButton"], "Ready","playerUntap", "Ready")
+    createTableButton(playerData["channelButton"], "Channel", "playerChannel", "Channel")
     createTableButtonM(playerData["mulliganButton"], "Mulligan", "playerMulligan", "Mulligan")
     createTableButtonR(playerData["revealButton"])
     data[color]["mulliganNumber"] = 4
@@ -151,6 +309,7 @@ function buildTableButtons()
     playerData["drawButton"].max_typed_number=99
     playerData["scryButton"].max_typed_number=99
     playerData["millButton"].max_typed_number=99
+    playerData["channelButton"].max_typed_number=99
     playerData["revealButton"].max_typed_number=99
   end
 end
@@ -188,6 +347,17 @@ function onObjectNumberTyped(obj,ply,int)
         Wait.time(function() mill1(ply) end, drawDelay, int)
       end
     end
+    if obj==playerData["channelButton"] and color==ply then
+      local remaining=getRuneDeckRemaining(ply)
+      local maxAdd=remaining-runeChannelQueueLength(ply)
+      if int>maxAdd then int=maxAdd end
+      if int>0 then
+        local runeTxt=' rune'
+        if int>1 then runeTxt=' runes' end
+        Player[ply].broadcast('channeling '..int..runeTxt,ply)
+        channelExecute(ply, int)
+      end
+    end
     if obj==playerData["revealButton"] and color==ply then
       local deck=getDeckFromZone(playerData["mainDeckZone"])
       if deck==nil then return end
@@ -213,6 +383,9 @@ function createTableButton(object, name, clickFunction, ttip)
   object.setName(name)
   if name=='Ready' then
     ttip = '[b]'..ttip..'[/b]'
+  elseif name=='Channel' then
+    ttip = '                  [b]'..ttip..'[/b]'..'\n       [i]left click[/i] for 1 rune'..
+           '\n     [i]right click[/i] for 2 runes\nor [i]type[/i] the desired amount'
   else
     ttip = '                  [b]'..ttip..'[/b]'..'\n       [i]left click[/i] for 1 card'..
            '\n     [i]right click[/i] for '..tostring(nAlt)..' cards\nor [i]type[/i] the desired amount'
@@ -419,10 +592,11 @@ function move2trash(ply)
     if gr.type=='Card' then
       handTrigger(gr)
     end
+    local trashZone = data[ply]["trash"]
     local rot = gr.getRotation()
     rot.z=0
-    rot.y=data[ply]["mainDeckZone"].getRotation().y+banishRot
-    local pos = data[ply]["mainDeckZone"].getPosition()+data[ply]["mainDeckZone"].getTransformForward():scale(trashFor)
+    rot.y=trashZone.getRotation().y+banishRot
+    local pos = trashZone.getPosition()
     pos[2]=3
     gr.setRotationSmooth(rot,false,true)
     gr.setPositionSmooth(pos,false,true)
@@ -454,10 +628,11 @@ function move2banishment(ply)
     if gr.type=='Card' then
       handTrigger(gr)
     end
+    local banishZone = data[ply]["banishmentZone"]
     local rot = gr.getRotation()
     rot.z=0
-    rot.y=data[ply]["mainDeckZone"].getRotation().y+banishRot
-    local pos = data[ply]["mainDeckZone"].getPosition()+data[ply]["mainDeckZone"].getTransformForward():scale(banishFor)
+    rot.y=banishZone.getRotation().y+banishRot
+    local pos = banishZone.getPosition()
     pos[2]=3
     gr.setRotationSmooth(rot,false,true)
     gr.setPositionSmooth(pos,false,true)
@@ -535,18 +710,18 @@ function revealStack(button, ply, alt)
 end
 
 function checkPosMove(pos,mainDeckZone)
-  local castPos=pos
-  castPos[2]=1
-  local castPars={
-    origin= castPos,
+  local raycastPos=pos
+  raycastPos[2]=1
+  local raycastPars={
+    origin= raycastPos,
     type = 3,
     size = {1,4,1.5},
     direction = vector(0,0,1),
     max_distance=0
   }
-  local castOutput = Physics.cast(castPars)
-  for _,castO in pairs(castOutput) do
-    local hitObj = castO.hit_object
+  local raycastOutput = Physics.cast(raycastPars)
+  for _,raycastHit in pairs(raycastOutput) do
+    local hitObj = raycastHit.hit_object
     if hitObj.type=='Card' or hitObj.type=='Deck' then
       local objPos=hitObj.getPosition()
       if math.abs(objPos.z)>7 then
@@ -576,8 +751,7 @@ function playerMulligan(button, playerColor, alt)
     end,0.5)
 
     local proceed=true
-    local playmat = data[playerColor]["playmat"]
-    for k, v in pairs(playmat.getObjects()) do
+    for _, v in ipairs(getPlayboardObjects(playerColor)) do
       if (v.type=='Card' or v.type=='Deck') and nMullClick<2 then
         proceed=false
       end
@@ -594,6 +768,11 @@ function playerMulligan(button, playerColor, alt)
     end
 
     buttonCooldown(button, 2)
+
+    local runeDeck = getDeckFromZone(data[playerColor]["runeDeckZone"])
+    if runeDeck~=nil then
+      Wait.time(function() runeDeck.shuffle() end, 0.1, 7)
+    end
 
     local deck = getDeckFromZone(data[playerColor]["mainDeckZone"])
     if deck~=nil then
@@ -620,38 +799,41 @@ end
 function playerUntap(button, playerColor, alt)
   if button == data[playerColor]["untapButton"] then
     buttonPress(button,drawDelay*0.75)
-    local playmat = data[playerColor]["playmat"]
     local enc = Global.getVar("Encoder")
-    local ry = playmat.getRotation()
+    local keywordPrefix = 'rb_'
+    local stunCounterKey = keywordPrefix..'stuncounter'
+    local frozenKey = keywordPrefix..'frozen'
+    local exertKey = keywordPrefix..'exert'
+    local readyRotY = getPlayboardReadyRotationY(playerColor)
     local rr = nil
     local untaps = true
-    for k, v in pairs(playmat.getObjects()) do
+    for _, v in ipairs(getPlayboardObjects(playerColor)) do
       untaps = true
       flash = false
       if v.type == 'Card' or v.type == 'Deck' then
         if enc ~= nil then
           if enc.call("APIobjectExists",{obj=v}) then
             local encdat = enc.call("APIobjGetAllData",{obj=v})
-            if encdat["mtg_stuncounter"] ~= nil and untaps then
-              if encdat["mtg_stuncounter"] > 0 then
+            if encdat[stunCounterKey] ~= nil and untaps then
+              if encdat[stunCounterKey] > 0 then
                 flash = true
                 untaps = false
-                encdat.mtg_stuncounter = encdat.mtg_stuncounter-1
+                encdat[stunCounterKey] = encdat[stunCounterKey]-1
                 enc.call("APIobjSetAllData",{obj=v,data=encdat})
                 enc.call("APIrebuildButtons",{obj=v})
               end
             end
-            if encdat["mtg_frozen"] ~= nil then
-              if encdat["mtg_frozen"] == true then
+            if encdat[frozenKey] ~= nil then
+              if encdat[frozenKey] == true then
                 flash = true
                 untaps = false
               end
             end
-            if encdat["mtg_exert"] ~= nil then
-              if encdat["mtg_exert"] == true then
+            if encdat[exertKey] ~= nil then
+              if encdat[exertKey] == true then
                 flash = true
                 untaps = false
-                encdat.mtg_exert = false
+                encdat[exertKey] = false
                 enc.call("APIobjSetAllData",{obj=v,data=encdat})
                 enc.call("APIrebuildButtons",{obj=v})
               end
@@ -678,14 +860,418 @@ function playerUntap(button, playerColor, alt)
           Wait.time(function() v.highlightOn(playerColor,0.1) end,0.2,3)
         elseif untaps == true then
           rr = v.getRotation()
-          v.setRotationSmooth({x=rr.x,y=ry.y,z=rr.z})
+          v.setRotationSmooth({x=rr.x,y=readyRotY,z=rr.z})
         end
       end
     end
   end
 end
 
-------------------------------------- DRAW -------------------------------------
+------------------------------------ CHANNEL -----------------------------------
+channelMovingCards = channelMovingCards or {}
+runeDragRotation = runeDragRotation or {}
+runeChannelReserve = runeChannelReserve or {}
+runeChannelQueue = runeChannelQueue or {}
+runeChannelPumping = runeChannelPumping or {}
+
+function onObjectPickUp(player_color, obj)
+  if obj==nil or obj.type~='Card' then return end
+  runeDragRotation[obj.getGUID()] = obj.getRotation()
+end
+
+function onObjectDrop(player_color, obj)
+  if obj==nil or obj.type~='Card' then return end
+  local guid = obj.getGUID()
+  if channelMovingCards[guid] then return end
+  local savedRot = runeDragRotation[guid]
+  if savedRot==nil then return end
+  Wait.frames(function()
+    if obj==nil then
+      runeDragRotation[guid] = nil
+      return
+    end
+    if colorForObjectInRuneZone(obj)~=nil then
+      obj.setRotation(savedRot)
+    else
+      runeDragRotation[guid] = nil
+    end
+  end, 3)
+end
+
+function playerChannel(button, playerColor, alt)
+  if button == data[playerColor]["channelButton"] then
+    if not(alt) then
+      buttonPress(button,drawDelay*0.75)
+      channelExecute(playerColor, 1)
+    else
+      buttonPress(button,drawDelay*nAlt)
+      buttonCooldown(button, drawDelay*nAlt)
+      channelExecute(playerColor, 2)
+    end
+  end
+end
+
+function getRuneDeckRemaining(color)
+  local zone = data[color]["runeDeckZone"]
+  if zone==nil then return 0 end
+  local count = 0
+  for _,obj in pairs(zone.getObjects()) do
+    if obj.type=='Deck' then
+      return obj.getQuantity()
+    elseif obj.type=='Card' and obj.use_gravity then
+      count = count + 1
+    end
+  end
+  return count
+end
+
+function countRunesInZone(zone)
+  if zone==nil then return 0 end
+  local n = 0
+  for _,obj in pairs(zone.getObjects()) do
+    if obj.type=='Card' then n = n + 1 end
+  end
+  return n
+end
+
+function countEmptyRuneSlots(color)
+  local zones = data[color]["runeZones"]
+  if zones==nil then return 0 end
+  local n = 0
+  for _,zone in ipairs(zones) do
+    if countRunesInZone(zone)==0 then n = n + 1 end
+  end
+  return n
+end
+
+function isRuneCard(card)
+  if card==nil or card.type~='Card' then return false end
+  return cardMatchesSearchType({
+    nickname = card.getNickname(),
+    name = card.getName(),
+    gm_notes = card.getGMNotes(),
+    lua_script_state = card.getLuaScriptState(),
+    tags = card.getTags(),
+    Tags = card.getTags(),
+    description = card.getDescription()
+  }, 'rune')
+end
+
+function findNonRuneCardsInPlayboardRuneArea(color)
+  local zone = getPlayboardRuneZone(color)
+  if zone==nil then return {} end
+  local bad = {}
+  for _, obj in ipairs(getPlayboardZoneObjects(zone)) do
+    if obj.type=='Card' and not isRuneCard(obj) then
+      table.insert(bad, obj)
+    end
+  end
+  return bad
+end
+
+function flashCardsRedDiscardStyle(cards)
+  for _, card in ipairs(cards) do
+    if card~=nil then
+      Wait.time(function()
+        Wait.time(function()
+          if card~=nil then card.highlightOn({1,0,0},0.05) end
+        end, 0.1, 10)
+      end, 2)
+    end
+  end
+  Wait.time(function()
+    for _, card in ipairs(cards) do
+      if card~=nil then card.highlightOff() end
+    end
+  end, 3.5)
+end
+
+function runeChannelError(color, msg)
+  print(msg)
+  Player[color].broadcast(msg, color)
+end
+
+function collectChannelRuneCards(color)
+  local zones = data[color]["runeZones"]
+  if zones==nil then return {} end
+  local entries = {}
+  for i, zone in ipairs(zones) do
+    for _, obj in pairs(zone.getObjects()) do
+      if obj.type=='Card' then
+        table.insert(entries, {card=obj, slot=i})
+      end
+    end
+  end
+  table.sort(entries, function(a, b) return a.slot < b.slot end)
+  local cards = {}
+  for _, e in ipairs(entries) do
+    table.insert(cards, e.card)
+  end
+  return cards
+end
+
+function compactChannelRuneSlots(color)
+  local zones = data[color]["runeZones"]
+  if zones==nil then return end
+  local runes = collectChannelRuneCards(color)
+  local readyRotY = getPlayboardReadyRotationY(color)
+  for i, card in ipairs(runes) do
+    local zone = zones[i]
+    if zone~=nil then
+      local guid = card.getGUID()
+      channelMovingCards[guid] = true
+      runeDragRotation[guid] = nil
+      local pos = zone.getPosition()
+      pos.y = 2
+      card.setRotation({x=0, y=readyRotY, z=0})
+      card.setPosition(pos)
+      Wait.time(function()
+        if card~=nil then
+          channelMovingCards[card.getGUID()] = nil
+        end
+      end, 0.5)
+    end
+  end
+  runeChannelReserve[color] = nil
+  ensureRuneChannelReserve(color)
+end
+
+-- When all channel slots are reserved, try to free space or explain why channel failed.
+function tryRecoverRuneChannelSlots(color)
+  local bad = findNonRuneCardsInPlayboardRuneArea(color)
+  if #bad>0 then
+    flashCardsRedDiscardStyle(bad)
+    runeChannelError(color,
+      'Cannot channel: the rune area has cards that are not runes. Move or remove them first.')
+    return false
+  end
+
+  local zones = data[color]["runeZones"]
+  if zones==nil then return false end
+  local runes = collectChannelRuneCards(color)
+  local nSlots = #zones
+
+  if #runes < nSlots then
+    compactChannelRuneSlots(color)
+    return true
+  end
+
+  runeChannelError(color,
+    'Cannot channel: no empty rune slots ('..#runes..' runes, '..nSlots..' slots).')
+  return false
+end
+
+function ensureRuneChannelReserve(color)
+  if runeChannelReserve[color]~=nil then return runeChannelReserve[color] end
+  local zones = data[color]["runeZones"]
+  if zones==nil then return nil end
+  local counts = {}
+  for i,zone in ipairs(zones) do
+    counts[i] = countRunesInZone(zone)
+  end
+  runeChannelReserve[color] = counts
+  return counts
+end
+
+function reserveNextRuneSlot(color)
+  local zones = data[color]["runeZones"]
+  if zones==nil then return nil end
+  local slotCounts = ensureRuneChannelReserve(color)
+  if slotCounts==nil then return nil end
+  for i=1,#zones do
+    if slotCounts[i]==0 then
+      slotCounts[i] = 1
+      return {zone=zones[i], stack=0}
+    end
+  end
+  return nil
+end
+
+function placeChanneledRune(color, slot)
+  local card = getCardFromZone(data[color]["runeDeckZone"])
+  if card==nil then return false end
+  local zone = slot.zone
+  if zone==nil then return false end
+  local guid = card.getGUID()
+  channelMovingCards[guid] = true
+  runeDragRotation[guid] = nil
+  local readyRotY = getPlayboardReadyRotationY(color)
+  local pos = zone.getPosition()
+  pos.y = 2 + 0.15 * (slot.stack or 0)
+  card.setRotation({x=0, y=readyRotY, z=0})
+  card.setPosition(pos)
+  card.use_gravity = true
+  Wait.time(function()
+    if card~=nil then
+      channelMovingCards[card.getGUID()] = nil
+    end
+  end, 0.5)
+  return true
+end
+
+function runeChannelQueueLength(color)
+  local q = runeChannelQueue[color]
+  if q==nil then return 0 end
+  return #q
+end
+
+function enqueueRuneChannels(color, count)
+  if count<=0 then return 0 end
+  if runeChannelQueue[color]==nil then
+    runeChannelQueue[color] = {}
+    runeChannelReserve[color] = nil
+  end
+  local queued = 0
+  for _=1,count do
+    local slot = reserveNextRuneSlot(color)
+    if slot==nil then
+      if not tryRecoverRuneChannelSlots(color) then break end
+      slot = reserveNextRuneSlot(color)
+      if slot==nil then break end
+    end
+    table.insert(runeChannelQueue[color], slot)
+    queued = queued + 1
+  end
+  return queued
+end
+
+function pumpRuneChannelQueue(color)
+  if runeChannelPumping[color] then return end
+  runeChannelPumping[color] = true
+
+  local function step()
+    local q = runeChannelQueue[color]
+    if q==nil or #q==0 then
+      runeChannelPumping[color] = false
+      runeChannelReserve[color] = nil
+      runeChannelQueue[color] = nil
+      return
+    end
+
+    if getRuneDeckRemaining(color)<=0 then
+      runeChannelQueue[color] = nil
+      runeChannelPumping[color] = false
+      runeChannelReserve[color] = nil
+      Player[color].broadcast('no runes left in the rune deck',color)
+      return
+    end
+
+    local slot = table.remove(q, 1)
+    if not placeChanneledRune(color, slot) then
+      runeChannelQueue[color] = nil
+      runeChannelPumping[color] = false
+      runeChannelReserve[color] = nil
+      Player[color].broadcast('no runes left in the rune deck',color)
+      return
+    end
+
+    Wait.time(step, drawDelay)
+  end
+
+  step()
+end
+
+function channelExecute(playerColor, count)
+  local remaining = getRuneDeckRemaining(playerColor)
+  local queuedAlready = runeChannelQueueLength(playerColor)
+  local maxAdd = remaining - queuedAlready
+  if maxAdd<=0 then
+    if queuedAlready==0 then
+      Player[playerColor].broadcast('no runes left in the rune deck',playerColor)
+    end
+    return
+  end
+  if count>maxAdd then count = maxAdd end
+  enqueueRuneChannels(playerColor, count)
+  pumpRuneChannelQueue(playerColor)
+end
+
+runeDomainOrder = {'f','c','m','b','x','o'}
+
+function isRuneZone(zone)
+  if zone==nil then return false end
+  for _,col in pairs(Player.getAvailableColors()) do
+    local zones = data[col] and data[col]["runeZones"]
+    if zones then
+      for _,z in ipairs(zones) do
+        if z==zone then return true end
+      end
+    end
+  end
+  return false
+end
+
+function colorForRuneZone(zone)
+  if zone==nil then return nil end
+  for _,col in pairs(Player.getAvailableColors()) do
+    local zones = data[col] and data[col]["runeZones"]
+    if zones then
+      for _,z in ipairs(zones) do
+        if z==zone then return col end
+      end
+    end
+  end
+  return nil
+end
+
+function colorForObjectInRuneZone(obj)
+  if obj==nil then return nil end
+  for _,oZone in pairs(obj.getZones()) do
+    local c = colorForRuneZone(oZone)
+    if c then return c end
+  end
+  return nil
+end
+
+function getRuneDomainSortKey(card)
+  if Encoder==nil or card==nil then return 99 end
+  local ok, exists = pcall(function() return Encoder.call("APIobjectExists",{obj=card}) end)
+  if not ok or not exists then return 99 end
+  local ok2, d = pcall(function() return Encoder.call("APIobjGetPropData",{obj=card,propID="RB_Domain"}) end)
+  if not ok2 or d==nil or d.rb_domain==nil or d.rb_domain=='' then return 99 end
+  for i,letter in ipairs(runeDomainOrder) do
+    if string.find(d.rb_domain,letter) then return i end
+  end
+  return 99
+end
+
+function sortRuneZones(color)
+  local zones = data[color] and data[color]["runeZones"]
+  if zones==nil then return end
+  local entries = {}
+  for _,zone in ipairs(zones) do
+    for _,obj in pairs(zone.getObjects()) do
+      if obj.type=='Card' then
+        local name = (obj.getName() or ''):gsub("\n.*",""):lower()
+        table.insert(entries,{card=obj,domain=getRuneDomainSortKey(obj),name=name})
+      end
+    end
+  end
+  if #entries==0 then return end
+  table.sort(entries,function(a,b)
+    if a.domain~=b.domain then return a.domain<b.domain end
+    return a.name<b.name
+  end)
+  local nSlots = #zones
+  for i,entry in ipairs(entries) do
+    local slotIdx = ((i-1) % nSlots) + 1
+    local stack = math.floor((i-1)/nSlots)
+    local zone = zones[slotIdx]
+    if zone~=nil and entry.card~=nil then
+      channelMovingCards[entry.card.getGUID()] = true
+      local pos = zone.getPosition()
+      pos.y = 2 + 0.15*stack
+      entry.card.setPositionSmooth(pos,false,true)
+      local guid = entry.card.getGUID()
+      Wait.time(function() channelMovingCards[guid] = nil end, 1.5)
+    end
+  end
+end
+
+function sortRuneZonesCallback(color)
+  return function(ply) sortRuneZones(color) end
+end
+
 function playerDraw(button, playerColor, alt)
   if button == data[playerColor]["drawButton"] then
     if not(alt) then
@@ -931,21 +1517,30 @@ function addZoneContextMenus()
   for color, playerData in pairs(data) do
     for _,obj in pairs(playerData["mainDeckZone"].getObjects()) do
       if obj.type=='Deck' then
-        obj.addContextMenuItem('Cascade for X',deckCascade)
-        obj.addContextMenuItem('Reveal until Type',deckSeachType)
+        obj.addContextMenuItem('Reveal until Type/Tag',deckSeachType)
       end
     end
-    for _,obj in pairs(playerData["playmat"].getObjects()) do
+    for _,obj in ipairs(getPlayboardObjects(color)) do
       if obj.type=='Card' then
         obj.addContextMenuItem('Make Token Copy',cardToken)
-        if obj.getDescription():lower():find('cascade') then
-          obj.addContextMenuItem('Cascade',cardCascade)
-        end
       end
     end
     for _,obj in pairs(Player[color].getHandObjects(1)) do
-      obj.addContextMenuItem('Sort Hand by CMC',sortHands)
+      obj.addContextMenuItem('Sort Hand by Energy',sortHands)
       obj.addContextMenuItem('Random Discard',randomDiscard)
+    end
+    local runeZones = playerData["runeZones"]
+    if runeZones then
+      for _,zone in ipairs(runeZones) do
+        if zone~=nil then
+          zone.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(color))
+          for _,obj in pairs(zone.getObjects()) do
+            if obj.type=='Card' then
+              obj.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(color))
+            end
+          end
+        end
+      end
     end
   end
 end
@@ -983,8 +1578,9 @@ addContextMenuItem('hand counts',function(c)
 function onObjectEnterZone(zone,obj)
   if obj==nil or not(obj.type=='Card' or obj.type=='Deck') then return end
   local inHandZone=false
-  local inPlayZone=false
+  local inPlayZone=isObjectOnAnyPlayboard(obj)
   local inDeckZone=false
+  local runeColor=nil
   for _,oZone in pairs(obj.getZones()) do
     if Encoder~=nil then
       local encZones=Encoder.call("APIlistZones",{})
@@ -994,13 +1590,11 @@ function onObjectEnterZone(zone,obj)
       end
     end
     for _,col in pairs(Player.getAvailableColors()) do
-      if oZone==data[col]["playmat"] then
-        inPlayZone=true
-      end
       if oZone==data[col]["mainDeckZone"] then
         inDeckZone=true
       end
     end
+    if runeColor==nil then runeColor = colorForRuneZone(oZone) end
   end
   obj.clearContextMenu()
   if obj.type=='Card' then
@@ -1008,17 +1602,16 @@ function onObjectEnterZone(zone,obj)
   end
   if obj.type=='Card' and inPlayZone then
     obj.addContextMenuItem('Make Token Copy',cardToken)
-    if obj.getDescription():lower():find('cascade') then
-      obj.addContextMenuItem('Cascade',cardCascade)
-    end
   end
   if obj.type=='Card' and inHandZone then
-    obj.addContextMenuItem('Sort Hand by CMC',sortHands)
+    obj.addContextMenuItem('Sort Hand by Energy',sortHands)
     obj.addContextMenuItem('Random Discard',randomDiscard)
   end
+  if obj.type=='Card' and runeColor~=nil then
+    obj.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(runeColor))
+  end
   if obj.type=='Deck' and inDeckZone then
-    obj.addContextMenuItem('Cascade for X',deckCascade)
-    obj.addContextMenuItem('Reveal until Type',deckSeachType)
+    obj.addContextMenuItem('Reveal until Type/Tag',deckSeachType)
     obj.setScale({1,1,1})
   end
 end
@@ -1026,23 +1619,26 @@ end
 function onObjectLeaveZone(zone,obj)
   if obj==nil or not(obj.type=='Card' or obj.type=='Deck') then return end
   local inHandZone=false
-  local inPlayZone=false
+  local inPlayZone=isObjectOnAnyPlayboard(obj)
   local inDeckZone=false
+  local runeColor=nil
   for _,oZone in pairs(obj.getZones()) do
-    if Encoder~=nil then
-      local encZones=Encoder.call("APIlistZones",{})
-      local encZone=encZones[oZone.getGUID()]
-      if encZone and encZone.name:match('_1') then
-        inHandZone=true
+    if oZone==zone then
+      -- skip; we're leaving this one
+    else
+      if Encoder~=nil then
+        local encZones=Encoder.call("APIlistZones",{})
+        local encZone=encZones[oZone.getGUID()]
+        if encZone and encZone.name:match('_1') then
+          inHandZone=true
+        end
       end
-    end
-    for _,col in pairs(Player.getAvailableColors()) do
-      if oZone==data[col]["playmat"] then
-        inPlayZone=true
+      for _,col in pairs(Player.getAvailableColors()) do
+        if oZone==data[col]["mainDeckZone"] then
+          inDeckZone=true
+        end
       end
-      if oZone==data[col]["mainDeckZone"] then
-        inDeckZone=true
-      end
+      if runeColor==nil then runeColor = colorForRuneZone(oZone) end
     end
   end
   obj.clearContextMenu()
@@ -1051,17 +1647,16 @@ function onObjectLeaveZone(zone,obj)
   end
   if obj.type=='Card' and inPlayZone then
     obj.addContextMenuItem('Make Token Copy',cardToken)
-    if obj.getDescription():lower():find('cascade') then
-      obj.addContextMenuItem('Cascade',cardCascade)
-    end
   end
   if obj.type=='Card' and inHandZone then
-    obj.addContextMenuItem('Sort Hand by CMC',sortHands)
+    obj.addContextMenuItem('Sort Hand by Energy',sortHands)
     obj.addContextMenuItem('Random Discard',randomDiscard)
   end
+  if obj.type=='Card' and runeColor~=nil then
+    obj.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(runeColor))
+  end
   if obj.type=='Deck' and inDeckZone then
-    obj.addContextMenuItem('Cascade for X',deckCascade)
-    obj.addContextMenuItem('Reveal until Type',deckSeachType)
+    obj.addContextMenuItem('Reveal until Type/Tag',deckSeachType)
     obj.setScale({1,1,1})
   end
 end
@@ -1105,98 +1700,63 @@ function cardToken(ply)
     Encoder.call("APIobjSetAllData",{obj=tCard, data = valueData})
     Encoder.call("APIobjSetProps",{obj=tCard, data = moduleData})
     if flip < 0 then Encoder.call("APIFlip", {obj = tCard}) end
-    Encoder.call("APIobjEnableProp",{obj=tCard,propID="MTG_Token"})
+    Encoder.call("APIobjEnableProp",{obj=tCard,propID="RB_Token"})
     Encoder.call("APIrebuildButtons",{obj=tCard})
   end,function() return tCard==nil or not(tCard.spawning) end)
 end
 
-function cardCascade(ply)
-  objs=Player[ply].getSelectedObjects()
-  card=objs[1]
-  Player[ply].clearSelectedObjects()
-  if card.type~='Card' then return end
-  local proceed=false
-  for _,obj in pairs(data[ply]["playmat"].getObjects()) do
-    if obj==card then
-      proceed=true
-    end
-  end
-  if proceed then
-    local cmc=getCMC(card.getName(),card.getDescription())
-    local val=cmc-1
-    local deck = getDeckFromZone(data[ply]["mainDeckZone"])
-    if val>=0 and deck~=nil then
-      local rot=deck.getRotation()
-      rot.z=180
-      deck.setRotation(rot)
-      cascade(deck,ply,val)
-    end
-  end
-end
-
--- sort hands by CMC
+-- sort hands by energy cost, then by might ascending (none first)
 function sortHands(ply)
   Player[ply].clearSelectedObjects()
   for handInd=1,Player[ply].getHandCount() do
     local cards=Player[ply].getHandObjects(handInd)
-    local cmcs={}
+    local entries={}
     local poss={}
-    noCMCs=false
     for i,card in ipairs(cards) do
       if card.type=="Card" then
-        cmc=getCMC(card.getName(),card.getDescription())
-        if cmc==nil then
-          cmc='-2'
-          noCMCs=true
-        end
-        table.insert(cmcs,{id=i,cmc=cmc})
+        local desc=card.getDescription()
+        local energy=tonumber(desc:match("Energy: (%d+)"))
+        local might=tonumber(desc:match("Might: (%d+)"))
+        table.insert(entries,{id=i,energy=energy,might=might})
         table.insert(poss,card.getPosition())
       end
     end
-    table.sort(cmcs,function(a,b) return tonumber(a.cmc)<tonumber(b.cmc) end)
+    table.sort(entries,function(a,b)
+      local ea=a.energy or math.huge
+      local eb=b.energy or math.huge
+      if ea~=eb then return ea<eb end
+      if a.might==nil and b.might==nil then return false end
+      if a.might==nil then return true end
+      if b.might==nil then return false end
+      return a.might<b.might
+    end)
 
-    if noCMCs then
-      Player[ply].broadcast('No CMC info found in the card names or description.\n'..
-          'You could use the Deck Data Fetcher to download and port the info directly onto your deck.',{0.7,0.7,0.7})
-      local pingGUIDs={'6d07c3','6d46cd','6ed442'}
-      for i,guid in ipairs(pingGUIDs) do
-        if getObjectFromGUID(guid)~=nil then
-          Player[ply].pingTable(getObjectFromGUID(guid).getPosition())
-        end
-      end
-    else
-
-      -- for i,v in ipairs(cmcs) do
-        -- cards[v.id].setPosition(poss[i])
-      -- end
-
-      for i,v in ipairs(cmcs) do
-        cards[v.id].setHiddenFrom(allBut(ply))
-        cards[v.id].setLock(true)
-        Wait.frames(function()
-          cards[v.id].setPositionSmooth(poss[i],false,false)
-        end,1)
-      end
-
+    for i,v in ipairs(entries) do
+      cards[v.id].setHiddenFrom(allBut(ply))
+      cards[v.id].setLock(true)
       Wait.frames(function()
-        Wait.condition(function()
-          for i,v in ipairs(cmcs) do
-            cards[v.id].setLock(false)
-            cards[v.id].setPosition(poss[i])
-            Wait.frames(function() cards[v.id].setHiddenFrom({}) end, 20)
-          end
-        end, function()
-          local doneMoving=true
-          for _,card in pairs(cards) do
-            if card.isSmoothMoving() then
-              doneMoving=false
-            end
-          end
-          return doneMoving
-        end)
-      end, 5)
-
+        cards[v.id].setPositionSmooth(poss[i],false,false)
+      end,1)
     end
+
+    Wait.frames(function()
+      Wait.condition(function()
+        for i,v in ipairs(entries) do
+          cards[v.id].setLock(false)
+          cards[v.id].setPosition(poss[i])
+          Wait.frames(function() cards[v.id].setHiddenFrom({}) end, 20)
+        end
+      end, function()
+        local doneMoving=true
+        for _,card in pairs(cards) do
+          if card.isSmoothMoving() then
+            doneMoving=false
+          end
+        end
+        return doneMoving
+      end)
+    end, 5)
+
   end
 end
 
@@ -1271,31 +1831,6 @@ end
 --   UI.setAttribute('CMtext','text','enter amount\nto mill for')
 -- end
 
-function deckCascade(ply)
-  Player[ply].clearSelectedObjects()
-  local UIactive = UI.getAttribute('GetValuePanel','active')
-  local usingCol = UI.getAttribute('GetValuePanel','visibility')
-  if UIactive=="False" then UIactive=false else UIactive=true end
-  if UIactive and usingCol~=ply then
-    if Turns.turn_color~=ply then
-      Player[ply].broadcast('Only one person at the table can use this function at a time.\n'..
-                             usingCol..' is currently using the interface')
-      Player[usingCol].broadcast('Only one person at the table can use this function at a time.\n'..
-                             ply..' wants to use the interface')
-      return
-    else
-      Player[usingCol].broadcast("It is "..ply.."'s turn and they need to use the interface")
-    end
-  end
-
-  UI.setAttribute('repeatCascadeX','text','')
-  UI.setAttribute('CMinput','text','')
-
-  UI.setAttribute('GetValuePanel','visibility',ply)
-  UI.setAttribute('GetValuePanel','active','True')
-  UI.setAttribute('CMtext','text','enter CMC\nto cascade for')
-end
-
 function CMgetVal(ply,txt)
   CMVal=txt
 end
@@ -1323,9 +1858,6 @@ function CMokay(player)
   end
   if funTxt:match('mill') then
     enterMillVal(deck,ply,CMVal)
-  end
-  if funTxt:match('cascade') then
-    enterCascadeVal(deck,ply,CMVal)
   end
 end
 
@@ -1365,183 +1897,7 @@ function enterMillVal(deck,ply,CMVal)
   end
 end
 
-function enterCascadeVal(deck,ply,CMVal)
-  local val = tonumber(CMVal)
-  local maxVal = deck.getQuantity()
-  if val>=0 then
-    local rot=deck.getRotation()
-    rot.z=180
-    deck.setRotation(rot)
-    cascade(deck,ply,val)
-  else
-    Player[ply].broadcast('you entered a strange value',ply)
-  end
-end
-
---------------------------------------------------------------------------------
--- cascade
-function cascade(deck,playerColor,CMC)
-
-  if doneCascading==false then return end
-
-  if deck==nil then return end
-
-  if cardToPlay~=nil then
-    Player[playerColor].broadcast("You need to decline (✗) or accept (✓) the previous cascade before cascading again.",{0.7,0.7,0.7})
-    return
-  end
-
-  nCards=0
-  cardFound=false
-  for _,card in pairs(deck.getObjects()) do
-    nCards=nCards+1
-    cmc=getCMC(card.nickname,card.description)
-    if cmc==nil then
-      Player[playerColor].broadcast("Cards without CMC in their TTS name detected.\n"..
-                            'You could use the Deck Data Fetcher to download and port the info directly onto your deck.',{0.7,0.7,0.7})
-      local pingGUIDs={'6d07c3','6d46cd','6ed442'}
-      for i,guid in ipairs(pingGUIDs) do
-        if getObjectFromGUID(guid)~=nil then
-          Player[playerColor].pingTable(getObjectFromGUID(guid).getPosition())
-        end
-      end
-      return
-    end
-    isLand = cmc=='-1'
-    if not(isLand) and tonumber(cmc)<=tonumber(CMC) then
-      cardFound=true
-      break
-    end
-  end
-
-  if not(cardFound) then
-    Player[playerColor].broadcast('No valid cards found, skipping the cascade procedure.\n'..
-                                  '(maybe you entered 0 when you have no 0CMC spells left?)',playerColor)
-    repeatSearchX=nil
-    repeatCascadeX=nil
-    return
-  end
-
-  mainDeckZone = data[playerColor]["mainDeckZone"]
-  mainDeckPos  = mainDeckZone.getPosition()
-  cDeck   = nil
-  cardToPlay = nil
-  deckDir = deckDirs[playerColor]
-
-  -- move any objects in the area out of the way -------------------------------
-  local origPos=mainDeckPos+mainDeckZone.getTransformRight():scale(3.75*deckDir)
-  origPos[2]=1
-  local castPars={
-    origin=origPos,
-    direction = vector(0,0,1),
-    type = 3,
-    size = {5,4,3},
-    max_distance=0,
-  }
-  local castOutput = Physics.cast(castPars)
-  for _,castO in pairs(castOutput) do
-    local hitObj = castO.hit_object
-    if hitObj.type=='Card' or hitObj.type=='Deck' then
-      local hitObjPos=hitObj.getPosition()
-      local hitObjRelPos=mainDeckZone.positionToLocal(hitObjPos)
-      local origRelPos=mainDeckZone.positionToLocal(castPars.origin)
-      local newObjRelPos=hitObjRelPos
-      if hitObjRelPos[3]<(origRelPos[3]-0.1) then
-        newObjRelPos[3]=origRelPos[3]-4/mainDeckZone.getScale().z
-      else
-        newObjRelPos[3]=origRelPos[3]+3.2/mainDeckZone.getScale().z
-      end
-      local newObjPos=mainDeckZone.positionToWorld(newObjRelPos)
-      hitObj.setPositionSmooth(newObjPos,false,true)
-      checkPosMove(newObjPos,mainDeckZone)
-    end
-  end
-  ------------------------------------------------------------------------------
-
-  if repeatCascadeX~=nil then
-    Player[playerColor].broadcast(tonumber(repeatN+1)..'/'..tonumber(repeatCascadeX)..' cascading for CMC='..CMC,playerColor)
-  else
-    Player[playerColor].broadcast('cascading for CMC='..CMC,playerColor)
-  end
-
-  for cardNo=1,nCards do
-    doneCascading=false
-    Wait.time(function()
-      local card=getCardFromZone(data[playerColor]['mainDeckZone'])
-      if card==nil then return end
-      local targPos = mainDeckPos
-      if cardNo<nCards then
-        targPos = mainDeckPos+card.getTransformRight():scale(2.5*deckDir)
-        targPos.y=3+cardNo*0.05
-        if cardNo==1 then
-          cDeck=card
-        end
-      else
-        targPos = mainDeckPos+card.getTransformRight():scale(5*deckDir)
-        targPos.y=3
-        cardToPlay=card
-        cardToPlay.highlightOn(stringColorToRGB(playerColor),10)
-      end
-      local cardRot = card.getRotation()
-      cardRot.z = 0
-      card.setRotationSmooth(cardRot,false,true)
-      card.setPositionSmooth(targPos,false,true)
-    end, cardNo*drawDelay)
-  end
-
-  -- wait until all the cards are done cascading
-  Wait.time(function()
-    if cardToPlay then
-      Wait.condition(function() doneCascading=true end,
-                     function() return (cardToPlay==nil or cardToPlay.resting) end)
-      -- reset encoder object data
-      Encoder.call('APIencodeObject',{obj=cardToPlay})
-      Encoder.call('APIdisableEncoding',{obj=cardToPlay})
-      cardToPlay.setGMNotes(playerColor)    -- save the owner of card to only allow them to click buttons
-
-      -- create buttons on card to accept or decline casting it
-      -- decline
-      local backpars={    -- background frame
-        label='', tooltip='', click_function = 'null',
-        position = {-0.5, 0.2, 2}, width = 500, height = 400, font_size = 400,
-        scale = {0.75,0.75,0.75}, rotation = {0,0,180},
-        color = {0.7,0.7,0.7}, font_color = {1, 1, 1}}
-      cardToPlay.createButton(backpars)
-      local forgpars=backpars
-      forgpars.label='✗'
-      forgpars.tooltip='[b]DO NOT CAST THE CARD[/b]\nmove all the cascaded\n'..
-                       'cards to the bottom of the\ndeck in random order'
-      forgpars.click_function='declineCascade'
-      forgpars.rotation = {0,0,0}
-      forgpars.font_color = stringColorToRGB(playerColor)
-      forgpars.color = {0.16,0.16,0.16}
-      forgpars.hover_color = {0.4,0.4,0.4}
-      forgpars.scale = {0.67,0.67,0.67}
-      cardToPlay.createButton(forgpars)
-
-      -- accept
-      local backpars={    -- background frame
-        label='', tooltip='', click_function = 'null',
-        position = {0.5, 0.2, 2}, width = 500, height = 400, font_size = 400,
-        scale = {0.75,0.75,0.75}, rotation = {0,0,180},
-        color = {0.7,0.7,0.7}, font_color = {1, 1, 1}}
-      cardToPlay.createButton(backpars)
-      local forgpars=backpars
-      forgpars.label='✓'
-      forgpars.tooltip='[b]CAST THE CARD[/b]\nmove all the other cascaded\n'..
-                       'cards to the bottom of the\ndeck in random order'
-      forgpars.click_function='acceptCascade'
-      forgpars.rotation = {0,0,0}
-      forgpars.font_color = stringColorToRGB(playerColor)
-      forgpars.color = {0.16,0.16,0.16}
-      forgpars.hover_color = {0.4,0.4,0.4}
-      forgpars.scale = {0.67,0.67,0.67}
-      cardToPlay.createButton(forgpars)
-    end
-  end, nCards*drawDelay+0.75)
-end
-
-function acceptCascade(card,ply)
+function acceptRevealedCard(card,ply)
 
     if ply~=card.getGMNotes() then return end
     cardToPlay=nil
@@ -1550,7 +1906,7 @@ function acceptCascade(card,ply)
     end
     card.setGMNotes('')
     card.clearButtons()
-    if cDeck then     -- put any other cascaded cards onto libBot
+    if cDeck then     -- put any other revealed cards onto libBot
       moveCDeckToBot(cDeck,ply)
     end
 
@@ -1566,21 +1922,9 @@ function acceptCascade(card,ply)
       end
     end
 
-    if repeatCascadeX~=nil then
-      repeatN=repeatN+1
-      if repeatN<repeatCascadeX then
-        Wait.time(function()
-          local deck = getDeckFromZone(data[ply]["mainDeckZone"])
-          cascade(deck,ply,tonumber(CMVal))
-        end,1)
-      else
-        repeatCascadeX=nil
-      end
-    end
-
 end
 
-function declineCascade(card,ply)
+function declineRevealedCard(card,ply)
 
     if ply~=card.getGMNotes() then return end
     cardToPlay=nil
@@ -1590,8 +1934,8 @@ function declineCascade(card,ply)
     card.setGMNotes('')
     card.clearButtons()
     local waitT=1
-    if cDeck then       -- add the card to other cascaded cards and then put all on libBot
-      doneCascading=false
+    if cDeck then       -- add the card to other revealed cards and then put all on libBot
+      doneRevealing=false
       local cDeckPos=cDeck.getPosition()
       cDeckPos[2]=cDeckPos[2]+0.1
       card.setPositionSmooth(cDeckPos,false,true)
@@ -1619,23 +1963,6 @@ function declineCascade(card,ply)
       end
     end
 
-    if repeatCascadeX~=nil then
-      repeatN=repeatN+1
-      if repeatN<repeatCascadeX then
-        Wait.time(function()
-          local deck = getDeckFromZone(data[ply]["mainDeckZone"])
-          cascade(deck,ply,tonumber(CMVal))
-        end,waitT)
-      else
-        repeatCascadeX=nil
-      end
-    end
-
-end
-
-function UIrepeatCascade(player,val,id)
-  repeatCascadeX=tonumber(val)
-  repeatN=0
 end
 
 function moveCDeckToBot(cDeck,ply)
@@ -1650,7 +1977,7 @@ function moveCDeckToBot(cDeck,ply)
   end
   cDeck.shuffle()
   Wait.time(function()
-    doneCascading=true
+    doneRevealing=true
     cDeck.shuffle()
     if deck~=nil then
       -- Wait.time(function() deck.putObject(cDeck) end, 0.2)
@@ -1670,7 +1997,7 @@ function moveCDeckToBot(cDeck,ply)
   end, 0.25)
 end
 
--- keep track of "discard" pile when cascading
+-- keep track of the revealed pile while it moves back to the deck
 function onObjectEnterContainer(container, enter_object)
   if enter_object.type=="Card" then
     enter_object.setHiddenFrom({})    -- if hidden card enters a library, unhide
@@ -1690,7 +2017,7 @@ function onObjectEnterContainer(container, enter_object)
     Wait.condition(function() cDeck=container end,function() return not(container.spawning) end)
   end
 
-  if doneCascading==true then   -- for when players put the cascaded deck on the bottom by hand
+  if doneRevealing==true then   -- for when players put the revealed pile on the bottom by hand
     if cDeck==enter_object or cDeck==container then
       cDeckBackup=cDeck
       cDeck=nil
@@ -1698,26 +2025,6 @@ function onObjectEnterContainer(container, enter_object)
   end
 end
 
-function getCMC(name,desc)
-  cmc=name:lower():match('(%d+) ?cmc')
-  if cmc==nil then
-    cmc=name:lower():match('cmc ?(%d+)')
-  end
-  if cmc==nil then
-    cmc=desc:lower():match('(%d+) ?cmc')
-  end
-  if cmc==nil then
-    cmc=desc:lower():match('cmc ?(%d+)')
-  end
-  isLand=name:match('Land')
-  if (cmc==nil or cmc=='0') and isLand then
-    cmc='-1'
-  end
-  if cmc==nil and (desc:lower():match('suspend') or name:lower():match('pact') or name:lower():match('evermind')) then
-    cmc=0
-  end
-  return cmc
-end
 
 
 --------------------------------------------------------------------------------
@@ -1739,17 +2046,19 @@ function deckSeachType(ply)
     end
   end
 
-  searchTypeVect={land=false,creature=false,artifact=false,
-              enchantment=false,planeswalker=false,
-              instant=false,sorcery=false}
+  searchTypeOrder={'champion','unit','gear','rune','spell'}
+  searchTypeVect={}
+  for _,cardType in ipairs(searchTypeOrder) do
+    searchTypeVect[cardType]=false
+  end
   seachTypeCustom=''
   repeatSearchX=nil
 
   UI.setAttribute('repeatX','text','')
   UI.setAttribute('typeCustom','text','')
-  for type,_ in pairs(searchTypeVect) do
-    UI.setAttribute(type,'isOn','False')
-    UI.setAttribute(type,'textColor','rgb(1,1,1)')
+  for _,cardType in ipairs(searchTypeOrder) do
+    UI.setAttribute(cardType,'isOn','False')
+    UI.setAttribute(cardType,'textColor','rgb(1,1,1)')
   end
 
   UI.setAttribute('SearchTypePanel','visibility',ply)
@@ -1773,9 +2082,9 @@ function STokay(player)
     return
   end
   searchTypes={}
-  for type,toggle in pairs(searchTypeVect) do
-    if toggle then
-      table.insert(searchTypes,type)
+  for _,cardType in ipairs(searchTypeOrder) do
+    if searchTypeVect[cardType] then
+      table.insert(searchTypes,cardType)
     end
   end
   if seachTypeCustom~='' then
@@ -1804,8 +2113,69 @@ function enterSearchTypes(deck,ply,searchTypes)
     deck.setRotation(rot)
     revealUntilType(deck,ply,searchTypes)
   else
-    Player[ply].broadcast('you did not select any card-types to look for',ply)
+    Player[ply].broadcast('you did not select any card types or tags to look for',ply)
   end
+end
+
+function normalizeCardSearchText(value)
+  if value==nil then return '' end
+  if type(value)=='table' then
+    local parts={}
+    for k,v in pairs(value) do
+      if type(v)=='boolean' and v then
+        table.insert(parts,normalizeCardSearchText(k))
+      else
+        table.insert(parts,normalizeCardSearchText(v))
+      end
+    end
+    return table.concat(parts,' ')
+  end
+  local text=tostring(value):lower():gsub('%[.-%]',' ')
+  return text
+end
+
+function getDescriptionSearchMetadata(description)
+  local metadata={}
+  if description==nil then return metadata end
+  for line in tostring(description):gmatch('[^\r\n]+') do
+    local clean=line:gsub('%[.-%]','')
+    local lower=clean:lower()
+    if lower:match('^%s*tags?:') or lower:match('^%s*subtypes?:') or lower:match('^%s*types?:') then
+      table.insert(metadata,clean)
+    end
+  end
+  return metadata
+end
+
+function getNicknameSearchMetadata(nickname)
+  local metadata={}
+  if nickname==nil then return metadata end
+  local firstLine=true
+  for line in tostring(nickname):gmatch('[^\r\n]+') do
+    if firstLine then
+      firstLine=false
+    else
+      table.insert(metadata,line)
+    end
+  end
+  if #metadata==0 then
+    table.insert(metadata,nickname)
+  end
+  return metadata
+end
+
+function cardMatchesSearchType(card,searchType)
+  local needle=normalizeCardSearchText(searchType)
+  if needle=='' then return false end
+  local haystack=normalizeCardSearchText({
+    getNicknameSearchMetadata(card.nickname or card.name),
+    card.gm_notes,
+    card.lua_script_state,
+    card.tags,
+    card.Tags,
+    getDescriptionSearchMetadata(card.description)
+  })
+  return haystack:find(needle,1,true)~=nil
 end
 
 function revealUntilType(deck,playerColor,searchTypes)
@@ -1821,8 +2191,8 @@ function revealUntilType(deck,playerColor,searchTypes)
   cardFound=false
   for _,card in pairs(deck.getObjects()) do
     nCards=nCards+1
-    for _,searchType in pairs(searchTypes) do
-      if card.nickname:lower():find(searchType:lower()) then
+    for _,searchType in ipairs(searchTypes) do
+      if cardMatchesSearchType(card,searchType) then
         cardFound=true
         break
       end
@@ -1833,7 +2203,6 @@ function revealUntilType(deck,playerColor,searchTypes)
   if not(cardFound) then
     Player[playerColor].broadcast('No valid cards found, skipping the procedure',playerColor)
     repeatSearchX=nil
-    repeatCascadeX=nil
     return
   end
 
@@ -1846,20 +2215,20 @@ function revealUntilType(deck,playerColor,searchTypes)
   -- move any objects in the area out of the way -------------------------------
   local origPos=mainDeckPos+mainDeckZone.getTransformRight():scale(3.75*deckDir)
   origPos[2]=1
-  local castPars={
+  local raycastPars={
     origin=origPos,
     direction = vector(0,0,1),
     type = 3,
     size = {5,4,3},
     max_distance=0,
   }
-  local castOutput = Physics.cast(castPars)
-  for _,castO in pairs(castOutput) do
-    local hitObj = castO.hit_object
+  local raycastOutput = Physics.cast(raycastPars)
+  for _,raycastHit in pairs(raycastOutput) do
+    local hitObj = raycastHit.hit_object
     if hitObj.type=='Card' or hitObj.type=='Deck' then
       local hitObjPos=hitObj.getPosition()
       local hitObjRelPos=mainDeckZone.positionToLocal(hitObjPos)
-      local origRelPos=mainDeckZone.positionToLocal(castPars.origin)
+      local origRelPos=mainDeckZone.positionToLocal(raycastPars.origin)
       local newObjRelPos=hitObjRelPos
       if hitObjRelPos[3]<(origRelPos[3]-0.1) then
         newObjRelPos[3]=origRelPos[3]-4/mainDeckZone.getScale().z
@@ -1882,13 +2251,13 @@ function revealUntilType(deck,playerColor,searchTypes)
   end
 
   if repeatSearchX~=nil then
-    Player[playerColor].broadcast(tostring(repeatN+1)..'/'..tostring(repeatSearchX)..' revealing cards until type: '..types,playerColor)
+    Player[playerColor].broadcast(tostring(repeatN+1)..'/'..tostring(repeatSearchX)..' revealing cards until type/tag: '..types,playerColor)
   else
-    Player[playerColor].broadcast('revealing cards until type: '..types,playerColor)
+    Player[playerColor].broadcast('revealing cards until type/tag: '..types,playerColor)
   end
 
   for cardNo=1,nCards do
-    doneCascading=false
+    doneRevealing=false
     Wait.time(function()
       local card=getCardFromZone(data[playerColor]['mainDeckZone'])
       if card==nil then return end
@@ -1912,17 +2281,17 @@ function revealUntilType(deck,playerColor,searchTypes)
     end, cardNo*drawDelay)
   end
 
-  -- wait until all the cards are done cascading
+  -- wait until all the cards are done revealing
   Wait.time(function()
     if cardToPlay then
-      Wait.condition(function() doneCascading=true end,
+      Wait.condition(function() doneRevealing=true end,
                      function() return (cardToPlay==nil or cardToPlay.resting) end)
       -- reset encoder object data
       Encoder.call('APIencodeObject',{obj=cardToPlay})
       Encoder.call('APIdisableEncoding',{obj=cardToPlay})
       cardToPlay.setGMNotes(playerColor)    -- save the owner of card to only allow them to click buttons
 
-      -- create buttons on card to accept or decline casting it
+      -- create buttons on card to accept or decline playing it
       -- decline
       local backpars={    -- background frame
         label='', tooltip='', click_function = 'null',
@@ -1932,9 +2301,9 @@ function revealUntilType(deck,playerColor,searchTypes)
       cardToPlay.createButton(backpars)
       local forgpars=backpars
       forgpars.label='✗'
-      forgpars.tooltip='[b]DO NOT CAST THE CARD[/b]\nmove all the other\n'..
+      forgpars.tooltip='[b]DO NOT PLAY THE CARD[/b]\nmove all the other\n'..
                        'cards to the bottom of the\ndeck in random order'
-      forgpars.click_function='declineCascade'
+      forgpars.click_function='declineRevealedCard'
       forgpars.rotation = {0,0,0}
       forgpars.font_color = stringColorToRGB(playerColor)
       forgpars.color = {0.16,0.16,0.16}
@@ -1951,9 +2320,9 @@ function revealUntilType(deck,playerColor,searchTypes)
       cardToPlay.createButton(backpars)
       local forgpars=backpars
       forgpars.label='✓'
-      forgpars.tooltip='[b]CAST THE CARD[/b]\nmove all the other\n'..
+      forgpars.tooltip='[b]PLAY THE CARD[/b]\nmove all the other\n'..
                        'cards to the bottom of the\ndeck in random order'
-      forgpars.click_function='acceptCascade'
+      forgpars.click_function='acceptRevealedCard'
       forgpars.rotation = {0,0,0}
       forgpars.font_color = stringColorToRGB(playerColor)
       forgpars.color = {0.16,0.16,0.16}
@@ -2005,13 +2374,14 @@ end
 --------------------------------------------------------------------------------
 
 function show(obj, color, alt)
-	if obj.getName() == "MTG Importer" then
+	local objName = obj.getName()
+	if objName:find("Importer") then
 		if alt then
 			visibleOpenRules(color, "ListPanel")
 		else
 			visibleOpenRules(color, "SearchPanel")
 		end
-	elseif obj.getName() == "MTG Counter" then
+	elseif objName:find("Counter") then
 		visibleOpenRules(color, color .. "Counter")
 	end
 end
@@ -2031,12 +2401,10 @@ function search(player)
 	local q = ""
 	local name = UI.getAttribute("vName", "text")
 	local cmc = UI.getAttribute("vCmc", "text")
-	local power = UI.getAttribute("vPower", "text")
-	local toughness = UI.getAttribute("vToughness", "text")
+	local might = UI.getAttribute("vMight", "text")
 	if name ~= nil and name ~= "" then q = q .. encodeString(name) end
 	if cmc ~= nil and cmc ~= "" then q = q .. "+cmc%3D" .. encodeString(cmc) end
-	if power ~= nil and power ~= "" then q = q .. "+power%3D" .. encodeString(power) end
-	if toughness ~= nil and toughness ~= "" then q = q .. "+toughness%3D" .. encodeString(toughness) end
+	if might ~= nil and might ~= "" then q = q .. "+might%3D" .. encodeString(might) end
 
 --COLOR RELATED
 --c%3ARG+%28-c%3AW+AND+-c%3AU+AND+-c%3AB%29
@@ -2113,8 +2481,8 @@ end
 
 function setOracle(c)
   local n='\n[b]'
-  if c.power then
-    n=n..c.power..'/'..c.toughness
+  if c.might then
+    n=n..'Might: '..c.might
   elseif c.loyalty then
     n=n..tostring(c.loyalty)
   else n='[b]'
@@ -2195,7 +2563,7 @@ function getOracle(json)
     	for _,v in ipairs(json.card_faces) do str=str..'\n'..getOracle(v) end
   	else
     	if json.oracle_text then str=str..'\n'..json.oracle_text end
-    	if json.power then str=str..'\n[b]'..json.power..'/'..json.toughness..'[/b]' end
+    	if json.might then str=str..'\n[b]Might: '..json.might..'[/b]' end
     	if json.loyalty then str=str..'\n[b]'..json.loyalty..'[/b]' end
 		str = string.gsub(str,'\"', '\\"')
 	end
@@ -2389,8 +2757,7 @@ normal_card_keys={
   'oracle_text',
   'printed_text',       --for non-EN cards
   'loyalty',
-  'power',
-  'toughness',
+  'might',
   'loyalty',
   'set',
   'collector_number'
@@ -2417,8 +2784,7 @@ card_face_keys={        -- "card_faces":[{"object":"card_face",
   'printed_type_line',  --for non-EN cards
   'oracle_text',
   'printed_text',       --for non-EN cards
-  'power',
-  'toughness',
+  'might',
   'loyalty',
   'image_uris',
 }

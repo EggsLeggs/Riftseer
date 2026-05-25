@@ -72,6 +72,7 @@ Forked from:
 Original authors (no explicit license found in upstream):
   Oops I Baked a Pie — table design, global script, life trackers, core UX
   TyrantNomad — Easy Modules Unified; πMenu, πNotepad, πScry, πKeywords, etc.
+  Tipsy Hobbit (STEAM_0:1:13465982) — Keyword Abilities module (πKeywords lineage)
   rikrassen — MTG Deck / Draft / Cube Importer (removed or replaced in fork)
   Encoder API — author unattributed in source
 
@@ -103,6 +104,17 @@ Domain counter bags (Calm, Body, Fury, Chaos, Mind, Order) use scripts
 derived from the fork's MTG mana-colour counter bags. They are reskinned and
 relabeled for Riftbound but are not listed under MIT. Credit the upstream
 table authors above.
+
+================================================================================
+πKeywords card tokens (not MIT)
+================================================================================
+
+scripts/objects/ae12d3_keywords.lua (Encoder object GUID ae12d3) drives the
+πKeywords property on encoded cards. It is adapted from Tipsy Hobbit's Keyword
+Abilities module and integrated via TyrantNomad's Easy Modules / πKeywords
+suite. This fork replaces MTG keyword names and mechanics with a Riftbound
+counter and status set (text tokens with optional icon URLs). Not listed under
+MIT; credit Tipsy Hobbit and TyrantNomad as above.
 
 ================================================================================
 Visual assets — not under MIT

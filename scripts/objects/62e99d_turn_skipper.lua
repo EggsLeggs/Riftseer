@@ -25,12 +25,9 @@ function onObjectEnterZone(zone, object)
     end
   end
   pcall(function()
-    data=Global.getTable('data')
-    if data~=nil then
-      for _,color in pairs(Player.getAvailableColors()) do
-        if zone==data[color]['playmat'] then
-          assignColor(color)
-        end
+    for _, color in pairs(Player.getAvailableColors()) do
+      if zone.hasTag('playboard' .. color) then
+        assignColor(color)
       end
     end
   end)

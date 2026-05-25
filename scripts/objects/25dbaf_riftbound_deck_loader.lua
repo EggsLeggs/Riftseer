@@ -1,7 +1,7 @@
 --[[
 "Riftbound Deck Loader"
-Originally based on "Riftbound Deck Loader" by DXHHH101
-(https://github.com/DXHHH101/TabletopSimulatorScripts/tree/main/MTGImporter)
+Originally adapted from DXHHH101's Tabletop Simulator importer
+(https://github.com/DXHHH101/TabletopSimulatorScripts)
 Credit to Omes and Amuzet for the original importer architecture.
 
 The playmat that imports Riftbound decks. Requires "Riftbound Card Importer"
@@ -15,7 +15,7 @@ Supported import sources:
 -- ============================================================================
 -- UI CONSTANTS / UI IDS
 -- ============================================================================
-local UI_ADVANCED_PANEL = "MTGDeckLoaderAdvancedPanel"
+local UI_ADVANCED_PANEL = "RiftboundDeckLoaderAdvancedPanel"
 
 -- ============================================================================
 -- RUNTIME STATE
@@ -148,6 +148,45 @@ local function iterateLines(s)
 	end
 end
 
+local function addMetadataValues(parts, seen, value)
+	if value == nil then return end
+	local valueType = type(value)
+	if valueType == "table" then
+		if value.name or value.slug or value.value then
+			addMetadataValues(parts, seen, value.name or value.slug or value.value)
+		else
+			for key, item in pairs(value) do
+				if type(item) == "boolean" and item then
+					addMetadataValues(parts, seen, key)
+				else
+					addMetadataValues(parts, seen, item)
+				end
+			end
+		end
+	elseif valueType == "string" or valueType == "number" then
+		local text = trim(tostring(value))
+		if text ~= "" and not seen[string.lower(text)] then
+			seen[string.lower(text)] = true
+			parts[#parts+1] = text
+		end
+	end
+end
+
+local function metadataString(...)
+	local parts = {}
+	local seen = {}
+	for i = 1, select("#", ...) do
+		addMetadataValues(parts, seen, select(i, ...))
+	end
+	return table.concat(parts, " ")
+end
+
+local function appendMetadataLine(desc, label, value)
+	if value == "" then return desc end
+	if desc ~= "" then desc = desc .. "\n" end
+	return desc .. "[i]" .. label .. ": " .. value .. "[/i]"
+end
+
 -- ============================================================================
 -- RIFTSEER CARD DATA → TTS ENTRY
 -- ============================================================================
@@ -157,14 +196,12 @@ local function riftCardToEntry(card, qty)
 
 	local typeStr = ""
 	if card.classification then
-		local parts = {}
-		if card.classification.supertype and card.classification.supertype ~= "" then
-			parts[#parts+1] = card.classification.supertype
-		end
-		if card.classification.type and card.classification.type ~= "" then
-			parts[#parts+1] = card.classification.type
-		end
-		typeStr = table.concat(parts, " ")
+		typeStr = metadataString(
+			card.classification.supertype,
+			card.classification.type,
+			card.classification.subtype,
+			card.classification.subtypes
+		)
 	end
 
 	local desc = ""
@@ -177,12 +214,18 @@ local function riftCardToEntry(card, qty)
 		local statParts = {}
 		if attrs.energy  then statParts[#statParts+1] = "Energy: " .. tostring(attrs.energy)  end
 		if attrs.might   then statParts[#statParts+1] = "Might: "  .. tostring(attrs.might)   end
-		if attrs.power   then statParts[#statParts+1] = "[b]"      .. tostring(attrs.power) .. "[/b]" end
 		if #statParts > 0 then
 			if desc ~= "" then desc = desc .. "\n" end
 			desc = desc .. table.concat(statParts, " | ")
 		end
 	end
+
+	local tagStr = metadataString(
+		card.tags,
+		card.classification and card.classification.tags,
+		card.text and card.text.tags
+	)
+	desc = appendMetadataLine(desc, "Tags", tagStr)
 
 	local imageURL = nil
 	if card.media and card.media.media_urls then

@@ -629,7 +629,7 @@ end
 
 --Creates the context menu option for flipping a card for registered objects.
 function buildContextMenu(o)
-  o.addContextMenuItem('Flip Menu',function(ply) flipMenu(o,0) end)
+  o.addContextMenuItem('Flip',function(ply) flipMenu(o,0) end)
 end
 
 --Calls the menus/property modules createButtons funciton
@@ -1234,6 +1234,7 @@ end
 function APIobjGetPropData(p)
   local target = p.obj.getGUID()
   if EncodedObjects[target] ~= nil then
+    if Properties[p.propID] == nil then return {} end
     data = {}
     for k,v in pairs(Properties[p.propID].values) do
       if EncodedObjects[target].values[v] == nil and  Values[v] ~= nil then
@@ -1247,6 +1248,7 @@ end
 function APIobjSetPropData(p)
   local target = p.obj.getGUID()
   if EncodedObjects[target] ~= nil then
+    if Properties[p.propID] == nil then return end
     for k,v in pairs(Properties[p.propID].values) do
       if Values[v] ~= nil and p.data[v] ~= nil then
         EncodedObjects[target].values[v] = Values[v]["validate"](p.data[v],EncodedObjects[target].values[v])

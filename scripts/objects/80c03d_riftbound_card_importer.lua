@@ -1,7 +1,7 @@
 --[[
 "Riftbound Card Importer"
-Originally based on "MTG Importer DX" by DXHHH101
-(https://github.com/DXHHH101/TabletopSimulatorScripts/tree/main/MTGImporter)
+Originally adapted from DXHHH101's Tabletop Simulator importer
+(https://github.com/DXHHH101/TabletopSimulatorScripts)
 Credit to Omes and Amuzet for the original importer architecture.
 
 Handles all external API calls for the Riftbound deck importer.
@@ -248,6 +248,131 @@ function loadDeckFromRiftseer(bundledData)
 	end
 
 	requestNextBatch()
+end
+
+-- ============================================================================
+-- Single-card reimport
+-- ============================================================================
+local function buildCardNickname(name, resolvedCard)
+	if not resolvedCard or not resolvedCard.classification then return name end
+	local c = resolvedCard.classification
+	local parts = {}
+	if c.supertype and c.supertype ~= "" then parts[#parts+1] = c.supertype end
+	if c.type      and c.type      ~= "" then parts[#parts+1] = c.type      end
+	if c.subtype   and c.subtype   ~= "" then parts[#parts+1] = "— " .. c.subtype end
+	if #parts > 0 then return name .. "\n" .. table.concat(parts, " ") end
+	return name
+end
+
+local function buildCardDescription(resolvedCard)
+	local desc = ""
+	if resolvedCard.text and resolvedCard.text.plain and resolvedCard.text.plain ~= "" then
+		desc = resolvedCard.text.plain
+	end
+	if resolvedCard.attributes then
+		local attrs = resolvedCard.attributes
+		local statParts = {}
+		if attrs.energy then statParts[#statParts+1] = "Energy: " .. tostring(attrs.energy) end
+		if attrs.might  then statParts[#statParts+1] = "Might: "  .. tostring(attrs.might)  end
+		if #statParts > 0 then
+			if desc ~= "" then desc = desc .. "\n" end
+			desc = desc .. table.concat(statParts, " | ")
+		end
+	end
+	return desc
+end
+
+function reimportCard(p)
+	-- p: {cardGUID, playerColor}
+	local card = getObjectFromGUID(p.cardGUID)
+	if card == nil then
+		printToColor(ERROR_MESSAGE_IMPORTER .. "Card not found.", p.playerColor, {r=1,g=0,b=0})
+		return
+	end
+
+	local name = card.getName():gsub("\n.*", "")
+	if name == "" then
+		printToColor(ERROR_MESSAGE_IMPORTER .. "Card has no name.", p.playerColor, {r=1,g=0,b=0})
+		return
+	end
+
+	local position  = card.getPosition()
+	local rotation  = card.getRotation()
+	local scale     = card.getScale()
+	local customObj = card.getCustomObject()
+	local backURL   = (customObj and customObj.back) or DEFAULT_BACK_URL
+	local cardGUID  = p.cardGUID
+
+	local headers = {["Content-Type"] = "application/json", ["Accept"] = "application/json"}
+	local payload = json.encode({requests = {name}})
+
+	WebRequest.custom(RIFTSEER_RESOLVE_URL, "POST", true, payload, headers, function(res)
+		if res.response_code ~= 200 then
+			printToColor(ERROR_MESSAGE_IMPORTER .. "Riftseer error (" .. tostring(res.response_code) .. ").", p.playerColor, {r=1,g=0,b=0})
+			return
+		end
+
+		local ok, decoded = pcall(function() return json.decode(res.text) end)
+		if not ok or not decoded then
+			printToColor(ERROR_MESSAGE_IMPORTER .. "Failed to parse Riftseer response.", p.playerColor, {r=1,g=0,b=0})
+			return
+		end
+
+		local results = (type(decoded) == "table" and decoded.results) or decoded
+		if type(results) ~= "table" or #results == 0 then
+			printToColor(ERROR_MESSAGE_IMPORTER .. "No results for '" .. name .. "'.", p.playerColor, {r=1,g=0,b=0})
+			return
+		end
+
+		local resolvedCard = results[1] and results[1].card
+		if resolvedCard == nil then
+			printToColor(ERROR_MESSAGE_IMPORTER .. "No match for '" .. name .. "'.", p.playerColor, {r=1,g=0,b=0})
+			return
+		end
+
+		local imageURL = resolvedCard.media and resolvedCard.media.media_urls and resolvedCard.media.media_urls.normal
+		if not imageURL then
+			printToColor(ERROR_MESSAGE_IMPORTER .. "No image found for '" .. name .. "'.", p.playerColor, {r=1,g=0,b=0})
+			return
+		end
+
+		local cardRef = getObjectFromGUID(cardGUID)
+		if cardRef == nil then
+			printToColor(ERROR_MESSAGE_IMPORTER .. "Card was removed before reimport completed.", p.playerColor, {r=1,g=0,b=0})
+			return
+		end
+
+		cardRef.destruct()
+
+		spawnObjectData({
+			data = {
+				Name        = "Card",
+				Nickname    = buildCardNickname(name, resolvedCard),
+				Description = buildCardDescription(resolvedCard),
+				Transform   = {
+					posX   = position.x,
+					posY   = position.y + 0.5,
+					posZ   = position.z,
+					rotX   = rotation.x,
+					rotY   = rotation.y,
+					rotZ   = rotation.z,
+					scaleX = scale.x,
+					scaleY = scale.y,
+					scaleZ = scale.z,
+				},
+				CustomDeck = {
+					["1"] = {
+						FaceURL      = imageURL,
+						BackURL      = backURL,
+						NumWidth     = 1,
+						NumHeight    = 1,
+						BackIsHidden = true,
+					},
+				},
+				CardID = 100,
+			},
+		})
+	end)
 end
 
 -- ============================================================================

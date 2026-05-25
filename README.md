@@ -4,9 +4,14 @@ A scripted Tabletop Simulator table for the Riftbound TCG, forked from the excel
 [MTG 4 player table - scripted](https://steamcommunity.com/sharedfiles/filedetails/?id=2296042369)
 by Oops I Baked a Pie.
 
-This is a work in progress. Reskinning a mature MTG mod into a Riftbound-native
-table — different zones, different counters, deck importer pointed at Riftseer
-instead of Scryfall, no mana bags, etc.
+This is a work in progress. The table already has Riftbound zones (main deck,
+trash, banishment, legend/champion/rune decks, playboard and rune channels),
+domain counters, on-card πKeywords, Riftseer deck import, and channel/ready
+automation in `global.lua`. Remaining work includes table instructions, chat
+command docs, physical keyword token bags, and a few upstream labels (e.g. Mill).
+
+See [Components.md](Components.md) for a GUID-level inventory of what stays on
+the table and what still needs a Riftbound pass.
 
 ## Workshop Items
 
@@ -23,6 +28,7 @@ scripted infrastructure in this repo is mine in origin:
 
 - **Oops I Baked a Pie** — original table, global script, life trackers, overall design
 - **TyrantNomad** — Easy Modules Unified, the πMenu / πNotepad / πScry / πKeywords suite
+- **Tipsy Hobbit** — Keyword Abilities module (lineage of πKeywords on cards)
 - **rikrassen** — MTG Deck/Draft/Cube Importer
 - Encoder API author (unattributed in source — happy to credit if identified)
 
@@ -44,6 +50,7 @@ scripts/objects/*.lua    One file per scripted object, named {GUID}_{slug}.lua.
 ui/global.xml            Global XmlUI (extracted from the JSON).
 tools/extract.py         Pull scripts/UI out of the JSON into source files.
 tools/inject.py          Push scripts/UI back into the JSON.
+Components.md            GUID inventory — kept objects and migration status.
 vendor/                  Patched VS Code extension and other vendored deps.
 ```
 
@@ -150,7 +157,7 @@ To re-add them once Riftbound's keyword set is known:
 6. Update `Components.md` to document the new objects.
 7. Run `python3 tools/inject.py` and commit everything.
 
-The πKeywords reference popup (GUID `ae12d3`, script `scripts/objects/ae12d3_keywords.lua`) is still in the mod and will also need its keyword list and definitions updated to match Riftbound's keyword set at that time.
+The πKeywords reference popup (GUID `ae12d3`, script `scripts/objects/ae12d3_keywords.lua`) already uses a Riftbound counter/status list on cards; physical keyword token bags (below) are separate and still need Riftbound art if re-added.
 
 ## License
 

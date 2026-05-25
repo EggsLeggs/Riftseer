@@ -14,7 +14,7 @@ Invisible TTS objects that define hand zones and scripting regions.
 | 360dc1, 640235, a11f20, 7295a1 | HandTrigger ×4 (seats 1–4) |
 | b798d6, 350f7f, 993f89, bb8c76 | HandTrigger ×4 (seats 5–8) |
 
-The ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes the `mainDeckZone` and `trash` GUIDs; renaming or deleting them breaks Draw/Mill/Predict.
+The ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes `mainDeckZone`, `trash`, and `banishmentZone` GUIDs; renaming or deleting them breaks Draw/Mill/Predict and trash/banishment keybinds.
 
 | GUID | Role | Seats |
 |------|------|-------|
@@ -26,10 +26,10 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 | 07dd80 | trash | Red |
 | 8b439a | trash | Yellow |
 | debc40 | trash | Blue |
-| bf0002 | banished zone | White |
-| bf0001 | banished zone | Red |
-| bf0003 | banished zone | Yellow |
-| bf0004 | banished zone | Blue |
+| bf0002 | banishment (banishmentZone) | White |
+| bf0001 | banishment (banishmentZone) | Red |
+| bf0003 | banishment (banishmentZone) | Yellow |
+| bf0004 | banishment (banishmentZone) | Blue |
 | f1e001 | legend | White |
 | 1e9001 | legend | Red |
 | e1e001 | legend | Yellow |
@@ -47,6 +47,39 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 | 129eaa | playmat | Yellow |
 | 56cd9d | playmat | Blue |
 
+### Playboard zones (tagged ScriptingTriggers)
+
+Three triggers per seat (Main, Side, Rune), tagged `playboard{color}`. Used by
+`global.lua` for play-area detection, mulligan safety, and Ready (untap) on
+board objects. Must stay aligned with playmat art and snap points.
+
+| GUID | Role | Seat |
+|------|------|------|
+| e045d9 | playboard Main | White |
+| 8ecbef | playboard Rune | White |
+| 317569 | playboard Side | White |
+| d64a19 | playboard Main | Red |
+| a67f19 | playboard Rune | Red |
+| f6152f | playboard Side | Red |
+| 2c718e | playboard Main | Yellow |
+| b5c8e9 | playboard Rune | Yellow |
+| 65d86e | playboard Side | Yellow |
+| 92d981 | playboard Main | Blue |
+| 679690 | playboard Rune | Blue |
+| 6a0546 | playboard Side | Blue |
+
+### Rune channels (ScriptingTriggers)
+
+Twelve rune slots per seat; `global.lua` registers them as `runeZones` and moves
+cards from `runeDeckZone` via the Channel button (`ch0001`–`ch0004`).
+
+| Seat | GUIDs |
+|------|-------|
+| White | f4a001–f4a00c |
+| Red | 4da001–4da00c |
+| Yellow | e4a001–e4a00c |
+| Blue | b4a001–b4a00c |
+
 ---
 
 ## Core engine (load-bearing)
@@ -57,7 +90,7 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 | b93b40 | TyrantNomad's Easy Modules Unified |
 | 82bf98 | PiecePack_Crowns (supports Easy Modules) |
 | cd83de | Auto Player Promoter |
-| b8b8df | Color Module |
+| b8b8df | Domain Module (`RB_Domain`) — Riftbound domain designators on encoded cards |
 | c369d7 | πMenu |
 | 7a0067 | πNotepad |
 | de4346 | πScry |
@@ -67,10 +100,11 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 
 ## Per-player UI — 4× symmetrical sets
 
-> **Needs Riftbound layout work.** The Mill button label and keybind broadcasts
-> still use upstream terminology. The infrastructure (life trackers, hand counters,
-> timers, highlight mats, reveal) is reusable as-is. Mulligan rules updated
-> (4-card friendly only). Ready/Predict/Draw buttons renamed.
+> **Mostly Riftbound-ready.** Mulligan deals 4 (friendly only). Ready untaps
+> playboard units and clears `rb_stun` / `rb_temporary` on encoded cards. Channel
+> pulls runes from the rune deck into `runeZones`. Trash/banishment use dedicated
+> zones (keybind 7 → trash, 8 → banishment). **Still upstream-labelled:** Mill
+> (deck top → trash) and Predict (πScry; library wording updated in script).
 
 | GUID | Object |
 |------|--------|
@@ -82,6 +116,7 @@ The ScriptingTriggers below are the **functional zones** for each player seat. T
 | 5cb175, 40b95f, a42baa, d1ae7b | Highlight Mat ×4 |
 | c53ac6, 3b07ae, 47645d, e0a3bc | Mulligan tile ×4 |
 | 86e447, 18fb5d, e2f7ae, 1f3e4a | Ready button ×4 |
+| ch0001, ch0002, ch0003, ch0004 | Channel (Rune) button ×4 |
 | 885f49, 26775a, b49d50, 305c12 | Draw button ×4 |
 | ffa67c, 614515, 4e19c8, 8a4c8b | Predict button ×4 |
 | da5d0d, 57914a, d06889, 67b4a5 | Mill button ×4 |
@@ -175,20 +210,17 @@ Components fully rewritten for Riftbound and no longer pending migration.
 | 25dbaf | Riftbound Deck Loader — companion to Card Importer |
 | c91a72, f4d8be | Riftbound Deck Loader ×2 (infinite bag) — overhauled for Riftbound; upstream auto-update removed (legacy GUIDs: 5aebeb, 3ede22) |
 | 7ae211/be93f0, daebb2/8e1f05, b991d5/a90926, 887dd2/63e4e1, 52e44b/a7dc6e, 389c4d/2c49c6 (set 1) + 4783af, cdbccc, 220d2f, 1c4a59, aeeb11, cd8bb6 (set 2) | Domain Counter bags ×12 — retextured and relabeled from upstream mana colours to Riftbound domains: Calm, Body, Fury, Chaos, Mind, Order |
+| ae12d3 | πKeywords — on-card Riftbound counters (Assault, Deflect, Hunt, Shield) and statuses (Backline, Ganking, Mighty, Stun, Tank, Temporary); see `scripts/objects/ae12d3_keywords.lua` |
+| b8b8df | Domain Module — `RB_Domain` designators (Fury, Calm, Mind, Body, Chaos, Order) |
+| b93b40 | Easy Modules Unified — Riftbound fork (Might, Riftseer re-import; MTG-only UI stripped) |
+| de4346 | πScry — top/bottom of **main deck** and trash (not legacy library zones) |
+| — | `scripts/global.lua` + `ui/global.xml` — playboard/rune/banishment zones, channeling, importer UI labels |
 
-### Keyword tokens
+### Physical keyword token bags (removed)
 
-Legacy keyword tokens (Defender, Flying, Hexproof, etc.). Keep the infinite bag
-+ token infrastructure; replace artwork and labels with Riftbound status
-keywords once the keyword set is known.
-
-Two full sets (one per table half).
-
-| Objects |
-|---------|
-| Defender, Deathtouch, Double Strike, First Strike, Flying, Hexproof, Haste |
-| Indestructible, Lifelink, Menace, Monstrous, Reach, Trample, Vigilance |
-| Goaded, Frozen |
+The MTG infinite-bag keyword tokens (Defender, Flying, etc.) were removed from the
+table. On-card tokens use Encoder πKeywords (`ae12d3`) instead. To re-add
+physical bags, see README → Future plans.
 
 ### Resource counters
 
@@ -197,12 +229,6 @@ Two full sets (one per table half).
 | Objects |
 |---------|
 | Suspend Counter ×2 sets — still labelled as legacy suspend; retexture/relabel for Riftbound if needed |
-
-### πKeywords (ae12d3)
-
-TyrantNomad keyword reference popup. Currently shows legacy keyword definitions
-on right-click. Update the keyword list and definitions to match Riftbound's
-keyword set.
 
 ### Chat Commands tile (7b59f7)
 
