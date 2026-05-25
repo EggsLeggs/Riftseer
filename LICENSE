@@ -2,8 +2,10 @@ Riftbound TCG - Tabletop Simulator Table
 Copyright (c) 2025-2026 amory
 
 This repository is a fork of third-party Tabletop Simulator workshop content.
-Most files are NOT covered by this license. See NOTICE for upstream authors,
-assets, and terms.
+The Riftbound table port is playable and largely complete; MIT scope is
+unchanged and is defined only in NOTICE. Most files are NOT covered by this
+license. See NOTICE for upstream authors, published Workshop items, assets,
+and terms.
 
 The MIT License below applies ONLY to the files and works listed in NOTICE
 under "Licensed under MIT". All other files remain under their original

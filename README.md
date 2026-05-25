@@ -4,14 +4,17 @@ A scripted Tabletop Simulator table for the Riftbound TCG, forked from the excel
 [MTG 4 player table - scripted](https://steamcommunity.com/sharedfiles/filedetails/?id=2296042369)
 by Oops I Baked a Pie.
 
-This is a work in progress. The table already has Riftbound zones (main deck,
-trash, banishment, legend/champion/rune decks, playboard and rune channels),
-domain counters, on-card πKeywords, Riftseer deck import, and channel/ready
-automation in `global.lua`. Remaining work includes table instructions, chat
-command docs, physical keyword token bags, and a few upstream labels (e.g. Mill).
+The port is **playable and largely complete**. The table includes Riftbound zones
+(main deck, trash, banishment, legend/champion/rune decks, playboards, rune
+channels, shared battlefields), domain counters, on-card πKeywords (`rb_*`),
+Piltover Archive / Riftseer deck import, channel and ready automation, score
+trackers with might tokens, and battlefield Link/Unlink and Conquer/Unclaim.
 
-See [Components.md](Components.md) for a GUID-level inventory of what stays on
-the table and what still needs a Riftbound pass.
+**Remaining polish** (not blockers for play): Table Instructions and Chat
+Commands tiles still show legacy MTG text; πMenu still uses WUBRGC colour-filter
+names; a few dead MTG code paths remain in `global.lua`. See [Components.md](Components.md)
+for the full GUID inventory (Owner / RB columns) and the **MTG remnants in code**
+section.
 
 ## Workshop Items
 
@@ -23,19 +26,22 @@ the table and what still needs a Riftbound pass.
 
 ## Credits
 
-The original mod is the work of several authors over five years. None of the
-scripted infrastructure in this repo is mine in origin:
+The original mod is the work of several authors over five years. Most scripted
+infrastructure inherits from the MTG table; Riftbound-specific additions are
+credited separately:
 
-- **Oops I Baked a Pie** — original table, global script, life trackers, overall design
+- **Oops I Baked a Pie** — original table, global script, hand counters, timers, draw/mill/predict/reveal buttons, overall design
 - **TyrantNomad** — Easy Modules Unified, the πMenu / πNotepad / πScry / πKeywords suite
 - **Tipsy Hobbit** — Keyword Abilities module (lineage of πKeywords on cards)
-- **rikrassen** — MTG Deck/Draft/Cube Importer
+- **Amuzet / π** — Score Tracker lineage (might tokens on this table)
+- **rikrassen** — MTG Deck/Draft/Cube Importer (removed; replaced by Riftbound loaders)
 - Encoder API author (unattributed in source — happy to credit if identified)
+- **amory** — Riftbound zones, battlefield controller, importers, score presentation, and most fork art (see [NOTICE](NOTICE))
 
 Visual assets:
 
-- **amory** — most reskin art in this fork (playmat, domain counters, turn order
-  cards, card backs, etc.) is original work, hosted via Steam Cloud URLs in the save.
+- **amory** — original fork art (playmats, battlefields, domain counters, turn order
+  cards, card backs, counter chips, etc.), hosted via Steam Cloud URLs in the save.
 - A **small subset** of remaining visuals (notably some card back art variants) is
   adapted from other community Workshop mods. Full credit remains with those authors.
 
@@ -50,7 +56,9 @@ scripts/objects/*.lua    One file per scripted object, named {GUID}_{slug}.lua.
 ui/global.xml            Global XmlUI (extracted from the JSON).
 tools/extract.py         Pull scripts/UI out of the JSON into source files.
 tools/inject.py          Push scripts/UI back into the JSON.
-Components.md            GUID inventory — kept objects and migration status.
+Components.md            GUID inventory — Owner/RB status and known cleanup.
+LICENSE / NOTICE         Split license scope and upstream credits.
+AGENTS.md / CLAUDE.md    Agent instructions for editing this repo.
 vendor/                  Patched VS Code extension and other vendored deps.
 ```
 
@@ -75,8 +83,9 @@ This makes editing in the repo equivalent to editing the save TTS loads.
 ln -s "$(pwd)/mod/Riftbound.json" "$HOME/Library/Tabletop Simulator/Saves/Riftbound.json"
 ```
 
-In TTS: Create → Singleplayer → Save & Load → **Saves** tab → Riftbound. The
-table should load identically to the original workshop mod.
+In TTS: Create → Singleplayer → Save & Load → **Saves** tab → Riftbound. This
+should match the [published Riftbound table](#workshop-items) when built from
+this repo (after `inject.py` if you edited scripts locally).
 
 ### 3. Install the patched VS Code extension
 
@@ -141,30 +150,32 @@ python3 tools/inject.py
 
 This rewrites `mod/Riftbound.json` using the current `.lua` and `.xml` files.
 
-## Future plans
+## Optional follow-ups
 
-### Re-adding keyword token bags
+- **Table Instructions** (`e40450`) and **Chat Commands** (`7b59f7`) — rewrite tile copy for Riftbound (content is still legacy MTG).
+- **`global.lua` cleanup** — remove dead MTG ready/untap paths and align Stun with `rb_stun` (see Components.md).
+- **πMenu** — replace WUBRGC colour-filter variable names with Riftbound domains.
 
-The status keyword token bags (Defender, Deathtouch, Double Strike, First Strike, Flying, Frozen, Goaded, Haste, Hexproof, Indestructible, Lifelink, Menace, Monstrous, Reach, Trample, Vigilance — two full sets, 32 bags total) were removed from the table in commit `189ce6d`-era cleanup. Their GUIDs are preserved in the `unnecessaryStuff` list in `scripts/objects/e40450_table_instructions.lua`.
+### Re-adding physical keyword token bags (optional)
 
-To re-add them once Riftbound's keyword set is known:
+MTG keyword token bags (Defender, Flying, etc.) were removed; on-card πKeywords
+(`ae12d3`, `rb_*` counters and statuses) are the supported path. To add physical
+bags again with Riftbound art:
 
 1. Open TTS and load the Riftbound save.
-2. Spawn new infinite-bag + token pairs via the TTS object menu, one per keyword. Position them on the table.
-3. Save the mod in TTS (in-game save menu) — the JSON updates via the symlink.
-4. Run `python3 tools/extract.py` to regenerate `scripts/`.
-5. Update `unnecessaryStuff` in `scripts/objects/e40450_table_instructions.lua` with the new GUIDs (remove old stale ones, add new ones).
-6. Update `Components.md` to document the new objects.
-7. Run `python3 tools/inject.py` and commit everything.
-
-The πKeywords reference popup (GUID `ae12d3`, script `scripts/objects/ae12d3_keywords.lua`) already uses a Riftbound counter/status list on cards; physical keyword token bags (below) are separate and still need Riftbound art if re-added.
+2. Spawn infinite-bag + token pairs via the TTS object menu; position on the table.
+3. Save in TTS — the JSON updates via the symlink.
+4. Run `python3 tools/extract.py`, update `unnecessaryStuff` in
+   `scripts/objects/e40450_table_instructions.lua`, document in `Components.md`,
+   run `python3 tools/inject.py`, and commit.
 
 ## License
 
 This repo uses a **split license**:
 
 - **[LICENSE](LICENSE)** — MIT applies to files and works listed in **[NOTICE](NOTICE)**
-  (`tools/`, project docs, Riftbound deck loader scripts, and original table art).
+  (`tools/`, project docs, Riftbound importer/deck-loader scripts, battlefield
+  controller, and original table art by amory).
 - **Everything else** — inherited from the forked Workshop mod and other upstream
   authors; no explicit upstream license. See NOTICE for credits and scope.
 

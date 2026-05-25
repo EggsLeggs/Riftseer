@@ -10,6 +10,7 @@ function onload()
   buildTableButtons()
   Wait.frames(function() battlefieldRefreshAll() end, 10)
   addZoneContextMenus()
+  registerRecycleHotkey()
   for _,guid in pairs({'cb1610', 'a7a029', '4c02f8', 'a3e6a8', '9c553c', 'eb479b','3d4319','540e21'}) do
     pcall(function() getObjectFromGUID(guid).interactable=false end)
   end
@@ -620,6 +621,164 @@ function move2botDeck(ply)
   end, 0.25)
 end
 
+function registerRecycleHotkey()
+  addHotkey('Recycle hovered card (suggest C)', recycleHotkey, false)
+end
+
+function recycleHotkey(playerColor, hoveredObject, pointerPosition, isKeyUp)
+  if isKeyUp then return end
+  local obj = hoveredObject
+  if obj==nil then
+    pcall(function() obj = hoveredObjs[playerColor] end)
+  end
+  if obj==nil then return end
+  if obj.type=='Card' then
+    recycleCardContext(playerColor, nil, obj)
+  elseif obj.type=='Deck' then
+    recycleTopCardsContext(1)(playerColor, nil, obj)
+  end
+end
+
+function recycleZoneForDestination(playerColor, destination)
+  if data[playerColor]==nil then return nil end
+  if destination=='rune' then
+    return data[playerColor]["runeDeckZone"]
+  end
+  if destination=='main' then
+    return data[playerColor]["mainDeckZone"]
+  end
+  return nil
+end
+
+function getTopRestingCardFromZone(zone, skipObj)
+  if zone==nil then return nil end
+  local card=nil
+  local highY=0
+  for _,obj in pairs(zone.getObjects()) do
+    if obj~=skipObj and obj.type=='Card' and obj.use_gravity and obj.getPosition().y>highY then
+      card=obj
+      highY=obj.getPosition().y
+    end
+  end
+  return card
+end
+
+function recycleMoveObjectToBottomZone(obj, zone)
+  if obj==nil or zone==nil or not(obj.type=='Card' or obj.type=='Deck') then return false end
+  obj.setHiddenFrom({})
+  local rot=obj.getRotation()
+  rot.z=180
+  obj.setRotationSmooth(rot,false,true)
+  obj.interactable=false
+  obj.use_gravity=false
+  local target = getDeckFromZone(zone)
+  if target==nil then
+    target = getTopRestingCardFromZone(zone, obj)
+  end
+  Wait.time(function()
+    if obj==nil then return end
+    obj.use_gravity=true
+    obj.interactable=true
+    if obj.type=='Card' then
+      handTrigger(obj)
+    end
+    if target~=nil and target~=obj then
+      local pos=target.getPosition()
+      pos[2]=1
+      obj.setPositionSmooth(pos,false,true)
+      obj.setRotationSmooth(target.getRotation(),false,true)
+      target.setPositionSmooth(target.getPosition()+Vector(0,2,0),false,true)
+    else
+      local pos=zone.getPosition()
+      pos[2]=1
+      obj.setPositionSmooth(pos,false,true)
+      obj.setRotationSmooth(rot,false,true)
+    end
+  end, 0.25)
+  return true
+end
+
+function recycleCard(playerColor, card)
+  local destination = recycleDestinationForCard(card)
+  if destination==nil then return false end
+  return recycleMoveObjectToBottomZone(card, recycleZoneForDestination(playerColor, destination))
+end
+
+function recycleCardContext(playerColor, objectPosition, obj)
+  if obj==nil then
+    pcall(function() obj = hoveredObjs[playerColor] end)
+  end
+  if obj==nil or obj.type~='Card' then return end
+  if recycleCard(playerColor, obj) then
+    Player[playerColor].broadcast('recycling '..obj.getName():gsub('\n',' | '), playerColor)
+  end
+end
+
+function getTopRecycleEntries(deck, count)
+  local entries={}
+  if deck==nil or deck.type~='Deck' then return entries end
+  for i,entry in ipairs(deck.getObjects()) do
+    if i>count then break end
+    local destination = recycleDestinationForDeckEntry(entry)
+    if destination==nil then break end
+    table.insert(entries, {destination=destination})
+  end
+  return entries
+end
+
+function recycleTopCardsContext(count)
+  return function(playerColor, objectPosition, deck)
+    recycleTopCardsFromPile(playerColor, deck, count)
+  end
+end
+
+function recycleTopCardsFromPile(playerColor, deck, count)
+  if deck==nil then
+    pcall(function() deck = hoveredObjs[playerColor] end)
+  end
+  if deck==nil or deck.type~='Deck' then return end
+  local entries = getTopRecycleEntries(deck, count)
+  if #entries<count then return end
+  recycleNextTopCardFromPile(playerColor, deck, count)
+end
+
+function recycleNextTopCardFromPile(playerColor, pile, remaining)
+  if remaining<=0 or pile==nil then return end
+  if pile.type=='Card' then
+    Wait.condition(function()
+      recycleCard(playerColor, pile)
+    end, function() return pile==nil or not(pile.spawning) end, 1)
+    return
+  end
+  if pile.type~='Deck' then return end
+  local entries = getTopRecycleEntries(pile, 1)
+  local entry = entries[1]
+  if entry==nil then return end
+  local takePos = pile.getPosition()
+  takePos.y = takePos.y + 2
+  local takeRot = pile.getRotation()
+  takeRot.z = 180
+  pile.takeObject({
+    top = true,
+    position = takePos,
+    rotation = takeRot,
+    smooth = false,
+    callback_function = function(card)
+      Wait.frames(function()
+        local zone = recycleZoneForDestination(playerColor, entry.destination)
+        recycleMoveObjectToBottomZone(card, zone)
+        local nextPile = pile
+        if pile~=nil and pile.remainder~=nil then
+          nextPile = pile.remainder
+        end
+        Wait.time(function()
+          recycleNextTopCardFromPile(playerColor, nextPile, remaining-1)
+        end, 0.35)
+      end, 1)
+    end
+  })
+end
+
 hoveredObjs={}
 function onObjectHover(ply,obj)
   hoveredObjs[ply]=obj
@@ -1015,7 +1174,11 @@ end
 
 function isRuneCard(card)
   if card==nil or card.type~='Card' then return false end
-  return cardMatchesSearchType({
+  return cardMatchesSearchType(cardSearchDataFromObject(card), 'rune')
+end
+
+function cardSearchDataFromObject(card)
+  return {
     nickname = objectFieldSafe(card, 'getNickname'),
     name = objectFieldSafe(card, 'getName'),
     gm_notes = objectFieldSafe(card, 'getGMNotes'),
@@ -1023,7 +1186,54 @@ function isRuneCard(card)
     tags = objectFieldSafe(card, 'getTags'),
     Tags = objectFieldSafe(card, 'getTags'),
     description = objectFieldSafe(card, 'getDescription')
-  }, 'rune')
+  }
+end
+
+function cardSearchDataFromDeckEntry(entry)
+  if entry==nil then return {} end
+  return {
+    nickname = entry.nickname or entry.Nickname or entry.name or entry.Name,
+    name = entry.name or entry.Name or entry.nickname or entry.Nickname,
+    gm_notes = entry.gm_notes or entry.GMNotes,
+    lua_script_state = entry.lua_script_state or entry.LuaScriptState,
+    tags = entry.tags or entry.Tags,
+    Tags = entry.Tags or entry.tags,
+    description = entry.description or entry.Description
+  }
+end
+
+function cardMatchesAnySearchType(cardData, searchTypes)
+  for _,searchType in ipairs(searchTypes) do
+    if cardMatchesSearchType(cardData, searchType) then return true end
+  end
+  return false
+end
+
+function isEncodedTokenCard(card)
+  if Encoder==nil or card==nil or card.type~='Card' then return false end
+  local ok, exists = pcall(function() return Encoder.call("APIobjectExists",{obj=card}) end)
+  if not ok or not exists then return false end
+  local okData, tokenData = pcall(function()
+    return Encoder.call("APIobjGetPropData",{obj=card,propID="RB_Token"})
+  end)
+  return okData and tokenData~=nil and tokenData.rb_token==true
+end
+
+function recycleDestinationForCardData(cardData, card)
+  if cardData==nil then return nil end
+  if isEncodedTokenCard(card) then return nil end
+  if cardMatchesAnySearchType(cardData, {'token', 'legend', 'battlefield'}) then return nil end
+  if cardMatchesSearchType(cardData, 'rune') then return 'rune' end
+  return 'main'
+end
+
+function recycleDestinationForCard(card)
+  if card==nil or card.type~='Card' then return nil end
+  return recycleDestinationForCardData(cardSearchDataFromObject(card), card)
+end
+
+function recycleDestinationForDeckEntry(entry)
+  return recycleDestinationForCardData(cardSearchDataFromDeckEntry(entry), nil)
 end
 
 function findNonRuneCardsInPlayboardRuneArea(color)
@@ -1633,32 +1843,102 @@ end
 
 --------------------------------- CONTEXT MENU ---------------------------------
 
+function getObjectContextFlags(obj, skipZone)
+  local flags = {
+    inHandZone = false,
+    inPlayZone = false,
+    inDeckZone = false,
+    runeColor = nil
+  }
+  if obj==nil then return flags end
+  local encZones = nil
+  if Encoder~=nil then
+    local ok, zones = pcall(function() return Encoder.call("APIlistZones",{}) end)
+    if ok then encZones = zones end
+  end
+  for _,oZone in pairs(obj.getZones()) do
+    if oZone~=skipZone then
+      if encZones~=nil then
+        local encZone=encZones[oZone.getGUID()]
+        if encZone and encZone.name:match('_1') then
+          flags.inHandZone=true
+        end
+      end
+      if playboardColorForZone(oZone)~=nil then
+        flags.inPlayZone=true
+      end
+      for _,col in pairs(Player.getAvailableColors()) do
+        if data[col]~=nil and oZone==data[col]["mainDeckZone"] then
+          flags.inDeckZone=true
+        end
+      end
+      if flags.runeColor==nil then
+        flags.runeColor = colorForRuneZone(oZone)
+      end
+    end
+  end
+  return flags
+end
+
+function addRecycleContextMenuItems(obj)
+  if obj==nil then return end
+  if obj.type=='Card' then
+    if recycleDestinationForCard(obj)~=nil then
+      obj.addContextMenuItem('Recycle', recycleCardContext)
+    end
+  elseif obj.type=='Deck' then
+    if #getTopRecycleEntries(obj, 1)>=1 then
+      obj.addContextMenuItem('Recycle top card', recycleTopCardsContext(1))
+    end
+    if #getTopRecycleEntries(obj, 3)>=3 then
+      obj.addContextMenuItem('Recycle top 3 cards', recycleTopCardsContext(3))
+    end
+  end
+end
+
+function refreshObjectContextMenu(obj, skipZone, forceHandZone)
+  if obj==nil or not(obj.type=='Card' or obj.type=='Deck') then return end
+  local flags = getObjectContextFlags(obj, skipZone)
+  if forceHandZone then flags.inHandZone=true end
+  obj.clearContextMenu()
+  if obj.type=='Card' then
+    -- obj.addContextMenuItem('Encoder Menu',toggleEncMenu)
+  end
+  if obj.type=='Card' and flags.inPlayZone then
+    obj.addContextMenuItem('Make Token Copy',cardToken)
+  end
+  if obj.type=='Card' and flags.inHandZone then
+    obj.addContextMenuItem('Sort Hand by Energy',sortHands)
+    obj.addContextMenuItem('Random Discard',randomDiscard)
+  end
+  if obj.type=='Card' and flags.runeColor~=nil then
+    obj.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(flags.runeColor))
+  end
+  if obj.type=='Deck' and flags.inDeckZone then
+    obj.addContextMenuItem('Reveal until Type/Tag',deckSeachType)
+    obj.setScale({1,1,1})
+  end
+  addRecycleContextMenuItems(obj)
+end
+
 function addZoneContextMenus()
+  local seen={}
+  for _,obj in ipairs(getObjects()) do
+    if obj.type=='Card' or obj.type=='Deck' then
+      refreshObjectContextMenu(obj)
+      seen[obj.getGUID()]=true
+    end
+  end
   for color, playerData in pairs(data) do
-    for _,obj in pairs(playerData["mainDeckZone"].getObjects()) do
-      if obj.type=='Deck' then
-        obj.addContextMenuItem('Reveal until Type/Tag',deckSeachType)
-      end
-    end
-    for _,obj in ipairs(getPlayboardObjects(color)) do
-      if obj.type=='Card' then
-        obj.addContextMenuItem('Make Token Copy',cardToken)
-      end
-    end
     for _,obj in pairs(Player[color].getHandObjects(1)) do
-      obj.addContextMenuItem('Sort Hand by Energy',sortHands)
-      obj.addContextMenuItem('Random Discard',randomDiscard)
+      refreshObjectContextMenu(obj, nil, true)
+      seen[obj.getGUID()]=true
     end
     local runeZones = playerData["runeZones"]
     if runeZones then
       for _,zone in ipairs(runeZones) do
         if zone~=nil then
           zone.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(color))
-          for _,obj in pairs(zone.getObjects()) do
-            if obj.type=='Card' then
-              obj.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(color))
-            end
-          end
         end
       end
     end
@@ -1682,17 +1962,12 @@ addContextMenuItem('hand counts',function(c)
     Player[c].broadcast(s..'[-]',{0.7,0.7,0.7})
   end)
 
--- function onObjectSpawn(obj)
---   -- Card "Encoder Menu" context item
---   if obj.type ~= "Card" then return end
---   obj.hide_when_face_down=true
---   obj.setHiddenFrom({})
---   Wait.condition(function()
---     if Encoder ~= nil and obj~=nil then
---       obj.addContextMenuItem('Encoder Menu',toggleEncMenu)
---     end
---   end, function() return obj==nil or not(obj.spawning) end, 1)
--- end
+function onObjectSpawn(obj)
+  if obj==nil or not(obj.type=='Card' or obj.type=='Deck') then return end
+  Wait.condition(function()
+    if obj~=nil then refreshObjectContextMenu(obj) end
+  end, function() return obj==nil or not(obj.spawning) end, 1)
+end
 
 -- zone specific context menu items
 function onObjectEnterZone(zone,obj)
@@ -1700,43 +1975,7 @@ function onObjectEnterZone(zone,obj)
   if obj.type == 'Card' then
     battlefieldNotifyZone(zone)
   end
-  local inHandZone=false
-  local inPlayZone=isObjectOnAnyPlayboard(obj)
-  local inDeckZone=false
-  local runeColor=nil
-  for _,oZone in pairs(obj.getZones()) do
-    if Encoder~=nil then
-      local encZones=Encoder.call("APIlistZones",{})
-      local encZone=encZones[oZone.getGUID()]
-      if encZone and encZone.name:match('_1') then
-        inHandZone=true
-      end
-    end
-    for _,col in pairs(Player.getAvailableColors()) do
-      if oZone==data[col]["mainDeckZone"] then
-        inDeckZone=true
-      end
-    end
-    if runeColor==nil then runeColor = colorForRuneZone(oZone) end
-  end
-  obj.clearContextMenu()
-  if obj.type=='Card' then
-    -- obj.addContextMenuItem('Encoder Menu',toggleEncMenu)
-  end
-  if obj.type=='Card' and inPlayZone then
-    obj.addContextMenuItem('Make Token Copy',cardToken)
-  end
-  if obj.type=='Card' and inHandZone then
-    obj.addContextMenuItem('Sort Hand by Energy',sortHands)
-    obj.addContextMenuItem('Random Discard',randomDiscard)
-  end
-  if obj.type=='Card' and runeColor~=nil then
-    obj.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(runeColor))
-  end
-  if obj.type=='Deck' and inDeckZone then
-    obj.addContextMenuItem('Reveal until Type/Tag',deckSeachType)
-    obj.setScale({1,1,1})
-  end
+  refreshObjectContextMenu(obj)
 end
 
 function onObjectLeaveZone(zone,obj)
@@ -1744,47 +1983,7 @@ function onObjectLeaveZone(zone,obj)
   if obj.type == 'Card' then
     battlefieldNotifyZone(zone)
   end
-  local inHandZone=false
-  local inPlayZone=isObjectOnAnyPlayboard(obj)
-  local inDeckZone=false
-  local runeColor=nil
-  for _,oZone in pairs(obj.getZones()) do
-    if oZone==zone then
-      -- skip; we're leaving this one
-    else
-      if Encoder~=nil then
-        local encZones=Encoder.call("APIlistZones",{})
-        local encZone=encZones[oZone.getGUID()]
-        if encZone and encZone.name:match('_1') then
-          inHandZone=true
-        end
-      end
-      for _,col in pairs(Player.getAvailableColors()) do
-        if oZone==data[col]["mainDeckZone"] then
-          inDeckZone=true
-        end
-      end
-      if runeColor==nil then runeColor = colorForRuneZone(oZone) end
-    end
-  end
-  obj.clearContextMenu()
-  if obj.type=='Card' then
-    -- obj.addContextMenuItem('Encoder Menu',toggleEncMenu)
-  end
-  if obj.type=='Card' and inPlayZone then
-    obj.addContextMenuItem('Make Token Copy',cardToken)
-  end
-  if obj.type=='Card' and inHandZone then
-    obj.addContextMenuItem('Sort Hand by Energy',sortHands)
-    obj.addContextMenuItem('Random Discard',randomDiscard)
-  end
-  if obj.type=='Card' and runeColor~=nil then
-    obj.addContextMenuItem('Sort by rune type', sortRuneZonesCallback(runeColor))
-  end
-  if obj.type=='Deck' and inDeckZone then
-    obj.addContextMenuItem('Reveal until Type/Tag',deckSeachType)
-    obj.setScale({1,1,1})
-  end
+  refreshObjectContextMenu(obj, zone)
 end
 
 function toggleEncMenu(ply)
@@ -1828,6 +2027,7 @@ function cardToken(ply)
     if flip < 0 then Encoder.call("APIFlip", {obj = tCard}) end
     Encoder.call("APIobjEnableProp",{obj=tCard,propID="RB_Token"})
     Encoder.call("APIrebuildButtons",{obj=tCard})
+    refreshObjectContextMenu(tCard)
   end,function() return tCard==nil or not(tCard.spawning) end)
 end
 

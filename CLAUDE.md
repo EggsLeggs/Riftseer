@@ -6,15 +6,19 @@ Instructions for Claude Code working in this repo.
 
 A scripted Tabletop Simulator (TTS) table for the Riftbound TCG, forked from
 "MTG 4 player table - scripted" (Steam Workshop ID `2296042369`) by Oops I
-Baked a Pie. We are reskinning the original MTG mod into a Riftbound-native
-table — replacing zones, removing MTG-specific mechanics (mana, commander
-damage, planechase, dungeons), and eventually adding a Riftseer-backed deck
-importer.
+Baked a Pie. The port is **playable and largely complete**: Riftbound zones
+(main deck, trash, banishment, legend/champion/rune decks, playboards, rune
+channels, battlefields), domain counters, on-card πKeywords (`rb_*`), Piltover
+Archive deck import, channel/ready automation, score trackers, and battlefield
+controls are all wired up. MTG-specific objects and mechanics (mana, commander
+damage, planechase, dungeons, legacy importers) have been removed.
 
-The fork is mid-migration: core zones, rune channeling, domain counters,
-πKeywords, and Riftseer import are in place, but much Lua/XmlUI is still
-upstream MTG lineage. Treat unfamiliar code as load-bearing legacy until proven
-otherwise. Use `Components.md` for GUID inventory and what is already Riftbound-native.
+**Remaining polish** (not blockers for play) is tracked in `Components.md`:
+Table Instructions and Chat Commands tiles still show legacy MTG text; πMenu
+still uses WUBRGC colour-filter variable names; a few dead MTG code paths and
+keyword keys remain in `global.lua` (see the **MTG remnants in code** section
+there). Treat unfamiliar upstream Lua as load-bearing legacy until proven
+otherwise — grep and read `Components.md` before deleting or renaming objects.
 
 ## How a TTS mod works (essential context)
 
@@ -48,7 +52,7 @@ scripts/objects/*.lua    One file per scripted object. Filename is {GUID}_{slug}
 ui/global.xml            Global XmlUI (extracted from the JSON).
 tools/extract.py         Pull scripts/UI out of the JSON into source files.
 tools/inject.py          Push scripts/UI back into the JSON.
-Components.md            GUID inventory — kept objects and migration status.
+Components.md            GUID inventory — Owner/RB status and known cleanup.
 LICENSE                  MIT license (scoped — see NOTICE).
 NOTICE                   License scope, upstream credits, MIT file list.
 vendor/                  Patched VS Code extension (.vsix) and other vendored deps.
@@ -58,9 +62,14 @@ vendor/                  Patched VS Code extension (.vsix) and other vendored de
 
 - `global.lua:registerObjectGUIDs()` — `mainDeckZone`, `trash`, `banishmentZone`,
   `runeDeckZone`, `runeZones`, playboard tags (`playboard{color}`), Channel buttons
-  (`ch0001`–`ch0004`).
-- Encoder πKeywords (`ae12d3`) — `rb_*` counter/status keys; not legacy `mtg_*`.
-- Domain Module (`b8b8df`, `RB_Domain`) — six domains, not MTG colours.
+  (`ch0001`–`ch0004`). Legend/champion zone GUIDs are in `Components.md`.
+- Battlefield Controller (`bfc001`) — Link/Unlink and Conquer/Unclaim for zones
+  `bf1d01`–`bf1d03`; battlefield control meshes `bf2k01`–`bf2c03`.
+- Card import — `80c03d` (Riftbound Card Importer API), `25dbaf` (Deck Loader);
+  do not move or delete.
+- Encoder πKeywords (`ae12d3`) — `rb_*` counter/status keys; MTG `mtg_*` keys removed.
+- Domain Module (`b8b8df`, `RB_Domain`) — six Riftbound domains, not MTG colours.
+- Easy Modules Unified (`b93b40`) — Riftbound fork; Might and Riftseer re-import only.
 
 The `.lua` and `.xml` files under `scripts/` and `ui/` are **the readable
 source of truth for code review and diffs**. The JSON is the build artifact.
@@ -148,10 +157,11 @@ committing licensing-sensitive changes.
   listed in `NOTICE`, third-party assets, imported card faces, Riftbound game IP.
 
 Upstream authors (credit in `README.md` and `NOTICE`; preserve attribution):
-- Oops I Baked a Pie (table, global script, life trackers)
+- Oops I Baked a Pie (table, global script, hand counters, timers, draw/mill buttons)
 - TyrantNomad (Easy Modules Unified, the πMenu/πNotepad/πScry/πKeywords suite)
 - Tipsy Hobbit (Keyword Abilities module — πKeywords / Ready-button lineage)
 - rikrassen (the MTG Deck/Draft/Cube Importer — replaced on-table by Riftbound loaders)
+- amory (Riftbound zones, art, battlefield controller, importers, score trackers)
 
 If a change removes one of these authors' work entirely, note it in the commit
 message but leave the README credit in place — they still contributed to the
