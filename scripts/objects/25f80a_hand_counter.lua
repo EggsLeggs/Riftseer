@@ -21,7 +21,7 @@ function onload()
     -- edit out the next "self" lines in order to fiddle with the counter
     self.setPosition(Pos)
     self.setRotation(Rot)
-    self.setInvisibleTo({'White','Red'})
+    self.setInvisibleTo({'Green','Red'})
     self.setColorTint{1,1,1,0}
     self.setLock(true)
     self.setScale({1,1,1})

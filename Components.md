@@ -16,33 +16,35 @@ Invisible TTS objects that define hand zones and scripting regions.
 
 The ScriptingTriggers below are the **functional zones** for each player seat. Their positions must align with both the playmat art and the table's snap points — all three must move together if the layout changes. `global.lua:registerObjectGUIDs()` hard-codes `mainDeckZone`, `trash`, and `banishmentZone` GUIDs; renaming or deleting them breaks Draw/Mill/Predict and trash/banishment keybinds.
 
+Seat keys in `global.lua` (`data`, `props`, `deckDirs`) use **Green** / Red / Yellow / Blue (legacy upstream used `White` for the green seat).
+
 | GUID | Role | Seats |
 |------|------|-------|
-| 166036 | main deck (mainDeckZone) | White |
+| 166036 | main deck (mainDeckZone) | Green |
 | 2365d0 | main deck (mainDeckZone) | Red |
 | 033b34 | main deck (mainDeckZone) | Yellow |
 | c04462 | main deck (mainDeckZone) | Blue |
-| 68549d | trash | White |
+| 68549d | trash | Green |
 | 07dd80 | trash | Red |
 | 8b439a | trash | Yellow |
 | debc40 | trash | Blue |
-| bf0002 | banishment (banishmentZone) | White |
+| bf0002 | banishment (banishmentZone) | Green |
 | bf0001 | banishment (banishmentZone) | Red |
 | bf0003 | banishment (banishmentZone) | Yellow |
 | bf0004 | banishment (banishmentZone) | Blue |
-| f1e001 | legend | White |
+| f1e001 | legend | Green |
 | 1e9001 | legend | Red |
 | e1e001 | legend | Yellow |
 | b1e001 | legend | Blue |
-| f4c001 | champion | White |
+| f4c001 | champion | Green |
 | c4a001 | champion | Red |
 | e4c001 | champion | Yellow |
 | b4c001 | champion | Blue |
-| f4d001 | rune deck | White |
+| f4d001 | rune deck | Green |
 | 4d0001 | rune deck | Red |
 | e4d001 | rune deck | Yellow |
 | b4d001 | rune deck | Blue |
-| 8b3401 | playmat | White |
+| 8b3401 | playmat | Green |
 | c20e3f | playmat | Red |
 | 129eaa | playmat | Yellow |
 | 56cd9d | playmat | Blue |
@@ -55,9 +57,9 @@ board objects. Must stay aligned with playmat art and snap points.
 
 | GUID | Role | Seat |
 |------|------|------|
-| e045d9 | playboard Main | White |
-| 8ecbef | playboard Rune | White |
-| 317569 | playboard Side | White |
+| e045d9 | playboard Main | Green |
+| 8ecbef | playboard Rune | Green |
+| 317569 | playboard Side | Green |
 | d64a19 | playboard Main | Red |
 | a67f19 | playboard Rune | Red |
 | f6152f | playboard Side | Red |
@@ -75,7 +77,7 @@ cards from `runeDeckZone` via the Channel button (`ch0001`–`ch0004`).
 
 | Seat | GUIDs |
 |------|-------|
-| White | f4a001–f4a00c |
+| Green | f4a001–f4a00c |
 | Red | 4da001–4da00c |
 | Yellow | e4a001–e4a00c |
 | Blue | b4a001–b4a00c |
@@ -103,12 +105,13 @@ cards from `runeDeckZone` via the Channel button (`ch0001`–`ch0004`).
 > **Mostly Riftbound-ready.** Mulligan deals 4 (friendly only). Ready untaps
 > playboard units and clears `rb_stun` / `rb_temporary` on encoded cards. Channel
 > pulls runes from the rune deck into `runeZones`. Trash/banishment use dedicated
-> zones (keybind 7 → trash, 8 → banishment). **Still upstream-labelled:** Mill
-> (deck top → trash) and Predict (πScry; library wording updated in script).
+> zones (keybind 7 → trash, 8 → banishment). Life trackers spawn 0–8 locked
+> reversi chips along the board edge as might tokens. **Still upstream-labelled:**
+> Mill (deck top → trash), Predict (πScry), and life-tracker chat strings.
 
 | GUID | Object |
 |------|--------|
-| 23e485, 448880, 37e533, 395037 | Life Tracker ×4 |
+| 23e485, 448880, 37e533, 395037 | Life Tracker ×4 — might counter (0–8) with physical reversi tokens; see `scripts/objects/*_life_tracker.lua` |
 | 2f714c, 25f80a, 5b0cc8, b40ce7 | Hand Counter ×4 |
 | 9d9dda, 0af44c, 9243e9, d29299 | Hand Counter (Self) ×4 |
 | 3d7324, 5137aa, fcb7b5, 4563bf | Hand Counter Screen ×4 |
@@ -126,12 +129,11 @@ cards from `runeDeckZone` via the Channel button (`ch0001`–`ch0004`).
 
 ## Counters and tokens
 
-> **Note:** The +X/+Y Counter bags need to be relabeled / retextured as Might
-> counters (or whatever Riftbound's stat-modifier equivalent is).
-
 | GUID | Object |
 |------|--------|
-| beb998, d82eb8 | +X/+Y Counter bags ×2 |
+| beb998, d82eb8 | +1 Counter bags ×2 — flat bag mesh + chip diffuse `…/232DF325…/`; `onLoad` calls `setCustomObject` + full white tint (`scripts/objects/beb998_plus1_counter.lua`, `d82eb8_plus1_counter.lua`) |
+| 7c9dfd, ad6bf5 | +1 Counter spawn templates (inside bags) — button-chip UI, hidden custom mesh; `scripts/objects/7c9dfd_1.lua`, `ad6bf5_1_1.lua` |
+| ~~29d31b, 2e1ed6~~ | ~~+X/+Y Counter bags ×2~~ — deleted; replaced by +1 bags and life-tracker might tokens |
 | 4256ba, 917dc3 | Generic Counter bags ×2 |
 | b02684, 7eeb77 | Text + Counter bags ×2 |
 | 855d09, 195243 | Notecard bags ×2 |
@@ -214,7 +216,9 @@ Components fully rewritten for Riftbound and no longer pending migration.
 | b8b8df | Domain Module — `RB_Domain` designators (Fury, Calm, Mind, Body, Chaos, Order) |
 | b93b40 | Easy Modules Unified — Riftbound fork (Might, Riftseer re-import; MTG-only UI stripped) |
 | de4346 | πScry — top/bottom of **main deck** and trash (not legacy library zones) |
-| — | `scripts/global.lua` + `ui/global.xml` — playboard/rune/banishment zones, channeling, importer UI labels |
+| 23e485, 448880, 37e533, 395037 | Life Tracker ×4 — might tokens (reversi chips 0–8, owner-tinted, persisted in `script_state`) |
+| beb998, d82eb8, 7c9dfd, ad6bf5 | +1 Counter bags + spawn templates (see Counters and tokens) |
+| — | `scripts/global.lua` + `ui/global.xml` — playboard/rune/banishment zones, channeling, importer UI labels; seat key **Green** (not `White`) |
 
 ### Physical keyword token bags (removed)
 
@@ -238,5 +242,6 @@ chat commands.
 ### Table Instructions tile (e40450)
 
 Currently shows legacy rules and setup instructions. Rewrite for Riftbound.
-The × button that removes table clutter will need its `unnecessaryStuff`
-GUID list updated as more objects are removed.
+The × button clutter lists (`unnecessaryStuff`, `moveThese`) were updated to
+drop removed +X/+Y bags (`29d31b`, `2e1ed6`); more GUIDs will need pruning as
+objects are removed.

@@ -5,7 +5,124 @@ mod_name,version='LifeTracker',1
 author='76561198045776458'
 
 function updateSave()
-  self.script_state=JSON.encode({['c']=count})
+  self.script_state=JSON.encode({['c']=count, ['t']=tokenGuids or {}})
+end
+
+-- Physical might tokens (0–8): reversi chips along the board edge by this counter.
+MIGHT_TOKEN_MAX = 8
+MIGHT_TOKEN_Y = 0.81
+MIGHT_TOKEN_SCALE = {1.10, 1, 1.10}
+MIGHT_TOKEN_DZ_BOTTOM = 15.5159
+MIGHT_TOKEN_DZ_TOP = 1.5259
+MIGHT_TOKEN_DX = 0.03
+-- Material: 0 Plastic, 1 Wood, 2 Metal, 3 Cardboard (nil = leave default). May not apply to built-in chips.
+MIGHT_TOKEN_MATERIAL = nil
+tokenGuids = {}
+
+function computeMightTokenLayout()
+  local p = self.getPosition()
+  local cx, cz = p.x, p.z
+  local x = cx
+  if cx < 0 then
+    x = cx - MIGHT_TOKEN_DX
+  else
+    x = cx + MIGHT_TOKEN_DX
+  end
+  local bottomZ, topZ
+  if cz >= 0 then
+    bottomZ = cz + MIGHT_TOKEN_DZ_BOTTOM
+    topZ = cz + MIGHT_TOKEN_DZ_TOP
+  else
+    bottomZ = cz - MIGHT_TOKEN_DZ_BOTTOM
+    topZ = cz - MIGHT_TOKEN_DZ_TOP
+  end
+  mightTokenLayout = {x = x, y = MIGHT_TOKEN_Y, bottomZ = bottomZ, topZ = topZ}
+end
+
+function mightTokenSlotPosition(slot)
+  local t = (slot - 1) / (MIGHT_TOKEN_MAX - 1)
+  local z = mightTokenLayout.bottomZ + (mightTokenLayout.topZ - mightTokenLayout.bottomZ) * t
+  return {mightTokenLayout.x, mightTokenLayout.y, z}
+end
+
+function mightTokenAlive(slot)
+  local guid = tokenGuids[slot]
+  if not guid then return false end
+  local obj = getObjectFromGUID(guid)
+  return obj ~= nil
+end
+
+function removeMightToken(slot)
+  local guid = tokenGuids[slot]
+  if not guid then return end
+  local obj = getObjectFromGUID(guid)
+  if obj then destroyObject(obj) end
+  tokenGuids[slot] = nil
+end
+
+function applyMightTokenSettings(chip)
+  chip.setLock(true)
+  chip.tooltip = false
+  chip.interactable = false
+  chip.setName('')
+  chip.setDescription('')
+  chip.setColorTint(ownerRGB)
+  chip.setScale(MIGHT_TOKEN_SCALE)
+  if MIGHT_TOKEN_MATERIAL ~= nil then
+    pcall(function() chip.setMaterial(MIGHT_TOKEN_MATERIAL) end)
+  end
+end
+
+function spawnMightToken(slot)
+  if mightTokenAlive(slot) then return end
+  local pos = mightTokenSlotPosition(slot)
+  local chip = spawnObject({
+    type = 'reversi_chip',
+    position = pos,
+    rotation = {0, 180, 0},
+    scale = MIGHT_TOKEN_SCALE,
+    sound = false,
+    callback_function = function(obj)
+      applyMightTokenSettings(obj)
+    end,
+  })
+  tokenGuids[slot] = chip.getGUID()
+end
+
+function refreshMightTokens()
+  for slot = 1, MIGHT_TOKEN_MAX do
+    if mightTokenAlive(slot) then
+      applyMightTokenSettings(getObjectFromGUID(tokenGuids[slot]))
+    end
+  end
+end
+
+function reconcileMightTokens(target)
+  for slot = MIGHT_TOKEN_MAX, target + 1, -1 do
+    removeMightToken(slot)
+  end
+  for slot = 1, target do
+    if not mightTokenAlive(slot) then
+      spawnMightToken(slot)
+    end
+  end
+end
+
+function onMightCountChanged(prev, curr)
+  if curr > MIGHT_TOKEN_MAX or curr < 0 then return end
+  if prev > MIGHT_TOKEN_MAX or prev < 0 then
+    reconcileMightTokens(curr)
+    return
+  end
+  if curr > prev then
+    for slot = prev + 1, curr do
+      spawnMightToken(slot)
+    end
+  elseif curr < prev then
+    for slot = curr + 1, prev do
+      removeMightToken(slot)
+    end
+  end
 end
 
 function wait(t)
@@ -49,6 +166,7 @@ function click_changeValue(obj, color, val)
   -- if not(color==owner or Player[color].admin) then return end
   local C3=count
   count=count+val
+  onMightCountChanged(C3, count)
   local C1=count
   function clickCoroutine()
     if not C2 then
@@ -192,7 +310,9 @@ function onChat(msg,player)
 
         a,t,nn=f(n,player.color)
         if a then
+          local prevCount=count
           count=a
+          onMightCountChanged(prevCount, count)
           sL(count,nn)
         break
         else
@@ -220,10 +340,19 @@ function onload(s)
   self.interactable=true
 
   if s~='' then
-    local ld=JSON.decode(s); count=ld.c
+    local ld=JSON.decode(s)
+    count=ld.c
+    tokenGuids=ld.t or {}
   else
     count=0
+    tokenGuids={}
   end
+
+  computeMightTokenLayout()
+  if count >= 0 and count <= MIGHT_TOKEN_MAX then
+    reconcileMightTokens(count)
+  end
+  Wait.frames(refreshMightTokens, 2)
 
   self.clearButtons()
 
@@ -315,23 +444,28 @@ function onload(s)
 end
 
 function resetLife(obj,color)
+  local prevCount=count
 	sL(0,0)
 	count=0
+  onMightCountChanged(prevCount, count)
 	printToAll(owner..'[999999] reset their life to [-]|'..count..'|',ownerRGB)
 	updateSave()
 end
 
 self.max_typed_number=999
 function onNumberTyped(col,int)
+  local prevCount=count
   local n=int-count
   sL(int,n)
   if tID~=nil then Wait.stop(tID) end
   tID=Wait.time(function()
     if int~=count then
       count=int
+      onMightCountChanged(prevCount, count)
       local tx=' lost '
       if n>0 then tx=' gained ' end
       printToAll(owner..'[999999]'..tx..math.abs(n)..' life [-]|'..count..'|',ownerRGB)
+      updateSave()
     end
   end, 3)
 end

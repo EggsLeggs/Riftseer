@@ -44,7 +44,7 @@ end
 -- Ensure data structure exists
 function buildDataStructure()
   data = {
-    White   = {deck = nil},
+    Green   = {deck = nil},
     Red     = {deck = nil},
     Yellow  = {deck = nil},
     Blue    = {deck = nil},
@@ -138,17 +138,17 @@ end
 
 -- Get pointers to in-game objects so we can script them
 function registerObjectGUIDs()
-  data["White"]["mainDeckZone"]    = getObjectFromGUID("166036")
+  data["Green"]["mainDeckZone"]    = getObjectFromGUID("166036")
   data["Red"]["mainDeckZone"]      = getObjectFromGUID("2365d0")
   data["Yellow"]["mainDeckZone"]   = getObjectFromGUID("033b34")
   data["Blue"]["mainDeckZone"]     = getObjectFromGUID("c04462")
 
-  data["White"]["trash"]      = getObjectFromGUID("68549d")
+  data["Green"]["trash"]      = getObjectFromGUID("68549d")
   data["Red"]["trash"]        = getObjectFromGUID("07dd80")
   data["Yellow"]["trash"]     = getObjectFromGUID("8b439a")
   data["Blue"]["trash"]       = getObjectFromGUID("debc40")
 
-  data["White"]["runeZones"] = {
+  data["Green"]["runeZones"] = {
     getObjectFromGUID("f4a001"),
     getObjectFromGUID("f4a002"),
     getObjectFromGUID("f4a003"),
@@ -208,47 +208,47 @@ function registerObjectGUIDs()
     getObjectFromGUID("b4a00c"),
   }
 
-  data["White"]["runeDeckZone"]    = getObjectFromGUID("f4d001")
+  data["Green"]["runeDeckZone"]    = getObjectFromGUID("f4d001")
   data["Red"]["runeDeckZone"]      = getObjectFromGUID("4d0001")
   data["Yellow"]["runeDeckZone"]   = getObjectFromGUID("e4d001")
   data["Blue"]["runeDeckZone"]     = getObjectFromGUID("b4d001")
 
-  data["White"]["banishmentZone"]  = getObjectFromGUID("bf0002")
+  data["Green"]["banishmentZone"]  = getObjectFromGUID("bf0002")
   data["Red"]["banishmentZone"]    = getObjectFromGUID("bf0001")
   data["Yellow"]["banishmentZone"] = getObjectFromGUID("bf0003")
   data["Blue"]["banishmentZone"]   = getObjectFromGUID("bf0004")
 
-  data["White"]["mulliganButton"] = getObjectFromGUID("3b07ae")
+  data["Green"]["mulliganButton"] = getObjectFromGUID("3b07ae")
   data["Red"]["mulliganButton"]   = getObjectFromGUID("c53ac6")
   data["Yellow"]["mulliganButton"]= getObjectFromGUID("47645d")
   data["Blue"]["mulliganButton"]  = getObjectFromGUID("e0a3bc")
 
-  data["White"]["untapButton"]    = getObjectFromGUID("18fb5d")
+  data["Green"]["untapButton"]    = getObjectFromGUID("18fb5d")
   data["Red"]["untapButton"]      = getObjectFromGUID("86e447")
   data["Yellow"]["untapButton"]   = getObjectFromGUID("1f3e4a")
   data["Blue"]["untapButton"]     = getObjectFromGUID("e2f7ae")
 
-  data["White"]["channelButton"]  = getObjectFromGUID("ch0001")
+  data["Green"]["channelButton"]  = getObjectFromGUID("ch0001")
   data["Red"]["channelButton"]    = getObjectFromGUID("ch0002")
   data["Yellow"]["channelButton"] = getObjectFromGUID("ch0003")
   data["Blue"]["channelButton"]   = getObjectFromGUID("ch0004")
 
-  data["White"]["drawButton"]     = getObjectFromGUID("26775a")
+  data["Green"]["drawButton"]     = getObjectFromGUID("26775a")
   data["Red"]["drawButton"]       = getObjectFromGUID("885f49")
   data["Yellow"]["drawButton"]    = getObjectFromGUID("305c12")
   data["Blue"]["drawButton"]      = getObjectFromGUID("b49d50")
 
-  data["White"]["scryButton"]     = getObjectFromGUID("614515")
+  data["Green"]["scryButton"]     = getObjectFromGUID("614515")
   data["Red"]["scryButton"]       = getObjectFromGUID("ffa67c")
   data["Yellow"]["scryButton"]    = getObjectFromGUID("8a4c8b")
   data["Blue"]["scryButton"]      = getObjectFromGUID("4e19c8")
 
-  data["White"]["millButton"]     = getObjectFromGUID("57914a")
+  data["Green"]["millButton"]     = getObjectFromGUID("57914a")
   data["Red"]["millButton"]       = getObjectFromGUID("da5d0d")
   data["Yellow"]["millButton"]    = getObjectFromGUID("67b4a5")
   data["Blue"]["millButton"]      = getObjectFromGUID("d06889")
 
-  data["White"]["revealButton"]   = getObjectFromGUID("d67eb4")
+  data["Green"]["revealButton"]   = getObjectFromGUID("d67eb4")
   data["Red"]["revealButton"]     = getObjectFromGUID("0ad181")
   data["Yellow"]["revealButton"]  = getObjectFromGUID("59ab68")
   data["Blue"]["revealButton"]    = getObjectFromGUID("c489e1")
@@ -256,7 +256,7 @@ function registerObjectGUIDs()
 end
 
 props = {
-  White={spawns={
+  Green={spawns={
   main={posX="25.5", posZ="-5", rotY="180"},
   part={posX="22.5", posZ="-5", rotY="180"}}},
 
@@ -273,7 +273,7 @@ props = {
   part={posX="22.5", posZ="5", rotY="0"}}},
 }
 
-deckDirs = {White=-1,
+deckDirs = {Green=-1,
             Red=1,
             Yellow=-1,
             Blue=1}

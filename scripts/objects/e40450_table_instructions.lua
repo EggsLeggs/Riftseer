@@ -26,7 +26,7 @@ function closeSelf(obj,ply)
   unnecessaryStuff={"fc40c8","b7ccfb","cafe02","de6cde","9cf532","32f398","e7428d",
   "1a20bf","9360fc","0a79c7","792837","163a5f","63bc71","e0d9cc","917dc3","f62d00",
   "82e64d","0cebc6","59d2ee","080e23","d658b5","cbcbea","fcd8d9","c3ca32","b8b9ed",
-  "c36338","721b69","8764e9","28297f","b41ace","220d2f","1c4a59","aeeb11","2e1ed6",
+  "c36338","721b69","8764e9","28297f","b41ace","220d2f","1c4a59","aeeb11",
   "e2c813","d9bd81","7eeb77","195243","d82eb8","64d53e","005d07","c1840d","e3ecb3",
   "023349","cdbccc","69ab89","4783af","721688","444725","f209f9","895bd9","ae70ca",
   "f378f1","6c1ede","cd8bb6","bfceec","e6f47f","c99d05","5ca969","6d46cd","6ed442",
@@ -35,7 +35,7 @@ function closeSelf(obj,ply)
   "f082df","9f82de","372113","47f1ce","b9f545","7edac2","673bac","098c38","c5addf",
   "123asd","05b07c","8dad82","4bf968","6d07c3","7cf430"}
 
-  moveThese={"b3961f","3cba4d","576ccd","94b67a","5035f1","da1b48","29d31b","beb998",
+  moveThese={"b3961f","3cba4d","576ccd","94b67a","5035f1","da1b48","beb998",
   "56a44e","855d09","7ae211","daebb2","b991d5","887dd2","52e44b","389c4d","e76686",
   "b02684","f07e80","0beb07","4256ba","1f2263","8c31d2","7071ce","3c7ad3"}
 
