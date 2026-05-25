@@ -103,7 +103,14 @@ playboardRuneZoneGuids = {
   Yellow = 'b5c8e9',
   Blue = '679690',
 }
-RIFTBOUND_GLOBAL_REV = 'playboard-rune-guid-v2'
+-- All scripting trigger zones per seat (getObjectsWithTag does not work on zones)
+playboardZoneGuidsByColor = {
+  Green  = {'e045d9', '317569', '8ecbef'},
+  Red    = {'d64a19', 'f6152f', 'a67f19'},
+  Yellow = {'2c718e', '65d86e', 'b5c8e9'},
+  Blue   = {'92d981', '6a0546', '679690'},
+}
+RIFTBOUND_GLOBAL_REV = 'playboard-zone-guid-v3'
 
 function playboardPlayerTag(color)
   return 'playboard' .. color
@@ -119,10 +126,11 @@ end
 
 function cachePlayboardZones()
   playboardZonesByColor = {}
-  for _, color in ipairs(Player.getColors()) do
+  for color, guids in pairs(playboardZoneGuidsByColor) do
     local zones = {}
-    for _, obj in ipairs(getObjectsWithTag(playboardPlayerTag(color))) do
-      if obj.type == 'ScriptingTrigger' then
+    for _, guid in ipairs(guids) do
+      local obj = getObjectFromGUID(guid)
+      if obj ~= nil then
         table.insert(zones, obj)
       end
     end
@@ -1013,6 +1021,7 @@ end
 ------------------------------------- READY ------------------------------------
 -- stolen from Untapper Tool by Tipsy Hobbit//STEAM_0:1:13465982
 function playerUntap(button, playerColor, alt)
+  if data[playerColor] == nil then return end
   if button == data[playerColor]["untapButton"] then
     buttonPress(button,drawDelay*0.75)
     local enc = Global.getVar("Encoder")
@@ -1025,7 +1034,7 @@ function playerUntap(button, playerColor, alt)
     local untaps = true
     for _, v in ipairs(getPlayboardObjects(playerColor)) do
       untaps = true
-      flash = false
+      local flash = false
       if v.type == 'Card' or v.type == 'Deck' then
         if enc ~= nil then
           if enc.call("APIobjectExists",{obj=v}) then
@@ -1054,19 +1063,6 @@ function playerUntap(button, playerColor, alt)
                 enc.call("APIrebuildButtons",{obj=v})
               end
             end
-          end
-        end
-        if v.type=='Card' then
-          local cname=v.getName():lower()
-          local cdesc=v.getDescription():lower()
-          local typeline=cname:match('\n(.*)')
-          if cname and (cname:find('mana vault') or cname:find('basalt monolith') or cname:find('grim monolith')) then
-            untaps=false
-            flash=true
-          end
-          if cdesc and cdesc:find("doesn't untap during your untap step") then
-            untaps=false
-            flash=true
           end
         end
         if untaps == false and flash == true then
