@@ -126,7 +126,7 @@ Three shared slots on the table centre line. `getBattlefieldZone()` / `getBattle
 
 | GUID | Object | Owner | RB | What it does |
 |------|--------|-------|----|--------------|
-| 23e485, 448880, 37e533, 395037 | Life Tracker ×4 | Amuzet / π | ✓ | Tracks might (0–8) with physical reversi tokens spawned along the board edge; state persisted in `script_state`. |
+| 23e485, 448880, 37e533, 395037 | Score Tracker ×4 | Amuzet / π | ✓ | Tracks score (0–8) with physical reversi tokens spawned along the board edge; state persisted in `script_state`. |
 | 2f714c, 25f80a, 5b0cc8, b40ce7 | Hand Counter ×4 | OIBAP | — | Shows opponent's hand count. |
 | 9d9dda, 0af44c, 9243e9, d29299 | Hand Counter (Self) ×4 | OIBAP | — | Shows the owning player's own hand count. |
 | 3d7324, 5137aa, fcb7b5, 4563bf | Hand Counter Screen ×4 | OIBAP | — | Screen-space hand count display. |
@@ -137,7 +137,7 @@ Three shared slots on the table centre line. `getBattlefieldZone()` / `getBattle
 | ch0001, ch0002, ch0003, ch0004 | Channel button ×4 | amory | ✓ | Moves runes from the rune deck into the player's rune channel zones. |
 | 885f49, 26775a, b49d50, 305c12 | Draw button ×4 | OIBAP | — | Draws cards from the main deck. |
 | ffa67c, 614515, 4e19c8, 8a4c8b | Predict button ×4 | OIBAP | ✓ | Triggers πScry on the main deck (Riftbound Predict mechanic). |
-| da5d0d, 57914a, d06889, 67b4a5 | Mill button ×4 | OIBAP | — | Moves cards from the top of the main deck to trash. Chat label still says "milling" (upstream string). |
+| da5d0d, 57914a, d06889, 67b4a5 | Mill button ×4 | OIBAP | — | Moves cards from the top of the main deck to trash. Chat label says "milling" (upstream string); left as-is intentionally. |
 | d67eb4, 0ad181, 59ab68, c489e1 | Reveal button ×4 | OIBAP | — | Reveals the top N cards of the main deck face-up on the table (fan or stack). |
 
 ---
@@ -256,8 +256,6 @@ These are live code issues — not cosmetic. They should be cleaned up before th
 | **Table Instructions tile** (`e40450`) | Content is entirely legacy MTG rules and setup text. |
 | **Chat Commands tile** (`7b59f7`) | Content lists legacy MTG chat commands only. |
 | **πMenu** (`c369d7`) | Colour-filter UI uses MTG mana-colour variable names (`vWhite`, `vBlue`, `vBlack`, `vRed`, `vGreen`, `vColorless`) and WUBRGC symbols in `global.lua:2545`. |
-| **Mill button** (`da5d0d` etc.) | Chat broadcast string reads `"milling"` (upstream MTG term). Riftbound equivalent is discarding to trash. |
-| **Life Tracker** (`23e485` etc.) | Chat strings say `"life"` and `"life totals"` — minor, but not Riftbound terminology. |
 
 ### MTG-specific logic still in `global.lua`
 
