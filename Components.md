@@ -82,6 +82,59 @@ cards from `runeDeckZone` via the Channel button (`ch0001`–`ch0004`).
 | Yellow | e4a001–e4a00c |
 | Blue | b4a001–b4a00c |
 
+### Battlefield (ScriptingTriggers)
+
+Three shared slots along the table center line (horizontal `scaleX`/`scaleZ`).
+Tagged `battlefield`; zones registered on controller `bfc001`. Global
+`getBattlefieldZone()` / `getBattlefieldObjects()` delegate to the controller.
+
+Snap points live in the save root `SnapPoints` array (same as legend/champion
+zones): world X/Z aligned to each trigger center, Y `0.9611349`, rotY `180` for
+the negative-Z center line.
+
+| Snap X | Z | rotY |
+|--------|---|------|
+| −29.63 | −0.02 | 180 |
+| 0 | −0.02 | 180 |
+| 29.63 | −0.02 | 180 |
+
+Battlefield controls (Custom_Model, scale `0.85`, Grey tint — any player may
+click). Link uses Ready button art; Conquer uses Channel art (placeholders). Logic
+lives on the Battlefield Controller (`bfc001`); `global.lua` forwards zone enter/leave
+and card drops via `battlefieldNotifyZone` / `battlefieldRefreshAll`. Link/Conquer
+buttons stay hidden until a card is in that slot; removing the card hides them and
+clears link/claim state.
+
+| GUID | Role | Slot |
+|------|------|------|
+| bf2k01 | Link / Unlink (left click / right click) | left |
+| bf2c01 | Conquer / Unclaim | left |
+| bf2k02 | Link / Unlink | center |
+| bf2c02 | Conquer / Unclaim | center |
+| bf2k03 | Link / Unlink | right |
+| bf2c03 | Conquer / Unclaim | right |
+
+Conquer (left click) spawns a Highlight Mat clone (`5cb175` asset) at the slot's X,
+Y `0.92`, Z `0`, scale `{7.52, 1, 2.6}`, tinted to the clicking player's color
+(same alpha as turn highlight). Unclaim (right click) removes it.
+
+Link (left click) shows the card's Description at world offsets ±`4.80` along the zone's
+forward axis (±`4.20` world units) above/below
+the zone (3D text, max width `27.40`, font capped at 32; positive-Z label rotated
+180°). Unlink removes text and unlocks the card. Requires a Battlefield card in the zone.
+
+| GUID | Role | Position (X, Y, Z) |
+|------|------|-------------------|
+| bf1d02 | battlefield left | −29.63, 1.95, −0.02 |
+| bf1d01 | battlefield center | 0, 1.95, −0.02 |
+| bf1d03 | battlefield right | 29.63, 1.95, −0.02 |
+
+### Battlefield controller
+
+| GUID | Object | Note |
+|------|--------|------|
+| bfc001 | Battlefield Controller | `PiecePack_Arms` mesh (same as “Is it a token?” `716ee6`); locked, non-interactable; side table at X −46.75, Z −8.5 (`716ee6` is Z −6.5). Script: `scripts/objects/bfc001_battlefield_controller.lua`. |
+
 ---
 
 ## Core engine (load-bearing)

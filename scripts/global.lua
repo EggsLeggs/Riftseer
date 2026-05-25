@@ -2,17 +2,19 @@
 function onload()
   buildDataStructure()
   registerObjectGUIDs()
+  print('[Riftbound] global '..RIFTBOUND_GLOBAL_REV..' loaded')
   cachePlayboardZones()
   Wait.frames(function()
     cachePlayboardZones()
   end, 3)
   buildTableButtons()
+  Wait.frames(function() battlefieldRefreshAll() end, 10)
   addZoneContextMenus()
   for _,guid in pairs({'cb1610', 'a7a029', '4c02f8', 'a3e6a8', '9c553c', 'eb479b','3d4319','540e21'}) do
     pcall(function() getObjectFromGUID(guid).interactable=false end)
   end
   Wait.frames(function()
-    for _,guid in pairs({'02e062','de4346','d936a8','b93b40'}) do
+    for _,guid in pairs({'02e062','de4346','d936a8','b93b40','bfc001'}) do
       pcall(function() getObjectFromGUID(guid).interactable=false end)
     end
   end,5)
@@ -51,8 +53,56 @@ function buildDataStructure()
   }
 end
 
+BATTLEFIELD_CTRL_GUID = 'bfc001'
+
+function getBattlefieldController()
+  local bf = Global.getVar('Battlefield')
+  if bf ~= nil then return bf end
+  return getObjectFromGUID(BATTLEFIELD_CTRL_GUID)
+end
+
+function battlefieldNotifyZone(zone)
+  local bf = getBattlefieldController()
+  if bf == nil or zone == nil then return end
+  pcall(function()
+    bf.call('APIonCardZoneEvent', {zoneGuid = zone.getGUID()})
+  end)
+end
+
+function battlefieldRefreshAll()
+  local bf = getBattlefieldController()
+  if bf == nil then return end
+  pcall(function() bf.call('APIrefreshAll', {}) end)
+end
+
+function getBattlefieldZones()
+  local bf = getBattlefieldController()
+  if bf == nil then return {} end
+  return bf.call('APIgetZones', {}) or {}
+end
+
+function getBattlefieldZone()
+  local bf = getBattlefieldController()
+  if bf == nil then return nil end
+  return bf.call('APIgetZone', {})
+end
+
+function getBattlefieldObjects()
+  local bf = getBattlefieldController()
+  if bf == nil then return {} end
+  return bf.call('APIgetObjects', {}) or {}
+end
+
 -- Playboard zones: three ScriptingTriggers per seat, each tagged playboard{color}.
 playboardZonesByColor = {}
+-- Playmat rune row per seat; ScriptingTriggers have no getNickname() in TTS Lua.
+playboardRuneZoneGuids = {
+  Green = '8ecbef',
+  Red = 'a67f19',
+  Yellow = 'b5c8e9',
+  Blue = '679690',
+}
+RIFTBOUND_GLOBAL_REV = 'playboard-rune-guid-v2'
 
 function playboardPlayerTag(color)
   return 'playboard' .. color
@@ -69,7 +119,13 @@ end
 function cachePlayboardZones()
   playboardZonesByColor = {}
   for _, color in ipairs(Player.getColors()) do
-    playboardZonesByColor[color] = getObjectsWithTag(playboardPlayerTag(color))
+    local zones = {}
+    for _, obj in ipairs(getObjectsWithTag(playboardPlayerTag(color))) do
+      if obj.type == 'ScriptingTrigger' then
+        table.insert(zones, obj)
+      end
+    end
+    playboardZonesByColor[color] = zones
   end
 end
 
@@ -104,13 +160,10 @@ function getPlayboardObjects(color)
   return result
 end
 
--- Lowest playmat row per seat (nickname "* Rune" in the save).
 function getPlayboardRuneZone(color)
-  for _, zone in ipairs(getPlayboardZones(color)) do
-    local nick = zone.getNickname() or ''
-    if nick:find('Rune') then return zone end
-  end
-  return nil
+  local guid = playboardRuneZoneGuids[color]
+  if guid == nil then return nil end
+  return getObjectFromGUID(guid)
 end
 
 function getPlayboardReadyRotationY(color)
@@ -213,6 +266,11 @@ function registerObjectGUIDs()
   data["Yellow"]["runeDeckZone"]   = getObjectFromGUID("e4d001")
   data["Blue"]["runeDeckZone"]     = getObjectFromGUID("b4d001")
 
+  data["Green"]["playboardRuneZone"]  = getObjectFromGUID("8ecbef")
+  data["Red"]["playboardRuneZone"]    = getObjectFromGUID("a67f19")
+  data["Yellow"]["playboardRuneZone"] = getObjectFromGUID("b5c8e9")
+  data["Blue"]["playboardRuneZone"]   = getObjectFromGUID("679690")
+
   data["Green"]["banishmentZone"]  = getObjectFromGUID("bf0002")
   data["Red"]["banishmentZone"]    = getObjectFromGUID("bf0001")
   data["Yellow"]["banishmentZone"] = getObjectFromGUID("bf0003")
@@ -252,7 +310,6 @@ function registerObjectGUIDs()
   data["Red"]["revealButton"]     = getObjectFromGUID("0ad181")
   data["Yellow"]["revealButton"]  = getObjectFromGUID("59ab68")
   data["Blue"]["revealButton"]    = getObjectFromGUID("c489e1")
-
 end
 
 props = {
@@ -880,7 +937,11 @@ function onObjectPickUp(player_color, obj)
 end
 
 function onObjectDrop(player_color, obj)
-  if obj==nil or obj.type~='Card' then return end
+  if obj==nil then return end
+  if obj.type == 'Card' then
+    Wait.frames(function() battlefieldRefreshAll() end, 5)
+  end
+  if obj.type~='Card' then return end
   local guid = obj.getGUID()
   if channelMovingCards[guid] then return end
   local savedRot = runeDragRotation[guid]
@@ -944,16 +1005,27 @@ function countEmptyRuneSlots(color)
   return n
 end
 
+function objectFieldSafe(obj, methodName)
+  if obj == nil then return nil end
+  local ok, val = pcall(function()
+    local fn = obj[methodName]
+    if fn == nil then return nil end
+    return fn(obj)
+  end)
+  if ok then return val end
+  return nil
+end
+
 function isRuneCard(card)
   if card==nil or card.type~='Card' then return false end
   return cardMatchesSearchType({
-    nickname = card.getNickname(),
-    name = card.getName(),
-    gm_notes = card.getGMNotes(),
-    lua_script_state = card.getLuaScriptState(),
-    tags = card.getTags(),
-    Tags = card.getTags(),
-    description = card.getDescription()
+    nickname = objectFieldSafe(card, 'getNickname'),
+    name = objectFieldSafe(card, 'getName'),
+    gm_notes = objectFieldSafe(card, 'getGMNotes'),
+    lua_script_state = objectFieldSafe(card, 'getLuaScriptState'),
+    tags = objectFieldSafe(card, 'getTags'),
+    Tags = objectFieldSafe(card, 'getTags'),
+    description = objectFieldSafe(card, 'getDescription')
   }, 'rune')
 end
 
@@ -961,8 +1033,10 @@ function findNonRuneCardsInPlayboardRuneArea(color)
   local zone = getPlayboardRuneZone(color)
   if zone==nil then return {} end
   local bad = {}
-  for _, obj in ipairs(getPlayboardZoneObjects(zone)) do
-    if obj.type=='Card' and not isRuneCard(obj) then
+  local ok, objs = pcall(function() return getPlayboardZoneObjects(zone) end)
+  if not ok or objs==nil then return bad end
+  for _, obj in ipairs(objs) do
+    if obj~=nil and obj.type=='Card' and not isRuneCard(obj) then
       table.insert(bad, obj)
     end
   end
@@ -991,21 +1065,31 @@ function runeChannelError(color, msg)
   Player[color].broadcast(msg, color)
 end
 
+function countChannelRuneZoneRefs(color)
+  local zones = data[color]["runeZones"]
+  if zones==nil then return 0 end
+  local n = 0
+  for _, zone in ipairs(zones) do
+    n = n + countRunesInZone(zone)
+  end
+  return n
+end
+
 function collectChannelRuneCards(color)
   local zones = data[color]["runeZones"]
   if zones==nil then return {} end
-  local entries = {}
-  for i, zone in ipairs(zones) do
+  local seen = {}
+  local cards = {}
+  for _, zone in ipairs(zones) do
     for _, obj in pairs(zone.getObjects()) do
       if obj.type=='Card' then
-        table.insert(entries, {card=obj, slot=i})
+        local guid = obj.getGUID()
+        if not seen[guid] then
+          seen[guid] = true
+          table.insert(cards, obj)
+        end
       end
     end
-  end
-  table.sort(entries, function(a, b) return a.slot < b.slot end)
-  local cards = {}
-  for _, e in ipairs(entries) do
-    table.insert(cards, e.card)
   end
   return cards
 end
@@ -1013,11 +1097,34 @@ end
 function compactChannelRuneSlots(color)
   local zones = data[color]["runeZones"]
   if zones==nil then return end
-  local runes = collectChannelRuneCards(color)
+  local seen = {}
+  local entries = {}
+  for _, zone in ipairs(zones) do
+    for _, obj in pairs(zone.getObjects()) do
+      if obj.type=='Card' then
+        local guid = obj.getGUID()
+        if not seen[guid] then
+          seen[guid] = true
+          local name = (obj.getName() or ''):gsub("\n.*",""):lower()
+          table.insert(entries, {
+            card=obj,
+            domain=getRuneDomainSortKey(obj),
+            name=name,
+          })
+        end
+      end
+    end
+  end
+  if #entries==0 then return end
+  table.sort(entries, function(a, b)
+    if a.domain~=b.domain then return a.domain<b.domain end
+    return a.name<b.name
+  end)
   local readyRotY = getPlayboardReadyRotationY(color)
-  for i, card in ipairs(runes) do
+  for i, entry in ipairs(entries) do
     local zone = zones[i]
-    if zone~=nil then
+    if zone~=nil and entry.card~=nil then
+      local card = entry.card
       local guid = card.getGUID()
       channelMovingCards[guid] = true
       runeDragRotation[guid] = nil
@@ -1050,8 +1157,10 @@ function tryRecoverRuneChannelSlots(color)
   if zones==nil then return false end
   local runes = collectChannelRuneCards(color)
   local nSlots = #zones
+  local zoneRefs = countChannelRuneZoneRefs(color)
 
-  if #runes < nSlots then
+  -- Unique runes < slots, or one card overlapping two zones (refs > unique count).
+  if #runes < nSlots or zoneRefs > #runes then
     compactChannelRuneSlots(color)
     return true
   end
@@ -1235,19 +1344,30 @@ function getRuneDomainSortKey(card)
   return 99
 end
 
-function sortRuneZones(color)
+function sortRuneZones(color, onComplete)
   local zones = data[color] and data[color]["runeZones"]
-  if zones==nil then return end
+  if zones==nil then
+    if onComplete~=nil then onComplete() end
+    return
+  end
+  local seen = {}
   local entries = {}
   for _,zone in ipairs(zones) do
     for _,obj in pairs(zone.getObjects()) do
       if obj.type=='Card' then
-        local name = (obj.getName() or ''):gsub("\n.*",""):lower()
-        table.insert(entries,{card=obj,domain=getRuneDomainSortKey(obj),name=name})
+        local guid = obj.getGUID()
+        if not seen[guid] then
+          seen[guid] = true
+          local name = (obj.getName() or ''):gsub("\n.*",""):lower()
+          table.insert(entries,{card=obj,domain=getRuneDomainSortKey(obj),name=name})
+        end
       end
     end
   end
-  if #entries==0 then return end
+  if #entries==0 then
+    if onComplete~=nil then onComplete() end
+    return
+  end
   table.sort(entries,function(a,b)
     if a.domain~=b.domain then return a.domain<b.domain end
     return a.name<b.name
@@ -1263,8 +1383,11 @@ function sortRuneZones(color)
       pos.y = 2 + 0.15*stack
       entry.card.setPositionSmooth(pos,false,true)
       local guid = entry.card.getGUID()
-      Wait.time(function() channelMovingCards[guid] = nil end, 1.5)
+      Wait.time(function() channelMovingCards[guid] = nil end, runeSortSettleTime)
     end
+  end
+  if onComplete~=nil then
+    Wait.time(onComplete, runeSortSettleTime)
   end
 end
 
@@ -1577,6 +1700,9 @@ addContextMenuItem('hand counts',function(c)
 -- zone specific context menu items
 function onObjectEnterZone(zone,obj)
   if obj==nil or not(obj.type=='Card' or obj.type=='Deck') then return end
+  if obj.type == 'Card' then
+    battlefieldNotifyZone(zone)
+  end
   local inHandZone=false
   local inPlayZone=isObjectOnAnyPlayboard(obj)
   local inDeckZone=false
@@ -1618,6 +1744,9 @@ end
 
 function onObjectLeaveZone(zone,obj)
   if obj==nil or not(obj.type=='Card' or obj.type=='Deck') then return end
+  if obj.type == 'Card' then
+    battlefieldNotifyZone(zone)
+  end
   local inHandZone=false
   local inPlayZone=isObjectOnAnyPlayboard(obj)
   local inDeckZone=false
@@ -2176,6 +2305,11 @@ function cardMatchesSearchType(card,searchType)
     getDescriptionSearchMetadata(card.description)
   })
   return haystack:find(needle,1,true)~=nil
+end
+
+function APIcardMatchesSearchType(params)
+  if params == nil then return false end
+  return cardMatchesSearchType(params.card, params.searchType)
 end
 
 function revealUntilType(deck,playerColor,searchTypes)
