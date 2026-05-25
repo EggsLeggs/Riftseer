@@ -134,6 +134,7 @@ cards from `runeDeckZone` via the Channel button (`ch0001`–`ch0004`).
 | beb998, d82eb8 | +1 Counter bags ×2 — flat bag mesh + chip diffuse `…/232DF325…/`; `onLoad` calls `setCustomObject` + full white tint (`scripts/objects/beb998_plus1_counter.lua`, `d82eb8_plus1_counter.lua`) |
 | 7c9dfd, ad6bf5 | +1 Counter spawn templates (inside bags) — button-chip UI, hidden custom mesh; `scripts/objects/7c9dfd_1.lua`, `ad6bf5_1_1.lua` |
 | ~~29d31b, 2e1ed6~~ | ~~+X/+Y Counter bags ×2~~ — deleted; replaced by +1 bags and life-tracker might tokens |
+| ~~f07e80, 9360fc~~ | ~~Suspend Counter bags ×2~~ — deleted; MTG suspend not used in Riftbound (spawn template `a5df2d`) |
 | 4256ba, 917dc3 | Generic Counter bags ×2 |
 | b02684, 7eeb77 | Text + Counter bags ×2 |
 | 855d09, 195243 | Notecard bags ×2 |
@@ -226,14 +227,6 @@ The MTG infinite-bag keyword tokens (Defender, Flying, etc.) were removed from t
 table. On-card tokens use Encoder πKeywords (`ae12d3`) instead. To re-add
 physical bags, see README → Future plans.
 
-### Resource counters
-
-Two full sets (one per table half).
-
-| Objects |
-|---------|
-| Suspend Counter ×2 sets — still labelled as legacy suspend; retexture/relabel for Riftbound if needed |
-
 ### Chat Commands tile (7b59f7)
 
 Currently lists legacy chat commands. Update to document Riftbound
@@ -243,5 +236,5 @@ chat commands.
 
 Currently shows legacy rules and setup instructions. Rewrite for Riftbound.
 The × button clutter lists (`unnecessaryStuff`, `moveThese`) were updated to
-drop removed +X/+Y bags (`29d31b`, `2e1ed6`); more GUIDs will need pruning as
-objects are removed.
+drop removed +X/+Y bags (`29d31b`, `2e1ed6`) and suspend counters (`f07e80`,
+`9360fc`); more GUIDs will need pruning as objects are removed.
