@@ -909,9 +909,6 @@ function playerUntap(button, playerColor, alt)
             untaps=false
             flash=true
           end
-          if typeline and typeline:find('battle') then
-            untaps=false
-          end
         end
         if untaps == false and flash == true then
           Wait.time(function() v.highlightOn(playerColor,0.1) end,0.2,3)
