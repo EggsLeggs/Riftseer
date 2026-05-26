@@ -34,6 +34,8 @@ function onload()
         end
       end
     end
+    registerRuneRecycleMenu()
+    Wait.frames(function() refreshRuneZoneRecycleButtons() end, 5)
   end,function() return Encoder~=nil end)
 
   -- 4pl specific vars
@@ -112,6 +114,8 @@ playboardZoneGuidsByColor = {
 }
 RIFTBOUND_GLOBAL_REV = 'playboard-zone-guid-v3'
 runeSortSettleTime = 2
+RUNE_RECYCLE_ICON_URL = 'https://steamusercontent-a.akamaihd.net/ugc/10767388204787795352/3E30EB8E9E712641D56D4DA11966E328AA4F5FAD/'
+RUNE_RECYCLE_DECAL_NAME = 'rb_rune_recycle'
 
 function playboardPlayerTag(color)
   return 'playboard' .. color
@@ -632,6 +636,115 @@ end
 
 function registerRecycleHotkey()
   addHotkey('Recycle hovered card (suggest C)', recycleHotkey, false)
+end
+
+-- Register a persistent menu with the Encoder so encoded rune-zone cards
+-- get the recycle button re-added whenever the Encoder rebuilds their buttons.
+function registerRuneRecycleMenu()
+  pcall(function()
+    Encoder.call("APIregisterMenu", {
+      menuID = 'RBRuneRecycle',
+      funcOwner = Global,
+      activateFunc = 'runeZoneMenuButtons',
+      visible_in_hand = 0,
+    })
+  end)
+end
+
+-- Called by the Encoder's buildButtons for every encoded card.
+function runeZoneMenuButtons(t)
+  local obj = t.obj
+  if obj == nil or obj.type ~= 'Card' then return end
+  if colorForObjectInRuneZone(obj) ~= nil then
+    addRuneRecycleButton(obj)
+  else
+    removeRuneRecycleDecal(obj)
+  end
+end
+
+-- Place the recycle icon decal + transparent click button on a card.
+-- Safe to call multiple times: the decal is skipped if already present.
+function addRuneRecycleButton(obj)
+  if obj == nil then return end
+  local decals = obj.getDecals() or {}
+  local hasDecal = false
+  for _,d in pairs(decals) do
+    if d.name == RUNE_RECYCLE_DECAL_NAME then hasDecal = true; break end
+  end
+  if not hasDecal then
+    obj.addDecal({
+      name     = RUNE_RECYCLE_DECAL_NAME,
+      url      = RUNE_RECYCLE_ICON_URL,
+      position = {-0.7, 0.3, -1.3},
+      rotation = {90, 180, 0},
+      scale    = {0.35, 0.35, 0.35},
+    })
+  end
+  obj.createButton({
+    label          = '',
+    click_function = 'runeRecycleButtonClick',
+    function_owner = Global,
+    tooltip        = 'Recycle this rune',
+    position       = {0.7, 0.28, -1.3},
+    rotation       = {0, 0, 0},
+    scale          = {0.35, 0.35, 0.35},
+    width          = 350,
+    height         = 350,
+    font_size      = 1,
+    color          = {0, 0, 0, 0},
+    hover_color    = {1, 1, 1, 0.2},
+    press_color    = {1, 1, 1, 0.4},
+  })
+end
+
+-- Remove only the recycle decal, leaving other decals intact.
+function removeRuneRecycleDecal(obj)
+  if obj == nil then return end
+  local decals = obj.getDecals()
+  if decals == nil then return end
+  local ndecals = {}
+  for _,d in pairs(decals) do
+    if d.name ~= RUNE_RECYCLE_DECAL_NAME then
+      table.insert(ndecals, d)
+    end
+  end
+  obj.setDecals(ndecals)
+end
+
+-- Button callback: recycle the rune card, reusing the existing recycle logic.
+function runeRecycleButtonClick(obj, playerColor, altClick)
+  if obj == nil then return end
+  if recycleCard(playerColor, obj) then
+    Player[playerColor].broadcast('recycling '..obj.getName():gsub('\n',' | '), playerColor)
+  end
+end
+
+-- Add recycle buttons to cards already sitting in rune zones at load time
+-- (for non-encoded cards; encoded ones will be handled by the Encoder Menu).
+function refreshRuneZoneRecycleButtons()
+  for color, playerData in pairs(data) do
+    local zones = playerData["runeZones"]
+    if zones then
+      for _,zone in ipairs(zones) do
+        if zone ~= nil then
+          for _,obj in pairs(zone.getObjects()) do
+            if obj.type == 'Card' then
+              local isEncoded = false
+              if Encoder ~= nil then
+                local ok, e = pcall(function()
+                  return Encoder.call("APIobjectExists", {obj=obj})
+                end)
+                if ok then isEncoded = e end
+              end
+              if not isEncoded then
+                addRuneRecycleButton(obj)
+              end
+            end
+          end
+        end
+      end
+    end
+  end
 end
 
 function recycleHotkey(playerColor, hoveredObject, pointerPosition, isKeyUp)
@@ -1979,6 +2092,24 @@ function onObjectEnterZone(zone,obj)
     battlefieldNotifyZone(zone)
   end
   refreshObjectContextMenu(obj)
+  -- For non-encoded cards entering a rune zone, add the recycle button directly.
+  -- Encoded cards get the button via the Encoder's RBRuneRecycle Menu registration.
+  if obj.type == 'Card' and colorForRuneZone(zone) ~= nil then
+    Wait.condition(function()
+      if obj == nil then return end
+      local isEncoded = false
+      if Encoder ~= nil then
+        local ok, e = pcall(function()
+          return Encoder.call("APIobjectExists", {obj=obj})
+        end)
+        if ok then isEncoded = e end
+      end
+      if not isEncoded then
+        obj.clearButtons()
+        addRuneRecycleButton(obj)
+      end
+    end, function() return obj == nil or obj.resting end, 5)
+  end
 end
 
 function onObjectLeaveZone(zone,obj)
@@ -1987,6 +2118,26 @@ function onObjectLeaveZone(zone,obj)
     battlefieldNotifyZone(zone)
   end
   refreshObjectContextMenu(obj, zone)
+  -- For non-encoded cards leaving a rune zone, remove the button/decal if the
+  -- card is no longer in any rune zone. Encoded cards are cleaned up by the
+  -- Encoder's RBRuneRecycle Menu callback when buttons are rebuilt elsewhere.
+  if obj.type == 'Card' and colorForRuneZone(zone) ~= nil then
+    Wait.frames(function()
+      if obj == nil then return end
+      if colorForObjectInRuneZone(obj) ~= nil then return end
+      local isEncoded = false
+      if Encoder ~= nil then
+        local ok, e = pcall(function()
+          return Encoder.call("APIobjectExists", {obj=obj})
+        end)
+        if ok then isEncoded = e end
+      end
+      removeRuneRecycleDecal(obj)
+      if not isEncoded then
+        obj.clearButtons()
+      end
+    end, 5)
+  end
 end
 
 function toggleEncMenu(ply)
