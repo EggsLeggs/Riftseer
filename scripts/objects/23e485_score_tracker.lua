@@ -238,25 +238,14 @@ end
 
 
 local lCheck={
-  ['extort_']=function(n,c)
-    if c==owner then
-      nseated=0
-      for _,p in pairs(Player.getPlayers()) do
-        if p.seated and p.color~=owner and activePlayerList[p.color] then
-          nseated=nseated+1
-          count=count+n
-        end
-      end
-      return count,'extorted everyone for',n*nseated
-    elseif Player[owner].seated and activePlayerList[owner] then
-      return count-n,false,-1*n
+  ['everyone_score_']=function(n,c)
+    if Player[owner].seated and activePlayerList[owner] then
+      return count+n,'everyone gained',n
     end
   end,
-  ['drain_']=function(n,c)
-    if c==owner and activePlayerList[owner] then
-      return count+n,'drained everyone for',n
-    elseif Player[owner].seated and activePlayerList[owner] then
-      return count-n,false,-1*n
+  ['opponents_score_']=function(n,c)
+    if owner~=c and Player[owner].seated and activePlayerList[owner] then
+      return count+n,'opponents gained',n
     end
   end,
   ['opponents_lose_']=function(n,c)

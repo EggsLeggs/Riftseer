@@ -41,7 +41,6 @@ function onSave()
         autoActivateModule = autoActivateModule,
         autoActivatePlayerSettings = autoActivatePlayerSettings,
         autoActivateMight = autoActivateMight,
-        autoActivatePlusOne = autoActivatePlusOne,
         autoActivateDFC = autoActivateDFC,
         autoActivateOwnership = autoActivateOwnership
     }
@@ -52,7 +51,6 @@ end
 autoActivateModule = true
 autoActivatePlayerSettings = {}
 autoActivateMight = false
-autoActivatePlusOne = true
 autoActivateDFC = true
 autoActivateOwnership = true
 function ProcessSavedData(saved_data)
@@ -66,7 +64,6 @@ function ProcessSavedData(saved_data)
         else
             autoActivateMight = loaded_data.autoActivateMight == nil and false or loaded_data.autoActivateMight
         end
-        autoActivatePlusOne = loaded_data.autoActivatePlusOne == nil and true or loaded_data.autoActivatePlusOne
         autoActivateDFC = loaded_data.autoActivateDFC == nil and true or loaded_data.autoActivateDFC
         autoActivateOwnership = loaded_data.autoActivateOwnership == nil and true or loaded_data.autoActivateOwnership
     end
@@ -381,11 +378,6 @@ function onChat(message, player)
             changedAnything = true
         end
 
-        if message:find('plusone') then
-            autoActivatePlusOne = targetState
-            changedAnything = true
-        end
-
         if message:find('encode') then
             autoActivateModule = targetState
             changedAnything = true
@@ -422,12 +414,10 @@ function BroadcastSettings()
     broadcastToAll("\n[888888][EASY MODULES][-] v"..moduleVersion.." - Auto-encode "..(autoActivateModule and "[00FF00]ON[-]" or "[FF0000]OFF[-]").." - Auto settings:")
 
     autoMightText = autoActivateMight and "[FFCC00]ON[-]" or "[BBBBBB]OFF[-]"
-    autoPlusOneText = autoActivatePlusOne and "[FFCC00]ON[-]" or "[BBBBBB]OFF[-]"
     autoDFCtext = autoActivateDFC and "[FFCC00]ON[-]" or "[BBBBBB]OFF[-]"
     autoOwnershipText = autoActivateOwnership and "[FFCC00]ON[-]" or "[BBBBBB]OFF[-]"
 
-    broadcastToAll("Auto Might "..autoMightText.."     ".."Auto PlusOne "..autoPlusOneText)
-    broadcastToAll("Auto Double-faced "..autoDFCtext.."     ".."Auto Ownership "..autoOwnershipText.."\n")
+    broadcastToAll("Auto Might "..autoMightText.."     ".."Auto Double-faced "..autoDFCtext.."     ".."Auto Ownership "..autoOwnershipText.."\n")
 
     if autoActivateModule == false then broadcastToAll("\n[FF0000]Auto-encoding is [FFFFFF]OFF[-] - Nothing will activate automatically.\nType [FFFFFF]'auto encode on'[-] to turn it back on\n")
     else
@@ -451,11 +441,10 @@ function BroadcastCommands()
     broadcastToAll("force     [BBBBBB]encoder / importer[-]     update[888888] - Replaces object script with most recent release")
     broadcastToAll("force     [BBBBBB]encoder / importer[-]     temporary[888888] - Creates a placeholder with that script")
     broadcastToAll("\nauto     [BBBBBB]player[-]     on / off[888888] - Changes auto-encoding settings for who sent the message")
-    broadcastToAll("\nauto     [BBBBBB]encode / dfc / owner[-]     on / off[888888] - Changes auto-activation settings")
-    broadcastToAll("auto     [BBBBBB]might / plusone[-]     on / off[888888] - Changes auto-activation settings")
+    broadcastToAll("\nauto     [BBBBBB]encode / dfc / owner / might[-]     on / off[888888] - Changes auto-activation settings")
     broadcastToAll("\nmodules     settings[888888] - Shows the current auto-activation settings")
     broadcastToAll("modules     help[888888] - Spams chat with 10 lines of text")
-    broadcastToAll("[888888]You can [BBBBBB]stack commands[-] with the same starting word: [BBBBBB]'auto might plusone off'[-]")
+    broadcastToAll("[888888]You can [BBBBBB]stack commands[-] with the same starting word: [BBBBBB]'auto might dfc off'[-]")
 end
 
 function ToggleAutoActivate()
@@ -1772,21 +1761,6 @@ function ParseCardData(object, enc)
             end
             data.cardFaces[index]["baseMight"] = mightValue
 
-        end
-
-        if true then --plus one section, we only care about the front face
-            if autoActivatePlusOne and cardData[1]["typeLine"]:find("reature") then
-                local selfReferralString = {"it", cardData[1]["nameLine"]:match("^%w+")}
-
-                for index, nameString in ipairs (selfReferralString) do
-                    for innerIndex, textLine in ipairs (cardData[1]["textLines"]) do
-                        if textLine:find("[%+%-]1/[%+%-]1 counters? on "..nameString) then
-                            data.displayPlusOne = autoActivatePlusOne
-                            break --only breaks out of one loop
-                        end
-                    end
-                end
-            end
         end
 
         if oldImportDFC then
