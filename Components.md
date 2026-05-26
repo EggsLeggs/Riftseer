@@ -225,12 +225,9 @@ Unknown purpose — do not remove until identified.
 
 ## Tiles needing content updates
 
-These objects exist and function but display legacy MTG content.
+~~These objects exist and function but display legacy MTG content.~~
 
-| GUID | Object | Owner | Status |
-|------|--------|-------|--------|
-| 7b59f7 | Chat Commands tile | OIBAP | Lists legacy MTG chat commands — needs Riftbound commands. |
-| e40450 | Table Instructions tile | OIBAP | Shows legacy MTG rules and setup — needs full Riftbound rewrite. |
+All previously listed tiles have been updated with Riftbound content.
 
 ---
 
@@ -253,8 +250,6 @@ These are live code issues — not cosmetic. They should be cleaned up before th
 
 | Object | Issue |
 |--------|-------|
-| **Table Instructions tile** (`e40450`) | Content is entirely legacy MTG rules and setup text. |
-| **Chat Commands tile** (`7b59f7`) | Content lists legacy MTG chat commands only. |
 | **πMenu** (`c369d7`) | Colour-filter UI uses MTG mana-colour variable names (`vWhite`, `vBlue`, `vBlack`, `vRed`, `vGreen`, `vColorless`) and WUBRGC symbols in `global.lua:2545`. |
 
 ### MTG-specific logic still in `global.lua`
