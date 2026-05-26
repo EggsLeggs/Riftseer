@@ -2,6 +2,7 @@
 version = '1.0.0'
 
 battlefieldZones = {}
+battlefieldPlayZones = {}
 battlefieldZone = nil
 battlefieldButtons = {}
 battlefieldLinkState = {}
@@ -60,6 +61,7 @@ function battlefieldGUIDsReady()
   local ids = {
     "bf1d02", "bf1d01", "bf1d03",
     "bf2k01", "bf2c01", "bf2k02", "bf2c02", "bf2k03", "bf2c03",
+    "bfz002", "bfz001", "bfz003",
   }
   for _, guid in ipairs(ids) do
     if getObjectFromGUID(guid) == nil then return false end
@@ -72,6 +74,11 @@ function registerBattlefieldGUIDs()
     left   = getObjectFromGUID("bf1d02"),
     center = getObjectFromGUID("bf1d01"),
     right  = getObjectFromGUID("bf1d03"),
+  }
+  battlefieldPlayZones = {
+    left   = getObjectFromGUID("bfz002"),
+    center = getObjectFromGUID("bfz001"),
+    right  = getObjectFromGUID("bfz003"),
   }
   battlefieldZone = battlefieldZones.center
   battlefieldButtons = {
@@ -134,6 +141,36 @@ function APIgetObjects(params)
     end
   end
   return result
+end
+
+function isBattlefieldEnvironmentCard(obj)
+  if obj == nil or obj.type ~= 'Card' then return false end
+  local typeline = (obj.getName() or ''):match('\n(.*)') or ''
+  if typeline:lower():find('battlefield', 1, true) then return true end
+  local desc = (obj.getDescription() or ''):lower()
+  if desc:find('battlefield', 1, true) then return true end
+  return false
+end
+
+function APIreadyCardsForColor(params)
+  local playerColor = params and params.color
+  local readyRotY = params and params.rotY
+  if playerColor == nil or readyRotY == nil then return end
+
+  for _, slot in ipairs({"left", "center", "right"}) do
+    local state = battlefieldClaimState[slot]
+    if state and state.claimed and state.ownerColor == playerColor then
+      local playZone = battlefieldPlayZones[slot]
+      if playZone ~= nil then
+        for _, obj in ipairs(playZone.getObjects()) do
+          if (obj.type == 'Card' or obj.type == 'Deck') and not isBattlefieldEnvironmentCard(obj) then
+            local rr = obj.getRotation()
+            obj.setRotationSmooth({x = rr.x, y = readyRotY, z = rr.z})
+          end
+        end
+      end
+    end
+  end
 end
 
 function battlefieldInitLinkState()

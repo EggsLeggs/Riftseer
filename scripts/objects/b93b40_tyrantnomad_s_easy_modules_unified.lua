@@ -51,7 +51,7 @@ end
 
 autoActivateModule = true
 autoActivatePlayerSettings = {}
-autoActivateMight = true
+autoActivateMight = false
 autoActivatePlusOne = true
 autoActivateDFC = true
 autoActivateOwnership = true
@@ -64,7 +64,7 @@ function ProcessSavedData(saved_data)
         if loaded_data.autoActivateMight == nil and loaded_data.autoActivateCounter ~= nil then
             autoActivateMight = loaded_data.autoActivateCounter
         else
-            autoActivateMight = loaded_data.autoActivateMight == nil and true or loaded_data.autoActivateMight
+            autoActivateMight = loaded_data.autoActivateMight == nil and false or loaded_data.autoActivateMight
         end
         autoActivatePlusOne = loaded_data.autoActivatePlusOne == nil and true or loaded_data.autoActivatePlusOne
         autoActivateDFC = loaded_data.autoActivateDFC == nil and true or loaded_data.autoActivateDFC

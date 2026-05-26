@@ -7,7 +7,7 @@ function onLoad()
 	self.setCustomObject({
 		mesh = BAG_MESH,
 		diffuse = BAG_DIFFUSE,
-		type = 0,
+		type = 7,
 		material = 0,
 		collision = true,
 	})

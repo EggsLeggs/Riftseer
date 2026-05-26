@@ -111,6 +111,7 @@ playboardZoneGuidsByColor = {
   Blue   = {'92d981', '6a0546', '679690'},
 }
 RIFTBOUND_GLOBAL_REV = 'playboard-zone-guid-v3'
+runeSortSettleTime = 2
 
 function playboardPlayerTag(color)
   return 'playboard' .. color
@@ -1072,6 +1073,12 @@ function playerUntap(button, playerColor, alt)
           v.setRotationSmooth({x=rr.x,y=readyRotY,z=rr.z})
         end
       end
+    end
+    local bf = Global.getVar('Battlefield')
+    if bf ~= nil then
+      pcall(function()
+        bf.call('APIreadyCardsForColor', {color=playerColor, rotY=readyRotY})
+      end)
     end
   end
 end
