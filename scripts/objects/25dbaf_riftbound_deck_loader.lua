@@ -28,6 +28,7 @@ local spawnEverythingFaceDown = false
 local skipSideboard         = false
 
 local pendingDeckSpawns = 0
+local spawnStagingIndex = 0
 
 -- ============================================================================
 -- CONSTANTS (URLS, POSITIONS, CARD BACKS)
@@ -261,8 +262,14 @@ local function spawnDeckIfAny(decklist, options)
 		rotation.y = rotation.y + 90
 	end
 
+	-- Each spawn gets a unique x offset so no two piles share the same staging
+	-- position at y+1000. Colliding objects at that height can cause TTS to
+	-- merge them, silently swallowing one spawnObjectData callback and leaving
+	-- the board locked forever. The callback's setPosition corrects the final
+	-- position regardless of staging offset.
+	spawnStagingIndex = spawnStagingIndex + 1
 	local tempPosition = {
-		x = options.position.x,
+		x = options.position.x + (spawnStagingIndex * 10),
 		y = options.position.y + 1000,
 		z = options.position.z,
 	}
@@ -516,6 +523,7 @@ function postDeckLoad(bundledData)
 	end
 
 	pendingDeckSpawns = 0
+	spawnStagingIndex = 0
 	local listsToSpawn = {legendList, championList, battlefieldList, runeList, mainboardList}
 	if shouldSpawnSideboard then
 		listsToSpawn[#listsToSpawn + 1] = sideboardList
