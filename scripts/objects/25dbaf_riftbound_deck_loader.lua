@@ -149,6 +149,49 @@ local function iterateLines(s)
 	end
 end
 
+local function iterateTokens(s)
+	if not s or string.len(s) == 0 then
+		return ipairs({})
+	end
+	local pos = 1
+	return function()
+		while pos <= #s do
+			local startPos, endPos = s:find("%S+", pos)
+			if not startPos then
+				pos = #s + 1
+				return nil
+			end
+			pos = endPos + 1
+			return s:sub(startPos, endPos)
+		end
+		return nil
+	end
+end
+
+local function createEmptyCardMapEntry(name)
+	return {
+		name            = name,
+		legendQty       = 0,
+		championQty     = 0,
+		battlefieldQty  = 0,
+		runeQty         = 0,
+		sideboardQty    = 0,
+		mainboardQty    = 0,
+		variantImageURL = nil,
+	}
+end
+
+local function addCardQty(cardMap, cardName, qtyField, qty, variantImageURL)
+	if not cardMap[cardName] then
+		cardMap[cardName] = createEmptyCardMapEntry(cardName)
+	end
+	local entry = cardMap[cardName]
+	if variantImageURL and not entry.variantImageURL then
+		entry.variantImageURL = variantImageURL
+	end
+	entry[qtyField] = (entry[qtyField] or 0) + (qty or 0)
+end
+
 local function addMetadataValues(parts, seen, value)
 	if value == nil then return end
 	local valueType = type(value)
@@ -186,6 +229,156 @@ local function appendMetadataLine(desc, label, value)
 	if value == "" then return desc end
 	if desc ~= "" then desc = desc .. "\n" end
 	return desc .. "[i]" .. label .. ": " .. value .. "[/i]"
+end
+
+local function makeNameKeyedCardMap(nameList)
+	local cardMap = {}
+	for _, cardName in ipairs(nameList or {}) do
+		cardMap[cardName] = {name = cardName}
+	end
+	return cardMap
+end
+
+local function hasWord(haystack, needle)
+	if not haystack or haystack == "" then return false end
+	return haystack:find("%f[%a]" .. needle .. "%f[%A]") ~= nil
+end
+
+local function classifyResolvedCard(card)
+	local classificationBlob = metadataString(
+		card and card.classification and card.classification.supertype,
+		card and card.classification and card.classification.type,
+		card and card.classification and card.classification.subtype,
+		card and card.classification and card.classification.subtypes,
+		card and card.classification and card.classification.tags,
+		card and card.tags,
+		card and card.text and card.text.tags
+	):lower()
+
+	if hasWord(classificationBlob, "legend") then return "legend" end
+	if hasWord(classificationBlob, "champion") then return "champion" end
+	if hasWord(classificationBlob, "battlefield") then return "battlefield" end
+	if hasWord(classificationBlob, "rune") then return "rune" end
+	return "mainboard"
+end
+
+local notebookImportCategoryMap = {
+	legend      = { qtyField = "legendQty"      },
+	champion    = { qtyField = "championQty"    },
+	champions   = { qtyField = "championQty"    },
+	battlefield = { qtyField = "battlefieldQty" },
+	battlefields= { qtyField = "battlefieldQty" },
+	rune        = { qtyField = "runeQty"        },
+	runes       = { qtyField = "runeQty"        },
+	sideboard   = { qtyField = "sideboardQty"   },
+	deck        = { qtyField = "mainboardQty"   },
+	maindeck    = { qtyField = "mainboardQty"   },
+	mainboard   = { qtyField = "mainboardQty"   },
+	about       = { qtyField = nil              },
+}
+
+local function parseSectionedDeckTextToCardMap(deckText)
+	local cardMap = {}
+	local qtyField = "mainboardQty"
+	local inAbout = false
+
+	for line in iterateLines(deckText or "") do
+		if string.len(line) > 0 and not inAbout then
+			local categoryCheck = trim(line):lower():gsub(":$", "")
+			local entryCheck = notebookImportCategoryMap[categoryCheck]
+			if entryCheck then
+				if entryCheck.qtyField == nil then
+					inAbout = true
+				else
+					qtyField = entryCheck.qtyField
+				end
+			else
+				local qtyStr, afterIdx = line:match("^%s*(%d+)%s*[x%*]?%s+()")
+				local qty = 1
+				local rest = line
+				if qtyStr then
+					qty  = tonumber(qtyStr) or 1
+					rest = trim(line:sub(afterIdx))
+				else
+					rest = trim(line)
+				end
+
+				if rest ~= "" then
+					local variantImageURL = nil
+					-- Parse optional suffix "Card Name (SET) 123" without heavy patterns.
+					local closeParenAt = rest:find("%)%s+[%w%-]+$")
+					if closeParenAt then
+						local openParenAt = rest:find("%(", 1, true)
+						if openParenAt and openParenAt < closeParenAt then
+							local baseName = trim(rest:sub(1, openParenAt - 1))
+							local setCode  = trim(rest:sub(openParenAt + 1, closeParenAt - 1))
+							local collNum  = trim(rest:sub(closeParenAt + 1))
+							if baseName ~= "" and setCode:match("^[A-Za-z]+$") and collNum ~= "" then
+								rest = baseName
+								variantImageURL = "https://cdn.piltoverarchive.com/cards/" .. setCode .. "-" .. collNum .. ".webp"
+							end
+						end
+					end
+					addCardQty(cardMap, rest, qtyField, qty, variantImageURL)
+				end
+			end
+		end
+	end
+
+	return cardMap
+end
+
+local function parseTTSCodeTextToCardMap(deckText)
+	local cardMap = {}
+	local invalidTokens = {}
+	for rawToken in iterateTokens(deckText or "") do
+		local token = trim(rawToken):gsub("[,;]", "")
+		if token ~= "" then
+			if token:match("^[A-Za-z0-9]+%-%d+%-%d+$") then
+				addCardQty(cardMap, token, "mainboardQty", 1)
+			else
+				invalidTokens[#invalidTokens+1] = token
+			end
+		end
+	end
+	return cardMap, invalidTokens
+end
+
+local function countTTSCodeLikeTokens(text)
+	local count = 0
+	for rawToken in iterateTokens(text or "") do
+		local token = trim(rawToken):gsub("[,;]", "")
+		if token:match("^[A-Za-z0-9]+%-%d+%-%d+$") then
+			count = count + 1
+		end
+	end
+	return count
+end
+
+local function normalizeCollectorNumber(collector)
+	local asNumber = tonumber(collector)
+	if asNumber then
+		return tostring(asNumber)
+	end
+	return trim(tostring(collector or ""))
+end
+
+local function buildCodeMetadataMapFromTTSCardMap(ttsCodeCardMap)
+	local codeMetaBySet = {}
+	for codeToken, entry in pairs(ttsCodeCardMap or {}) do
+		local setCode, collectorNum = codeToken:match("^([A-Za-z0-9]+)%-(%d+)%-%d+$")
+		if setCode and collectorNum then
+			setCode = string.upper(setCode)
+			local normalizedCollector = normalizeCollectorNumber(collectorNum)
+			local qty = entry.mainboardQty or 0
+			if qty > 0 then
+				if not codeMetaBySet[setCode] then codeMetaBySet[setCode] = {} end
+				codeMetaBySet[setCode][normalizedCollector] =
+					(codeMetaBySet[setCode][normalizedCollector] or 0) + qty
+			end
+		end
+	end
+	return codeMetaBySet
 end
 
 -- ============================================================================
@@ -501,6 +694,17 @@ local function spawnResolvedDecks(data)
 	local tokenList        = data.tokenList or {}
 	local deckName         = data.deckName or ""
 	local shouldSpawnSideboard = data.shouldSpawnSideboard == true
+	local stackChampionsOnMainDeck = data.stackChampionsOnMainDeck == true
+	local shuffleMainboard = data.shuffleMainboard ~= false
+
+	if stackChampionsOnMainDeck and #championList > 0 then
+		local mergedMainboard = {}
+		for _, entry in ipairs(mainboardList) do mergedMainboard[#mergedMainboard+1] = entry end
+		for _, entry in ipairs(championList) do mergedMainboard[#mergedMainboard+1] = entry end
+		mainboardList = mergedMainboard
+		championList = {}
+		shuffleMainboard = false
+	end
 
 	pendingDeckSpawns = 0
 	spawnStagingIndex = 0
@@ -560,7 +764,9 @@ local function spawnResolvedDecks(data)
 		isFlipped = true,
 		deckName = deckName,
 		cardBack = CARD_BACK_NORMAL,
-		onSpawn = function(obj) obj.shuffle() end,
+		onSpawn = function(obj)
+			if shuffleMainboard then obj.shuffle() end
+		end,
 	})
 end
 
@@ -597,27 +803,57 @@ function postDeckLoadTokens(bundledData)
 		tokenList = tokenList,
 		deckName = passThrough.deckName or "",
 		shouldSpawnSideboard = passThrough.shouldSpawnSideboard == true,
+		stackChampionsOnMainDeck = passThrough.stackChampionsOnMainDeck == true,
+		shuffleMainboard = passThrough.shuffleMainboard ~= false,
 	})
 end
 
--- Callback for notebook import (Riftseer resolved from a name-keyed cardMap).
-function postDeckLoad(bundledData)
-	local resolvedByName = bundledData.resolvedByName or {}
-	local passThrough    = bundledData.passThroughData or {}
-	local cardMap        = passThrough.cardMap  or {}
-	local deckName       = passThrough.deckName or ""
+local function collectTokenNamesFromResolvedCard(card, tokenNames, seenTokenNames)
+	if card.is_token == true or not card.all_parts then return end
+	for _, part in ipairs(card.all_parts) do
+		if isTokenPart(part) then
+			local tokenName = trim(tostring(part.name or ""))
+			local tokenKey = part.id and ("id:" .. tostring(part.id)) or ("name:" .. string.lower(tokenName))
+			if tokenName ~= "" and not seenTokenNames[tokenKey] then
+				seenTokenNames[tokenKey] = true
+				tokenNames[#tokenNames+1] = tokenName
+			end
+		end
+	end
+end
 
+local function buildResolvedDeckBuckets(cardMap, resolvedByName, options)
+	options = options or {}
 	local legendList, championList, battlefieldList = {}, {}, {}
 	local runeList, sideboardList, mainboardList    = {}, {}, {}
-	local shouldSpawnSideboard = not skipSideboard
-	local tokenNames = {}
-	local seenTokenNames = {}
+	local tokenNames, seenTokenNames = {}, {}
 
-	for _, cardMapData in pairs(cardMap) do
+	for _, cardMapData in pairs(cardMap or {}) do
 		local card = resolvedByName[cardMapData.name]
 		if not card then
 			printWarn("Card not found, skipping: " .. tostring(cardMapData.name), playerColor)
 		else
+			if options.autoClassifyMainboard then
+				local qty = cardMapData.mainboardQty or 0
+				if qty > 0 then
+					local bucket = classifyResolvedCard(card)
+					if bucket == "legend" then
+						cardMapData.legendQty = (cardMapData.legendQty or 0) + qty
+						cardMapData.mainboardQty = 0
+					elseif bucket == "champion" then
+						cardMapData.championQty = (cardMapData.championQty or 0) + qty
+						cardMapData.mainboardQty = 0
+					elseif bucket == "battlefield" then
+						cardMapData.battlefieldQty = (cardMapData.battlefieldQty or 0) + qty
+						cardMapData.mainboardQty = 0
+					elseif bucket == "rune" then
+						cardMapData.runeQty = (cardMapData.runeQty or 0) + qty
+						cardMapData.mainboardQty = 0
+					end
+					-- bucket == "mainboard": keep mainboardQty so units/spells spawn in main deck
+				end
+			end
+
 			local function push(list, qtyField)
 				local qty = cardMapData[qtyField] or 0
 				if qty > 0 then
@@ -629,48 +865,52 @@ function postDeckLoad(bundledData)
 					list[#list+1] = entry
 				end
 			end
+
 			push(legendList,      "legendQty")
 			push(championList,    "championQty")
 			push(battlefieldList, "battlefieldQty")
 			push(runeList,        "runeQty")
 			push(sideboardList,   "sideboardQty")
 			push(mainboardList,   "mainboardQty")
-
-			if card.is_token ~= true and card.all_parts then
-				for _, part in ipairs(card.all_parts) do
-					if isTokenPart(part) then
-						local tokenName = trim(tostring(part.name or ""))
-						local tokenKey = part.id and ("id:" .. tostring(part.id)) or ("name:" .. string.lower(tokenName))
-						if tokenName ~= "" and not seenTokenNames[tokenKey] then
-							seenTokenNames[tokenKey] = true
-							tokenNames[#tokenNames+1] = tokenName
-						end
-					end
-				end
-			end
+			collectTokenNamesFromResolvedCard(card, tokenNames, seenTokenNames)
 		end
 	end
+
+	return {
+		legendList = legendList,
+		championList = championList,
+		battlefieldList = battlefieldList,
+		runeList = runeList,
+		sideboardList = sideboardList,
+		mainboardList = mainboardList,
+		tokenNames = tokenNames,
+	}
+end
+
+-- Callback for notebook import (Riftseer resolved from a name-keyed cardMap).
+function postDeckLoad(bundledData)
+	local resolvedByName = bundledData.resolvedByName or {}
+	local passThrough    = bundledData.passThroughData or {}
+	local cardMap        = passThrough.cardMap  or {}
+	local deckName       = passThrough.deckName or ""
+	local shouldSpawnSideboard = not skipSideboard
+	local buckets = buildResolvedDeckBuckets(cardMap, resolvedByName)
+	local tokenNames = buckets.tokenNames
+
 	if #tokenNames > 0 then
 		loadDeckFromMainModule(
-			-- cardMap shape: name-keyed entries with a `name` field
-			(function()
-				local tokenMap = {}
-				for _, tokenName in ipairs(tokenNames) do
-					tokenMap[tokenName] = {name = tokenName}
-				end
-				return tokenMap
-			end)(),
+			makeNameKeyedCardMap(tokenNames),
 			"postDeckLoadTokens",
 			{
 				deckName = deckName,
 				passThroughData = {
 					tokenNameList = tokenNames,
-					legendList = legendList,
-					championList = championList,
-					battlefieldList = battlefieldList,
-					runeList = runeList,
-					sideboardList = sideboardList,
-					mainboardList = mainboardList,
+					legendList = buckets.legendList,
+					championList = buckets.championList,
+					battlefieldList = buckets.battlefieldList,
+					runeList = buckets.runeList,
+					sideboardList = buckets.sideboardList,
+					mainboardList = buckets.mainboardList,
 					shouldSpawnSideboard = shouldSpawnSideboard,
 				},
 			}
@@ -679,15 +919,77 @@ function postDeckLoad(bundledData)
 	end
 
 	spawnResolvedDecks({
-		legendList = legendList,
-		championList = championList,
-		battlefieldList = battlefieldList,
-		runeList = runeList,
-		sideboardList = sideboardList,
-		mainboardList = mainboardList,
+		legendList = buckets.legendList,
+		championList = buckets.championList,
+		battlefieldList = buckets.battlefieldList,
+		runeList = buckets.runeList,
+		sideboardList = buckets.sideboardList,
+		mainboardList = buckets.mainboardList,
 		tokenList = {},
 		deckName = deckName,
 		shouldSpawnSideboard = shouldSpawnSideboard,
+	})
+end
+
+function postDeckLoadTTSCodeText(bundledData)
+	local resolvedByName = bundledData.resolvedByName or {}
+	local passThrough = bundledData.passThroughData or {}
+	local cardMap = passThrough.cardMap or {}
+	local deckName = passThrough.deckName or ""
+	local buckets = buildResolvedDeckBuckets(cardMap, resolvedByName, {
+		autoClassifyMainboard = true,
+	})
+	local tokenNames = buckets.tokenNames
+
+	local spawnOptions = {
+		legendList = buckets.legendList,
+		championList = buckets.championList,
+		battlefieldList = buckets.battlefieldList,
+		runeList = buckets.runeList,
+		sideboardList = {},
+		mainboardList = buckets.mainboardList,
+		deckName = deckName,
+		shouldSpawnSideboard = false,
+		stackChampionsOnMainDeck = true,
+		shuffleMainboard = false,
+	}
+
+	if #tokenNames > 0 then
+		loadDeckFromMainModule(
+			makeNameKeyedCardMap(tokenNames),
+			"postDeckLoadTokens",
+			{
+				deckName = deckName,
+				passThroughData = {
+					tokenNameList = tokenNames,
+					legendList = spawnOptions.legendList,
+					championList = spawnOptions.championList,
+					battlefieldList = spawnOptions.battlefieldList,
+					runeList = spawnOptions.runeList,
+					sideboardList = spawnOptions.sideboardList,
+					mainboardList = spawnOptions.mainboardList,
+					deckName = spawnOptions.deckName,
+					shouldSpawnSideboard = spawnOptions.shouldSpawnSideboard,
+					stackChampionsOnMainDeck = spawnOptions.stackChampionsOnMainDeck,
+					shuffleMainboard = spawnOptions.shuffleMainboard,
+				},
+			}
+		)
+		return
+	end
+
+	spawnResolvedDecks({
+		legendList = spawnOptions.legendList,
+		championList = spawnOptions.championList,
+		battlefieldList = spawnOptions.battlefieldList,
+		runeList = spawnOptions.runeList,
+		sideboardList = spawnOptions.sideboardList,
+		mainboardList = spawnOptions.mainboardList,
+		tokenList = {},
+		deckName = spawnOptions.deckName,
+		shouldSpawnSideboard = spawnOptions.shouldSpawnSideboard,
+		stackChampionsOnMainDeck = spawnOptions.stackChampionsOnMainDeck,
+		shuffleMainboard = spawnOptions.shuffleMainboard,
 	})
 end
 
@@ -704,21 +1006,6 @@ local function readNotebookForColor(color)
 	return nil
 end
 
-local notebookImportCategoryMap = {
-	legend      = { qtyField = "legendQty"      },
-	champion    = { qtyField = "championQty"    },
-	champions   = { qtyField = "championQty"    },
-	battlefield = { qtyField = "battlefieldQty" },
-	battlefields= { qtyField = "battlefieldQty" },
-	rune        = { qtyField = "runeQty"        },
-	runes       = { qtyField = "runeQty"        },
-	sideboard   = { qtyField = "sideboardQty"   },
-	deck        = { qtyField = "mainboardQty"   },
-	maindeck    = { qtyField = "mainboardQty"   },
-	mainboard   = { qtyField = "mainboardQty"   },
-	about       = { qtyField = nil              },
-}
-
 local function queryDeckNotebook(_)
 	local notebookContents = readNotebookForColor(playerColor)
 
@@ -732,68 +1019,148 @@ local function queryDeckNotebook(_)
 		return
 	end
 
-	local cardMap = {}
-	local qtyField = "mainboardQty"
-	local inAbout  = false
-
+	local hasSectionHeaders = false
 	for line in iterateLines(notebookContents) do
-		if string.len(line) > 0 and not inAbout then
-			-- Strip trailing colon so "Legend:" works alongside "Legend"
-			local categoryCheck = trim(line):lower():gsub(":$", "")
-			local entryCheck    = notebookImportCategoryMap[categoryCheck]
-
-			if entryCheck then
-				if entryCheck.qtyField == nil then
-					inAbout = true
-				else
-					qtyField = entryCheck.qtyField
-				end
-			else
-				-- Parse line: optional qty prefix, then card name
-				local qtyStr, afterIdx = line:match("^%s*(%d+)%s*[x%*]?%s+()")
-				local qty = 1
-				local rest = line
-				if qtyStr then
-					qty  = tonumber(qtyStr) or 1
-					rest = trim(line:sub(afterIdx))
-				else
-					rest = trim(line)
-				end
-
-				if rest ~= "" then
-					-- Strip optional variant: "Card Name (SET) 123"
-					-- Builds a Piltover CDN image URL for that specific printing.
-					local variantImageURL = nil
-					local baseName, setCode, collNum = rest:match("^(.-)%s*%((%a+)%)%s+(%w+)$")
-					if baseName and baseName ~= "" and setCode and collNum then
-						rest = baseName
-						variantImageURL = "https://cdn.piltoverarchive.com/cards/" .. setCode .. "-" .. collNum .. ".webp"
-					end
-
-					local name = rest
-					local entry = cardMap[name]
-					if not entry then
-						entry = {
-							name            = name,
-							legendQty       = 0,
-							championQty     = 0,
-							battlefieldQty  = 0,
-							runeQty         = 0,
-							sideboardQty    = 0,
-							mainboardQty    = 0,
-							variantImageURL = variantImageURL,
-						}
-						cardMap[name] = entry
-					elseif variantImageURL and not entry.variantImageURL then
-						entry.variantImageURL = variantImageURL
-					end
-					entry[qtyField] = entry[qtyField] + qty
-				end
-			end
+		local categoryCheck = trim(line):lower():gsub(":$", "")
+		if notebookImportCategoryMap[categoryCheck] then
+			hasSectionHeaders = true
+			break
 		end
 	end
 
-	loadDeckFromMainModule(cardMap, "postDeckLoad")
+	local ttsCodeLikeCount = countTTSCodeLikeTokens(notebookContents)
+	-- Prefer TTS-code parsing for raw code lists that don't use section headers.
+	if not hasSectionHeaders and ttsCodeLikeCount > 0 then
+		local ttsCodeCardMap, invalidTokens = parseTTSCodeTextToCardMap(notebookContents)
+		local ttsCodeCount = 0
+		for _ in pairs(ttsCodeCardMap) do ttsCodeCount = ttsCodeCount + 1 end
+
+		if ttsCodeCount == 0 then
+			printError(ERROR_MESSAGE_DECKLOADER .. "Notebook contains no parseable cards.", playerColor)
+			lockImporter(false)
+			return
+		end
+
+		if #invalidTokens > 0 then
+			local sample = table.concat(invalidTokens, ", ", 1, math.min(#invalidTokens, 5))
+			printWarn("Ignored " .. tostring(#invalidTokens) .. " invalid tokens: " .. sample, playerColor)
+		end
+
+		local codeMetaBySet = buildCodeMetadataMapFromTTSCardMap(ttsCodeCardMap)
+		local setCodes = {}
+		for setCode in pairs(codeMetaBySet) do
+			setCodes[#setCodes+1] = setCode
+		end
+
+		if #setCodes == 0 then
+			printError(ERROR_MESSAGE_DECKLOADER .. "No valid TTS codes found in notebook.", playerColor)
+			lockImporter(false)
+			return
+		end
+
+		local translatedCardMap = {}
+		local unresolvedCodes = {}
+		local pendingSetRequests = #setCodes
+
+		local function completeIfDone()
+			if pendingSetRequests > 0 then return end
+
+			local translatedCount = 0
+			for _ in pairs(translatedCardMap) do translatedCount = translatedCount + 1 end
+			if translatedCount == 0 then
+				printError(ERROR_MESSAGE_DECKLOADER .. "Could not translate any TTS card codes.", playerColor)
+				lockImporter(false)
+				return
+			end
+
+			if #unresolvedCodes > 0 then
+				local sample = table.concat(unresolvedCodes, ", ", 1, math.min(#unresolvedCodes, 5))
+				printWarn("Could not resolve " .. tostring(#unresolvedCodes) .. " code(s): " .. sample, playerColor)
+			end
+
+			loadDeckFromMainModule(translatedCardMap, "postDeckLoadTTSCodeText", {
+				deckName = "TTS Code Import",
+			})
+		end
+
+		for _, setCode in ipairs(setCodes) do
+			local setRequestURL = RIFTSEER_API_BASE .. "/api/v1/cards?name=&set=" .. setCode .. "&limit=500"
+			WebRequest.get(setRequestURL, function(res)
+				if res.response_code ~= 200 then
+					printWarn("Failed to fetch set " .. setCode .. " while translating TTS codes.", playerColor)
+					for collectorNum in pairs(codeMetaBySet[setCode]) do
+						unresolvedCodes[#unresolvedCodes+1] = setCode .. "-" .. collectorNum
+					end
+					pendingSetRequests = pendingSetRequests - 1
+					completeIfDone()
+					return
+				end
+
+				local ok, data = pcall(function() return json.decode(res.text) end)
+				if not ok or not data or type(data.cards) ~= "table" then
+					printWarn("Unexpected cards payload for set " .. setCode .. ".", playerColor)
+					for collectorNum in pairs(codeMetaBySet[setCode]) do
+						unresolvedCodes[#unresolvedCodes+1] = setCode .. "-" .. collectorNum
+					end
+					pendingSetRequests = pendingSetRequests - 1
+					completeIfDone()
+					return
+				end
+
+				local byCollector = {}
+				for _, card in ipairs(data.cards) do
+					local cardSetCode = card.set and card.set.set_code and string.upper(card.set.set_code) or ""
+					if cardSetCode == setCode then
+						local collector = normalizeCollectorNumber(card.collector_number)
+						if collector ~= "" and not byCollector[collector] then
+							byCollector[collector] = card.name
+						end
+					end
+				end
+
+				for collectorNum, qty in pairs(codeMetaBySet[setCode]) do
+					local cardName = byCollector[collectorNum]
+					if cardName and cardName ~= "" then
+						addCardQty(translatedCardMap, cardName, "mainboardQty", qty)
+					else
+						unresolvedCodes[#unresolvedCodes+1] = setCode .. "-" .. collectorNum
+					end
+				end
+
+				pendingSetRequests = pendingSetRequests - 1
+				completeIfDone()
+			end)
+		end
+		return
+	end
+
+	local sectionedCardMap = parseSectionedDeckTextToCardMap(notebookContents)
+	local sectionedCount = 0
+	for _ in pairs(sectionedCardMap) do sectionedCount = sectionedCount + 1 end
+	if sectionedCount > 0 then
+		loadDeckFromMainModule(sectionedCardMap, "postDeckLoad")
+		return
+	end
+
+	-- If no sectioned cards were parsed, treat notebook text as TTS code text.
+	local ttsCodeCardMap, invalidTokens = parseTTSCodeTextToCardMap(notebookContents)
+	local ttsCodeCount = 0
+	for _ in pairs(ttsCodeCardMap) do ttsCodeCount = ttsCodeCount + 1 end
+
+	if ttsCodeCount == 0 then
+		printError(ERROR_MESSAGE_DECKLOADER .. "Notebook contains no parseable cards.", playerColor)
+		lockImporter(false)
+		return
+	end
+
+	if #invalidTokens > 0 then
+		local sample = table.concat(invalidTokens, ", ", 1, math.min(#invalidTokens, 5))
+		printWarn("Ignored " .. tostring(#invalidTokens) .. " invalid tokens: " .. sample, playerColor)
+	end
+
+	loadDeckFromMainModule(ttsCodeCardMap, "postDeckLoadTTSCodeText", {
+		deckName = "TTS Code Import",
+	})
 end
 
 -- ============================================================================
@@ -843,54 +1210,7 @@ local function queryDeckPiltover(deckUUID)
 			return
 		end
 
-		-- The text export uses section headers with a trailing colon (e.g. "Legend:",
-		-- "MainDeck:") which we strip before looking up in notebookImportCategoryMap.
-		local cardMap  = {}
-		local qtyField = "mainboardQty"
-		local inAbout  = false
-
-		for line in iterateLines(data.text) do
-			if string.len(line) > 0 and not inAbout then
-				local categoryCheck = trim(line):lower():gsub(":$", "")
-				local entryCheck    = notebookImportCategoryMap[categoryCheck]
-
-				if entryCheck then
-					if entryCheck.qtyField == nil then
-						inAbout = true
-					else
-						qtyField = entryCheck.qtyField
-					end
-				else
-					local qtyStr, afterIdx = line:match("^%s*(%d+)%s*[x%*]?%s+()")
-					local qty = 1
-					local rest = line
-					if qtyStr then
-						qty  = tonumber(qtyStr) or 1
-						rest = trim(line:sub(afterIdx))
-					else
-						rest = trim(line)
-					end
-
-					if rest ~= "" then
-						local entry = cardMap[rest]
-						if not entry then
-							entry = {
-								name          = rest,
-								legendQty     = 0,
-								championQty   = 0,
-								battlefieldQty= 0,
-								runeQty       = 0,
-								sideboardQty  = 0,
-								mainboardQty  = 0,
-							}
-							cardMap[rest] = entry
-						end
-						entry[qtyField] = entry[qtyField] + qty
-					end
-				end
-			end
-		end
-
+		local cardMap = parseSectionedDeckTextToCardMap(data.text)
 		loadDeckFromMainModule(cardMap, "postDeckLoad")
 	end)
 end

@@ -44,6 +44,10 @@ function onload()
   revealUpS=3.1
   revealRi=1.5
   banishRot=-180
+
+  Wait.frames(function()
+    redirectPlayersOffWhite()
+  end, 5)
 end
 
 -- Ensure data structure exists
@@ -54,6 +58,53 @@ function buildDataStructure()
     Yellow  = {deck = nil},
     Blue    = {deck = nil},
   }
+end
+
+RIFTBOUND_SEAT_COLORS = {'Green','Red','Yellow','Blue'}
+
+function firstOpenRiftboundSeat()
+  for _, color in ipairs(RIFTBOUND_SEAT_COLORS) do
+    if Player[color] ~= nil and not Player[color].seated then
+      return color
+    end
+  end
+  return nil
+end
+
+function redirectPlayersOffWhite()
+  for _, player in ipairs(Player.getPlayers()) do
+    if player.color == 'White' and player.seated then
+      local target = firstOpenRiftboundSeat()
+      if target ~= nil then
+        player.changeColor(target)
+        broadcastToAll(
+          player.steam_name..' was moved from White to '..target..'.',
+          stringColorToRGB(target))
+      else
+        player.broadcast(
+          'All Riftbound seats (Green, Red, Yellow, Blue) are taken. Ask the host to free a seat.')
+        broadcastToAll(
+          'No open Riftbound seat for '..player.steam_name..' (still on White).',
+          {1, 0.3, 0.3})
+      end
+    end
+  end
+end
+
+function onPlayerChangeColor(col)
+  if col == 'White' then
+    Wait.frames(function()
+      redirectPlayersOffWhite()
+    end, 1)
+  end
+end
+
+function onPlayerConnect(player)
+  if player ~= nil and player.color == 'White' then
+    Wait.frames(function()
+      redirectPlayersOffWhite()
+    end, 1)
+  end
 end
 
 BATTLEFIELD_CTRL_GUID = 'bfc001'
