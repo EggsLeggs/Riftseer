@@ -1,20 +1,34 @@
 "use client";
 
 import { useTransition, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { followAction, unfollowAction } from "@/features/profile/actions";
 
 interface FollowButtonProps {
   handle: string;
   initialIsFollowing: boolean;
+  isLoggedIn: boolean;
   onCountChange?: (delta: number) => void;
 }
 
-export function FollowButton({ handle, initialIsFollowing, onCountChange }: FollowButtonProps) {
+export function FollowButton({
+  handle,
+  initialIsFollowing,
+  isLoggedIn,
+  onCountChange,
+}: FollowButtonProps) {
+  const router = useRouter();
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [pending, startTransition] = useTransition();
 
   function toggle() {
+    if (!isLoggedIn) {
+      const next = encodeURIComponent(`/u/${handle}`);
+      router.push(`/auth/login?next=${next}`);
+      return;
+    }
+
     startTransition(async () => {
       if (isFollowing) {
         const result = await unfollowAction(handle);

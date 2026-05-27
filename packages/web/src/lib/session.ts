@@ -63,6 +63,22 @@ export async function requireAuth(next?: string): Promise<Session> {
   return session;
 }
 
+export async function updateSessionUser(updates: Partial<SessionUser>) {
+  const jar = await cookies();
+  const userRaw = jar.get("rs_user")?.value;
+  if (!userRaw) return;
+  try {
+    const current = JSON.parse(userRaw) as SessionUser;
+    jar.set(
+      "rs_user",
+      JSON.stringify({ ...current, ...updates }),
+      { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE },
+    );
+  } catch {
+    // ignore — session will refresh naturally
+  }
+}
+
 export async function clearSessionCookies() {
   const jar = await cookies();
   jar.delete("rs_access_token");

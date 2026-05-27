@@ -27,5 +27,11 @@ export default async function UserProfilePage({ params }: Props) {
 
   const isOwnProfile = session?.user.id === profile.id;
 
-  return <ProfileView profile={profile} isOwnProfile={isOwnProfile} />;
+  return (
+    <ProfileView
+      profile={profile}
+      isOwnProfile={isOwnProfile}
+      isLoggedIn={session !== null}
+    />
+  );
 }

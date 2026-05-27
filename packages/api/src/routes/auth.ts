@@ -433,6 +433,110 @@ export function authRoutes() {
             },
           )
 
+          // ── PATCH /auth/email ───────────────────────────────────────────
+          .patch(
+            "/auth/email",
+            async ({ body, headers, set }) => {
+              if (!supabaseUrl || !supabaseAnonKey) {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              const accessToken = headers.authorization!.slice(7);
+              let res: Response;
+              try {
+                res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+                  method: "PATCH",
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    apikey: supabaseAnonKey,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ email: body.email }),
+                });
+              } catch {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              if (!res.ok) {
+                const payload = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+                set.status = res.status >= 500 ? 503 : res.status === 401 ? 401 : 400;
+                return {
+                  error: String(payload.error_description ?? payload.msg ?? "Email update failed"),
+                  code: "UPDATE_FAILED",
+                };
+              }
+              return { message: "A confirmation email has been sent to your new address." };
+            },
+            {
+              body: t.Object({
+                email: t.String({ description: "New email address" }),
+              }),
+              response: {
+                200: t.Object({ message: t.String() }),
+                400: ErrorSchema,
+                401: ErrorSchema,
+                503: ErrorSchema,
+              },
+              detail: {
+                tags: ["Auth"],
+                summary: "Update email",
+                description:
+                  "Initiates an email change. Supabase sends a confirmation link to the new address.",
+              },
+            },
+          )
+
+          // ── PATCH /auth/change-password ─────────────────────────────────
+          .patch(
+            "/auth/change-password",
+            async ({ body, user, headers, set }) => {
+              if (!authClient || !authAdminClient || !supabaseUrl || !supabaseAnonKey) {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              if (!user.email) {
+                set.status = 400;
+                return { error: "Account has no email address.", code: "NO_EMAIL" };
+              }
+              // Verify current password
+              const { error: signInError } = await authClient.auth.signInWithPassword({
+                email: user.email,
+                password: body.current_password,
+              });
+              if (signInError) {
+                set.status = 401;
+                return { error: "Current password is incorrect.", code: "INVALID_CREDENTIALS" };
+              }
+              // Update password using admin client
+              const { error: updateError } = await authAdminClient.auth.admin.updateUserById(user.id, {
+                password: body.new_password,
+              });
+              if (updateError) {
+                set.status = 500;
+                return { error: "Failed to update password.", code: "UPDATE_FAILED" };
+              }
+              return { message: "Password updated successfully." };
+            },
+            {
+              body: t.Object({
+                current_password: t.String({ description: "Current account password" }),
+                new_password: t.String({ minLength: 8, description: "New password (min 8 characters)" }),
+              }),
+              response: {
+                200: t.Object({ message: t.String() }),
+                400: ErrorSchema,
+                401: ErrorSchema,
+                500: ErrorSchema,
+                503: ErrorSchema,
+              },
+              detail: {
+                tags: ["Auth"],
+                summary: "Change password",
+                description: "Changes the authenticated user's password. Requires the current password for verification.",
+              },
+            },
+          )
+
           // ── POST /auth/reset-password ────────────────────────────────────
           .post(
             "/auth/reset-password",

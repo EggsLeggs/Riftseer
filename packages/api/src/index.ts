@@ -101,7 +101,7 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
   .use(
     cors({
       origin: true, // Reflect any Origin — public API, browser requests from any site are allowed
-      methods: ["GET", "HEAD", "POST", "DELETE", "OPTIONS"],
+      methods: ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"],
     }),
   )
   .use(

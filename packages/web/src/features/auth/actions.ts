@@ -124,6 +124,86 @@ export async function forgotPasswordAction(_prev: unknown, formData: FormData) {
   return { ok: true };
 }
 
+export async function changeEmailAction(_prev: unknown, formData: FormData) {
+  const email = str(formData, "email");
+  if (!email) return { error: "Email is required" };
+
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+
+  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/email`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    return { error: body.error ?? "Email update failed" };
+  }
+
+  return { ok: true };
+}
+
+export async function changePasswordAction(_prev: unknown, formData: FormData) {
+  const currentPassword = str(formData, "current_password");
+  const newPassword = str(formData, "new_password");
+  const confirmPassword = str(formData, "confirm_password");
+
+  if (!currentPassword) return { error: "Current password is required" };
+  if (!newPassword) return { error: "New password is required" };
+  if (newPassword.length < 8) return { error: "New password must be at least 8 characters" };
+  if (newPassword !== confirmPassword) return { error: "Passwords do not match" };
+
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+
+  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/change-password`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${session.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    return { error: body.error ?? "Password change failed" };
+  }
+
+  return { ok: true };
+}
+
+export async function deleteAccountAction(_prev: unknown, formData: FormData) {
+  const confirmation = str(formData, "confirmation");
+  if (!confirmation) return { error: "Confirmation is required" };
+
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+
+  const expectedHandle = session.user.handle ?? "";
+  if (confirmation.toLowerCase() !== expectedHandle.toLowerCase()) {
+    return { error: `Type your @handle (${expectedHandle}) exactly to confirm deletion` };
+  }
+
+  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${session.accessToken}` },
+  });
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    return { error: body.error ?? "Account deletion failed" };
+  }
+
+  await clearSessionCookies();
+  redirect("/");
+}
+
 export async function resetPasswordAction(_prev: unknown, formData: FormData) {
   const password = str(formData, "password");
   const recoveryToken = str(formData, "recovery_token");
