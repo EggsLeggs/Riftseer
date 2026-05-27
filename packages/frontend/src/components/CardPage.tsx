@@ -161,18 +161,6 @@ function CopyLink({
   );
 }
 
-/** Extract unique token names from ability text (e.g. "3 Sprite unit token" → "Sprite"). */
-function parseTokenMentions(text: string): string[] {
-  if (!text?.trim()) return [];
-  const names = new Set<string>();
-  const re = /\b(\w+)\s+unit\s+token\b/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    names.add(m[1]);
-  }
-  return Array.from(names);
-}
-
 function baseRelatedName(name: string): string {
   return name.replace(/\s*\([^)]*\)\s*$/g, "").trim();
 }
@@ -335,27 +323,24 @@ export function CardPage() {
       setTokens([]);
       return;
     }
-    const combined = [card.text?.plain].filter(Boolean).join("\n");
-    const names = parseTokenMentions(combined);
-    if (names.length === 0) {
+    const tokenIds = card.all_parts
+      .filter((part) => part.component === "token")
+      .map((part) => part.id);
+    if (tokenIds.length === 0) {
       setTokens([]);
       return;
     }
-    Promise.all(
-      names.map((name) =>
-        searchCards(name, { limit: 5, fuzzy: true }).then((res) => {
-          const tokenCard =
-            res.cards.find((c) => c.is_token) ??
-            res.cards[0];
-          return tokenCard ?? null;
-        })
-      )
-    ).then((cards) => {
-      const list = cards.filter((c): c is Card => c != null);
-      const byId = new Map(list.map((c) => [c.id, c]));
-      setTokens(Array.from(byId.values()));
-    });
-  }, [card?.id, card?.text?.plain]);
+    Promise.all(tokenIds.map((tokenId) => getCard(tokenId, { includePrices: true })))
+      .then((cards) => {
+        const list = cards.filter((c): c is Card => c != null);
+        const byId = new Map(list.map((c) => [c.id, c]));
+        setTokens(Array.from(byId.values()));
+      })
+      .catch((err) => {
+        console.error("Failed to load linked tokens", err);
+        setTokens([]);
+      });
+  }, [card]);
 
 
   if (loading) {

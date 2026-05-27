@@ -73,7 +73,7 @@
         "@riftseer/api": "workspace:*",
         "elysia": "^1.3.0",
         "typescript": "~5.8.0",
-        "wrangler": "^4.67.0",
+        "wrangler": "^4",
       },
     },
     "packages/frontend": {
@@ -112,7 +112,7 @@
         "@cloudflare/workers-types": "^4.20260219.0",
         "@riftseer/types": "workspace:*",
         "typescript": "~5.8.0",
-        "wrangler": "^4.67.0",
+        "wrangler": "^4",
       },
     },
     "packages/types": {

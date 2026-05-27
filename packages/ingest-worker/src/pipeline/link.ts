@@ -8,17 +8,48 @@
 import { normalizeCardName, type Card, type RelatedCard } from "@riftseer/types";
 import { logger } from "../utils.ts";
 
-const TOKEN_REF_RE = /\b((?:[A-Z][a-zA-Z'/-]*)(?:\s+[A-Z][a-zA-Z'/-]*)*)\s+[Tt]okens?\b/g;
+const TOKEN_REF_RE =
+  /\b((?:[A-Z][a-zA-Z'/-]*)(?:\s+[A-Z][a-zA-Z'/-]*)*)\s+(?:unit\s+)?[Tt]okens?\b/g;
+
+function stripTrailingParentheticals(value: string): string {
+  let s = value.trim();
+  let prev: string;
+  do {
+    prev = s;
+    s = s.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  } while (s !== prev);
+  return s;
+}
+
+function tokenNameAliases(tokenName: string): string[] {
+  const aliases = new Set<string>();
+  const add = (value: string) => {
+    const norm = normalizeCardName(value);
+    if (norm) aliases.add(norm);
+  };
+
+  add(tokenName);
+  const frontFace = tokenName.split("//")[0]?.trim();
+  if (frontFace) {
+    add(frontFace);
+    add(stripTrailingParentheticals(frontFace));
+  }
+  add(stripTrailingParentheticals(tokenName));
+
+  return [...aliases];
+}
 
 export function linkTokens(cards: Card[]): void {
   const tokenByNorm = new Map<string, Card[]>();
   for (const card of cards) {
     if (!card.is_token) continue;
-    const existing = tokenByNorm.get(card.name_normalized);
-    if (existing) {
-      existing.push(card);
-    } else {
-      tokenByNorm.set(card.name_normalized, [card]);
+    for (const alias of tokenNameAliases(card.name)) {
+      const existing = tokenByNorm.get(alias);
+      if (existing) {
+        existing.push(card);
+      } else {
+        tokenByNorm.set(alias, [card]);
+      }
     }
   }
 
