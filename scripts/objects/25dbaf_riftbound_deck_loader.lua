@@ -475,56 +475,36 @@ local function loadDeckFromMainModule(cardMap, callbackName, options)
 		callerGUID  = self.getGUID(),
 		onSuccess   = callbackName,
 		playerColor = playerColor,
-		passThroughData = {
-			cardMap  = cardMap,
-			deckName = options.deckName or "",
-		},
+		passThroughData = (function()
+			local passThroughData = options.passThroughData or {}
+			passThroughData.cardMap = cardMap
+			passThroughData.deckName = options.deckName or passThroughData.deckName or ""
+			return passThroughData
+		end)(),
 	})
 end
 
--- ============================================================================
--- POST-LOAD CALLBACKS
--- ============================================================================
+local function isTokenPart(part)
+	if not part or type(part) ~= "table" then return false end
+	local component = part.component
+	if type(component) ~= "string" then return false end
+	return string.lower(trim(component)) == "token"
+end
 
--- Callback for notebook import (Riftseer resolved from a name-keyed cardMap).
-function postDeckLoad(bundledData)
-	local resolvedByName = bundledData.resolvedByName or {}
-	local passThrough    = bundledData.passThroughData or {}
-	local cardMap        = passThrough.cardMap  or {}
-	local deckName       = passThrough.deckName or ""
-
-	local legendList, championList, battlefieldList = {}, {}, {}
-	local runeList, sideboardList, mainboardList    = {}, {}, {}
-	local shouldSpawnSideboard = not skipSideboard
-
-	for _, cardMapData in pairs(cardMap) do
-		local card = resolvedByName[cardMapData.name]
-		if not card then
-			printWarn("Card not found, skipping: " .. tostring(cardMapData.name), playerColor)
-		else
-			local function push(list, qtyField)
-				local qty = cardMapData[qtyField] or 0
-				if qty > 0 then
-					local entry = riftCardToEntry(card, qty)
-					if cardMapData.variantImageURL then
-						entry.imageURL         = cardMapData.variantImageURL
-						entry.relatedPrintings = {}
-					end
-					list[#list+1] = entry
-				end
-			end
-			push(legendList,      "legendQty")
-			push(championList,    "championQty")
-			push(battlefieldList, "battlefieldQty")
-			push(runeList,        "runeQty")
-			push(sideboardList,   "sideboardQty")
-			push(mainboardList,   "mainboardQty")
-		end
-	end
+local function spawnResolvedDecks(data)
+	local legendList       = data.legendList or {}
+	local championList     = data.championList or {}
+	local battlefieldList  = data.battlefieldList or {}
+	local runeList         = data.runeList or {}
+	local sideboardList    = data.sideboardList or {}
+	local mainboardList    = data.mainboardList or {}
+	local tokenList        = data.tokenList or {}
+	local deckName         = data.deckName or ""
+	local shouldSpawnSideboard = data.shouldSpawnSideboard == true
 
 	pendingDeckSpawns = 0
 	spawnStagingIndex = 0
-	local listsToSpawn = {legendList, championList, battlefieldList, runeList, mainboardList}
+	local listsToSpawn = {legendList, championList, battlefieldList, runeList, mainboardList, tokenList}
 	if shouldSpawnSideboard then
 		listsToSpawn[#listsToSpawn + 1] = sideboardList
 	end
@@ -549,7 +529,12 @@ function postDeckLoad(bundledData)
 		rotatePortrait = true,
 		scale = {0.700, 1, 0.700},
 	})
-	-- Tokens position reserved; notebook doesn't produce a token pile.
+	spawnDeckIfAny(tokenList, {
+		position = self.positionToWorld(TOKEN_POSITION_OFFSET),
+		isFlipped = spawnEverythingFaceDown,
+		deckName = "Tokens",
+		cardBack = CARD_BACK_NORMAL,
+	})
 
 	-- Back row (legend + champion both spawn at LEGEND_POSITION — TTS stacks them)
 	spawnDeckIfAny(legendList, {
@@ -576,6 +561,133 @@ function postDeckLoad(bundledData)
 		deckName = deckName,
 		cardBack = CARD_BACK_NORMAL,
 		onSpawn = function(obj) obj.shuffle() end,
+	})
+end
+
+-- ============================================================================
+-- POST-LOAD CALLBACKS
+-- ============================================================================
+
+function postDeckLoadTokens(bundledData)
+	local resolvedByName = bundledData.resolvedByName or {}
+	local passThrough = bundledData.passThroughData or {}
+	local tokenNameList = passThrough.tokenNameList or {}
+	local tokenList = {}
+	local missingTokenCount = 0
+
+	for _, tokenName in ipairs(tokenNameList) do
+		local tokenCard = resolvedByName[tokenName]
+		if tokenCard then
+			local entry = riftCardToEntry(tokenCard, 1)
+			entry.qty = 1
+			tokenList[#tokenList+1] = entry
+		else
+			missingTokenCount = missingTokenCount + 1
+			printWarn("Token card not found, skipping: " .. tostring(tokenName), playerColor)
+		end
+	end
+
+	spawnResolvedDecks({
+		legendList = passThrough.legendList or {},
+		championList = passThrough.championList or {},
+		battlefieldList = passThrough.battlefieldList or {},
+		runeList = passThrough.runeList or {},
+		sideboardList = passThrough.sideboardList or {},
+		mainboardList = passThrough.mainboardList or {},
+		tokenList = tokenList,
+		deckName = passThrough.deckName or "",
+		shouldSpawnSideboard = passThrough.shouldSpawnSideboard == true,
+	})
+end
+
+-- Callback for notebook import (Riftseer resolved from a name-keyed cardMap).
+function postDeckLoad(bundledData)
+	local resolvedByName = bundledData.resolvedByName or {}
+	local passThrough    = bundledData.passThroughData or {}
+	local cardMap        = passThrough.cardMap  or {}
+	local deckName       = passThrough.deckName or ""
+
+	local legendList, championList, battlefieldList = {}, {}, {}
+	local runeList, sideboardList, mainboardList    = {}, {}, {}
+	local shouldSpawnSideboard = not skipSideboard
+	local tokenNames = {}
+	local seenTokenNames = {}
+
+	for _, cardMapData in pairs(cardMap) do
+		local card = resolvedByName[cardMapData.name]
+		if not card then
+			printWarn("Card not found, skipping: " .. tostring(cardMapData.name), playerColor)
+		else
+			local function push(list, qtyField)
+				local qty = cardMapData[qtyField] or 0
+				if qty > 0 then
+					local entry = riftCardToEntry(card, qty)
+					if cardMapData.variantImageURL then
+						entry.imageURL         = cardMapData.variantImageURL
+						entry.relatedPrintings = {}
+					end
+					list[#list+1] = entry
+				end
+			end
+			push(legendList,      "legendQty")
+			push(championList,    "championQty")
+			push(battlefieldList, "battlefieldQty")
+			push(runeList,        "runeQty")
+			push(sideboardList,   "sideboardQty")
+			push(mainboardList,   "mainboardQty")
+
+			if card.is_token ~= true and card.all_parts then
+				for _, part in ipairs(card.all_parts) do
+					if isTokenPart(part) then
+						local tokenName = trim(tostring(part.name or ""))
+						local tokenKey = part.id and ("id:" .. tostring(part.id)) or ("name:" .. string.lower(tokenName))
+						if tokenName ~= "" and not seenTokenNames[tokenKey] then
+							seenTokenNames[tokenKey] = true
+							tokenNames[#tokenNames+1] = tokenName
+						end
+					end
+				end
+			end
+		end
+	end
+	if #tokenNames > 0 then
+		loadDeckFromMainModule(
+			-- cardMap shape: name-keyed entries with a `name` field
+			(function()
+				local tokenMap = {}
+				for _, tokenName in ipairs(tokenNames) do
+					tokenMap[tokenName] = {name = tokenName}
+				end
+				return tokenMap
+			end)(),
+			"postDeckLoadTokens",
+			{
+				deckName = deckName,
+				passThroughData = {
+					tokenNameList = tokenNames,
+					legendList = legendList,
+					championList = championList,
+					battlefieldList = battlefieldList,
+					runeList = runeList,
+					sideboardList = sideboardList,
+					mainboardList = mainboardList,
+					shouldSpawnSideboard = shouldSpawnSideboard,
+				},
+			}
+		)
+		return
+	end
+
+	spawnResolvedDecks({
+		legendList = legendList,
+		championList = championList,
+		battlefieldList = battlefieldList,
+		runeList = runeList,
+		sideboardList = sideboardList,
+		mainboardList = mainboardList,
+		tokenList = {},
+		deckName = deckName,
+		shouldSpawnSideboard = shouldSpawnSideboard,
 	})
 end
 
