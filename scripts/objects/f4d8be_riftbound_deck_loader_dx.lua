@@ -66,7 +66,7 @@ local function checkForUpdates()
                 else
                     Global.setVar("DXRiftboundScriptVersions_fetchFailed", true)
                     Global.setVar("DXRiftboundScriptVersions_isFetching", false)
-                    error(res)
+                    error("Failed to fetch DX Riftbound script versions: " .. tostring(res and res.error))
                     self.setVar("updateFinished", true) --used for the infinite bag object
                 end
             end)

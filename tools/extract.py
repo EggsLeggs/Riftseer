@@ -17,6 +17,24 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 SAVE = REPO / 'mod' / 'Riftbound.json'
 
+GUID_RE = re.compile(r'^([a-f0-9]{6})_')
+
+
+def existing_filenames(out_dir: Path) -> dict:
+    """Map {guid: existing filename} so curated names are preserved on re-extract.
+
+    Filenames are matched on the {GUID}_ prefix (the same key inject.py uses),
+    so a hand-picked slug like `7cf430_battlefield_count_control.lua` is reused
+    instead of being regenerated from the nickname (which would create a
+    duplicate file for the same GUID and make inject.py non-deterministic).
+    """
+    out = {}
+    for p in out_dir.glob('*.lua'):
+        m = GUID_RE.match(p.name)
+        if m:
+            out[m.group(1)] = p.name
+    return out
+
 
 def slug(s: str) -> str:
     """Turn an object nickname into a safe filename fragment."""
@@ -28,7 +46,7 @@ def slug(s: str) -> str:
     return s[:50] or 'unnamed'
 
 
-def walk(obj, seen, out_dir):
+def walk(obj, seen, out_dir, existing):
     if not isinstance(obj, dict):
         return
     guid = obj.get('GUID')
@@ -36,14 +54,14 @@ def walk(obj, seen, out_dir):
     if guid and script and guid not in seen:
         seen.add(guid)
         nick = obj.get('Nickname') or obj.get('Name', 'unknown')
-        fname = f"{guid}_{slug(nick)}.lua"
+        fname = existing.get(guid) or f"{guid}_{slug(nick)}.lua"
         (out_dir / fname).write_bytes(script.encode('utf-8'))
     for child in (obj.get('ContainedObjects') or []):
-        walk(child, seen, out_dir)
+        walk(child, seen, out_dir, existing)
     for child in (obj.get('ChildObjects') or []):
-        walk(child, seen, out_dir)
+        walk(child, seen, out_dir, existing)
     for state_obj in (obj.get('States') or {}).values():
-        walk(state_obj, seen, out_dir)
+        walk(state_obj, seen, out_dir, existing)
 
 
 def main():
@@ -58,9 +76,10 @@ def main():
 
     obj_dir = REPO / 'scripts' / 'objects'
     obj_dir.mkdir(parents=True, exist_ok=True)
+    existing = existing_filenames(obj_dir)
     seen = set()
     for top in data.get('ObjectStates', []):
-        walk(top, seen, obj_dir)
+        walk(top, seen, obj_dir, existing)
 
     print(f"Extracted {len(seen)} object scripts -> scripts/objects/")
     print(f"Wrote scripts/global.lua ({len(data.get('LuaScript', ''))} chars)")

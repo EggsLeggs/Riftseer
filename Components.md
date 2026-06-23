@@ -208,7 +208,7 @@ Three shared slots on the table centre line. `getBattlefieldZone()` / `getBattle
 | GUID | Object | Owner | RB | What it does |
 |------|--------|-------|----|--------------|
 | fb6538 | Hold Alt (context-menu helper) | upstream | — | Adds right-click context menus; deleted by the × button on Table Instructions. |
-| 7cf430 | Steam Workshop link tile | amory | ✓ | Click to reveal copyable links to the Riftbound TTS table and Card Importer. |
+| 7cf430 | Battlefield lane counter | amory | ✓ | Spawns/manages a ▲▼ counter panel to set the number of active battlefield lanes (2–4); calls `bfc001` `APIsetBattlefieldCount`. Hosted on the former Steam Workshop link tile (tile visual kept). |
 
 ---
 

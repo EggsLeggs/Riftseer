@@ -364,7 +364,8 @@ end
 
 --Just checks if an update is available without actually updating.
 function updateCheck(wr)
-  wr = wr.text
+  wr = wr and wr.text or nil
+  if wr == nil then return end
   local ver = versionComp(string.match(wr,"version = '(.-)'"),version)
   if ''..ver ~= ''..version then
     -- broadcastToAll("An update has been found. Please right click the encoder and select update.")
@@ -393,6 +394,9 @@ end
 function versionComp(a,b)
   --First does the pattern only contain ([0-9]+)%.?
   --Pattern for versioning ##.##.##.##
+  --Guard against nil inputs (e.g. an update fetch that returned no version).
+  a = tostring(a or '0')
+  b = tostring(b or '0')
   va = {}
   vb = {}
   for f in string.gmatch(a,'([0-9]+)%.?') do
