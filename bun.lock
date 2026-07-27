@@ -43,6 +43,7 @@
       "dependencies": {
         "@elysiajs/cors": "^1.4.1",
         "@riftseer/core": "workspace:*",
+        "@riftseer/types": "workspace:*",
         "@supabase/supabase-js": "^2.97.0",
         "elysia": "^1.4.7",
       },
