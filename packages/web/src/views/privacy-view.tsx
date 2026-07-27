@@ -9,7 +9,7 @@ export function PrivacyView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 10 May 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 27 July 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -94,6 +94,27 @@ export function PrivacyView() {
               We do not use this data for advertising.
             </ListItem>
           </UnorderedList>
+        </div>
+
+        <div className="mb-6">
+          <SubHeading>Metafy account linking</SubHeading>
+          <Text>
+            If you choose to link your Metafy account, we store the following in our database
+            server-side: your Metafy username, your Metafy user identifier, your OAuth access
+            token (and refresh token, if issued), and your supporter status. This data is used
+            exclusively to verify your Metafy membership and to enable supporter perks (ad-free
+            experience and supporter badge). Your Metafy OAuth tokens are never exposed to the
+            browser; they remain server-side and are used only to re-check your membership status
+            on login and when you visit your donations settings. Metafy may also notify our server
+            directly when your community membership or subscription changes; we use those
+            notifications only to update the membership and supporter status stored on your linked
+            account, together with the time of the update. We do not keep a separate history of
+            those notifications, and payment details are never sent to us. You can disconnect your
+            Metafy account at any time from the Donations settings page, which deletes all stored
+            Metafy data. Metafy&apos;s own{" "}
+            <InlineLink href="https://metafy.gg/privacy">privacy policy</InlineLink> applies to
+            information held by Metafy.
+          </Text>
         </div>
 
         <div className="mb-6">
@@ -191,6 +212,11 @@ export function PrivacyView() {
               from third-party sources (for example RiftCodex). When you search or resolve cards,
               we do not send your identity to those sources; we only request card data for the
               lookups you trigger.
+            </ListItem>
+            <ListItem>
+              <strong className="font-semibold">Metafy.</strong> If you link your Metafy account,
+              we call the Metafy API using your OAuth access token to verify supporter status.
+              Metafy&apos;s privacy policy applies to data Metafy collects or processes.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Reddit / Devvit.</strong> As described above, the bot

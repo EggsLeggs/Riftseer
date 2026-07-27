@@ -6,7 +6,12 @@ import { CardSearchTrigger } from "./card-search-trigger";
 import { Button } from "@/components/ui/button";
 import { CardsNavMenu } from "./cards-nav-menu";
 
-export async function Navbar() {
+interface NavbarProps {
+  isSupporter?: boolean;
+  isMember?: boolean;
+}
+
+export async function Navbar({ isSupporter, isMember }: NavbarProps) {
   const session = await getSession();
 
   return (
@@ -30,7 +35,7 @@ export async function Navbar() {
             </Link>
           </Button>
           {session ? (
-            <UserNav email={session.user.email} />
+            <UserNav handle={session.user.handle} isSupporter={isSupporter} isMember={isMember} />
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>

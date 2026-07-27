@@ -2,6 +2,8 @@ import { Elysia, t } from "elysia";
 import { authAdminClient, authClient, supabaseUrl, supabaseAnonKey } from "../lib/supabase";
 import { authPlugin } from "../plugins/auth";
 import { ErrorSchema } from "../schemas";
+import { refreshMetafySupporterStatus } from "../lib/metafy";
+import { runInBackground } from "../lib/background";
 
 const SessionSchema = t.Object({
   access_token: t.String({ description: "JWT access token (short-lived)" }),
@@ -12,6 +14,8 @@ const SessionSchema = t.Object({
     id: t.String({ description: "User UUID" }),
     email: t.Optional(t.String()),
     created_at: t.String(),
+    handle: t.Optional(t.String({ description: "Unique @handle" })),
+    username: t.Optional(t.String({ description: "Display name" })),
   }),
 });
 
@@ -33,7 +37,7 @@ export function authRoutes() {
       .post(
         "/auth/register",
         async ({ body, set }) => {
-          if (!authClient) {
+          if (!authClient || !authAdminClient) {
             set.status = 503;
             return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
@@ -42,6 +46,24 @@ export function authRoutes() {
             return {
               error: "You must accept the Terms of Service and Privacy Policy.",
               code: "TERMS_REQUIRED",
+            };
+          }
+
+          const handle = body.handle.toLowerCase().trim();
+          if (!/^[a-z0-9_]{3,30}$/.test(handle)) {
+            set.status = 400;
+            return {
+              error: "Handle must be 3–30 characters and contain only lowercase letters, numbers, and underscores.",
+              code: "INVALID_HANDLE",
+            };
+          }
+
+          const username = body.username.trim();
+          if (username.length < 1 || username.length > 50) {
+            set.status = 400;
+            return {
+              error: "Display name must be 1–50 characters.",
+              code: "INVALID_USERNAME",
             };
           }
 
@@ -69,7 +91,7 @@ export function authRoutes() {
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
 
-          if (data.user && authAdminClient) {
+          if (data.user) {
             const { error: adminError } = await authAdminClient.auth.admin.updateUserById(data.user.id, {
               app_metadata: {
                 ...consentMeta,
@@ -88,12 +110,23 @@ export function authRoutes() {
                 code: "CONSENT_RECORD_FAILED",
               };
             }
-          } else if (data.user && !authAdminClient) {
-            console.warn(
-              "[auth/register] authAdminClient is not configured: app_metadata could not be written; " +
-                "consent was recorded only in user_metadata (editable client-side). user id:",
-              data.user.id,
-            );
+
+            const { error: profileError } = await authAdminClient
+              .from("profiles")
+              .insert({ id: data.user.id, username, handle });
+            if (profileError) {
+              console.error("[auth/register] profile insert failed:", profileError.message);
+              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(data.user.id);
+              if (deleteError) {
+                console.error("[auth/register] rollback deleteUser failed:", deleteError.message);
+              }
+              if (profileError.code === "23505") {
+                set.status = 409;
+                return { error: "That handle is already taken.", code: "HANDLE_TAKEN" };
+              }
+              set.status = 500;
+              return { error: "Registration could not be completed. Please try again.", code: "PROFILE_CREATE_FAILED" };
+            }
           }
 
           if (!data.session) {
@@ -112,6 +145,8 @@ export function authRoutes() {
               id: data.user!.id,
               email: data.user!.email,
               created_at: data.user!.created_at,
+              handle,
+              username,
             },
           };
         },
@@ -122,6 +157,8 @@ export function authRoutes() {
             accepted_terms: t.Boolean({
               description: "Must be true — records acceptance of Terms and Privacy Policy at signup.",
             }),
+            username: t.String({ minLength: 1, maxLength: 50, description: "Display name (non-unique)" }),
+            handle: t.String({ minLength: 3, maxLength: 30, description: "Unique @handle (lowercase letters, numbers, underscores)" }),
             options: t.Optional(t.Object({
               redirect_to: t.Optional(t.String({ description: "URL to redirect to after email confirmation. Pass window.location.origin + '/auth/callback'." })),
             })),
@@ -130,6 +167,7 @@ export function authRoutes() {
             200: SessionSchema,
             202: ConfirmationSchema,
             400: ErrorSchema,
+            409: ErrorSchema,
             500: ErrorSchema,
             503: ErrorSchema,
           },
@@ -159,7 +197,18 @@ export function authRoutes() {
             set.status = error.status === 401 ? 401 : (error.status && error.status >= 500) ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
-          return {
+
+          let profile: { handle: string; username: string } | null = null;
+          if (authAdminClient) {
+            const { data: prof } = await authAdminClient
+              .from("profiles")
+              .select("handle, username")
+              .eq("id", data.user.id)
+              .single();
+            profile = prof;
+          }
+
+          const result = {
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token,
             expires_in: data.session.expires_in,
@@ -168,8 +217,37 @@ export function authRoutes() {
               id: data.user.id,
               email: data.user.email,
               created_at: data.user.created_at,
+              handle: profile?.handle ?? undefined,
+              username: profile?.username ?? undefined,
             },
           };
+
+          // Best-effort: refresh Metafy supporter status in the background on login.
+          // Does not block or affect the login response.
+          const communityId = process.env.METAFY_COMMUNITY_ID;
+          if (authAdminClient && communityId) {
+            const client = authAdminClient;
+            runInBackground(
+              (async () => {
+                const { data: linked } = await client
+                  .from("linked_accounts")
+                  .select("access_token")
+                  .eq("user_id", data.user.id)
+                  .eq("provider", "metafy")
+                  .maybeSingle();
+                if (linked?.access_token) {
+                  await refreshMetafySupporterStatus(
+                    data.user.id,
+                    linked.access_token as string,
+                    communityId,
+                  );
+                }
+              })(),
+              "auth/login metafy refresh",
+            );
+          }
+
+          return result;
         },
         {
           body: t.Object({
@@ -361,6 +439,110 @@ export function authRoutes() {
                 description:
                   "Returns the authenticated user's profile. " +
                   "Requires a valid `Authorization: Bearer <access_token>` header.",
+              },
+            },
+          )
+
+          // ── PATCH /auth/email ───────────────────────────────────────────
+          .patch(
+            "/auth/email",
+            async ({ body, headers, set }) => {
+              if (!supabaseUrl || !supabaseAnonKey) {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              const accessToken = headers.authorization!.slice(7);
+              let res: Response;
+              try {
+                res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+                  method: "PATCH",
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    apikey: supabaseAnonKey,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ email: body.email }),
+                });
+              } catch {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              if (!res.ok) {
+                const payload = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+                set.status = res.status >= 500 ? 503 : res.status === 401 ? 401 : 400;
+                return {
+                  error: String(payload.error_description ?? payload.msg ?? "Email update failed"),
+                  code: "UPDATE_FAILED",
+                };
+              }
+              return { message: "A confirmation email has been sent to your new address." };
+            },
+            {
+              body: t.Object({
+                email: t.String({ description: "New email address" }),
+              }),
+              response: {
+                200: t.Object({ message: t.String() }),
+                400: ErrorSchema,
+                401: ErrorSchema,
+                503: ErrorSchema,
+              },
+              detail: {
+                tags: ["Auth"],
+                summary: "Update email",
+                description:
+                  "Initiates an email change. Supabase sends a confirmation link to the new address.",
+              },
+            },
+          )
+
+          // ── PATCH /auth/change-password ─────────────────────────────────
+          .patch(
+            "/auth/change-password",
+            async ({ body, user, headers, set }) => {
+              if (!authClient || !authAdminClient || !supabaseUrl || !supabaseAnonKey) {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              if (!user.email) {
+                set.status = 400;
+                return { error: "Account has no email address.", code: "NO_EMAIL" };
+              }
+              // Verify current password
+              const { error: signInError } = await authClient.auth.signInWithPassword({
+                email: user.email,
+                password: body.current_password,
+              });
+              if (signInError) {
+                set.status = 401;
+                return { error: "Current password is incorrect.", code: "INVALID_CREDENTIALS" };
+              }
+              // Update password using admin client
+              const { error: updateError } = await authAdminClient.auth.admin.updateUserById(user.id, {
+                password: body.new_password,
+              });
+              if (updateError) {
+                set.status = 500;
+                return { error: "Failed to update password.", code: "UPDATE_FAILED" };
+              }
+              return { message: "Password updated successfully." };
+            },
+            {
+              body: t.Object({
+                current_password: t.String({ description: "Current account password" }),
+                new_password: t.String({ minLength: 8, description: "New password (min 8 characters)" }),
+              }),
+              response: {
+                200: t.Object({ message: t.String() }),
+                400: ErrorSchema,
+                401: ErrorSchema,
+                500: ErrorSchema,
+                503: ErrorSchema,
+              },
+              detail: {
+                tags: ["Auth"],
+                summary: "Change password",
+                description: "Changes the authenticated user's password. Requires the current password for verification.",
               },
             },
           )

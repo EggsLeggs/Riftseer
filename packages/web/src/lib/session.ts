@@ -1,5 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import type { Session, SessionUser } from "@/features/auth/types";
 import { env } from "@/lib/env";
 
@@ -41,11 +42,41 @@ export async function setSessionCookies(session: {
   jar.set("rs_access_token", session.access_token, { ...COOKIE_OPTS, httpOnly: true, maxAge: ACCESS_MAX_AGE });
   jar.set("rs_refresh_token", session.refresh_token, { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE });
   jar.set("rs_expires_at", String(expiresAt), { ...COOKIE_OPTS, httpOnly: false, maxAge: REFRESH_MAX_AGE });
-  jar.set("rs_user", JSON.stringify({ id: session.user.id, email: session.user.email }), {
-    ...COOKIE_OPTS,
-    httpOnly: true,
-    maxAge: REFRESH_MAX_AGE,
-  });
+  jar.set(
+    "rs_user",
+    JSON.stringify({
+      id: session.user.id,
+      email: session.user.email,
+      handle: session.user.handle,
+      username: session.user.username,
+    }),
+    { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE },
+  );
+}
+
+export async function requireAuth(next?: string): Promise<Session> {
+  const session = await getSession();
+  if (!session) {
+    const params = next ? `?next=${encodeURIComponent(next)}` : "";
+    redirect(`/auth/login${params}`);
+  }
+  return session;
+}
+
+export async function updateSessionUser(updates: Partial<SessionUser>) {
+  const jar = await cookies();
+  const userRaw = jar.get("rs_user")?.value;
+  if (!userRaw) return;
+  try {
+    const current = JSON.parse(userRaw) as SessionUser;
+    jar.set(
+      "rs_user",
+      JSON.stringify({ ...current, ...updates }),
+      { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE },
+    );
+  } catch {
+    // ignore — session will refresh naturally
+  }
 }
 
 export async function clearSessionCookies() {

@@ -19,6 +19,12 @@
  *   POST /api/v1/auth/refresh   body: { refresh_token }
  *   POST /api/v1/auth/logout    Authorization: Bearer <access_token>
  *   GET  /api/v1/auth/me        Authorization: Bearer <access_token>  (protected)
+ *   GET  /api/v1/auth/metafy/status        (protected)
+ *   GET  /api/v1/auth/metafy/connect       (protected)
+ *   POST /api/v1/auth/metafy/callback      (protected)
+ *   DELETE /api/v1/auth/metafy/disconnect  (protected)
+ *   POST /api/v1/auth/metafy/refresh-status (protected)
+ *   POST /api/v1/webhooks/metafy           (public — HMAC signature verified)
  *
  * Deploy: wrangler deploy
  * Dev:    wrangler dev
@@ -42,6 +48,10 @@ import { cardsRoutes } from "./routes/cards";
 import { setsRoutes } from "./routes/sets";
 import { decksRoutes } from "./routes/decks";
 import { authRoutes } from "./routes/auth";
+import { usersRoutes } from "./routes/users";
+import { metafyRoutes } from "./routes/metafy";
+import { handleMetafyWebhook } from "./lib/metafy";
+import { withExecutionContext, type WaitUntilContext } from "./lib/background";
 
 // ─── Singletons ───────────────────────────────────────────────────────────────
 // CF Workers forbid async I/O (fetch) in global scope — only inside handlers.
@@ -76,7 +86,14 @@ function ensureWarmedUp(): Promise<void> {
 
 export const app = new Elysia({ adapter: CloudflareAdapter })
   .onBeforeHandle(async ({ path, set }) => {
-    if (path === "/api/v1/health" || path.startsWith("/api/v1/auth/")) return;
+    if (
+      path === "/api/v1/health" ||
+      path === "/api/v1/users" ||
+      path === "/api/v1/webhooks" ||
+      path.startsWith("/api/v1/auth/") ||
+      path.startsWith("/api/v1/users/") ||
+      path.startsWith("/api/v1/webhooks/")
+    ) return;
     try {
       await ensureWarmedUp();
     } catch {
@@ -87,7 +104,7 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
   .use(
     cors({
       origin: true, // Reflect any Origin — public API, browser requests from any site are allowed
-      methods: ["GET", "HEAD", "POST", "OPTIONS"],
+      methods: ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"],
     }),
   )
   .use(
@@ -96,9 +113,25 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
       .use(decksRoutes(deckProvider))
-      .use(authRoutes()),
+      .use(authRoutes())
+      .use(usersRoutes())
+      .use(metafyRoutes()),
   )
   .compile();
 
 export type App = typeof app;
-export default app;
+
+// The webhook handler needs the raw request body for HMAC signature verification.
+// Elysia's body parser consumes the body stream before our route handler runs,
+// so we intercept the webhook path here, before mounting Elysia.
+export default {
+  async fetch(request: Request, _env: unknown, ctx: WaitUntilContext): Promise<Response> {
+    const url = new URL(request.url);
+    return withExecutionContext(ctx, () => {
+      if (url.pathname === "/api/v1/webhooks/metafy" && request.method === "POST") {
+        return handleMetafyWebhook(request);
+      }
+      return Promise.resolve(app.fetch(request));
+    });
+  },
+};

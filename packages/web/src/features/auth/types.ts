@@ -2,6 +2,8 @@ export interface SessionUser {
   id: string;
   email?: string;
   created_at: string;
+  handle?: string;
+  username?: string;
 }
 
 export interface Session {

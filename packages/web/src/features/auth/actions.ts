@@ -39,7 +39,11 @@ export async function loginAction(_prev: unknown, formData: FormData) {
 export async function registerAction(_prev: unknown, formData: FormData) {
   const email = str(formData, "email");
   const password = str(formData, "password");
+  const username = str(formData, "username");
+  const handle = str(formData, "handle")?.toLowerCase() ?? null;
   if (!email || !password) return { error: "Email and password are required" };
+  if (!username) return { error: "Display name is required" };
+  if (!handle) return { error: "Handle is required" };
 
   const acceptedRaw = formData.get("accepted_terms");
   const acceptedTerms = acceptedRaw === "on" || acceptedRaw === "true";
@@ -54,11 +58,16 @@ export async function registerAction(_prev: unknown, formData: FormData) {
   const { data, error, status } = await api.api.v1.auth.register.post({
     email,
     password,
+    username,
+    handle,
     accepted_terms: true,
     options: { redirect_to: `${env.NEXT_PUBLIC_APP_URL}/auth/callback` },
   });
 
   if (error) {
+    if (status === 409) {
+      return { error: "That handle is already taken. Please choose another." };
+    }
     return { error: (error.value as { error?: string })?.error ?? "Registration failed" };
   }
 
@@ -70,7 +79,7 @@ export async function registerAction(_prev: unknown, formData: FormData) {
     access_token: string;
     refresh_token: string;
     expires_in: number;
-    user: { id: string; email?: string; created_at: string };
+    user: { id: string; email?: string; created_at: string; handle?: string; username?: string };
   };
 
   await setSessionCookies({
@@ -113,6 +122,75 @@ export async function forgotPasswordAction(_prev: unknown, formData: FormData) {
   }
 
   return { ok: true };
+}
+
+export async function changeEmailAction(_prev: unknown, formData: FormData) {
+  const email = str(formData, "email");
+  if (!email) return { error: "Email is required" };
+
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+
+  const api = createApiClient(session.accessToken);
+  const { error } = await api.api.v1.auth.email.patch({ email });
+
+  if (error) {
+    return { error: (error.value as { error?: string })?.error ?? "Email update failed" };
+  }
+
+  return { ok: true };
+}
+
+export async function changePasswordAction(_prev: unknown, formData: FormData) {
+  const currentPassword = str(formData, "current_password");
+  const newPassword = str(formData, "new_password");
+  const confirmPassword = str(formData, "confirm_password");
+
+  if (!currentPassword) return { error: "Current password is required" };
+  if (!newPassword) return { error: "New password is required" };
+  if (newPassword.length < 8) return { error: "New password must be at least 8 characters" };
+  if (newPassword !== confirmPassword) return { error: "Passwords do not match" };
+
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+
+  const api = createApiClient(session.accessToken);
+  const { error } = await api.api.v1.auth["change-password"].patch({
+    current_password: currentPassword,
+    new_password: newPassword,
+  });
+
+  if (error) {
+    return { error: (error.value as { error?: string })?.error ?? "Password change failed" };
+  }
+
+  return { ok: true };
+}
+
+export async function deleteAccountAction(_prev: unknown, formData: FormData) {
+  const session = await getSession();
+  if (!session) return { error: "Not signed in" };
+
+  // Sessions predating handles have nothing to confirm against, so deletion
+  // proceeds without the typed confirmation for those.
+  const expectedHandle = session.user.handle;
+  if (expectedHandle) {
+    const confirmation = str(formData, "confirmation");
+    if (!confirmation) return { error: "Confirmation is required" };
+    if (confirmation.toLowerCase() !== expectedHandle.toLowerCase()) {
+      return { error: `Type your @handle (${expectedHandle}) exactly to confirm deletion` };
+    }
+  }
+
+  const api = createApiClient(session.accessToken);
+  const { error } = await api.api.v1.users.me.delete();
+
+  if (error) {
+    return { error: (error.value as { error?: string })?.error ?? "Account deletion failed" };
+  }
+
+  await clearSessionCookies();
+  redirect("/");
 }
 
 export async function resetPasswordAction(_prev: unknown, formData: FormData) {

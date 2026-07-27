@@ -8,7 +8,11 @@
     ".": "./index.ts",
     "./icons": "./src/icons.ts",
     "./parser": "./src/parser.ts",
-    "./slug": "./src/slug.ts"
+    "./slug": "./src/slug.ts",
+    "./social-links": "./src/social-links.ts"
+  },
+  "scripts": {
+    "test": "bun test src/__tests__"
   },
   "devDependencies": {
     "bun-types": "^1.2.0"

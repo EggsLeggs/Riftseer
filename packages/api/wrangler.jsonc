@@ -11,15 +11,23 @@
 	"vars": {
 		"CARD_PROVIDER": "supabase",
 		"LEGAL_TERMS_VERSION": "1",
-		"LEGAL_PRIVACY_VERSION": "1",
+		// 2 — 27 July 2026: Metafy webhook processing disclosure.
+		"LEGAL_PRIVACY_VERSION": "2",
 		// Public site origin used to build absolute riftseer_uri values on every
 		// card response. Override per-environment if needed.
-		"SITE_ORIGIN": "https://riftseer.com"
+		"SITE_ORIGIN": "https://riftseer.com",
+		// Metafy OAuth — non-confidential: both values are sent to the browser as
+		// part of the authorize URL.
+		"METAFY_COMMUNITY_ID": "riftseer",
+		"METAFY_REDIRECT_URI": "https://riftseer.com/auth/metafy/callback",
 	},
 	// Required for core API + Supabase auth routes.
 	// Optional secrets (omit from required): UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, TCGPLAYER_AFFILIATE_ID
 	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
+	// METAFY_CLIENT_SECRET — set via: wrangler secret put METAFY_CLIENT_SECRET
+	// METAFY_CLIENT_ID — not confidential, but the value is not committed; set via: wrangler secret put METAFY_CLIENT_ID
+	// METAFY_WEBHOOK_SECRET — optional, set via: wrangler secret put METAFY_WEBHOOK_SECRET (Partners only)
 	"secrets": {
-		"required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY"]
+		"required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "METAFY_CLIENT_SECRET", "METAFY_CLIENT_ID"]
 	}
 }

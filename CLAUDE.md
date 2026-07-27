@@ -81,6 +81,11 @@ npx devvit settings set siteBaseUrl
 | `LEGAL_TERMS_VERSION` | Version string stored with new users’ Terms acceptance at registration (`POST /auth/register`). **Set in `packages/api/wrangler.jsonc` → `vars`.** When you publish material Terms updates, bump this value and redeploy the API Worker so new signups record the new version. (Code still defaults to `1` if the binding is missing.) |
 | `LEGAL_PRIVACY_VERSION` | Same for Privacy Policy acceptance. **Set in `packages/api/wrangler.jsonc` → `vars`** — bump alongside material Privacy policy updates and redeploy. |
 | `SITE_ORIGIN` | Public site origin (no trailing slash) used to build absolute `riftseer_uri` values on every card response. **Set in `packages/api/wrangler.jsonc` → `vars`.** When unset, `riftseer_uri` is omitted and clients fall back to the legacy `/card/<id>` path. |
+| `METAFY_COMMUNITY_ID` | Metafy community whose membership/subscription grants supporter status. **Set in `packages/api/wrangler.jsonc` → `vars`** (not confidential — it appears in the authorize URL). Required by `/auth/metafy/callback` and `/auth/metafy/refresh-status`; also gates the best-effort supporter refresh on login. |
+| `METAFY_REDIRECT_URI` | OAuth redirect URI registered with Metafy — must match the web callback route (`<site>/auth/metafy/callback`). **Set in `packages/api/wrangler.jsonc` → `vars`.** |
+| `METAFY_CLIENT_ID` | Metafy OAuth client id. Not confidential (it appears in the authorize URL), but the value is not committed — set via `cd packages/api && wrangler secret put METAFY_CLIENT_ID` (see `secrets.required` in `packages/api/wrangler.jsonc`). |
+| `METAFY_CLIENT_SECRET` | Metafy OAuth client secret used for the authorization-code exchange — required. Set via `cd packages/api && wrangler secret put METAFY_CLIENT_SECRET`. |
+| `METAFY_WEBHOOK_SECRET` | HMAC signing secret for `POST /api/v1/webhooks/metafy` — optional (Metafy Partners only). When unset the webhook endpoint returns 503. Set via `cd packages/api && wrangler secret put METAFY_WEBHOOK_SECRET`. |
 
 ### Ingest Worker (packages/ingest-worker)
 | Variable | Purpose |
@@ -157,7 +162,7 @@ RiftCodex /sets + /cards
 
 ## Deployment
 - **API**: Cloudflare Workers via `cd packages/api && wrangler deploy`. Secrets set with `wrangler secret put`. Worker name: `riftseer-api`.
-- **Web (packages/web)**: Cloudflare Workers via `@opennextjs/cloudflare`. Run `bun run deploy` from `packages/web`. Build-time env vars must be set in the Workers Builds dashboard.
+- **Web (packages/web)**: Cloudflare Workers via `@opennextjs/cloudflare`. From `packages/web`, run `bun run preview` first — it builds and serves the app in the `workerd` runtime, which is the only way to catch Workers-runtime failures that `bun dev` (Node.js) misses — then `bun run deploy`. Build-time env vars must be set in the Workers Builds dashboard.
 - **Frontend (deprecated)**: Cloudflare Pages (separate deployment) — will be removed when packages/web is complete.
 - **Discord bot**: Cloudflare Workers via `wrangler deploy`. Secrets set with `wrangler secret put`.
 - **Reddit bot**: Devvit upload (`npx devvit upload`). The bot's HTTP fetch domain must be registered in `devvit.yaml`.
