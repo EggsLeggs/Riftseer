@@ -162,7 +162,7 @@ RiftCodex /sets + /cards
 
 ## Deployment
 - **API**: Cloudflare Workers via `cd packages/api && wrangler deploy`. Secrets set with `wrangler secret put`. Worker name: `riftseer-api`.
-- **Web (packages/web)**: Cloudflare Workers via `@opennextjs/cloudflare`. Run `bun run deploy` from `packages/web`. Build-time env vars must be set in the Workers Builds dashboard.
+- **Web (packages/web)**: Cloudflare Workers via `@opennextjs/cloudflare`. From `packages/web`, run `bun run preview` first — it builds and serves the app in the `workerd` runtime, which is the only way to catch Workers-runtime failures that `bun dev` (Node.js) misses — then `bun run deploy`. Build-time env vars must be set in the Workers Builds dashboard.
 - **Frontend (deprecated)**: Cloudflare Pages (separate deployment) — will be removed when packages/web is complete.
 - **Discord bot**: Cloudflare Workers via `wrangler deploy`. Secrets set with `wrangler secret put`.
 - **Reddit bot**: Devvit upload (`npx devvit upload`). The bot's HTTP fetch domain must be registered in `devvit.yaml`.

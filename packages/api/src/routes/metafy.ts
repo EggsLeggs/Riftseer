@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
 import { authAdminClient } from "../lib/supabase";
 import { authPlugin } from "../plugins/auth";
+import { issueOAuthState, verifyOAuthState } from "../lib/oauth-state";
 import { ErrorSchema } from "../schemas";
 import {
   METAFY_AUTHORIZE_URL,
@@ -71,16 +72,19 @@ export function metafyRoutes() {
       // ── GET /auth/metafy/connect ───────────────────────────────────────────
       .get(
         "/auth/metafy/connect",
-        async ({ set }) => {
+        async ({ user, set }) => {
           const clientId = process.env.METAFY_CLIENT_ID;
+          const clientSecret = process.env.METAFY_CLIENT_SECRET;
           const redirectUri = process.env.METAFY_REDIRECT_URI;
 
-          if (!clientId || !redirectUri) {
+          // The secret is only needed to sign state here, but the callback cannot
+          // succeed without it either — fail before the user visits Metafy.
+          if (!clientId || !clientSecret || !redirectUri) {
             set.status = 503;
             return { error: "Metafy OAuth not configured", code: "NOT_CONFIGURED" };
           }
 
-          const state = crypto.randomUUID();
+          const state = await issueOAuthState(user.id, clientSecret);
 
           const params = new URLSearchParams({
             client_id: clientId,
@@ -119,6 +123,11 @@ export function metafyRoutes() {
           if (!clientId || !clientSecret || !redirectUri || !communityId) {
             set.status = 503;
             return { error: "Metafy OAuth not configured", code: "NOT_CONFIGURED" };
+          }
+
+          if (!(await verifyOAuthState(body.state, user.id, clientSecret))) {
+            set.status = 400;
+            return { error: "Invalid or expired OAuth state", code: "INVALID_STATE" };
           }
 
           // Exchange authorization code for tokens

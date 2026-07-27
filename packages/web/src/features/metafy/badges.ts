@@ -11,7 +11,8 @@ export async function getMetafyBadges(): Promise<MetafyBadges> {
   const session = await getSession();
   if (!session) return { isSupporter: false, isMember: false };
 
-  const status = await metafyApi.getStatus(session.accessToken);
+  // Badges are decoration — a failed status lookup must not fail the layout.
+  const status = await metafyApi.getStatus(session.accessToken).catch(() => null);
   return {
     isSupporter: status?.linked === true && status.is_supporter,
     isMember: status?.linked === true && status.is_member,
