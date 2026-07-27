@@ -15,17 +15,35 @@ export interface ProfileData {
   is_member: boolean;
 }
 
-export async function getProfile(handle: string, accessToken?: string): Promise<ProfileData | null> {
-  const headers: Record<string, string> = {};
-  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+/**
+ * Profile lookups distinguish "no such handle" from "the API could not answer",
+ * so callers can render the right copy without inspecting an Error message —
+ * Next.js replaces those in production builds.
+ */
+export type ProfileResult =
+  | { status: "ok"; profile: ProfileData }
+  | { status: "not-found" }
+  | { status: "unavailable" };
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/users/${encodeURIComponent(handle)}`, {
-    headers,
-    cache: "no-store",
-  });
+export const profileApi = {
+  async getProfile(handle: string, accessToken?: string): Promise<ProfileResult> {
+    const headers: Record<string, string> = {};
+    if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load profile: ${res.status}`);
+    let res: Response;
+    try {
+      res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/users/${encodeURIComponent(handle)}`, {
+        headers,
+        cache: "no-store",
+        signal: AbortSignal.timeout(12_000),
+      });
+    } catch {
+      return { status: "unavailable" };
+    }
 
-  return res.json() as Promise<ProfileData>;
-}
+    if (res.status === 404) return { status: "not-found" };
+    if (!res.ok) return { status: "unavailable" };
+
+    return { status: "ok", profile: (await res.json()) as ProfileData };
+  },
+};

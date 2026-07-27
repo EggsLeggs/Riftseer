@@ -3,7 +3,7 @@
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { followAction, unfollowAction } from "@/features/profile/actions";
+import { followAction, unfollowAction } from "./actions";
 
 interface FollowButtonProps {
   handle: string;

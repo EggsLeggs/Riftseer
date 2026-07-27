@@ -12,6 +12,7 @@ export function SocialIcon({ svgPath, className, "aria-label": ariaLabel }: Soci
       viewBox="0 0 24 24"
       fill="currentColor"
       className={cn("shrink-0", className)}
+      role={ariaLabel ? "img" : undefined}
       aria-label={ariaLabel}
       aria-hidden={ariaLabel ? undefined : true}
     >

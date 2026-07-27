@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,8 +18,7 @@ const schema = z.object({
     .string()
     .min(3, { message: "Handle must be at least 3 characters" })
     .max(30, { message: "Handle must be 30 characters or fewer" })
-    .regex(/^[a-z0-9_]+$/, { message: "Only lowercase letters, numbers, and underscores" })
-    .transform((v) => v.toLowerCase()),
+    .regex(/^[a-z0-9_]+$/, { message: "Only lowercase letters, numbers, and underscores" }),
   email: z.string().email({ message: "Enter a valid email" }),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }),
 });
@@ -28,9 +27,16 @@ type Fields = z.infer<typeof schema>;
 
 export function RegisterView() {
   const [state, action, pending] = useActionState(registerAction, null);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const { register, formState: { errors } } = useForm<Fields>({
+  const { register, handleSubmit, formState: { errors } } = useForm<Fields>({
     resolver: zodResolver(schema),
+  });
+
+  // handleSubmit blocks submission until the schema passes, then hands the raw
+  // form data to the server action.
+  const onSubmit = handleSubmit(() => {
+    if (formRef.current) action(new FormData(formRef.current));
   });
 
   if (state?.pending) {
@@ -63,7 +69,7 @@ export function RegisterView() {
             <AlertDescription>{state.error}</AlertDescription>
           </Alert>
         )}
-        <form action={action} className="space-y-4">
+        <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
           <div className="flex gap-2 rounded-md border p-3 text-sm leading-snug">
             <input
               id="accepted_terms"

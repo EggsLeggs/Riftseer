@@ -1,4 +1,8 @@
 import { authAdminClient } from "./supabase";
+import { runInBackground } from "./background";
+
+/** Upstream Metafy calls must not hold a request open until the platform limit. */
+const METAFY_TIMEOUT_MS = 8_000;
 
 // ─── Webhook ──────────────────────────────────────────────────────────────────
 
@@ -83,9 +87,32 @@ export async function handleMetafyWebhook(request: Request): Promise<Response> {
   }
 
   // Process asynchronously — respond 200 first, then update DB
-  void processWebhookEvent(payload);
+  runInBackground(processWebhookEvent(payload), `metafy-webhook ${payload.type}`);
 
   return new Response("OK", { status: 200 });
+}
+
+/** Status columns each event type writes, or null for events we ignore. */
+function webhookStatusUpdate(type: string): Record<string, boolean> | null {
+  switch (type) {
+    case "member.joined":
+      return { is_member: true };
+    case "member.left":
+      // Left the community entirely — remove both member and supporter status
+      return { is_member: false, is_supporter: false };
+    case "subscription.created":
+    case "subscription.renewed":
+    case "subscription.upgraded":
+    case "subscription.downgraded":
+      // Subscribers are always members
+      return { is_supporter: true, is_member: true };
+    case "subscription.expired":
+    case "subscription.canceled":
+      // Only remove supporter status — they may remain a free member
+      return { is_supporter: false };
+    default:
+      return null;
+  }
 }
 
 async function processWebhookEvent(payload: MetafyWebhookPayload): Promise<void> {
@@ -95,58 +122,45 @@ async function processWebhookEvent(payload: MetafyWebhookPayload): Promise<void>
   const metafyUserId = data?.user_id;
   if (!metafyUserId) return;
 
-  const { data: linked } = await authAdminClient
+  const updates = webhookStatusUpdate(type);
+  if (!updates) return;
+
+  const parsedOccurredAt = Date.parse(payload.occurred_at);
+  const occurredAt = Number.isNaN(parsedOccurredAt) ? Date.now() : parsedOccurredAt;
+
+  const { data: linked, error: lookupError } = await authAdminClient
     .from("linked_accounts")
-    .select("user_id")
+    .select("user_id, status_checked_at")
     .eq("provider", "metafy")
     .eq("provider_user_id", metafyUserId)
     .maybeSingle();
 
+  if (lookupError) {
+    console.error(
+      `[metafy-webhook] ${type}: lookup failed for provider user ${metafyUserId}:`,
+      lookupError.message,
+    );
+    return;
+  }
   if (!linked) return; // User hasn't linked their Riftseer account yet
 
-  const now = new Date().toISOString();
+  // Redelivered and out-of-order events must not overwrite newer state.
+  const lastChecked = linked.status_checked_at
+    ? Date.parse(linked.status_checked_at as string)
+    : NaN;
+  if (!Number.isNaN(lastChecked) && lastChecked > occurredAt) return;
 
-  if (type === "member.joined") {
-    await authAdminClient
-      .from("linked_accounts")
-      .update({ is_member: true, status_checked_at: now })
-      .eq("user_id", linked.user_id)
-      .eq("provider", "metafy");
-    return;
-  }
+  const { error: updateError } = await authAdminClient
+    .from("linked_accounts")
+    .update({ ...updates, status_checked_at: new Date(occurredAt).toISOString() })
+    .eq("user_id", linked.user_id)
+    .eq("provider", "metafy");
 
-  if (type === "member.left") {
-    // Left the community entirely — remove both member and supporter status
-    await authAdminClient
-      .from("linked_accounts")
-      .update({ is_member: false, is_supporter: false, status_checked_at: now })
-      .eq("user_id", linked.user_id)
-      .eq("provider", "metafy");
-    return;
-  }
-
-  // Subscription events
-  switch (type) {
-    case "subscription.created":
-    case "subscription.renewed":
-    case "subscription.upgraded":
-    case "subscription.downgraded":
-      // Subscribers are always members
-      await authAdminClient
-        .from("linked_accounts")
-        .update({ is_supporter: true, is_member: true, status_checked_at: now })
-        .eq("user_id", linked.user_id)
-        .eq("provider", "metafy");
-      break;
-    case "subscription.expired":
-    case "subscription.canceled":
-      // Only remove supporter status — they may remain a free member
-      await authAdminClient
-        .from("linked_accounts")
-        .update({ is_supporter: false, status_checked_at: now })
-        .eq("user_id", linked.user_id)
-        .eq("provider", "metafy");
-      break;
+  if (updateError) {
+    console.error(
+      `[metafy-webhook] ${type}: status update failed for user ${linked.user_id}:`,
+      updateError.message,
+    );
   }
 }
 
@@ -166,6 +180,7 @@ export async function checkMetafyMembership(
   try {
     const res = await fetch(`${METAFY_API_BASE}/v1/community/list-joined-communities`, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(METAFY_TIMEOUT_MS),
     });
     if (!res.ok) return null;
     const data = (await res.json().catch(() => null)) as {
@@ -200,7 +215,10 @@ export async function refreshMetafySupporterStatus(
   try {
     const res = await fetch(
       `${METAFY_API_BASE}/v1/me/purchases/communities/${encodeURIComponent(communityId)}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(METAFY_TIMEOUT_MS),
+      },
     );
 
     if (res.ok) {
@@ -220,7 +238,7 @@ export async function refreshMetafySupporterStatus(
   }
 
   if (gotDefinitiveAnswer && authAdminClient) {
-    await authAdminClient
+    const { error } = await authAdminClient
       .from("linked_accounts")
       .update({
         is_supporter: isSupporter,
@@ -228,6 +246,9 @@ export async function refreshMetafySupporterStatus(
       })
       .eq("user_id", userId)
       .eq("provider", "metafy");
+    if (error) {
+      console.error(`[metafy] supporter status update failed for user ${userId}:`, error.message);
+    }
   }
 
   return isSupporter;

@@ -34,6 +34,40 @@ const ProfileListSchema = t.Object({
 const HANDLE_RE = /^[a-z0-9_]{3,30}$/;
 const SOCIAL_LINK_MAX = 500;
 
+const FollowListQuerySchema = t.Object({
+  limit: t.Optional(t.Number({ minimum: 1, maximum: 100, default: 20 })),
+  offset: t.Optional(t.Number({ minimum: 0, default: 0 })),
+});
+
+interface ProfileStub {
+  id: string;
+  handle: string;
+  username: string;
+  created_at: string;
+}
+
+function clampPaging(query: { limit?: number; offset?: number }) {
+  return {
+    limit: Math.min(Math.max(Math.trunc(query.limit ?? 20), 1), 100),
+    offset: Math.max(Math.trunc(query.offset ?? 0), 0),
+  };
+}
+
+/** Resolves profile stubs for `ids`, preserving the order of `ids`. */
+async function fetchProfileStubs(ids: string[]): Promise<ProfileStub[]> {
+  if (!authAdminClient || ids.length === 0) return [];
+  const { data } = await authAdminClient
+    .from("profiles")
+    .select("id, handle, username, created_at")
+    .in("id", ids);
+  const byId = new Map<string, ProfileStub>(
+    ((data ?? []) as ProfileStub[]).map((p) => [p.id, p]),
+  );
+  return ids
+    .map((id) => byId.get(id))
+    .filter((p): p is ProfileStub => p !== undefined);
+}
+
 export function usersRoutes() {
   return (
     new Elysia()
@@ -146,8 +180,7 @@ export function usersRoutes() {
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
           const handle = params.handle.toLowerCase();
-          const limit = Math.min(query.limit ?? 20, 100);
-          const offset = query.offset ?? 0;
+          const { limit, offset } = clampPaging(query);
 
           const { data: target } = await authAdminClient
             .from("profiles")
@@ -164,24 +197,16 @@ export function usersRoutes() {
             .from("follows")
             .select("follower_id", { count: "exact" })
             .eq("following_id", target.id)
+            .order("created_at", { ascending: false })
             .range(offset, offset + limit - 1);
 
           const ids = (rows ?? []).map((r: { follower_id: string }) => r.follower_id);
-          const profiles = ids.length
-            ? ((await authAdminClient
-                .from("profiles")
-                .select("id, handle, username, created_at")
-                .in("id", ids)).data ?? [])
-            : [];
 
-          return { items: profiles, total: count ?? 0 };
+          return { items: await fetchProfileStubs(ids), total: count ?? 0 };
         },
         {
           params: t.Object({ handle: t.String() }),
-          query: t.Object({
-            limit: t.Optional(t.Number()),
-            offset: t.Optional(t.Number()),
-          }),
+          query: FollowListQuerySchema,
           response: {
             200: ProfileListSchema,
             404: ErrorSchema,
@@ -204,8 +229,7 @@ export function usersRoutes() {
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
           const handle = params.handle.toLowerCase();
-          const limit = Math.min(query.limit ?? 20, 100);
-          const offset = query.offset ?? 0;
+          const { limit, offset } = clampPaging(query);
 
           const { data: target } = await authAdminClient
             .from("profiles")
@@ -222,24 +246,16 @@ export function usersRoutes() {
             .from("follows")
             .select("following_id", { count: "exact" })
             .eq("follower_id", target.id)
+            .order("created_at", { ascending: false })
             .range(offset, offset + limit - 1);
 
           const ids = (rows ?? []).map((r: { following_id: string }) => r.following_id);
-          const profiles = ids.length
-            ? ((await authAdminClient
-                .from("profiles")
-                .select("id, handle, username, created_at")
-                .in("id", ids)).data ?? [])
-            : [];
 
-          return { items: profiles, total: count ?? 0 };
+          return { items: await fetchProfileStubs(ids), total: count ?? 0 };
         },
         {
           params: t.Object({ handle: t.String() }),
-          query: t.Object({
-            limit: t.Optional(t.Number()),
-            offset: t.Optional(t.Number()),
-          }),
+          query: FollowListQuerySchema,
           response: {
             200: ProfileListSchema,
             404: ErrorSchema,
@@ -395,13 +411,21 @@ export function usersRoutes() {
                 return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
               }
 
-              // profiles row cascades from auth.users, but delete explicitly in case RLS blocks cascade
-              await authAdminClient.from("profiles").delete().eq("id", user.id);
-
+              // Delete the auth user first — the profiles row cascades from
+              // auth.users, so a failure here leaves the account fully intact.
               const { error } = await authAdminClient.auth.admin.deleteUser(user.id);
               if (error) {
                 set.status = 500;
                 return { error: "Failed to delete account.", code: "DELETE_FAILED" };
+              }
+
+              // Fallback for the case where the cascade did not remove the profile.
+              const { error: profileError } = await authAdminClient
+                .from("profiles")
+                .delete()
+                .eq("id", user.id);
+              if (profileError) {
+                console.error(`[users/me] profile cleanup failed for ${user.id}:`, profileError.message);
               }
 
               return { message: "Account deleted." };
@@ -463,6 +487,7 @@ export function usersRoutes() {
                 400: ErrorSchema,
                 401: ErrorSchema,
                 404: ErrorSchema,
+                500: ErrorSchema,
                 503: ErrorSchema,
               },
               detail: { tags: ["Users"], summary: "Follow user" },
@@ -490,11 +515,17 @@ export function usersRoutes() {
                 return { error: "Profile not found", code: "NOT_FOUND" };
               }
 
-              await authAdminClient
+              const { error: unfollowError } = await authAdminClient
                 .from("follows")
                 .delete()
                 .eq("follower_id", user.id)
                 .eq("following_id", target.id);
+
+              if (unfollowError) {
+                console.error(`[users/:handle/follow] unfollow failed:`, unfollowError.message);
+                set.status = 500;
+                return { error: "Failed to unfollow", code: "UNFOLLOW_FAILED" };
+              }
 
               return { message: "Unfollowed successfully" };
             },
@@ -504,6 +535,7 @@ export function usersRoutes() {
                 200: t.Object({ message: t.String() }),
                 401: ErrorSchema,
                 404: ErrorSchema,
+                500: ErrorSchema,
                 503: ErrorSchema,
               },
               detail: { tags: ["Users"], summary: "Unfollow user" },

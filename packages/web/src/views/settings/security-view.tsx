@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useActionState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronRight, Pencil, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ interface Props {
 // ── Change Username Dialog ────────────────────────────────────────────────────
 
 function ChangeUsernameDialog({ currentHandle }: { currentHandle: string }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [handle, setHandle] = useState(currentHandle);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -42,6 +44,8 @@ function ChangeUsernameDialog({ currentHandle }: { currentHandle: string }) {
         setFeedback({ type: "error", message: result.error ?? "Failed to update username." });
       } else {
         setFeedback({ type: "success", message: `Username changed to @${result.handle ?? handle}.` });
+        // Reload the server component so the displayed handle matches the session.
+        router.refresh();
         setTimeout(() => setOpen(false), 1200);
       }
     });

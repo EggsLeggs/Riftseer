@@ -9,7 +9,7 @@ export function PrivacyView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 15 May 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 27 July 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -105,9 +105,13 @@ export function PrivacyView() {
             exclusively to verify your Metafy membership and to enable supporter perks (ad-free
             experience and supporter badge). Your Metafy OAuth tokens are never exposed to the
             browser; they remain server-side and are used only to re-check your membership status
-            on login and when you visit your donations settings. You can disconnect your Metafy
-            account at any time from the Donations settings page, which deletes all stored Metafy
-            data. Metafy&apos;s own{" "}
+            on login and when you visit your donations settings. Metafy may also notify our server
+            directly when your community membership or subscription changes; we use those
+            notifications only to update the membership and supporter status stored on your linked
+            account, together with the time of the update. We do not keep a separate history of
+            those notifications, and payment details are never sent to us. You can disconnect your
+            Metafy account at any time from the Donations settings page, which deletes all stored
+            Metafy data. Metafy&apos;s own{" "}
             <InlineLink href="https://metafy.gg/privacy">privacy policy</InlineLink> applies to
             information held by Metafy.
           </Text>

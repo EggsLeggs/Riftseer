@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Star, Users, ExternalLink } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SocialIcon } from "@/components/ui/social-icon";
-import { FollowButton } from "@/components/profile/follow-button";
+import { FollowButton } from "@/features/profile/follow-button";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
 import type { ProfileData } from "@/features/profile/api";
 
@@ -94,20 +94,36 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
           {activeSocials.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {activeSocials.map((platform) => {
-                const url = profile.social_links[platform.id]!;
-                const isUrl = url.startsWith("http");
+                const value = profile.social_links[platform.id]!;
+                const chipClass =
+                  "flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors";
+                const content = (
+                  <>
+                    <SocialIcon svgPath={platform.svgPath} className="size-3.5" />
+                    <span>{platform.label}</span>
+                  </>
+                );
+
+                // Some platforms (Discord) accept a bare username, which is not linkable.
+                if (!value.startsWith("http")) {
+                  return (
+                    <span key={platform.id} title={`${platform.label}: ${value}`} className={chipClass}>
+                      {content}
+                    </span>
+                  );
+                }
+
                 return (
                   <a
                     key={platform.id}
-                    href={isUrl ? url : undefined}
-                    target={isUrl ? "_blank" : undefined}
-                    rel={isUrl ? "noopener noreferrer" : undefined}
+                    href={value}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     title={platform.label}
-                    className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                    className={chipClass}
                   >
-                    <SocialIcon svgPath={platform.svgPath} className="size-3.5" />
-                    <span>{platform.label}</span>
-                    {isUrl && <ExternalLink className="size-2.5 opacity-50" />}
+                    {content}
+                    <ExternalLink className="size-2.5 opacity-50" />
                   </a>
                 );
               })}

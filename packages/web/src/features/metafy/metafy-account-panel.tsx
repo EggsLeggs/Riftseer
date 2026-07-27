@@ -8,12 +8,14 @@ import {
   connectMetafyAction,
   disconnectMetafyAction,
   refreshMetafyStatusAction,
-} from "@/features/metafy/actions";
-import type { MetafyStatusResult } from "@/features/metafy/types";
+} from "./actions";
+import type { MetafyStatusResult } from "./types";
 
 interface MetafyAccountPanelProps {
   initialStatus: MetafyStatusResult | null;
 }
+
+type Feedback = { message: string; isError: boolean };
 
 export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
   const searchParams = useSearchParams();
@@ -21,8 +23,12 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
   const justErrored = searchParams.get("error") === "1";
 
   const [status, setStatus] = useState<MetafyStatusResult | null>(initialStatus);
-  const [feedback, setFeedback] = useState<string | null>(
-    justLinked ? "Metafy account linked!" : justErrored ? "Failed to link Metafy account. Please try again." : null,
+  const [feedback, setFeedback] = useState<Feedback | null>(
+    justLinked
+      ? { message: "Metafy account linked!", isError: false }
+      : justErrored
+        ? { message: "Failed to link Metafy account. Please try again.", isError: true }
+        : null,
   );
   const [connectPending, startConnect] = useTransition();
   const [disconnectPending, startDisconnect] = useTransition();
@@ -31,7 +37,7 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
   function handleConnect() {
     startConnect(async () => {
       const result = await connectMetafyAction();
-      if ("error" in result) setFeedback(result.error);
+      if ("error" in result) setFeedback({ message: result.error, isError: true });
       // On success, connectMetafyAction redirects — no further state update needed
     });
   }
@@ -40,10 +46,10 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
     startDisconnect(async () => {
       const result = await disconnectMetafyAction();
       if ("error" in result) {
-        setFeedback(result.error);
+        setFeedback({ message: result.error, isError: true });
       } else {
         setStatus({ linked: false });
-        setFeedback("Metafy account unlinked.");
+        setFeedback({ message: "Metafy account unlinked.", isError: false });
       }
     });
   }
@@ -52,21 +58,32 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
     startRefresh(async () => {
       const result = await refreshMetafyStatusAction();
       if ("error" in result) {
-        setFeedback(result.error);
+        setFeedback({ message: result.error, isError: true });
       } else {
         setStatus((prev) =>
           prev?.linked
             ? { ...prev, is_supporter: result.is_supporter }
             : prev,
         );
-        setFeedback(
-          result.is_supporter
+        setFeedback({
+          message: result.is_supporter
             ? "You are an active Metafy supporter."
             : "Supporter status updated — no active membership found.",
-        );
+          isError: false,
+        });
       }
     });
   }
+
+  const feedbackMessage = feedback && (
+    <p
+      role={feedback.isError ? "alert" : "status"}
+      aria-live={feedback.isError ? "assertive" : "polite"}
+      className={feedback.isError ? "text-xs text-destructive" : "text-xs text-muted-foreground"}
+    >
+      {feedback.message}
+    </p>
+  );
 
   if (!status?.linked) {
     return (
@@ -78,9 +95,7 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
         >
           {connectPending ? "Redirecting…" : "Link Metafy Account"}
         </Button>
-        {feedback && (
-          <p className="text-xs text-muted-foreground">{feedback}</p>
-        )}
+        {feedbackMessage}
       </div>
     );
   }
@@ -124,9 +139,7 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
           {disconnectPending ? "Unlinking…" : "Unlink"}
         </Button>
       </div>
-      {feedback && (
-        <p className="text-xs text-muted-foreground">{feedback}</p>
-      )}
+      {feedbackMessage}
     </div>
   );
 }

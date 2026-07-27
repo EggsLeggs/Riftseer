@@ -243,6 +243,7 @@ export function ProfileSettingsView({ session, profile }: Props) {
                       key={preset}
                       type="button"
                       onClick={() => togglePreset(preset)}
+                      aria-pressed={selected}
                       disabled={disabled}
                       className={[
                         "rounded-full border px-3 py-1 text-xs font-medium transition-colors",

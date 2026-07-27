@@ -131,18 +131,11 @@ export async function changeEmailAction(_prev: unknown, formData: FormData) {
   const session = await getSession();
   if (!session) return { error: "Not signed in" };
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/email`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email }),
-  });
+  const api = createApiClient(session.accessToken);
+  const { error } = await api.api.v1.auth.email.patch({ email });
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    return { error: body.error ?? "Email update failed" };
+  if (error) {
+    return { error: (error.value as { error?: string })?.error ?? "Email update failed" };
   }
 
   return { ok: true };
@@ -161,43 +154,39 @@ export async function changePasswordAction(_prev: unknown, formData: FormData) {
   const session = await getSession();
   if (!session) return { error: "Not signed in" };
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/change-password`, {
-    method: "PATCH",
-    headers: {
-      Authorization: `Bearer ${session.accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  const api = createApiClient(session.accessToken);
+  const { error } = await api.api.v1.auth["change-password"].patch({
+    current_password: currentPassword,
+    new_password: newPassword,
   });
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    return { error: body.error ?? "Password change failed" };
+  if (error) {
+    return { error: (error.value as { error?: string })?.error ?? "Password change failed" };
   }
 
   return { ok: true };
 }
 
 export async function deleteAccountAction(_prev: unknown, formData: FormData) {
-  const confirmation = str(formData, "confirmation");
-  if (!confirmation) return { error: "Confirmation is required" };
-
   const session = await getSession();
   if (!session) return { error: "Not signed in" };
 
-  const expectedHandle = session.user.handle ?? "";
-  if (confirmation.toLowerCase() !== expectedHandle.toLowerCase()) {
-    return { error: `Type your @handle (${expectedHandle}) exactly to confirm deletion` };
+  // Sessions predating handles have nothing to confirm against, so deletion
+  // proceeds without the typed confirmation for those.
+  const expectedHandle = session.user.handle;
+  if (expectedHandle) {
+    const confirmation = str(formData, "confirmation");
+    if (!confirmation) return { error: "Confirmation is required" };
+    if (confirmation.toLowerCase() !== expectedHandle.toLowerCase()) {
+      return { error: `Type your @handle (${expectedHandle}) exactly to confirm deletion` };
+    }
   }
 
-  const res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/users/me`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${session.accessToken}` },
-  });
+  const api = createApiClient(session.accessToken);
+  const { error } = await api.api.v1.users.me.delete();
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    return { error: body.error ?? "Account deletion failed" };
+  if (error) {
+    return { error: (error.value as { error?: string })?.error ?? "Account deletion failed" };
   }
 
   await clearSessionCookies();

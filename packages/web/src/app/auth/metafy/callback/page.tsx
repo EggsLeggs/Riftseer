@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { completeMetafyCallbackAction } from "@/features/metafy/actions";
@@ -13,35 +13,50 @@ type State =
 export default function MetafyCallbackPage() {
   const router = useRouter();
   const [state, setState] = useState<State>({ status: "loading" });
+  const startedRef = useRef(false);
 
   useEffect(() => {
+    // Strict mode / re-renders must not exchange the authorization code twice.
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    let redirectTimer: ReturnType<typeof setTimeout> | undefined;
+
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
-    const state = params.get("state");
+    const oauthState = params.get("state");
     const error = params.get("error");
     const errorDescription = params.get("error_description");
 
     if (error || errorDescription) {
-      setState({
-        status: "error",
-        message: errorDescription ?? error ?? "Metafy authorization was denied.",
-      });
+      // Upstream text is not shown to the user — it is attacker-influenced.
+      console.error("[metafy callback] authorization failed:", { error, errorDescription });
+      setState({ status: "error", message: "Metafy authorization was denied." });
       return;
     }
 
-    if (!code || !state) {
+    if (!code || !oauthState) {
       setState({ status: "error", message: "Missing OAuth parameters. Please try again." });
       return;
     }
 
-    completeMetafyCallbackAction(code, state).then((result) => {
-      if ("error" in result) {
-        setState({ status: "error", message: result.error });
-      } else {
-        setState({ status: "success" });
-        setTimeout(() => router.replace("/settings/donations?linked=1"), 1000);
-      }
-    });
+    completeMetafyCallbackAction(code, oauthState)
+      .then((result) => {
+        if ("error" in result) {
+          setState({ status: "error", message: result.error });
+        } else {
+          setState({ status: "success" });
+          redirectTimer = setTimeout(() => router.replace("/settings/donations?linked=1"), 1000);
+        }
+      })
+      .catch((err: unknown) => {
+        console.error("[metafy callback] link request failed:", err);
+        setState({ status: "error", message: "Could not link your Metafy account. Please try again." });
+      });
+
+    return () => {
+      if (redirectTimer) clearTimeout(redirectTimer);
+    };
   }, [router]);
 
   if (state.status === "loading") {

@@ -3,6 +3,7 @@ import { authAdminClient, authClient, supabaseUrl, supabaseAnonKey } from "../li
 import { authPlugin } from "../plugins/auth";
 import { ErrorSchema } from "../schemas";
 import { refreshMetafySupporterStatus } from "../lib/metafy";
+import { runInBackground } from "../lib/background";
 
 const SessionSchema = t.Object({
   access_token: t.String({ description: "JWT access token (short-lived)" }),
@@ -57,6 +58,15 @@ export function authRoutes() {
             };
           }
 
+          const username = body.username.trim();
+          if (username.length < 1 || username.length > 50) {
+            set.status = 400;
+            return {
+              error: "Display name must be 1–50 characters.",
+              code: "INVALID_USERNAME",
+            };
+          }
+
           const acceptedAt = new Date().toISOString();
           const termsVersion = process.env.LEGAL_TERMS_VERSION ?? "1";
           const privacyVersion = process.env.LEGAL_PRIVACY_VERSION ?? "1";
@@ -103,7 +113,7 @@ export function authRoutes() {
 
             const { error: profileError } = await authAdminClient
               .from("profiles")
-              .insert({ id: data.user.id, username: body.username.trim(), handle });
+              .insert({ id: data.user.id, username, handle });
             if (profileError) {
               console.error("[auth/register] profile insert failed:", profileError.message);
               const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(data.user.id);
@@ -136,7 +146,7 @@ export function authRoutes() {
               email: data.user!.email,
               created_at: data.user!.created_at,
               handle,
-              username: body.username.trim(),
+              username,
             },
           };
         },
@@ -216,9 +226,10 @@ export function authRoutes() {
           // Does not block or affect the login response.
           const communityId = process.env.METAFY_COMMUNITY_ID;
           if (authAdminClient && communityId) {
-            void (async () => {
-              try {
-                const { data: linked } = await authAdminClient
+            const client = authAdminClient;
+            runInBackground(
+              (async () => {
+                const { data: linked } = await client
                   .from("linked_accounts")
                   .select("access_token")
                   .eq("user_id", data.user.id)
@@ -231,10 +242,9 @@ export function authRoutes() {
                     communityId,
                   );
                 }
-              } catch {
-                // never fail login due to Metafy status check
-              }
-            })();
+              })(),
+              "auth/login metafy refresh",
+            );
           }
 
           return result;

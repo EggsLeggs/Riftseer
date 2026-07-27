@@ -51,6 +51,7 @@ import { authRoutes } from "./routes/auth";
 import { usersRoutes } from "./routes/users";
 import { metafyRoutes } from "./routes/metafy";
 import { handleMetafyWebhook } from "./lib/metafy";
+import { withExecutionContext, type WaitUntilContext } from "./lib/background";
 
 // ─── Singletons ───────────────────────────────────────────────────────────────
 // CF Workers forbid async I/O (fetch) in global scope — only inside handlers.
@@ -87,6 +88,8 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
   .onBeforeHandle(async ({ path, set }) => {
     if (
       path === "/api/v1/health" ||
+      path === "/api/v1/users" ||
+      path === "/api/v1/webhooks" ||
       path.startsWith("/api/v1/auth/") ||
       path.startsWith("/api/v1/users/") ||
       path.startsWith("/api/v1/webhooks/")
@@ -122,11 +125,13 @@ export type App = typeof app;
 // Elysia's body parser consumes the body stream before our route handler runs,
 // so we intercept the webhook path here, before mounting Elysia.
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, _env: unknown, ctx: WaitUntilContext): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === "/api/v1/webhooks/metafy" && request.method === "POST") {
-      return handleMetafyWebhook(request);
-    }
-    return Promise.resolve(app.fetch(request));
+    return withExecutionContext(ctx, () => {
+      if (url.pathname === "/api/v1/webhooks/metafy" && request.method === "POST") {
+        return handleMetafyWebhook(request);
+      }
+      return Promise.resolve(app.fetch(request));
+    });
   },
 };

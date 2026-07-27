@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { SettingsSubpageLayout } from "./settings-subpage-layout";
-import { MetafyAccountPanel } from "@/components/metafy/metafy-account-panel";
+import { MetafyAccountPanel } from "@/features/metafy/metafy-account-panel";
 import type { MetafyStatusResult } from "@/features/metafy/types";
 
 interface DonationsViewProps {

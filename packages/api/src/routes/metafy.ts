@@ -171,9 +171,15 @@ export function metafyRoutes() {
             return { error: "Failed to fetch Metafy profile", code: "UPSTREAM_ERROR" };
           }
 
-          const { user: metafyUser } = (await profileRes.json()) as {
-            user: { id: string; slug: string; name: string };
-          };
+          const profilePayload = (await profileRes.json().catch(() => null)) as {
+            user?: { id?: string; slug?: string; name?: string };
+          } | null;
+          const metafyUser = profilePayload?.user;
+
+          if (!metafyUser?.id) {
+            set.status = 502;
+            return { error: "Failed to fetch Metafy profile", code: "UPSTREAM_ERROR" };
+          }
 
           const providerUserId = metafyUser.id;
           const providerUsername = metafyUser.slug ?? metafyUser.name ?? null;
@@ -247,11 +253,22 @@ export function metafyRoutes() {
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
 
-          await authAdminClient
+          const { error, count } = await authAdminClient
             .from("linked_accounts")
-            .delete()
+            .delete({ count: "exact" })
             .eq("user_id", user.id)
             .eq("provider", "metafy");
+
+          if (error) {
+            console.error(`[auth/metafy/disconnect] delete failed for user ${user.id}:`, error.message);
+            set.status = 500;
+            return { error: "Failed to disconnect Metafy account", code: "DB_ERROR" };
+          }
+
+          if (count === 0) {
+            set.status = 404;
+            return { error: "No linked Metafy account", code: "NOT_LINKED" };
+          }
 
           return { message: "Metafy account disconnected" };
         },
@@ -259,6 +276,8 @@ export function metafyRoutes() {
           response: {
             200: t.Object({ message: t.String() }),
             401: ErrorSchema,
+            404: ErrorSchema,
+            500: ErrorSchema,
             503: ErrorSchema,
           },
           detail: { tags: ["Auth"], summary: "Disconnect Metafy account" },
