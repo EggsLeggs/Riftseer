@@ -1,5 +1,6 @@
 "use client";
 
+import { ClearBodyPointerEventsOnNavigate } from "@/components/layout/clear-body-pointer-events";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CardSearchProvider } from "@/features/cards/card-search-provider";
@@ -13,7 +14,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryProvider>
         <SitePreferencesProvider>
           <CardSearchProvider>
-            <TooltipProvider>{children}</TooltipProvider>
+            <TooltipProvider>
+              <ClearBodyPointerEventsOnNavigate />
+              {children}
+            </TooltipProvider>
             <Toaster />
           </CardSearchProvider>
         </SitePreferencesProvider>

@@ -94,6 +94,24 @@ export function normalizeCardTextLayout(
 
 const KEYWORD_COST_RUN = /^(?:\s*)((?::rb_(?:energy_\d+|rune_\w+):)+)/;
 
+/** Private-use bookends so restored text can't collide with card copy. */
+const TOKEN_PLACEHOLDER = /\uE000(\d+)\uE001/g;
+
+/** Mask `:rb_…:` tokens before italic/underscore splitting. */
+export function maskIconTokens(text: string): { masked: string; tokens: string[] } {
+  const tokens: string[] = [];
+  const masked = text.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
+    const index = tokens.length;
+    tokens.push(match);
+    return `\uE000${index}\uE001`;
+  });
+  return { masked, tokens };
+}
+
+export function restoreIconTokens(text: string, tokens: string[]): string {
+  return text.replace(TOKEN_PLACEHOLDER, (_, index: string) => tokens[Number(index)] ?? "");
+}
+
 function formatTokenRun(keys: string[], preferText: boolean): string {
   if (keys.length === 0) return "";
   if (preferText) return formatTokenDisplayList(keys);
@@ -102,15 +120,8 @@ function formatTokenRun(keys: string[], preferText: boolean): string {
 
 function formatLineForClipboard(line: string, preferText: boolean): string {
   // Drop reminder-italic markers without touching underscores inside `:rb_…:`.
-  const tokens: string[] = [];
-  const masked = line.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
-    const index = tokens.length;
-    tokens.push(match);
-    return `\uE000${index}\uE001`;
-  });
-  const plain = masked
-    .replace(/_/g, "")
-    .replace(/\uE000(\d+)\uE001/g, (_, index: string) => tokens[Number(index)] ?? "");
+  const { masked, tokens } = maskIconTokens(line);
+  const plain = masked.replace(/_/g, "").replace(TOKEN_PLACEHOLDER, (_, index: string) => tokens[Number(index)] ?? "");
 
   const regex = new RegExp(
     `${TOKEN_REGEX.source}|${KEYWORD_TAG_REGEX.source}`,

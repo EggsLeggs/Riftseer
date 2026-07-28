@@ -21,7 +21,7 @@ export function reportCardIssueUrl(card: Card): string {
 
   const params = new URLSearchParams({
     title: `Card data issue: ${card.name}`,
-    labels: "card-data",
+    labels: "Card Data Issue",
     body,
   });
   return `${ISSUE_URL}?${params.toString()}`;

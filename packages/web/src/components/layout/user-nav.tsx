@@ -23,7 +23,7 @@ export function UserNav({ handle, isSupporter, isMember }: UserNavProps) {
   const [pending, startTransition] = useTransition();
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="sm" className="gap-1.5">
           {isSupporter && <Star className="size-3 fill-violet-500 text-violet-500" />}

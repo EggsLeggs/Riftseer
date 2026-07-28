@@ -13,19 +13,24 @@ export function formatEur(n: number | null | undefined): string {
 /**
  * Display type line: special + base as "X Y" (e.g. "Champion Unit",
  * "Signature Spell", "Token Unit"). Lone "Token" becomes "Token Unit".
+ * Legends keep a lone "Legend" — upstream stores Champion as affiliation,
+ * not a printed type prefix.
  */
 export function cardTypeLine(card: Card): string {
   const type = card.classification?.type?.trim() || undefined;
   const special = card.classification?.supertype?.trim() || undefined;
+  const typeKey = type?.toLowerCase();
 
+  if (typeKey === "legend") return type!;
   if (type && special) return `${special} ${type}`;
-  if (type?.toLowerCase() === "token") return "Token Unit";
+  if (typeKey === "token") return "Token Unit";
   return type ?? special ?? "—";
 }
 
 /**
- * Glyph for {@link cardTypeLine}. Champions use the champion icon; every other
- * special (Signature, Token, …) keeps the base type's glyph.
+ * Glyph for {@link cardTypeLine}. Champion units use the champion icon;
+ * legends use the legend icon. Every other special (Signature, Token, …)
+ * keeps the base type's glyph.
  */
 export function cardTypeIconKey(card: Card): string | null {
   const type = card.classification?.type?.trim();
@@ -33,6 +38,7 @@ export function cardTypeIconKey(card: Card): string | null {
   const typeKey = type?.toLowerCase();
   const specialKey = special?.toLowerCase();
 
+  if (typeKey === "legend") return "legend";
   if (specialKey === "champion") return "champion";
 
   const base = typeKey ?? specialKey;

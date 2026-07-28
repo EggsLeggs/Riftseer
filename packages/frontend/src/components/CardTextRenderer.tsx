@@ -1,4 +1,5 @@
 import React from "react";
+import { maskIconTokens, restoreIconTokens } from "@riftseer/types/card-text";
 import { TOKEN_ICON_MAP, TOKEN_REGEX } from "@riftseer/types/icons";
 
 function normalizeCardTextLayout(text: string, paragraphBreak = "\n"): string {
@@ -98,14 +99,8 @@ function renderTokens(text: string, keyOffset = 0): React.ReactNode[] {
 
 function renderLine(line: string): React.ReactNode[] {
   // Mask :rb_…: tokens first — their underscores must not start/end italic spans.
-  const tokens: string[] = [];
-  const masked = line.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
-    const i = tokens.length;
-    tokens.push(match);
-    return `\uE000${i}\uE001`;
-  });
-  const restore = (s: string) =>
-    s.replace(/\uE000(\d+)\uE001/g, (_, n) => tokens[Number(n)] ?? "");
+  const { masked, tokens } = maskIconTokens(line);
+  const restore = (s: string) => restoreIconTokens(s, tokens);
 
   const parts: React.ReactNode[] = [];
   masked.split(/(_(?:[^_\n]|:[^:\n]+:)+_)/).forEach((seg, si) => {

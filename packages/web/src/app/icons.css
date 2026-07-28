@@ -225,7 +225,7 @@
 }
 
 .icon-rarity-epic {
-  background-image: url("https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/5e9799d87d0f8baa55f6d9bddb9750669a0f485b-455x419.png?accountingTag=RB&auto=format&fit=fill&q=80&w=48");
+  background-image: url("/icons/rarity/rarity_epic.png");
 }
 
 /* .icon-rarity-legendary has no artwork yet. */

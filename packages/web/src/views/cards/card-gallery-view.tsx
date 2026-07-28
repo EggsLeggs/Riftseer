@@ -211,7 +211,8 @@ export function CardGalleryView() {
               type="single"
               spacing={0}
               variant="outline"
-              size="sm"
+              size="lg"
+              className="rounded-md"
               value={resultsView}
               onValueChange={(v: string) => {
                 if (!v) return;
@@ -219,15 +220,24 @@ export function CardGalleryView() {
               }}
               aria-label="Card layout"
             >
-              <ToggleGroupItem value="details" className="gap-1.5 px-2.5">
+              <ToggleGroupItem
+                value="details"
+                className="gap-1.5 rounded-none px-2.5 first:rounded-l-md last:rounded-r-md"
+              >
                 <LayoutList data-icon="inline-start" className="size-3.5" />
                 Full details
               </ToggleGroupItem>
-              <ToggleGroupItem value="images" className="gap-1.5 px-2.5">
+              <ToggleGroupItem
+                value="images"
+                className="gap-1.5 rounded-none px-2.5 first:rounded-l-md last:rounded-r-md"
+              >
                 <LayoutGrid data-icon="inline-start" className="size-3.5" />
                 Images
               </ToggleGroupItem>
-              <ToggleGroupItem value="table" className="gap-1.5 px-2.5">
+              <ToggleGroupItem
+                value="table"
+                className="gap-1.5 rounded-none px-2.5 first:rounded-l-md last:rounded-r-md"
+              >
                 <Table2 data-icon="inline-start" className="size-3.5" />
                 Table
               </ToggleGroupItem>

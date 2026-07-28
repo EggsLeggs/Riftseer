@@ -8,6 +8,7 @@
 .card-keyword {
   /* tan(10°) ≈ 0.176 — horizontal inset for an 80° parallelogram at 1em height */
   --keyword-inset: 0.2em;
+
   display: inline-flex;
   align-items: center;
   gap: 0.12em;
@@ -52,6 +53,7 @@
 /* `[Keyword][&gt;]` — chevron tip on the right (Level / Empowered / Action → …) */
 .card-keyword--arrow {
   --keyword-arrow: 0.42em;
+
   padding-right: calc(0.4em + var(--keyword-arrow));
   clip-path: polygon(
     var(--keyword-inset) 0,
@@ -104,6 +106,7 @@
 .card-type-badge {
   --type-inset: 0.2em;
   --type-tag-bg: #c8c8c8;
+
   display: inline-flex;
   align-items: center;
   vertical-align: middle;

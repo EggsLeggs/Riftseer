@@ -2,7 +2,11 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
-import { normalizeCardTextLayout } from "@riftseer/types/card-text";
+import {
+  maskIconTokens,
+  normalizeCardTextLayout,
+  restoreIconTokens,
+} from "@riftseer/types/card-text";
 import {
   TOKEN_ICON_MAP,
   TOKEN_REGEX,
@@ -33,23 +37,6 @@ const KEYWORD_COST_RUN = /^(?:\s*)((?::rb_(?:energy_\d+|rune_\w+):)+)/;
  * tokens must not count as delimiters — mask tokens before splitting.
  */
 const ITALIC_SEGMENT_PATTERN = /(_(?:[^_\n]|:[^:\n]+:)+_)/;
-
-/** Private-use bookends so restored text can't collide with card copy. */
-const TOKEN_PLACEHOLDER = /\uE000(\d+)\uE001/g;
-
-function maskIconTokens(text: string): { masked: string; tokens: string[] } {
-  const tokens: string[] = [];
-  const masked = text.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
-    const index = tokens.length;
-    tokens.push(match);
-    return `\uE000${index}\uE001`;
-  });
-  return { masked, tokens };
-}
-
-function restoreIconTokens(text: string, tokens: string[]): string {
-  return text.replace(TOKEN_PLACEHOLDER, (_, index: string) => tokens[Number(index)] ?? "");
-}
 
 /** Keyword label colours are only white or black — energy circle uses that, number the other. */
 function contrastingBw(hex: string): string {
@@ -136,7 +123,7 @@ function keywordClipboardText(
       ? ""
       : preferText
         ? ` ${formatTokenDisplayList(costs)}`
-        : ` ${costs.map(tokenPlainLabel).join("")}`;
+        : ` ${costs.length <= 1 ? costs.map(tokenPlainLabel).join("") : costs.map(tokenPlainLabel).join(" ")}`;
   return `[${display}]${arrow ? ">" : ""}${costText}`;
 }
 
