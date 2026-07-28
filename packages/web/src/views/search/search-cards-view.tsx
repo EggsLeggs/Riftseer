@@ -235,9 +235,11 @@ export function SearchCardsView() {
   const setResultsView = React.useCallback(
     (next: CardResultsView) => {
       patchAccessibility({ cardResultsView: next });
+      // Always encode the choice: the default is per-user (accessibility
+      // .cardResultsView), so an omitted param would resolve to the viewer's
+      // own default and break shared links (e.g. an explicit "images" pick).
       updateSearchParams((p) => {
-        if (next === "images") p.delete("view");
-        else p.set("view", next);
+        p.set("view", next);
       });
     },
     [patchAccessibility, updateSearchParams],

@@ -92,7 +92,9 @@ export function SetDetailView({ code }: { code: string }) {
 
   const setResultsView = (next: CardResultsView) => {
     patchAccessibility({ cardResultsView: next });
-    updateParam("view", next === "images" ? null : next);
+    // Encode every choice explicitly — the default is per-user, so omitting the
+    // param would make shared links resolve to the viewer's own default.
+    updateParam("view", next);
   };
 
   const isLoading = cardsQuery.isPending;

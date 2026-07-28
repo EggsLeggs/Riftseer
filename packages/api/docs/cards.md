@@ -117,8 +117,8 @@ Each `CardPrintingSummary` carries just enough to render a row and link to it:
 | `prices`, `purchase_uris` | object \| undefined | `prices` requires `include=prices` |
 | `is_current` | boolean \| undefined | Only present (and `true`) on the printing being viewed |
 
-Returns `400` when neither or both of `id` / `slug` are given, and `404` when
-the card does not exist. Related IDs that no longer resolve are omitted rather
+Returns `400` when neither `id` nor `slug` is given (or when both are), and
+`404` when the card does not exist. Related IDs that no longer resolve are omitted rather
 than returned as empty rows.
 
 ---

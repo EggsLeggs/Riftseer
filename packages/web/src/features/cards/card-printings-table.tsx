@@ -22,6 +22,24 @@ const NAME_COL = {
 } as const;
 
 /**
+ * Accessible name for a whole-row link — the visible cell only carries part of
+ * the row (a name, or just a set), so compose the row's context for screen
+ * readers: name, set, collector number, rarity and price where available.
+ */
+function rowAccessibleName(row: CardPrintingSummary): string {
+  const usd = row.prices?.tcgplayer?.normal;
+  return [
+    row.name,
+    row.set_name ?? row.set_code,
+    row.collector_label ? `#${row.collector_label}` : undefined,
+    row.rarity,
+    usd != null ? formatUsd(usd) : undefined,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
+/**
  * Table of related printings — used for other printings, tokens and
  * champions/legends. `label` is the first-column header (replaces a separate
  * section title): "Prints" when showing sets, or e.g. "Champions" when showing
@@ -90,7 +108,9 @@ export function CardPrintingsTable({
                 <TableCell
                   className={cn(NAME_COL.name, "min-w-0 whitespace-normal")}
                 >
-                  <RowHitTarget href={href}>{row.name}</RowHitTarget>
+                  <RowHitTarget href={href} label={rowAccessibleName(row)}>
+                    {row.name}
+                  </RowHitTarget>
                 </TableCell>
                 <TableCell
                   className={cn(
@@ -151,7 +171,7 @@ export function CardPrintingsTable({
               )}
             >
               <TableCell className="w-[40%] whitespace-normal">
-                <RowHitTarget href={href}>
+                <RowHitTarget href={href} label={rowAccessibleName(row)}>
                   <span className="uppercase">{row.set_code ?? "—"}</span>
                   {row.set_name ? (
                     <span className="text-muted-foreground ml-1.5 hidden sm:inline">
@@ -201,15 +221,19 @@ export function CardPrintingsTable({
  */
 function RowHitTarget({
   href,
+  label,
   children,
 }: {
   href: string | null;
+  /** Full-row accessible name — the visible content is only part of the row. */
+  label?: string;
   children: React.ReactNode;
 }) {
   if (!href) return <>{children}</>;
   return (
     <Link
       href={href}
+      aria-label={label}
       className="after:absolute after:inset-0 after:content-['']"
     >
       {children}

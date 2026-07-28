@@ -65,6 +65,8 @@ export default function RootLayout({
     >
       <head>
         {/* Adobe Fonts (Typekit) — Arpona, used for card names and energy cost digits */}
+        <link rel="preconnect" href="https://use.typekit.net" />
+        <link rel="preconnect" href="https://use.typekit.net" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://use.typekit.net/jej4cyy.css" />
       </head>
       <body className="min-h-full flex flex-col">

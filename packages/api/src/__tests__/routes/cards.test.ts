@@ -22,6 +22,7 @@ import { cardsRoutes } from "../../routes/cards";
 import {
   STUB_CARD,
   STUB_PRINTING_ID,
+  STUB_SIGNATURE_ID,
   STUB_TOKEN_ID,
   StubProvider,
 } from "../stub_card_provider";
@@ -125,6 +126,7 @@ describe("API routes", () => {
       expect(body.tokens[0].id).toBe(STUB_TOKEN_ID);
       expect(body.champions).toHaveLength(1);
       expect(body.legends).toEqual([]);
+      expect(body.signatures.map((s: any) => s.id)).toContain(STUB_SIGNATURE_ID);
       expect(body.used_by).toEqual([]);
       expect(body.purchase.tcgplayer).toBe("https://www.tcgplayer.com/product/123456");
       expect(body.purchase.cardmarket).toContain("cardmarket.com");

@@ -281,6 +281,16 @@ export const cardExportUrls = {
   json: (id: string) => `${API_BASE}/api/v1/cards/${encodeURIComponent(id)}?include=prices`,
 };
 
+/**
+ * Fetch a card export (see {@link cardExportUrls}) as raw text for the clipboard.
+ * Uses the shared no-store + timeout init so a hung request can't wedge the UI.
+ */
+export async function fetchCardExportText(url: string): Promise<string> {
+  const res = await fetch(url, requestFetchInit());
+  if (!res.ok) throw new CardApiError(`Riftseer API ${res.status}`, "http", res.status);
+  return res.text();
+}
+
 /** TanStack Query keys for card fetches. */
 export const cardsQueryKeys = {
   all: ["cards"] as const,

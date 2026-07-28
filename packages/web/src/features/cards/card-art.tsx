@@ -38,6 +38,18 @@ export function CardArt({
 
   const showUpright = isLandscape && rotated;
 
+  const image = (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imageUrl}
+      alt={name}
+      className="h-full w-full object-contain transition-transform duration-300"
+      fetchPriority="high"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
+  );
+
   return (
     <div className="flex flex-col gap-2">
       <div
@@ -50,26 +62,10 @@ export function CardArt({
           // Rotating a 7:5 image into a 5:7 slot: size the wrapper to the
           // post-rotation dimensions, then spin it about its centre.
           <div className="absolute top-1/2 left-1/2 h-[calc(100%*5/7)] w-[140%] origin-center -translate-x-1/2 -translate-y-1/2 rotate-90">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageUrl}
-              alt={name}
-              className="h-full w-full object-contain transition-transform duration-300"
-              fetchPriority="high"
-              decoding="async"
-              onError={() => setFailed(true)}
-            />
+            {image}
           </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={name}
-            className="h-full w-full object-contain transition-transform duration-300"
-            fetchPriority="high"
-            decoding="async"
-            onError={() => setFailed(true)}
-          />
+          image
         )}
       </div>
 

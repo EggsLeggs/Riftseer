@@ -53,8 +53,21 @@ export function linkTokens(cards: Card[]): void {
 
     const seen = new Set<string>();
     for (const match of text.matchAll(TOKEN_REF_RE)) {
-      const tokenNorm = normalizeCardName(match[1].trim());
-      const tokenCandidates = tokenByNorm.get(tokenNorm);
+      // The capture greedily eats leading capitalized words ("Create a Sprite
+      // token" is fine, but "... Big Sprite token" would capture "Big Sprite").
+      // Try the full phrase first, then progressively shorter suffixes so a real
+      // token name like "Sprite" or "Gold" still resolves.
+      const words = match[1].trim().split(/\s+/);
+      let tokenCandidates: Card[] | undefined;
+      for (let start = 0; start < words.length; start++) {
+        const candidate = tokenByNorm.get(
+          normalizeCardName(words.slice(start).join(" ")),
+        );
+        if (candidate?.length) {
+          tokenCandidates = candidate;
+          break;
+        }
+      }
       if (!tokenCandidates?.length) continue;
 
       const token =

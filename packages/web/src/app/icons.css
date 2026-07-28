@@ -98,7 +98,7 @@
   border: 1.5px solid #000;
   background-color: #fff;
   color: #000;
-  font-family: "arpona", serif; /* Typekit — same as .tk-arpona */
+  font-family: arpona, serif; /* Typekit — same as .tk-arpona */
   font-size: 0.75em;
   font-weight: 700;
   font-style: italic;

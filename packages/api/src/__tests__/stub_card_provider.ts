@@ -12,6 +12,7 @@ import {
 export const STUB_PRINTING_ID = "bf1bafdc-2739-469b-bde6-c24a868f4980";
 export const STUB_TOKEN_ID = "cccccccc-0000-0000-0000-000000000001";
 export const STUB_CHAMPION_ID = "aaaaaaaa-0000-0000-0000-000000000001";
+export const STUB_SIGNATURE_ID = "dddddddd-0000-0000-0000-000000000001";
 
 export const STUB_CARD: Card = {
   object: "card",
@@ -55,7 +56,15 @@ export const STUB_CARD: Card = {
     },
   ],
   related_legends: [],
-  related_signatures: [],
+  related_signatures: [
+    {
+      object: "related_card",
+      id: STUB_SIGNATURE_ID,
+      name: "Sun Disc, Signature",
+      component: "signature",
+      uri: `/api/v1/cards/${STUB_SIGNATURE_ID}`,
+    },
+  ],
   related_printings: [
     {
       object: "related_card",
@@ -132,6 +141,26 @@ const STUB_CHAMPION: Card = {
   related_printings: [],
 };
 
+/** Signature card tied to {@link STUB_CARD} via related_signatures. */
+const STUB_SIGNATURE: Card = {
+  object: "card",
+  id: STUB_SIGNATURE_ID,
+  name: "Sun Disc, Signature",
+  name_normalized: "sun disc signature",
+  collector_number: "21",
+  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
+  classification: { type: "Spell", supertype: "Signature", rarity: "Rare" },
+  metadata: { alternate_art: false, overnumbered: false, signature: true },
+  is_token: false,
+  all_parts: [],
+  used_by: [],
+  related_champions: [],
+  related_legends: [],
+  related_signatures: [],
+  related_printings: [],
+  public_slug: "ogn/21/signature/sun-disc",
+};
+
 const STUB_CARDS: Card[] = Array.from({ length: 5 }, (_, i) => ({
   ...STUB_CARD,
   id: `bf1bafdc-2739-469b-bde6-c24a868f49${70 + i}`,
@@ -139,7 +168,9 @@ const STUB_CARDS: Card[] = Array.from({ length: 5 }, (_, i) => ({
 }));
 
 const CARDS_BY_ID = new Map<string, Card>(
-  [STUB_CARD, STUB_PRINTING, STUB_TOKEN, STUB_CHAMPION].map((c) => [c.id, c]),
+  [STUB_CARD, STUB_PRINTING, STUB_TOKEN, STUB_CHAMPION, STUB_SIGNATURE].map(
+    (c) => [c.id, c],
+  ),
 );
 
 export class StubProvider implements CardDataProvider {

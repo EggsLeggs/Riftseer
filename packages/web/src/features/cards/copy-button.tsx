@@ -5,13 +5,12 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { fetchCardExportText } from "@/features/cards/api";
 import { cn } from "@/lib/utils";
 
 async function readText(source: CopySource): Promise<string> {
   if ("text" in source) return source.text;
-  const res = await fetch(source.url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`Request failed with ${res.status}`);
-  return await res.text();
+  return fetchCardExportText(source.url);
 }
 
 /** Either literal text, or a URL to fetch the text from on click. */
