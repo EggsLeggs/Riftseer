@@ -11,6 +11,29 @@ export const RelatedCardSchema = t.Object({
   ),
 });
 
+const PriceEntrySchema = t.Partial(
+  t.Object({
+    normal: t.Nullable(t.Number()),
+    foil: t.Nullable(t.Number()),
+    low_normal: t.Nullable(t.Number()),
+    low_foil: t.Nullable(t.Number()),
+  }),
+);
+
+export const CardPricesSchema = t.Partial(
+  t.Object({
+    tcgplayer: t.Optional(PriceEntrySchema),
+    cardmarket: t.Optional(PriceEntrySchema),
+  }),
+);
+
+export const CardPurchaseUrisSchema = t.Partial(
+  t.Object({
+    cardmarket: t.String(),
+    tcgplayer: t.String(),
+  }),
+);
+
 export const CardSchema = t.Object({
   object: t.Literal("card"),
   id: t.String(),
@@ -71,29 +94,14 @@ export const CardSchema = t.Object({
       png: t.String(),
     }))),
   }))),
-  purchase_uris: t.Optional(t.Partial(t.Object({
-    cardmarket: t.String(),
-    tcgplayer: t.String(),
-  }))),
-  prices: t.Optional(t.Partial(t.Object({
-    tcgplayer: t.Optional(t.Partial(t.Object({
-      normal: t.Nullable(t.Number()),
-      foil: t.Nullable(t.Number()),
-      low_normal: t.Nullable(t.Number()),
-      low_foil: t.Nullable(t.Number()),
-    }))),
-    cardmarket: t.Optional(t.Partial(t.Object({
-      normal: t.Nullable(t.Number()),
-      foil: t.Nullable(t.Number()),
-      low_normal: t.Nullable(t.Number()),
-      low_foil: t.Nullable(t.Number()),
-    }))),
-  }))),
+  purchase_uris: t.Optional(CardPurchaseUrisSchema),
+  prices: t.Optional(CardPricesSchema),
   is_token: t.Boolean(),
   all_parts: t.Array(RelatedCardSchema),
   used_by: t.Array(RelatedCardSchema),
   related_champions: t.Array(RelatedCardSchema),
   related_legends: t.Array(RelatedCardSchema),
+  related_signatures: t.Array(RelatedCardSchema),
   related_printings: t.Array(RelatedCardSchema),
   public_slug: t.Optional(
     t.String({
@@ -109,6 +117,62 @@ export const CardSchema = t.Object({
   ),
   updated_at: t.Optional(t.String()),
   ingested_at: t.Optional(t.String()),
+});
+
+export const CardPrintingSummarySchema = t.Object({
+  object: t.Literal("card_printing"),
+  id: t.String(),
+  name: t.String(),
+  public_slug: t.Optional(t.String()),
+  riftseer_uri: t.Optional(t.String()),
+  set_code: t.Optional(t.String()),
+  set_name: t.Optional(t.String()),
+  collector_number: t.Optional(t.String()),
+  collector_label: t.Optional(
+    t.String({
+      description:
+        "Collector number with its variant marker, e.g. '12a' (alternate art) or '21★' (signature).",
+    }),
+  ),
+  rarity: t.Optional(t.String()),
+  type: t.Optional(t.String()),
+  energy: t.Optional(t.Nullable(t.Number())),
+  power: t.Optional(t.Nullable(t.Number())),
+  is_token: t.Boolean(),
+  alternate_art: t.Optional(t.Boolean()),
+  signature: t.Optional(t.Boolean()),
+  image_small: t.Optional(t.String()),
+  prices: t.Optional(CardPricesSchema),
+  purchase_uris: t.Optional(CardPurchaseUrisSchema),
+  is_current: t.Optional(
+    t.Boolean({ description: "True for the printing being viewed." }),
+  ),
+});
+
+export const CardDetailSchema = t.Object({
+  object: t.Literal("card_detail"),
+  card: CardSchema,
+  printings: t.Array(CardPrintingSummarySchema, {
+    description: "All printings including the current one, oldest set first.",
+  }),
+  tokens: t.Array(CardPrintingSummarySchema, {
+    description: "Token cards this card creates.",
+  }),
+  used_by: t.Array(CardPrintingSummarySchema, {
+    description:
+      "Cards that create this token — one preferred printing per card.",
+  }),
+  champions: t.Array(CardPrintingSummarySchema, {
+    description: "Champions sharing a tag with this legend, one row per character.",
+  }),
+  legends: t.Array(CardPrintingSummarySchema, {
+    description: "Legends sharing a tag with this champion, one row per character.",
+  }),
+  signatures: t.Array(CardPrintingSummarySchema, {
+    description:
+      "Signature cards tied to this legend/champion by a shared character tag, one row per signature.",
+  }),
+  purchase: CardPurchaseUrisSchema,
 });
 
 export const CardRequestSchema = t.Object({

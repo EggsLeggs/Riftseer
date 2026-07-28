@@ -48,6 +48,7 @@ interface RpcCardPayload {
   used_by: unknown[];
   related_champions: unknown[];
   related_legends: unknown[];
+  related_signatures: unknown[];
   related_printings: unknown[];
   is_token: boolean;
   /**
@@ -216,6 +217,7 @@ export async function ingestCardData(
     used_by: card.used_by,
     related_champions: card.related_champions,
     related_legends: card.related_legends,
+    related_signatures: card.related_signatures,
     related_printings: card.related_printings,
     is_token: card.is_token,
     public_slug: slugByCardId.get(card.id) ?? null,

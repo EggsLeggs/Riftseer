@@ -1,6 +1,8 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { LayoutGrid, Layers, Shuffle } from "lucide-react";
 import {
   NavigationMenu,
@@ -12,11 +14,28 @@ import {
 } from "@/components/ui/navigation-menu";
 
 export function CardsNavMenu() {
+  const pathname = usePathname();
+  const [value, setValue] = React.useState("");
+
+  // Layout persists across navigations; close the menu on route change so it
+  // can't stay stuck open (which also breaks hover/click after browser back).
+  React.useEffect(() => {
+    setValue("");
+  }, [pathname]);
+
   return (
-    <NavigationMenu viewport={false}>
+    <NavigationMenu viewport={false} value={value} onValueChange={setValue}>
       <NavigationMenuList>
-        <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-9 px-2.5 text-sm font-medium">
+        <NavigationMenuItem value="cards">
+          <NavigationMenuTrigger
+            className="h-9 px-2.5 text-sm font-medium"
+            onClick={(e) => {
+              // Hover already opens the menu; don't let click toggle it closed.
+              if (e.currentTarget.getAttribute("data-state") === "open") {
+                e.preventDefault();
+              }
+            }}
+          >
             Cards
           </NavigationMenuTrigger>
           <NavigationMenuContent>

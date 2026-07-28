@@ -12,8 +12,11 @@ Because it has no runtime dependencies it can safely be imported from anywhere �
 | File | Purpose |
 |------|---------|
 | `src/card.ts` | Canonical `Card`, all sub-interfaces, `CardRequest`, `ResolvedCard`, `CardSearchOptions`, `SimplifiedDeck` |
+| `src/card-detail.ts` | `CardDetail` and `CardPrintingSummary` — the aggregate payload behind `GET /api/v1/cards/detail` |
+| `src/card-text.ts` | `normalizeCardTextLayout()` — paragraph splitting for rules text, shared by every renderer |
+| `src/keywords.ts` | `[Keyword]` badge helpers — `KEYWORD_STYLES`, `styleForKeyword()`, `isKeywordTag()` |
 | `src/parser.ts` | `parseCardRequests()` and `normalizeCardName()` |
-| `src/icons.ts` | `TOKEN_REGEX` and `TOKEN_ICON_MAP` |
+| `src/icons.ts` | `TOKEN_REGEX`, `TOKEN_ICON_MAP`, and `tokenPlainLabel()` (copy-paste stand-ins for icon tokens) |
 | `src/slug.ts` | Public-URL slug rules — `slugifyCardName`, `buildPublicSlugSegments`, `joinPublicSlug`, `withNameCollisionSuffix`, `generatePublicSlug`, `absoluteRiftseerUri` |
 | `index.ts` | Default export — re-exports all of the above |
 
@@ -24,6 +27,7 @@ import type { Card, CardRequest } from "@riftseer/types";
 import { parseCardRequests, normalizeCardName } from "@riftseer/types";
 
 // Sub-path exports (tree-shakeable)
+import { normalizeCardTextLayout } from "@riftseer/types/card-text";
 import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types/icons";
 import { parseCardRequests, normalizeCardName } from "@riftseer/types/parser";
 import {

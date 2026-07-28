@@ -41,11 +41,11 @@ function parseStoredPageSize(raw: string | null): PageSize | null {
     : null;
 }
 
-function parseView(raw: string | null): CardResultsView {
+function parseViewParam(raw: string | null): CardResultsView | null {
   if (raw && (CARD_RESULTS_VIEWS as readonly string[]).includes(raw)) {
     return raw as CardResultsView;
   }
-  return "images";
+  return null;
 }
 
 function galleryErrorInfo(err: unknown): { title: string; detail: string } {
@@ -61,7 +61,7 @@ function galleryErrorInfo(err: unknown): { title: string; detail: string } {
 export function CardGalleryView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { accessibility } = useSitePreferences();
+  const { accessibility, patchAccessibility } = useSitePreferences();
   const showCardNamesBelowSearch = accessibility.showCardNamesBelowSearch;
 
   const rawQuery = searchParams.get("q") ?? "";
@@ -73,7 +73,8 @@ export function CardGalleryView() {
   const pageParam = Number.parseInt(searchParams.get("page") ?? "1", 10);
   const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const offset = (requestedPage - 1) * perPage;
-  const resultsView = parseView(searchParams.get("view"));
+  const resultsView =
+    parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
 
   const isBrowse = trimmed.length === 0 && !meta.set;
 
@@ -147,12 +148,13 @@ export function CardGalleryView() {
 
   const setResultsView = React.useCallback(
     (next: CardResultsView) => {
+      patchAccessibility({ cardResultsView: next });
       updateSearchParams((p) => {
         if (next === "images") p.delete("view");
         else p.set("view", next);
       });
     },
-    [updateSearchParams],
+    [patchAccessibility, updateSearchParams],
   );
 
   const pageHref = React.useCallback(

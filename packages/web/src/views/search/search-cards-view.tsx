@@ -52,14 +52,14 @@ type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 const DEFAULT_PAGE_SIZE: PageSize = 60;
 const PAGE_SIZE_STORAGE_KEY = "riftseer.search.cardsPerPage";
 
-function parseSearchResultsView(raw: string | null): CardResultsView {
+function parseSearchResultsView(raw: string | null): CardResultsView | null {
   if (
     raw &&
     (CARD_RESULTS_VIEWS as readonly string[]).includes(raw)
   ) {
     return raw as CardResultsView;
   }
-  return "images";
+  return null;
 }
 
 function parseStoredPageSize(raw: string | null): PageSize | null {
@@ -97,7 +97,7 @@ export function SearchCardsView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { has, hasFetchedBanner } = useConsentManager();
-  const { accessibility } = useSitePreferences();
+  const { accessibility, patchAccessibility } = useSitePreferences();
   const showCardNamesBelowSearch = accessibility.showCardNamesBelowSearch;
   const rawQuery = searchParams.get("q") ?? "";
   const meta = parseMetaKeywords(rawQuery);
@@ -112,7 +112,9 @@ export function SearchCardsView() {
   const requestedPage =
     Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const offset = (requestedPage - 1) * perPage;
-  const resultsView = parseSearchResultsView(searchParams.get("view"));
+  const resultsView =
+    parseSearchResultsView(searchParams.get("view")) ??
+    accessibility.cardResultsView;
 
   const search = useQuery({
     queryKey: cardsQueryKeys.search(trimmed, perPage, offset, true, {
@@ -232,12 +234,13 @@ export function SearchCardsView() {
 
   const setResultsView = React.useCallback(
     (next: CardResultsView) => {
+      patchAccessibility({ cardResultsView: next });
       updateSearchParams((p) => {
         if (next === "images") p.delete("view");
         else p.set("view", next);
       });
     },
-    [updateSearchParams],
+    [patchAccessibility, updateSearchParams],
   );
 
   const searchPageHref = React.useCallback(

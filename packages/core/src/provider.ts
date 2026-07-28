@@ -59,6 +59,13 @@ export interface CardDataProvider {
   getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>>;
 
   /**
+   * Fetch many full cards in one round-trip, in the order the IDs were given.
+   * Unknown IDs are omitted rather than returned as null.  Used to expand
+   * related-card stubs for the card detail payload.
+   */
+  getCardsByIds(ids: string[]): Promise<Card[]>;
+
+  /**
    * Full-text + optional set/collector search.
    *
    * Compatibility wrapper: parses the raw query into a CardSearchAst with

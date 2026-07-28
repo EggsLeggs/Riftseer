@@ -138,6 +138,12 @@ export interface Card {
   related_champions: RelatedCard[];
   /** Legend cards linked to this champion by a shared tag (populated on champions). */
   related_legends: RelatedCard[];
+  /**
+   * Signature cards (supertype "Signature") tied to this legend/champion by a
+   * shared character tag (populated on legends and champions). The reverse link
+   * lives on the signature card's related_legends / related_champions.
+   */
+  related_signatures: RelatedCard[];
   /** Other printings/art variants of the same card. */
   related_printings: RelatedCard[];
   /**

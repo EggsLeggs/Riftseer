@@ -182,6 +182,7 @@ export function rawToCard(raw: RawCard): Card {
     used_by: [],
     related_champions: [],
     related_legends: [],
+    related_signatures: [],
     related_printings: [],
   };
 }

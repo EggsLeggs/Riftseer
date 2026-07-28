@@ -181,7 +181,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
                         src={imageUrl}
                         alt=""
                         aria-hidden="true"
-                        className="h-11 w-8 shrink-0 rounded-sm object-cover"
+                        className="h-11 w-8 shrink-0 object-contain"
                       />
                     )}
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">

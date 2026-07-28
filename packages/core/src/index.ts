@@ -1,6 +1,8 @@
 // Types
 export type {
   Card,
+  CardDetail,
+  CardPrintingSummary,
   CardRequest,
   ResolvedCard,
   CardSearchOptions,
@@ -50,6 +52,15 @@ export {
   enrichRelatedCardsSiteUris,
 } from "./hydrate.ts";
 
+// Card detail aggregation
+export {
+  buildCardDetail,
+  collectorLabel,
+  tcgplayerUrlForCard,
+  cardmarketUrlForCard,
+} from "./card-detail.ts";
+export type { BuildCardDetailOptions } from "./card-detail.ts";
+
 // Deck provider interface + implementation
 export type { SimplifiedDeckProvider } from "./provider.ts";
 export { SimplifiedDeckProviderImpl } from "./providers/simplified_deck_provider.ts";
@@ -90,6 +101,9 @@ export { BadRequestError, NotFoundError } from "./errors.ts";
 export {
   TOKEN_REGEX,
   TOKEN_ICON_MAP,
+  tokenPlainLabel,
+  tokenDisplayName,
+  formatTokenDisplayList,
   EMOJI_PREFIX,
   EMOJI_FILES,
   TOKEN_DISCORD_FALLBACK,
@@ -97,3 +111,4 @@ export {
   renderTextForDiscord,
 } from "./icons.ts";
 export type { EmojiFile } from "./icons.ts";
+

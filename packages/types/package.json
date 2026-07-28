@@ -6,6 +6,8 @@
   "types": "index.ts",
   "exports": {
     ".": "./index.ts",
+    "./card-text": "./src/card-text.ts",
+    "./keywords": "./src/keywords.ts",
     "./icons": "./src/icons.ts",
     "./parser": "./src/parser.ts",
     "./slug": "./src/slug.ts",

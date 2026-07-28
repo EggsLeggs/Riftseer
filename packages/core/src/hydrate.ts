@@ -2,8 +2,8 @@
  * Response-time helpers that decorate Card payloads with absolute site URLs
  * (`riftseer_uri`) on the card itself and on all related-card stubs
  * (`all_parts`, `used_by`, `related_champions`, `related_legends`,
- * `related_printings`).  These fields are NEVER persisted — they are computed
- * fresh on each response from the configured site origin.
+ * `related_signatures`, `related_printings`).  These fields are NEVER persisted
+ * — they are computed fresh on each response from the configured site origin.
  */
 
 import { absoluteRiftseerUri, normalizeSiteOrigin } from "@riftseer/types/slug";
@@ -16,6 +16,7 @@ const RELATED_FIELDS = [
   "used_by",
   "related_champions",
   "related_legends",
+  "related_signatures",
   "related_printings",
 ] as const satisfies ReadonlyArray<keyof Card>;
 

@@ -14,6 +14,7 @@ function makeCard(overrides: Partial<Card> & { id: string; name: string }): Card
     used_by: [],
     related_champions: [],
     related_legends: [],
+    related_signatures: [],
     related_printings: [],
     ...overrides,
   };

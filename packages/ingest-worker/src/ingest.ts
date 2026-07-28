@@ -9,7 +9,7 @@
  *   5. Reconcile sets (match by tcgplayer_group_id; create promo sets for unmatched groups)
  *   6. Fetch TCGCSV products + prices for all groups
  *   7. Enrich cards with TCGPlayer prices, purchase URIs, and fallback images
- *   8. Link tokens, champions/legends, related printings
+ *   8. Link tokens, champions/legends, signatures, related printings
  *   9. Atomic upsert via ingest_card_data Postgres RPC
  */
 
@@ -19,7 +19,7 @@ import { fetchAllSets, fetchAllPages } from "./sources/riftcodex.ts";
 import { fetchGroups, fetchAllGroupResults } from "./sources/tcgcsv.ts";
 import { normalizeSets, normalizeCards } from "./pipeline/normalize.ts";
 import { reconcileSets, buildProductMap, enrichCards, clearDuplicateImages } from "./pipeline/enrich.ts";
-import { linkTokens, linkChampionsLegends, linkRelatedPrintings } from "./pipeline/link.ts";
+import { linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings } from "./pipeline/link.ts";
 import { ingestCardData } from "./pipeline/db.ts";
 
 export interface Env {
@@ -107,6 +107,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // 8. Link relationships
     linkTokens(cards);
     linkChampionsLegends(cards);
+    linkSignatures(cards);
     linkRelatedPrintings(cards);
 
     // 9. Atomic upsert

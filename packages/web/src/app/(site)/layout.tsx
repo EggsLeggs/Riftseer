@@ -8,7 +8,7 @@ export default async function SiteLayout({
   const { isSupporter, isMember } = await getMetafyBadges();
 
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-zinc-50 font-sans dark:bg-black">
+    <div className="flex min-h-full flex-1 flex-col bg-background font-sans">
       <Navbar isSupporter={isSupporter} isMember={isMember} />
       <main className="flex min-h-0 flex-1 flex-col">{children}</main>
       <Footer />

@@ -27,11 +27,11 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
-function parseView(raw: string | null): CardResultsView {
+function parseViewParam(raw: string | null): CardResultsView | null {
   if (raw && (CARD_RESULTS_VIEWS as readonly string[]).includes(raw)) {
     return raw as CardResultsView;
   }
-  return "images";
+  return null;
 }
 
 const VALID_ORDERS: OrderField[] = [
@@ -47,10 +47,11 @@ function parseOrder(raw: string | null): OrderField | undefined {
 export function SetDetailView({ code }: { code: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { accessibility } = useSitePreferences();
+  const { accessibility, patchAccessibility } = useSitePreferences();
   const showCardNamesBelowSearch = accessibility.showCardNamesBelowSearch;
 
-  const resultsView = parseView(searchParams.get("view"));
+  const resultsView =
+    parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
   const order = parseOrder(searchParams.get("order"));
   const direction = searchParams.get("direction") === "desc" ? "desc" : "asc";
 
@@ -89,8 +90,10 @@ export function SetDetailView({ code }: { code: string }) {
     [router, searchParams, code],
   );
 
-  const setResultsView = (next: CardResultsView) =>
+  const setResultsView = (next: CardResultsView) => {
+    patchAccessibility({ cardResultsView: next });
     updateParam("view", next === "images" ? null : next);
+  };
 
   const isLoading = cardsQuery.isPending;
   const isError = cardsQuery.isError;

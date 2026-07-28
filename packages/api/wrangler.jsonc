@@ -10,9 +10,9 @@
 	"observability": { "enabled": true },
 	"vars": {
 		"CARD_PROVIDER": "supabase",
-		"LEGAL_TERMS_VERSION": "1",
+		"LEGAL_TERMS_VERSION": "2",
 		// 2 — 27 July 2026: Metafy webhook processing disclosure.
-		"LEGAL_PRIVACY_VERSION": "2",
+		"LEGAL_PRIVACY_VERSION": "3",
 		// Public site origin used to build absolute riftseer_uri values on every
 		// card response. Override per-environment if needed.
 		"SITE_ORIGIN": "https://riftseer.com",

@@ -97,15 +97,22 @@ function renderTokens(text: string, keyOffset = 0): React.ReactNode[] {
 }
 
 function renderLine(line: string): React.ReactNode[] {
+  // Mask :rb_…: tokens first — their underscores must not start/end italic spans.
+  const tokens: string[] = [];
+  const masked = line.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
+    const i = tokens.length;
+    tokens.push(match);
+    return `\uE000${i}\uE001`;
+  });
+  const restore = (s: string) =>
+    s.replace(/\uE000(\d+)\uE001/g, (_, n) => tokens[Number(n)] ?? "");
+
   const parts: React.ReactNode[] = [];
-  // Split on italic spans _..._ while treating token patterns (like energy_3) as atomic
-  const segments = line.split(/(_(?:[^_\n]|:[^:\n]+:)+_)/);
-  segments.forEach((seg, si) => {
+  masked.split(/(_(?:[^_\n]|:[^:\n]+:)+_)/).forEach((seg, si) => {
     if (seg.startsWith("_") && seg.endsWith("_") && seg.length > 2) {
-      const inner = seg.slice(1, -1);
-      parts.push(<em key={`em-${si}`}>{renderTokens(inner, si * 10000)}</em>);
+      parts.push(<em key={`em-${si}`}>{renderTokens(restore(seg.slice(1, -1)), si * 10000)}</em>);
     } else {
-      renderTokens(seg, si * 10000).forEach((n) => parts.push(n));
+      renderTokens(restore(seg), si * 10000).forEach((n) => parts.push(n));
     }
   });
   return parts;

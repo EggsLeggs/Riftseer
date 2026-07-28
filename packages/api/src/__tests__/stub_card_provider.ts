@@ -9,38 +9,127 @@ import {
   type ResolvedCard,
 } from "@riftseer/core";
 
+export const STUB_PRINTING_ID = "bf1bafdc-2739-469b-bde6-c24a868f4980";
+export const STUB_TOKEN_ID = "cccccccc-0000-0000-0000-000000000001";
+export const STUB_CHAMPION_ID = "aaaaaaaa-0000-0000-0000-000000000001";
+
 export const STUB_CARD: Card = {
   object: "card",
   id: "bf1bafdc-2739-469b-bde6-c24a868f4979",
   name: "Sun Disc",
   name_normalized: "sun disc",
   collector_number: "21",
-  external_ids: { riftcodex_id: "bf1bafdc-2739-469b-bde6-c24a868f4979" },
-  set: { set_code: "OGN", set_name: "Origins" },
+  external_ids: {
+    riftcodex_id: "bf1bafdc-2739-469b-bde6-c24a868f4979",
+    tcgplayer_id: "123456",
+  },
+  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
   attributes: { energy: 2, might: null, power: 1 },
   classification: { type: "Gear", supertype: null, rarity: "Uncommon", domains: ["Fury"] },
-  text: { plain: ":rb_exhaust:: Next unit ready." },
+  text: { plain: ":rb_exhaust:: Next unit ready. Create a Sprite Token." },
   artist: "Envar Studio",
   media: {
     orientation: "portrait",
     media_urls: { normal: "https://cdn.example.com/sun-disc.png" },
   },
   metadata: { alternate_art: false, overnumbered: false, signature: false },
+  prices: { tcgplayer: { normal: 1.25, foil: 4.5 } },
   is_token: false,
-  all_parts: [],
+  all_parts: [
+    {
+      object: "related_card",
+      id: STUB_TOKEN_ID,
+      name: "Sprite",
+      component: "token",
+      uri: `/api/v1/cards/${STUB_TOKEN_ID}`,
+    },
+  ],
   used_by: [],
   related_champions: [
     {
       object: "related_card",
-      id: "aaaaaaaa-0000-0000-0000-000000000001",
+      id: STUB_CHAMPION_ID,
       name: "Sun Disc, Champion",
       component: "champion",
-      uri: "/api/v1/cards/aaaaaaaa-0000-0000-0000-000000000001",
+      uri: `/api/v1/cards/${STUB_CHAMPION_ID}`,
     },
   ],
   related_legends: [],
-  related_printings: [],
+  related_signatures: [],
+  related_printings: [
+    {
+      object: "related_card",
+      id: STUB_PRINTING_ID,
+      name: "Sun Disc",
+      component: "printing",
+      uri: `/api/v1/cards/${STUB_PRINTING_ID}`,
+    },
+  ],
   public_slug: "ogn/21/sun-disc",
+};
+
+/** Alternate-art reprint of {@link STUB_CARD}. */
+const STUB_PRINTING: Card = {
+  ...STUB_CARD,
+  id: STUB_PRINTING_ID,
+  collector_number: "22",
+  metadata: { alternate_art: true, overnumbered: false, signature: false },
+  prices: { tcgplayer: { normal: 9.99 } },
+  all_parts: [],
+  related_champions: [],
+  related_printings: [
+    {
+      object: "related_card",
+      id: STUB_CARD.id,
+      name: STUB_CARD.name,
+      component: "printing",
+      uri: `/api/v1/cards/${STUB_CARD.id}`,
+    },
+  ],
+  public_slug: "ogn/22a/sun-disc",
+};
+
+const STUB_TOKEN: Card = {
+  object: "card",
+  id: STUB_TOKEN_ID,
+  name: "Sprite",
+  name_normalized: "sprite",
+  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
+  classification: { type: "Unit", supertype: "Token", rarity: "Common" },
+  is_token: true,
+  all_parts: [],
+  used_by: [
+    {
+      object: "related_card",
+      id: STUB_CARD.id,
+      name: STUB_CARD.name,
+      component: "token_of",
+      uri: `/api/v1/cards/${STUB_CARD.id}`,
+    },
+  ],
+  related_champions: [],
+  related_legends: [],
+  related_signatures: [],
+  related_printings: [],
+  public_slug: "ogn/t1/sprite",
+};
+
+/** Deliberately has no public_slug so riftseer_uri hydration stays untested here. */
+const STUB_CHAMPION: Card = {
+  object: "card",
+  id: STUB_CHAMPION_ID,
+  name: "Sun Disc, Champion",
+  name_normalized: "sun disc champion",
+  collector_number: "5",
+  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
+  classification: { type: "Unit", supertype: "Champion", rarity: "Rare" },
+  is_token: false,
+  all_parts: [],
+  used_by: [],
+  related_champions: [],
+  related_legends: [],
+  related_signatures: [],
+  related_printings: [],
 };
 
 const STUB_CARDS: Card[] = Array.from({ length: 5 }, (_, i) => ({
@@ -49,6 +138,10 @@ const STUB_CARDS: Card[] = Array.from({ length: 5 }, (_, i) => ({
   collector_number: String(21 + i),
 }));
 
+const CARDS_BY_ID = new Map<string, Card>(
+  [STUB_CARD, STUB_PRINTING, STUB_TOKEN, STUB_CHAMPION].map((c) => [c.id, c]),
+);
+
 export class StubProvider implements CardDataProvider {
   readonly sourceName = "stub";
 
@@ -56,21 +149,30 @@ export class StubProvider implements CardDataProvider {
   async refresh() {}
 
   async getCardById(id: string): Promise<Card | null> {
-    return id === STUB_CARD.id ? STUB_CARD : null;
+    return CARDS_BY_ID.get(id) ?? null;
   }
 
   async getCardByPublicSlug(slug: string): Promise<Card | null> {
-    return slug === STUB_CARD.public_slug ? STUB_CARD : null;
+    for (const card of CARDS_BY_ID.values()) {
+      if (card.public_slug === slug) return card;
+    }
+    return null;
   }
 
   async getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>> {
     const result = new Map<string, string>();
     for (const id of ids) {
-      if (id === STUB_CARD.id && STUB_CARD.public_slug) {
-        result.set(id, STUB_CARD.public_slug);
-      }
+      const slug = CARDS_BY_ID.get(id)?.public_slug;
+      if (slug) result.set(id, slug);
     }
     return result;
+  }
+
+  async getCardsByIds(ids: string[]): Promise<Card[]> {
+    return ids.flatMap((id) => {
+      const card = CARDS_BY_ID.get(id);
+      return card ? [card] : [];
+    });
   }
 
   async searchByName(q: string, opts?: CardSearchOptions): Promise<CardSearchResult> {

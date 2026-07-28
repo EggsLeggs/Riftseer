@@ -9,7 +9,7 @@ export function PrivacyView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 27 July 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 28 July 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -61,11 +61,17 @@ export function PrivacyView() {
               stores preferences in your browser&apos;s local storage, including your{" "}
               <strong className="font-semibold">theme choice</strong> (light or dark mode) and, if
               you accept functional cookies, your{" "}
-              <strong className="font-semibold">cards-per-page search preference</strong> and{" "}
+              <strong className="font-semibold">cards-per-page search preference</strong>,{" "}
               <strong className="font-semibold">
                 optional site accessibility preferences
               </strong>{" "}
-              (for example how card names appear on search). These are
+              (for example how card names appear on search, or whether icons
+              are shown as readable text instead), and{" "}
+              <strong className="font-semibold">
+                optional layout preferences
+              </strong>{" "}
+              (card page detailed/simple view, and gallery/search/set browse
+              layout). These are
               not personally identifiable and are not sent to our servers. You can clear them by
               clearing your browser&apos;s local storage for this site.
             </ListItem>
@@ -206,6 +212,16 @@ export function PrivacyView() {
               <strong className="font-semibold">PostHog.</strong> As described above, we use PostHog
               for site analytics. PostHog processes the analytics data according to their privacy
               policy.
+            </ListItem>
+            <ListItem>
+              <strong className="font-semibold">Adobe Fonts.</strong> We load display fonts (for
+              example Arpona) from Adobe&apos;s Typekit CDN so card names and similar text render in
+              the intended typeface. Your browser may contact Adobe&apos;s servers to fetch those
+              font files; Adobe&apos;s{" "}
+              <InlineLink href="https://www.adobe.com/privacy/policy.html">
+                privacy policy
+              </InlineLink>{" "}
+              applies to that request.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Card data.</strong> Card and set data are fetched

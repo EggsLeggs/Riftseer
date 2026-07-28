@@ -42,19 +42,44 @@ All data fetching and auth go through the Elysia API. **Never import or call Sup
 ### Card detail route
 
 Both routes live under one **`[slug]`** dynamic segment (Next.js forbids sibling
-`[id]` and `[set]` folders — same depth must share one param name). They share
-`features/cards/card-json-view.tsx` (placeholder JSON dump):
+`[id]` and `[set]` folders — same depth must share one param name). Both render
+`views/cards/card-detail-view.tsx`:
 
 - **`app/card/[slug]/page.tsx`** — `/card/<printing-id>` legacy URLs. Fetches by id,
-  then `permanentRedirect`s to `card.riftseer_uri` when present.
+  then `permanentRedirect`s to the canonical slug path when `public_slug` is set.
 - **`app/card/[slug]/[collector]/[[...slugTail]]/page.tsx`** — canonical slug paths:
   `/card/<set>/<collector>/<name>` or `/card/<set>/<collector>/signature/<name>`.
-  Builds `public_slug` as `<slug>/<collector>/(signature/)?/<…slugTail>` and calls
-  `GET /api/v1/cards/by-slug/…`. `/card/<set>/<collector>` with no name returns 404.
+  Joins the segments into a `public_slug`. `/card/<set>/<collector>` with no name
+  returns 404.
+
+Both call **`cardsApi.getDetail()`** → `GET /api/v1/cards/detail?id=…|slug=…`, which
+returns the whole page in one round-trip: the card plus its printings, tokens,
+champions/legends and resolved marketplace links. **All sorting, deduplication and
+URL building happens in the API** (`buildCardDetail` in `@riftseer/core`) — do not
+add derived card logic to the view. The fetch is wrapped in React `cache()` so
+`generateMetadata` and the page share one request.
 
 `features/cards/api.ts` uses `AbortSignal.timeout` (12s) and `cache: "no-store"` so requests fail fast instead of hanging; `app/card/error.tsx` shows user-facing copy (no stack traces or dev jargon).
 
-Build URLs with `card.riftseer_uri` from API responses rather than rolling your own paths.
+Build URLs with `cardHref()` from `features/cards/paths.ts` for same-origin links
+(dev, preview and production all differ), and `card.riftseer_uri` when you need an
+absolute URL. Never assemble card paths by hand.
+
+### Card rendering pieces
+
+| File | Purpose |
+|------|---------|
+| `views/cards/card-detail-view.tsx` | Server component — the whole card page |
+| `features/cards/card-text.tsx` | Renders rules text: `:rb_*:` → icons, `[Keyword]` → rhombus badges, `_…_` → italics |
+| `features/cards/card-icons.tsx` | Energy/power/might/rarity/domain glyphs and the type line |
+| `features/cards/card-printings-table.tsx` | Table used for printings, tokens and champions/legends |
+| `features/cards/card-art.tsx` | Client island — image with landscape rotate toggle |
+| `features/cards/copy-button.tsx` | Client island — clipboard + toast, copies literal text or a fetched URL |
+| `features/cards/share-button.tsx` | Client island — Web Share API with clipboard fallback |
+| `features/cards/seo.ts` | `cardMetadata()` for `generateMetadata` — title, description, OG/Twitter, canonical |
+| `features/cards/format.ts` | Framework-free formatters — import these from server components, **not** `card-display.tsx` (client-only) |
+| `app/icons.css` | Icon system CSS (imported from `app/layout.tsx`, not nested under `globals.css` — Tailwind drops that `@import`). Class names are the contract with `TOKEN_ICON_MAP` in `@riftseer/types/icons`. Assets in `public/icons/` |
+| `app/keywords.css` | Rhombus keyword badges (Beaufort for LoL). Colours from `KEYWORD_STYLES` in `@riftseer/types/keywords` |
 
 ### Layer separation
 

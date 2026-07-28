@@ -131,7 +131,7 @@ RiftCodex /sets + /cards
     ↓ src/pipeline/enrich.ts    — clearDuplicateImages (alt-art/reprints)
     ↓ src/sources/tcgcsv.ts     — fetch TCGPlayer groups, products, prices
     ↓ src/pipeline/enrich.ts    — reconcileSets + enrichCards (prices, purchase URIs, fallback images)
-    ↓ src/pipeline/link.ts      — linkTokens, linkChampionsLegends, linkRelatedPrintings
+    ↓ src/pipeline/link.ts      — linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings
     ↓ src/pipeline/db.ts        — ingestCardData() RPC → Supabase (atomic upsert)
 ```
 
@@ -147,7 +147,7 @@ RiftCodex /sets + /cards
 | `src/pipeline/types.ts` | `IngestSet` — internal set type with external_ids |
 | `src/pipeline/normalize.ts` | `normalizeSets` / `normalizeCards` — apply overrides |
 | `src/pipeline/enrich.ts` | `reconcileSets`, `clearDuplicateImages`, `buildProductMap`, `enrichCards` |
-| `src/pipeline/link.ts` | `linkTokens`, `linkChampionsLegends`, `linkRelatedPrintings` |
+| `src/pipeline/link.ts` | `linkTokens`, `linkChampionsLegends`, `linkSignatures`, `linkRelatedPrintings` |
 | `src/pipeline/db.ts` | `ingestCardData()` — calls `ingest_card_data` Postgres RPC |
 | `src/overrides/` | JSON override files for sets, TCGPlayer groups, individual cards |
 

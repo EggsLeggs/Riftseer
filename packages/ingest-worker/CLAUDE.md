@@ -16,7 +16,7 @@ src/
 │   ├── types.ts          # IngestSet — internal set type
 │   ├── normalize.ts      # normalizeSets / normalizeCards + overrides
 │   ├── enrich.ts         # reconcileSets, clearDuplicateImages, buildProductMap, enrichCards
-│   ├── link.ts           # linkTokens, linkChampionsLegends, linkRelatedPrintings
+│   ├── link.ts           # linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings
 │   └── db.ts             # ingestCardData() — calls ingest_card_data Postgres RPC
 └── overrides/
     ├── index.ts           # Typed exports for all override maps
@@ -34,7 +34,7 @@ src/
 5. reconcileSets  (pipeline/enrich.ts)         ← non-fatal if fails
 6. fetchAllGroupResults  (sources/tcgcsv.ts)   ← non-fatal if fails
 7. buildProductMap + enrichCards  (pipeline/enrich.ts)  ← non-fatal if fails
-8. linkTokens + linkChampionsLegends + linkRelatedPrintings  (pipeline/link.ts)
+8. linkTokens + linkChampionsLegends + linkSignatures + linkRelatedPrintings  (pipeline/link.ts)
 9. ingestCardData RPC  (pipeline/db.ts)
 ```
 Steps 4–7 (TCGPlayer enrichment) are wrapped in a try/catch; failure is logged as a warning and the pipeline continues with RiftCodex-only data.
