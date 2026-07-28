@@ -4,9 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Pagination,
   PaginationContent,
@@ -22,7 +20,9 @@ import {
   CardTableResults,
   SearchSkeleton,
   buildPageRange,
+  CARD_BROWSE_SELECT_CLASS,
   CARD_RESULTS_VIEWS,
+  CardResultsViewToggle,
   type CardResultsView,
 } from "@/features/cards/card-display";
 import { cardsApi, cardsQueryKeys, CardApiError } from "@/features/cards/api";
@@ -41,11 +41,11 @@ function parseStoredPageSize(raw: string | null): PageSize | null {
     : null;
 }
 
-function parseView(raw: string | null): CardResultsView {
+function parseViewParam(raw: string | null): CardResultsView | null {
   if (raw && (CARD_RESULTS_VIEWS as readonly string[]).includes(raw)) {
     return raw as CardResultsView;
   }
-  return "images";
+  return null;
 }
 
 function galleryErrorInfo(err: unknown): { title: string; detail: string } {
@@ -61,7 +61,7 @@ function galleryErrorInfo(err: unknown): { title: string; detail: string } {
 export function CardGalleryView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { accessibility } = useSitePreferences();
+  const { accessibility, patchAccessibility } = useSitePreferences();
   const showCardNamesBelowSearch = accessibility.showCardNamesBelowSearch;
 
   const rawQuery = searchParams.get("q") ?? "";
@@ -73,7 +73,8 @@ export function CardGalleryView() {
   const pageParam = Number.parseInt(searchParams.get("page") ?? "1", 10);
   const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const offset = (requestedPage - 1) * perPage;
-  const resultsView = parseView(searchParams.get("view"));
+  const resultsView =
+    parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
 
   const isBrowse = trimmed.length === 0 && !meta.set;
 
@@ -147,12 +148,12 @@ export function CardGalleryView() {
 
   const setResultsView = React.useCallback(
     (next: CardResultsView) => {
+      patchAccessibility({ cardResultsView: next });
       updateSearchParams((p) => {
-        if (next === "images") p.delete("view");
-        else p.set("view", next);
+        p.set("view", next);
       });
     },
-    [updateSearchParams],
+    [patchAccessibility, updateSearchParams],
   );
 
   const pageHref = React.useCallback(
@@ -205,31 +206,7 @@ export function CardGalleryView() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-8">
           <div className="flex flex-col gap-1.5">
             <span className="text-muted-foreground text-sm font-medium">View</span>
-            <ToggleGroup
-              type="single"
-              spacing={0}
-              variant="outline"
-              size="sm"
-              value={resultsView}
-              onValueChange={(v: string) => {
-                if (!v) return;
-                setResultsView(v as CardResultsView);
-              }}
-              aria-label="Card layout"
-            >
-              <ToggleGroupItem value="details" className="gap-1.5 px-2.5">
-                <LayoutList data-icon="inline-start" className="size-3.5" />
-                Full details
-              </ToggleGroupItem>
-              <ToggleGroupItem value="images" className="gap-1.5 px-2.5">
-                <LayoutGrid data-icon="inline-start" className="size-3.5" />
-                Images
-              </ToggleGroupItem>
-              <ToggleGroupItem value="table" className="gap-1.5 px-2.5">
-                <Table2 data-icon="inline-start" className="size-3.5" />
-                Table
-              </ToggleGroupItem>
-            </ToggleGroup>
+            <CardResultsViewToggle value={resultsView} onValueChange={setResultsView} />
           </div>
           <div className="flex flex-col gap-1.5 sm:items-end">
             <Label htmlFor="gallery-per-page" className="text-muted-foreground">
@@ -239,7 +216,7 @@ export function CardGalleryView() {
               id="gallery-per-page"
               value={perPage}
               onChange={(e) => setPerPage(Number.parseInt(e.target.value, 10) as PageSize)}
-              className="border-input bg-background text-foreground h-9 w-22 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(CARD_BROWSE_SELECT_CLASS, "w-22")}
             >
               {PAGE_SIZE_OPTIONS.map((n) => (
                 <option key={n} value={n}>{n}</option>

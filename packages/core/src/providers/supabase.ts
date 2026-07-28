@@ -83,6 +83,7 @@ interface DBCardRow {
   used_by: RelatedCard[];
   related_champions: RelatedCard[];
   related_legends: RelatedCard[];
+  related_signatures: RelatedCard[];
   related_printings: RelatedCard[];
   is_token: boolean;
   public_slug: string | null;
@@ -136,6 +137,7 @@ function dbRowToCard(row: DBCardRow): Card {
     used_by: row.used_by ?? [],
     related_champions: row.related_champions ?? [],
     related_legends: row.related_legends ?? [],
+    related_signatures: row.related_signatures ?? [],
     related_printings: row.related_printings ?? [],
     public_slug: row.public_slug ?? undefined,
     updated_at: row.updated_at,
@@ -335,6 +337,13 @@ export class SupabaseCardProvider implements CardDataProvider {
       }
     }
     return result;
+  }
+
+  async getCardsByIds(ids: string[]): Promise<Card[]> {
+    const unique = Array.from(new Set(ids.filter(Boolean)));
+    if (unique.length === 0) return [];
+    const rows = await this.hydrateRowsInOrder(unique);
+    return rows.map(dbRowToCard);
   }
 
   async searchByName(q: string, opts: CardSearchOptions = {}): Promise<CardSearchResult> {

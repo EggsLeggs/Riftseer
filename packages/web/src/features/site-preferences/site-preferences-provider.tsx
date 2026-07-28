@@ -44,7 +44,7 @@ export function SitePreferencesProvider({
 
     if (!canPersistAccessibility) {
       clearAccessibilityPrefsStorage();
-      setAccessibility({ ...DEFAULT_SITE_ACCESSIBILITY_PREFS });
+      // Keep in-memory session choices; only storage is cleared.
       return;
     }
 
@@ -53,11 +53,11 @@ export function SitePreferencesProvider({
 
   const patchAccessibility = React.useCallback(
     (patch: Partial<SiteAccessibilityPreferences>) => {
-      if (!hasFetchedBanner || !has("functionality")) return;
-
       setAccessibility((prev) => {
         const next = { ...prev, ...patch };
-        writeAccessibilityPrefsToStorage(next);
+        if (hasFetchedBanner && has("functionality")) {
+          writeAccessibilityPrefsToStorage(next);
+        }
         return next;
       });
     },

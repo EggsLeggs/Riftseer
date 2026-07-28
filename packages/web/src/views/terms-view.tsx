@@ -9,7 +9,7 @@ export function TermsView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Terms of Service</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 9 May 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 27 July 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -149,10 +149,14 @@ export function TermsView() {
         <div className="mb-6">
           <SubHeading>Third-Party Services and Trademarks</SubHeading>
           <Text>
-            Riftseer is not affiliated with or endorsed by Riot Games. Riftbound and all related marks
-            are trademarks of Riot Games. Card data may be supplied by community or third-party sources;
-            we are not responsible for their content or licensing. Use of Reddit and other platforms is
-            subject to their respective terms.
+            Riftseer was created under Riot Games&apos; &quot;Legal Jibber Jabber&quot; policy using
+            assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
+          </Text>
+          <Text>
+            Riftseer is not affiliated with Riot Games. Riftbound and all related marks are trademarks of
+            Riot Games. Card data may be supplied by community or third-party sources; we are not
+            responsible for their content or licensing. Use of Reddit and other platforms is subject to
+            their respective terms.
           </Text>
         </div>
 

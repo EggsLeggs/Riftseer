@@ -3,6 +3,10 @@ import localFont from "next/font/local";
 import { ConsentManager } from "@/components/consent-manager";
 import { Providers } from "@/providers";
 import "./globals.css";
+// Imported separately: Tailwind's CSS pipeline drops a nested `@import` of this
+// file from globals.css, which left white glyphs invisible on the light page.
+import "./icons.css";
+import "./keywords.css";
 
 const genInterfaceJP = localFont({
   src: [
@@ -32,6 +36,17 @@ const genInterfaceJPDisplay = localFont({
   variable: "--font-display",
 });
 
+/** Riot's Beaufort for LoL — keyword rhombus badges on card text. */
+const beaufortForLoL = localFont({
+  src: [
+    { path: "./fonts/BeaufortforLOL-Regular.ttf", weight: "400", style: "normal" },
+    { path: "./fonts/BeaufortforLOL-Bold.ttf", weight: "700", style: "normal" },
+    { path: "./fonts/BeaufortforLOL-BoldItalic.ttf", weight: "700", style: "italic" },
+  ],
+  variable: "--font-beaufort",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Riftseer",
   description: "Card database and deck builder for the Riftbound TCG",
@@ -45,8 +60,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${genInterfaceJP.variable} ${genInterfaceJPDisplay.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${genInterfaceJP.variable} ${genInterfaceJPDisplay.variable} ${beaufortForLoL.variable} h-full antialiased`}
     >
+      <head>
+        {/* Adobe Fonts (Typekit) — Arpona, used for card names and energy cost digits */}
+        <link rel="preconnect" href="https://use.typekit.net" />
+        <link rel="preconnect" href="https://use.typekit.net" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://use.typekit.net/jej4cyy.css" />
+      </head>
       <body className="min-h-full flex flex-col">
         <ConsentManager>
           <Providers>{children}</Providers>

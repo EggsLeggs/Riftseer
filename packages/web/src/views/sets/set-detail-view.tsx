@@ -3,21 +3,22 @@
 import * as React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   CardGrid,
   CardDetailsResults,
   CardTableResults,
   SearchSkeleton,
+  CARD_BROWSE_SELECT_CLASS,
   CARD_RESULTS_VIEWS,
+  CardResultsViewToggle,
+  formatEur,
+  formatUsd,
   type CardResultsView,
 } from "@/features/cards/card-display";
 import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
 import { setsApi, setsQueryKeys } from "@/features/sets/api";
 import { sortCards, type OrderField } from "@/features/cards/meta-keywords";
-import { formatUsd, formatEur } from "@/features/cards/card-display";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
 import { cn } from "@/lib/utils";
 
@@ -27,11 +28,11 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
-function parseView(raw: string | null): CardResultsView {
+function parseViewParam(raw: string | null): CardResultsView | null {
   if (raw && (CARD_RESULTS_VIEWS as readonly string[]).includes(raw)) {
     return raw as CardResultsView;
   }
-  return "images";
+  return null;
 }
 
 const VALID_ORDERS: OrderField[] = [
@@ -47,10 +48,11 @@ function parseOrder(raw: string | null): OrderField | undefined {
 export function SetDetailView({ code }: { code: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { accessibility } = useSitePreferences();
+  const { accessibility, patchAccessibility } = useSitePreferences();
   const showCardNamesBelowSearch = accessibility.showCardNamesBelowSearch;
 
-  const resultsView = parseView(searchParams.get("view"));
+  const resultsView =
+    parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
   const order = parseOrder(searchParams.get("order"));
   const direction = searchParams.get("direction") === "desc" ? "desc" : "asc";
 
@@ -89,8 +91,12 @@ export function SetDetailView({ code }: { code: string }) {
     [router, searchParams, code],
   );
 
-  const setResultsView = (next: CardResultsView) =>
-    updateParam("view", next === "images" ? null : next);
+  const setResultsView = (next: CardResultsView) => {
+    patchAccessibility({ cardResultsView: next });
+    // Encode every choice explicitly — the default is per-user, so omitting the
+    // param would make shared links resolve to the viewer's own default.
+    updateParam("view", next);
+  };
 
   const isLoading = cardsQuery.isPending;
   const isError = cardsQuery.isError;
@@ -146,31 +152,7 @@ export function SetDetailView({ code }: { code: string }) {
         <div className="mb-6 flex flex-wrap items-end gap-6">
           <div className="flex flex-col gap-1.5">
             <span className="text-muted-foreground text-sm font-medium">View</span>
-            <ToggleGroup
-              type="single"
-              spacing={0}
-              variant="outline"
-              size="sm"
-              value={resultsView}
-              onValueChange={(v: string) => {
-                if (!v) return;
-                setResultsView(v as CardResultsView);
-              }}
-              aria-label="Card layout"
-            >
-              <ToggleGroupItem value="details" className="gap-1.5 px-2.5">
-                <LayoutList data-icon="inline-start" className="size-3.5" />
-                Full details
-              </ToggleGroupItem>
-              <ToggleGroupItem value="images" className="gap-1.5 px-2.5">
-                <LayoutGrid data-icon="inline-start" className="size-3.5" />
-                Images
-              </ToggleGroupItem>
-              <ToggleGroupItem value="table" className="gap-1.5 px-2.5">
-                <Table2 data-icon="inline-start" className="size-3.5" />
-                Table
-              </ToggleGroupItem>
-            </ToggleGroup>
+            <CardResultsViewToggle value={resultsView} onValueChange={setResultsView} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="set-order" className="text-muted-foreground">Sort by</Label>
@@ -181,7 +163,7 @@ export function SetDetailView({ code }: { code: string }) {
                 const val = e.target.value;
                 updateParam("order", val === "collector" ? null : val);
               }}
-              className="border-input bg-background text-foreground h-9 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={CARD_BROWSE_SELECT_CLASS}
             >
               <option value="collector">Collector #</option>
               <option value="energy">Energy</option>
@@ -201,7 +183,7 @@ export function SetDetailView({ code }: { code: string }) {
                 id="set-direction"
                 value={direction}
                 onChange={(e) => updateParam("direction", e.target.value === "asc" ? null : "desc")}
-                className="border-input bg-background text-foreground h-9 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={CARD_BROWSE_SELECT_CLASS}
               >
                 <option value="asc">Ascending</option>
                 <option value="desc">Descending</option>

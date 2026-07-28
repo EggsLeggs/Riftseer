@@ -13,6 +13,8 @@ export type {
   CardPriceEntry,
   CardPrices,
   Card,
+  CardDetail,
+  CardPrintingSummary,
   CardRequest,
   ResolvedCard,
   CardSearchOptions,

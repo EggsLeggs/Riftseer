@@ -14,6 +14,7 @@ Card endpoints live under `/api/v1/cards`.
 | --- | --- | --- |
 | `GET` | `/api/v1/cards` | Search / browse — see [Search](./search.md) |
 | `GET` | `/api/v1/cards/random` | Random card |
+| `GET` | `/api/v1/cards/detail` | Full card page payload — card plus expanded printings, tokens and related cards |
 | `GET` | `/api/v1/cards/:id` | Single card by card ID |
 | `GET` | `/api/v1/cards/:id/text` | Plain-text card summary |
 | `GET` | `/api/v1/cards/by-slug/*` | Single card by `public_slug` (set / collector / name path) |
@@ -41,8 +42,9 @@ Every card endpoint returns the same card shape. Key fields:
 | `purchase_uris` | object | Marketplace purchase URLs (`tcgplayer`, `cardmarket`) when available |
 | `is_token` | boolean | `true` for token cards |
 | `all_parts` | array | Related tokens or meld parts |
-| `related_champions` | array | Champions linked to this legend |
-| `related_legends` | array | Legends linked to this champion |
+| `related_champions` | array | Champions linked to this legend (also the legend/champion a signature card belongs to) |
+| `related_legends` | array | Legends linked to this champion (also the legend a signature card belongs to) |
+| `related_signatures` | array | Signature cards (supertype `Signature`, e.g. "Daisy!") tied to this legend/champion by a shared character tag |
 | `related_printings` | array | Array of `RelatedCard` objects — other printings/editions (alternate art, promos, etc.) of the same card |
 | `public_slug` | string \| undefined | Stable public URL path for this printing — e.g. `ogn/12a/signature/sun-disc`. Persisted on first ingest and never overwritten, so URLs do not drift. |
 | `riftseer_uri` | string \| undefined | Absolute public site URL — `${SITE_ORIGIN}/card/${public_slug}`. Computed at response time and also added to every entry in the related-card arrays. Use this instead of building URLs client-side. |
@@ -61,6 +63,63 @@ Returns one card chosen at random from the full index.
 GET /api/v1/cards/random
 GET /api/v1/cards/random?include=prices
 ```
+
+---
+
+## GET /api/v1/cards/detail
+
+Everything the public card page needs in one request. The card's related-card
+stubs are expanded into full rows, then sorted and deduplicated server-side, so
+clients never have to fan out into per-related-card lookups.
+
+Look up by `id` **or** `slug` — exactly one is required.
+
+| Parameter | Type | Notes |
+| --- | --- | --- |
+| `id` | string (optional) | Card ID. Mutually exclusive with `slug` |
+| `slug` | string (optional) | `public_slug` path, e.g. `ogn/12a/signature/sun-disc`. Mutually exclusive with `id` |
+| `include` | string (optional) | Pass `prices` to include price data on the card **and** on every printing |
+
+```http
+GET /api/v1/cards/detail?id=67f4064886be8495f7165dd7
+GET /api/v1/cards/detail?slug=ogn/21/sun-disc&include=prices
+```
+
+Response:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `object` | `"card_detail"` | |
+| `card` | Card | The requested printing, same shape as `/cards/:id` |
+| `printings` | CardPrintingSummary[] | All printings **including** the current one, oldest set first. The current row has `is_current: true` |
+| `tokens` | CardPrintingSummary[] | Token cards this card creates (from `all_parts`) |
+| `used_by` | CardPrintingSummary[] | Cards that create this token — one preferred printing per card |
+| `champions` | CardPrintingSummary[] | Champions sharing a tag with this legend, collapsed to one row per character |
+| `legends` | CardPrintingSummary[] | Legends sharing a tag with this champion, collapsed to one row per character |
+| `signatures` | CardPrintingSummary[] | Signature cards tied to this legend/champion by a shared character tag, collapsed to one row per signature |
+| `purchase` | object | Resolved `tcgplayer` / `cardmarket` links — the stored purchase URI when trusted, else the product page, else a name search |
+
+Each `CardPrintingSummary` carries just enough to render a row and link to it:
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `object` | `"card_printing"` | |
+| `id`, `name` | string | |
+| `public_slug`, `riftseer_uri` | string \| undefined | Link targets |
+| `set_code`, `set_name` | string \| undefined | |
+| `collector_number` | string \| undefined | Raw value |
+| `collector_label` | string \| undefined | With variant marker — `12a` for alternate art, `21★` for signature |
+| `rarity`, `type` | string \| undefined | |
+| `energy`, `power` | number \| null \| undefined | Play cost from `attributes` |
+| `is_token` | boolean | |
+| `alternate_art`, `signature` | boolean \| undefined | |
+| `image_small` | string \| undefined | Smallest available art URL |
+| `prices`, `purchase_uris` | object \| undefined | `prices` requires `include=prices` |
+| `is_current` | boolean \| undefined | Only present (and `true`) on the printing being viewed |
+
+Returns `400` when neither `id` nor `slug` is given (or when both are), and
+`404` when the card does not exist. Related IDs that no longer resolve are omitted rather
+than returned as empty rows.
 
 ---
 

@@ -1,0 +1,213 @@
+/*
+ * Keyword rhombus badges — `[Accelerate]`, `[Reaction]`, …
+ *
+ * Sides sit at 80° to the base (10° off vertical). Beaufort for LoL is loaded
+ * in app/layout.tsx as --font-beaufort.
+ */
+
+.card-keyword {
+  /* tan(10°) ≈ 0.176 — horizontal inset for an 80° parallelogram at 1em height */
+  --keyword-inset: 0.2em;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.12em;
+  vertical-align: middle;
+  margin: 0 0.15em;
+  padding: 0.08em 0.5em;
+  background: var(--keyword-bg, #6d6d6d);
+  color: var(--keyword-fg, #fff);
+  font-family: var(--font-beaufort), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 0.9em;
+  line-height: 1.3;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* Badge chrome is visual-only — plaintext lives in .card-text-copy. */
+  user-select: none;
+  clip-path: polygon(
+    var(--keyword-inset) 0,
+    100% 0,
+    calc(100% - var(--keyword-inset)) 100%,
+    0 100%
+  );
+}
+
+.card-keyword-label {
+  letter-spacing: 0.06em;
+}
+
+/* Inline wrapper + zero-size copy text (keeps paste on one line). */
+.card-text-atom {
+  display: inline;
+}
+
+.card-text-copy {
+  display: inline;
+  font-size: 0;
+  line-height: 0;
+  white-space: pre;
+}
+
+/* `[Keyword][&gt;]` — chevron tip on the right (Level / Empowered / Action → …) */
+.card-keyword--arrow {
+  --keyword-arrow: 0.42em;
+
+  padding-right: calc(0.4em + var(--keyword-arrow));
+  clip-path: polygon(
+    var(--keyword-inset) 0,
+    calc(100% - var(--keyword-arrow)) 0,
+    100% 50%,
+    calc(100% - var(--keyword-arrow)) 100%,
+    0 100%
+  );
+}
+
+/* `[>>]` stack connector — concave notch on the left mates with the prior badge's right tip */
+.card-keyword--arrow-left {
+  --keyword-arrow: 0.42em;
+  --keyword-notch-pad: 0.24em;
+
+  margin-left: calc(-1 * var(--keyword-arrow) + 0.02em);
+  padding-left: calc(0.5em + var(--keyword-notch-pad));
+  clip-path: polygon(
+    var(--keyword-inset) 0,
+    100% 0,
+    calc(100% - var(--keyword-inset)) 100%,
+    0 100%,
+    var(--keyword-arrow) 50%
+  );
+}
+
+/* Stacked chain: `[Level 6][>][>>][Reaction][>]` — socket left, tip right */
+.card-keyword--arrow-left.card-keyword--arrow {
+  padding-right: calc(0.4em + var(--keyword-arrow));
+  clip-path: polygon(
+    var(--keyword-inset) 0,
+    calc(100% - var(--keyword-arrow)) 0,
+    100% 50%,
+    calc(100% - var(--keyword-arrow)) 100%,
+    0 100%,
+    var(--keyword-arrow) 50%
+  );
+}
+
+/*
+ * Nested costs: `[Empower]{3}{Rainbow}` etc.
+ * Energy circle = keyword text colour; digit = opposite B/W.
+ * Domain runes are forced monochrome to match the label.
+ * Sizes track the ability-text icons (parent em), not the badge's 0.9em.
+ */
+.card-keyword .card-keyword-energy.icon-energy-value,
+.dark .card-keyword .card-keyword-energy.icon-energy-value {
+  width: 1.35em;
+  height: 1.35em;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  vertical-align: middle;
+  font-size: 1em;
+  font-style: italic;
+  letter-spacing: 0;
+  border: none;
+  background-color: var(--keyword-energy-bg, var(--keyword-fg, #fff));
+  color: var(--keyword-energy-fg, #000);
+}
+
+.card-keyword .card-keyword-energy.icon-energy-value::before {
+  font-size: 0.88em;
+}
+
+.card-keyword .card-keyword-rune.inline-icon {
+  width: 1.45em;
+  height: 1.45em;
+  margin: 0;
+  vertical-align: middle;
+  /* Override light/dark theme filters — tint to keyword label colour instead. */
+  filter: var(--keyword-icon-filter, brightness(0) invert(1));
+}
+
+/*
+ * Type line badge — vertical capsule (type glyph) joined to a rhombus-like
+ * label that only slants on the right (left edge is flat against the capsule).
+ */
+.card-type-badge {
+  --type-inset: 0.2em;
+  --type-tag-bg: #c8c8c8;
+
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  isolation: isolate;
+  line-height: 1;
+  user-select: none;
+}
+
+.card-type-badge-glyph {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  /* Wider capsule; height kept just above the label so corners stay covered. */
+  width: 1.7em;
+  height: 2.2em;
+  border-radius: 9999px;
+  border: 1.5px solid var(--type-tag-bg);
+  /* Halo matches page bg so the capsule reads as overlapping the tag. */
+  box-shadow: 0 0 0 2px var(--background);
+  background: #fff;
+}
+
+/* White type artwork → same silver as the tag. */
+.card-type-badge-glyph [class^="icon-"] {
+  width: 0.95em;
+  height: 0.95em;
+  filter: brightness(0) invert(78%) !important;
+}
+
+.dark .card-type-badge-glyph {
+  background: #0a0a0a;
+}
+
+.card-type-badge-label {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  align-items: center;
+  /* Tuck under the capsule so left corners sit inside its silhouette. */
+  margin-left: -0.7em;
+  padding: 0.08em 0.55em 0.08em 1.2em;
+  background: var(--type-tag-bg);
+  color: #0a0a0a;
+  font-family: var(--font-beaufort), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
+  font-style: italic;
+  font-size: 0.85em;
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* Flat left (meets capsule); right edge at ~80° like .card-keyword. */
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - var(--type-inset)) 100%,
+    0 100%
+  );
+}
+
+/* No type glyph — full parallelogram like classification tags. */
+.card-type-badge--plain .card-type-badge-label {
+  margin-left: 0;
+  padding-left: 0.5em;
+  clip-path: polygon(
+    var(--type-inset) 0,
+    100% 0,
+    calc(100% - var(--type-inset)) 100%,
+    0 100%
+  );
+}

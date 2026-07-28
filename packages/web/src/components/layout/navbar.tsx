@@ -25,8 +25,17 @@ export async function Navbar({ isSupporter, isMember }: NavbarProps) {
         </div>
         <div className="flex items-center gap-2">
           <CardsNavMenu />
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="lg" asChild>
             <Link href="/decks">Decks</Link>
+          </Button>
+          <Button variant="ghost" size="lg" asChild>
+            <a
+              href="https://steamcommunity.com/sharedfiles/filedetails/?id=3732199052"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Play
+            </a>
           </Button>
           <div className="h-4 w-px bg-border" />
           <Button variant="ghost" size="icon" className="size-8" asChild>

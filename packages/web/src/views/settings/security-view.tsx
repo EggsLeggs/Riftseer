@@ -11,13 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/layout/clear-body-pointer-events";
 import { updateHandleAction } from "@/features/profile/actions";
 import { changeEmailAction, changePasswordAction, deleteAccountAction } from "@/features/auth/actions";
 import type { Session } from "@/features/auth/types";
@@ -59,7 +59,7 @@ function ChangeUsernameDialog({ currentHandle }: { currentHandle: string }) {
           Edit username
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <AppDialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Change username</DialogTitle>
           <DialogDescription>
@@ -112,7 +112,7 @@ function ChangeUsernameDialog({ currentHandle }: { currentHandle: string }) {
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }
@@ -131,7 +131,7 @@ function ChangeEmailDialog({ currentEmail }: { currentEmail: string }) {
           Change email
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <AppDialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Change email address</DialogTitle>
           <DialogDescription>
@@ -178,7 +178,7 @@ function ChangeEmailDialog({ currentEmail }: { currentEmail: string }) {
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }
@@ -197,7 +197,7 @@ function ChangePasswordDialog() {
           Change password
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <AppDialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Change password</DialogTitle>
           <DialogDescription>
@@ -258,7 +258,7 @@ function ChangePasswordDialog() {
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }
@@ -279,7 +279,7 @@ function DeleteAccountDialog({ handle }: { handle: string }) {
           Delete account
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <AppDialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Delete account</DialogTitle>
           <DialogDescription>
@@ -329,7 +329,7 @@ function DeleteAccountDialog({ handle }: { handle: string }) {
             </Button>
           </DialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

@@ -1,4 +1,4 @@
-import type { Card } from "@riftseer/types";
+import type { Card, CardDetail } from "@riftseer/types";
 import { env } from "@/lib/env";
 import { createApiClient } from "@/lib/api/client";
 
@@ -134,6 +134,33 @@ export const cardsApi = {
   },
 
   /**
+   * Fetch the card page payload — card plus expanded printings, tokens and
+   * related cards. Pass either an `id` or `slug` segments; the API does all the
+   * sorting and deduplication. Returns null on 404.
+   */
+  async getDetail(
+    target: { id: string } | { slug: string[] },
+  ): Promise<CardDetail | null> {
+    const query =
+      "id" in target
+        ? { id: target.id, include: "prices" }
+        : { slug: target.slug.join("/"), include: "prices" };
+    try {
+      const { data, error, status } = await cardsClient.api.v1.cards.detail.get({
+        query,
+        fetch: requestFetchInit(),
+      });
+      if (error != null) {
+        if (status === 404) return null;
+        throw new CardApiError(`Riftseer API ${status}`, "http", status);
+      }
+      return data as CardDetail;
+    } catch (err) {
+      handleRequestFailure(err);
+    }
+  },
+
+  /**
    * Full-text card name search. Backed by `GET /api/v1/cards?name=…&limit=&offset=`.
    * Returns empty result for whitespace-only queries (the API 400s without `name`).
    */
@@ -248,9 +275,31 @@ export const cardsApi = {
   },
 };
 
+/** Absolute API URLs for the copy-pasteable exports offered on the card page. */
+export const cardExportUrls = {
+  text: (id: string) => `${API_BASE}/api/v1/cards/${encodeURIComponent(id)}/text`,
+  json: (id: string) => `${API_BASE}/api/v1/cards/${encodeURIComponent(id)}?include=prices`,
+};
+
+/**
+ * Fetch a card export (see {@link cardExportUrls}) as raw text for the clipboard.
+ * Uses the shared no-store + timeout init so a hung request can't wedge the UI.
+ */
+export async function fetchCardExportText(url: string): Promise<string> {
+  const res = await fetch(url, requestFetchInit());
+  if (!res.ok) throw new CardApiError(`Riftseer API ${res.status}`, "http", res.status);
+  return res.text();
+}
+
 /** TanStack Query keys for card fetches. */
 export const cardsQueryKeys = {
   all: ["cards"] as const,
+  detail: (target: { id: string } | { slug: string[] }) =>
+    [
+      "cards",
+      "detail",
+      "id" in target ? `id:${target.id}` : `slug:${target.slug.join("/")}`,
+    ] as const,
   search: (
     name: string,
     limit: number,

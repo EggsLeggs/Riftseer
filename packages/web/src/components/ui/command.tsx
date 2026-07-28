@@ -6,11 +6,11 @@ import { Command as CommandPrimitive } from "cmdk"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { AppDialogContent } from "@/components/layout/clear-body-pointer-events"
 import { SearchIcon, CheckIcon } from "lucide-react"
 
 function Command({
@@ -44,7 +44,7 @@ function CommandDialog({
 }) {
   return (
     <Dialog {...props}>
-      <DialogContent
+      <AppDialogContent
         className={cn(
           "top-1/3 translate-y-0 overflow-hidden rounded-xl! p-0",
           className
@@ -56,7 +56,7 @@ function CommandDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {children}
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   )
 }

@@ -20,6 +20,7 @@ interface CardDataProvider {
   refresh(): Promise<void>;
 
   getCardById(id: string): Promise<Card | null>;
+  getCardsByIds(ids: string[]): Promise<Card[]>;
   searchByName(q: string, opts?: CardSearchOptions): Promise<Card[]>;
   resolveRequest(req: CardRequest): Promise<ResolvedCard>;
   getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>>;
@@ -47,6 +48,10 @@ Pulls fresh data from the upstream source and rebuilds the in-memory index. Fall
 #### `getCardById(id)`
 
 Returns a single card by its stable UUID. Returns `null` if not found — never throws.
+
+#### `getCardsByIds(ids)`
+
+Returns many full cards in one round-trip, in the order the IDs were given. Unknown IDs are omitted rather than returned as `null`. Used by `buildCardDetail()` to expand related-card stubs for the card detail payload without fanning out into one request per card.
 
 #### `searchByName(q, opts?)`
 

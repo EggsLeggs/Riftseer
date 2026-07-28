@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import {
   BadCardSearchQueryError,
   andAst,
+  buildCardDetail,
   filterLeaf,
   finalizeCard,
   finalizeCards,
@@ -13,7 +14,12 @@ import {
   type CardSearchAst,
   type CardSearchField,
 } from "@riftseer/core";
-import { CardSchema, ErrorSchema, ResolvedCardSchema } from "../schemas";
+import {
+  CardDetailSchema,
+  CardSchema,
+  ErrorSchema,
+  ResolvedCardSchema,
+} from "../schemas";
 
 /** Hard cap so callers cannot page arbitrarily deep in one request. */
 const MAX_SEARCH_OFFSET = 10_000;
@@ -95,6 +101,63 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           tags: ["Cards"],
           summary: "Get a random card",
           description: "Returns a single random card from the index.",
+        },
+      },
+    )
+
+    // ── GET /cards/detail ─────────────────────────────────────────────────────
+    // Registered before /cards/:id so "detail" is never read as a card id.
+    .get(
+      "/cards/detail",
+      async ({ query, set }) => {
+        const id = query.id?.trim();
+        const slug = query.slug?.trim().replace(/^\/+|\/+$/g, "");
+        if (Boolean(id) === Boolean(slug)) {
+          set.status = 400;
+          return {
+            error: "Provide exactly one of `id` or `slug`.",
+            code: "BAD_REQUEST",
+          };
+        }
+
+        const card = id
+          ? await cardProvider.getCardById(id)
+          : await cardProvider.getCardByPublicSlug(slug!);
+        if (!card) {
+          set.status = 404;
+          return { error: "Card not found", code: "NOT_FOUND" };
+        }
+
+        return await buildCardDetail(
+          await finalizeOne(card, query.include),
+          cardProvider,
+          { siteOrigin, prepare: (related) => prepare(related, query.include) },
+        );
+      },
+      {
+        query: t.Object({
+          id: t.Optional(t.String({ description: "Card id. Mutually exclusive with `slug`." })),
+          slug: t.Optional(
+            t.String({
+              description:
+                "Public slug path, e.g. `ogn/12a/signature/sun-disc`. Mutually exclusive with `id`.",
+            }),
+          ),
+          include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
+        }),
+        response: {
+          200: CardDetailSchema,
+          400: ErrorSchema,
+          404: ErrorSchema,
+        },
+        detail: {
+          tags: ["Cards"],
+          summary: "Get card detail payload",
+          description:
+            "Everything the public card page needs in one request: the card plus " +
+            "its printings, tokens, champions/legends and resolved marketplace " +
+            "links. Related-card stubs are expanded, sorted and deduplicated " +
+            "server-side. Look up by `id` or by `slug` — exactly one is required.",
         },
       },
     )

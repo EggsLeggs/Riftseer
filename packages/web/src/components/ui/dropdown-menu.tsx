@@ -50,6 +50,8 @@ function DropdownMenuContent({
   )
 }
 
+type DropdownMenuContentProps = React.ComponentProps<typeof DropdownMenuContent>
+
 function DropdownMenuGroup({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Group>) {
@@ -266,4 +268,5 @@ export {
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
+  type DropdownMenuContentProps,
 }

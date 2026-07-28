@@ -37,7 +37,8 @@ export function App() {
                 <Link to="/docs/privacy" className="text-primary hover:underline">Privacy Policy</Link>
               </div>
               <div>
-                Riftseer is not affiliated with Riot Games. Riftbound and all related properties are trademarks of Riot Games.
+                Riftseer was created under Riot Games&apos; &quot;Legal Jibber Jabber&quot; policy using
+                assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
               </div>
             </div>
           </footer>

@@ -19,7 +19,13 @@ import type {
 // import the real index.ts (which calls provider.warmup() at module level).
 
 import { cardsRoutes } from "../../routes/cards";
-import { STUB_CARD, StubProvider } from "../stub_card_provider";
+import {
+  STUB_CARD,
+  STUB_PRINTING_ID,
+  STUB_SIGNATURE_ID,
+  STUB_TOKEN_ID,
+  StubProvider,
+} from "../stub_card_provider";
 
 function buildTestApp(provider: CardDataProvider) {
   return new Elysia({ prefix: "/api/v1" }).use(cardsRoutes(provider));
@@ -94,6 +100,103 @@ describe("API routes", () => {
       expect(res.status).toBe(400);
       const body = (await res.json()) as { code?: string };
       expect(body.code).toBe("BAD_REQUEST");
+    });
+  });
+
+  // ── GET /cards/detail ──────────────────────────────────────────────────────
+
+  describe("GET /cards/detail", () => {
+    it("returns the aggregate payload when looked up by id", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/cards/detail?id=${STUB_CARD.id}`),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.object).toBe("card_detail");
+      expect(body.card.id).toBe(STUB_CARD.id);
+
+      // Current printing plus the alternate-art reprint, current one flagged.
+      expect(body.printings).toHaveLength(2);
+      expect(body.printings.find((p: any) => p.is_current)?.id).toBe(STUB_CARD.id);
+      const reprint = body.printings.find((p: any) => p.id === STUB_PRINTING_ID);
+      expect(reprint.collector_label).toBe("22a");
+      expect(reprint.object).toBe("card_printing");
+
+      expect(body.tokens).toHaveLength(1);
+      expect(body.tokens[0].id).toBe(STUB_TOKEN_ID);
+      expect(body.champions).toHaveLength(1);
+      expect(body.legends).toEqual([]);
+      expect(body.signatures.map((s: any) => s.id)).toContain(STUB_SIGNATURE_ID);
+      expect(body.used_by).toEqual([]);
+      expect(body.purchase.tcgplayer).toBe("https://www.tcgplayer.com/product/123456");
+      expect(body.purchase.cardmarket).toContain("cardmarket.com");
+    });
+
+    it("returns the same payload when looked up by slug", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/detail?slug=ogn/21/sun-disc"),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.card.id).toBe(STUB_CARD.id);
+    });
+
+    it("omits prices unless include=prices", async () => {
+      const withoutPrices = await app.handle(
+        new Request(`http://localhost/api/v1/cards/detail?id=${STUB_CARD.id}`),
+      );
+      const plain = (await withoutPrices.json()) as any;
+      expect(plain.card.prices).toBeUndefined();
+      expect(plain.printings.every((p: any) => p.prices === undefined)).toBe(true);
+
+      const withPrices = await app.handle(
+        new Request(
+          `http://localhost/api/v1/cards/detail?id=${STUB_CARD.id}&include=prices`,
+        ),
+      );
+      const priced = (await withPrices.json()) as any;
+      expect(priced.card.prices.tcgplayer.normal).toBe(1.25);
+      expect(
+        priced.printings.find((p: any) => p.id === STUB_PRINTING_ID).prices
+          .tcgplayer.normal,
+      ).toBe(9.99);
+    });
+
+    it("returns 400 when neither id nor slug is given", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/detail"),
+      );
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as any).code).toBe("BAD_REQUEST");
+    });
+
+    it("returns 400 when both id and slug are given", async () => {
+      const res = await app.handle(
+        new Request(
+          `http://localhost/api/v1/cards/detail?id=${STUB_CARD.id}&slug=ogn/21/sun-disc`,
+        ),
+      );
+      expect(res.status).toBe(400);
+      expect(((await res.json()) as any).code).toBe("BAD_REQUEST");
+    });
+
+    it("returns 404 for an unknown id", async () => {
+      const res = await app.handle(
+        new Request("http://localhost/api/v1/cards/detail?id=nope"),
+      );
+      expect(res.status).toBe(404);
+      expect(((await res.json()) as any).code).toBe("NOT_FOUND");
+    });
+
+    it("expands used_by on token cards", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/cards/detail?id=${STUB_TOKEN_ID}`),
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as any;
+      expect(body.card.is_token).toBe(true);
+      expect(body.used_by).toHaveLength(1);
+      expect(body.used_by[0].id).toBe(STUB_CARD.id);
     });
   });
 

@@ -3,10 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImageOffIcon } from "lucide-react";
+import { ImageOffIcon, LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import type { Card } from "@riftseer/types";
+import { isReprintPrinting } from "@riftseer/types";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Table,
   TableBody,
@@ -15,36 +17,36 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  CardTypeLine,
+  DomainRunes,
+  EnergyCost,
+  MightStat,
+  PowerStat,
+} from "@/features/cards/card-icons";
+import { CardTags } from "@/features/cards/card-tags";
+import { CardText } from "@/features/cards/card-text";
 import { cardHref } from "@/features/cards/paths";
+import {
+  cardIsLandscapeOriented,
+  cardTypeLine,
+  formatEur,
+  formatUsd,
+  meaningfulCardDomains,
+  meaningfulRulesText,
+} from "@/features/cards/format";
 import { cn } from "@/lib/utils";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-export function formatUsd(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
-  return `$${n.toFixed(2)}`;
-}
-
-export function formatEur(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
-  return `€${n.toFixed(2)}`;
-}
-
-export function cardTypeLine(card: Card): string {
-  const { type, supertype } = card.classification ?? {};
-  return [type, supertype].filter(Boolean).join(" — ") || "—";
-}
-
-export function cardIsLandscapeOriented(card: Card): boolean {
-  const o = card.media?.orientation;
-  return o === "landscape" || o === "horizontal";
-}
-
-export function meaningfulCardDomains(card: Card): string[] {
-  return (card.classification?.domains ?? []).filter(
-    (d) => d.trim() !== "" && d.trim().toLowerCase() !== "colorless",
-  );
-}
+// Re-exported so existing client views keep their single import site. Server
+// components must import from ./format directly — this module is client-only.
+export {
+  cardIsLandscapeOriented,
+  cardTypeLine,
+  formatEur,
+  formatUsd,
+  meaningfulCardDomains,
+  meaningfulRulesText,
+};
 
 const CARD_GRID_INVISIBLE_LABEL =
   "pointer-events-none absolute inset-x-0 top-0 z-[1000] box-border w-full pt-[6.75%] pl-[8%] text-sm tracking-normal text-transparent select-text";
@@ -53,6 +55,53 @@ const CARD_GRID_INVISIBLE_LABEL =
 
 export const CARD_RESULTS_VIEWS = ["details", "images", "table"] as const;
 export type CardResultsView = (typeof CARD_RESULTS_VIEWS)[number];
+
+/** Native `<select>` styling shared with card browse toolbars. */
+export const CARD_BROWSE_SELECT_CLASS =
+  "border-input bg-background text-foreground h-9 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+const CARD_RESULTS_VIEW_TOGGLE_GROUP_CLASS = "h-9 items-stretch rounded-md";
+const CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS =
+  "h-full min-h-0 gap-1.5 rounded-none px-2.5 text-sm first:!rounded-l-md last:!rounded-r-md";
+
+export function CardResultsViewToggle({
+  value,
+  onValueChange,
+  "aria-label": ariaLabel = "Card layout",
+}: {
+  value: CardResultsView;
+  onValueChange: (value: CardResultsView) => void;
+  "aria-label"?: string;
+}) {
+  return (
+    <ToggleGroup
+      type="single"
+      spacing={0}
+      variant="outline"
+      size="lg"
+      value={value}
+      onValueChange={(v) => {
+        if (!v) return;
+        onValueChange(v as CardResultsView);
+      }}
+      aria-label={ariaLabel}
+      className={CARD_RESULTS_VIEW_TOGGLE_GROUP_CLASS}
+    >
+      <ToggleGroupItem value="details" className={CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS}>
+        <LayoutList data-icon="inline-start" className="size-3.5" />
+        Full details
+      </ToggleGroupItem>
+      <ToggleGroupItem value="images" className={CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS}>
+        <LayoutGrid data-icon="inline-start" className="size-3.5" />
+        Images
+      </ToggleGroupItem>
+      <ToggleGroupItem value="table" className={CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS}>
+        <Table2 data-icon="inline-start" className="size-3.5" />
+        Table
+      </ToggleGroupItem>
+    </ToggleGroup>
+  );
+}
 
 // ─── SearchSkeleton ───────────────────────────────────────────────────────────
 
@@ -72,7 +121,7 @@ export function SearchSkeleton({
           <React.Fragment key={i}>
             {i > 0 ? <Separator className="my-4" /> : null}
             <div className="flex gap-6">
-              <Skeleton className="aspect-2/3 w-28 shrink-0 rounded-lg sm:w-32" />
+              <Skeleton className="aspect-[5/7] w-28 shrink-0 rounded-lg sm:w-32" />
               <div className="flex flex-1 flex-col gap-3 pt-1">
                 <Skeleton className="h-6 w-2/3 max-w-xs" />
                 <Skeleton className="h-4 w-40" />
@@ -111,7 +160,7 @@ export function SearchSkeleton({
       aria-hidden="true"
     >
       {Array.from({ length: n }).map((_, i) => (
-        <Skeleton key={i} className="aspect-2/3 w-full rounded-lg" />
+        <Skeleton key={i} className="aspect-[5/7] w-full rounded-lg" />
       ))}
     </div>
   );
@@ -124,6 +173,8 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
     <div className="flex flex-col">
       {cards.map((card, index) => {
         const domains = meaningfulCardDomains(card);
+        const tags = card.classification?.tags ?? [];
+        const rulesText = meaningfulRulesText(card.text?.plain);
         return (
           <React.Fragment key={card.id}>
             {index > 0 ? <Separator className="my-8" /> : null}
@@ -134,23 +185,38 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
               >
                 <DetailsCardArt card={card} />
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <h2 className="text-lg font-semibold tracking-tight text-primary sm:text-xl">
                       {card.name}
                     </h2>
+                    <span className="inline-flex shrink-0 items-center gap-2">
+                      {card.attributes?.energy != null ? (
+                        <EnergyCost
+                          energy={card.attributes.energy}
+                          card={card}
+                        />
+                      ) : null}
+                      {card.attributes?.power != null ? (
+                        <PowerStat power={card.attributes.power} />
+                      ) : null}
+                      {card.attributes?.might != null ? (
+                        <MightStat might={card.attributes.might} />
+                      ) : null}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                    <CardTypeLine card={card} />
                     {domains.length > 0 ? (
-                      <span className="text-muted-foreground text-sm">
-                        {domains.join(", ")}
-                      </span>
+                      <DomainRunes domains={domains} />
                     ) : null}
                   </div>
-                  <p className="text-muted-foreground text-sm">
-                    {cardTypeLine(card)}
-                  </p>
-                  {card.text?.plain?.trim() ? (
-                    <p className="text-foreground/90 max-w-prose text-sm leading-relaxed whitespace-pre-wrap">
-                      {card.text.plain.trim()}
-                    </p>
+                  {tags.length > 0 ? <CardTags tags={tags} /> : null}
+                  {rulesText ? (
+                    <CardText
+                      text={rulesText}
+                      rich={card.text?.rich}
+                      className="text-foreground/90 max-w-prose"
+                    />
                   ) : null}
                   <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
                     <span className="tabular-nums">
@@ -169,7 +235,7 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
                       </span>
                     ) : null}
                   </div>
-                  <DetailTagRow card={card} />
+                  <DetailMetaChips card={card} />
                 </div>
               </Link>
             </article>
@@ -180,12 +246,15 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
   );
 }
 
-function DetailTagRow({ card }: { card: Card }) {
-  const chips: string[] = [...(card.classification?.tags ?? [])];
+/** Foil / variant chips (classification tags use CardTags rhombuses). */
+function DetailMetaChips({ card }: { card: Card }) {
+  const chips: string[] = [];
   const finishes = card.metadata?.finishes ?? [];
   if (finishes.includes("Foil")) chips.push("Foil");
   if (card.metadata?.alternate_art) chips.push("Alt art");
-  if (card.related_printings?.length) chips.push("Reprint");
+  if (card.metadata?.signature) chips.push("Signature");
+  if (card.metadata?.overnumbered) chips.push("Overnumbered");
+  if (isReprintPrinting(card)) chips.push("Reprint");
 
   if (chips.length === 0) return null;
 
@@ -217,8 +286,8 @@ function DetailsCardArt({ card }: { card: Card }) {
       className={cn(
         "relative shrink-0 overflow-hidden rounded-lg bg-muted",
         isLandscape
-          ? "aspect-3/2 w-44 sm:w-52"
-          : "aspect-2/3 w-28 sm:w-32",
+          ? "aspect-[7/5] w-44 sm:w-52"
+          : "aspect-[5/7] w-28 sm:w-32",
       )}
     >
       {!imageUrl || failed ? (
@@ -303,7 +372,7 @@ export function CardTableResults({ cards }: { cards: Card[] }) {
                 </Link>
               </TableCell>
               <TableCell className="max-w-[180px] whitespace-normal">
-                {cardTypeLine(card)}
+                <CardTypeLine card={card} />
               </TableCell>
               <TableCell className="max-w-[200px] whitespace-normal text-sm">
                 {(card.classification?.tags ?? []).join(", ") || "—"}
@@ -432,7 +501,7 @@ function CardThumbnail({
 }) {
   const imageUrl = card.media?.media_urls?.normal;
   const [failed, setFailed] = React.useState(false);
-  const aspectClass = naturalLandscapeLayout ? "aspect-3/2" : "aspect-2/3";
+  const aspectClass = naturalLandscapeLayout ? "aspect-[7/5]" : "aspect-[5/7]";
   const showOverlayName =
     cardNamePlacement === "overlay" && Boolean(cardName);
   const showBelowName =
@@ -456,7 +525,7 @@ function CardThumbnail({
       <div className="flex w-full flex-col gap-1.5">
         <div
           className={cn(
-            "relative flex w-full flex-col items-center justify-center gap-1.5 rounded-lg bg-muted",
+            "relative flex w-full flex-col items-center justify-center gap-1.5 rounded-lg bg-muted transition-transform duration-200 group-hover:z-10 group-hover:scale-[1.03]",
             aspectClass,
           )}
         >
@@ -483,7 +552,7 @@ function CardThumbnail({
     <div className="flex w-full flex-col gap-1.5">
       <div
         className={cn(
-          "relative w-full overflow-hidden rounded-lg bg-muted",
+          "relative w-full overflow-hidden rounded-lg bg-muted transition-transform duration-200 group-hover:z-10 group-hover:scale-[1.03]",
           aspectClass,
         )}
       >
@@ -493,7 +562,7 @@ function CardThumbnail({
           </span>
         ) : null}
         {showRotatedInPortraitSlot ? (
-          <div className="absolute left-1/2 top-1/2 h-2/3 w-[150%] -translate-x-1/2 -translate-y-1/2 origin-center -rotate-90">
+          <div className="absolute left-1/2 top-1/2 h-[calc(100%*5/7)] w-[140%] -translate-x-1/2 -translate-y-1/2 origin-center -rotate-90">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
@@ -509,7 +578,7 @@ function CardThumbnail({
           <img
             src={imageUrl}
             alt=""
-            className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+            className="h-full w-full object-cover"
             loading="lazy"
             decoding="async"
             onError={() => setFailed(true)}

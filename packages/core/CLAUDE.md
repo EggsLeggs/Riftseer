@@ -11,6 +11,7 @@ Shared library consumed by `packages/api`. Contains the `CardDataProvider` inter
 | `src/parser.ts` | Re-exports `parseCardRequests()` from `@riftseer/types` |
 | `src/icons.ts` | Re-exports `TOKEN_REGEX`, `TOKEN_ICON_MAP` from `@riftseer/types` |
 | `src/normalize.ts` | Re-exports `normalizeCardName()` from `@riftseer/types` |
+| `src/card-detail.ts` | `buildCardDetail()` — expands related-card stubs into the card page payload; owns printing order, collector labels, champion/legend dedupe and marketplace URL fallbacks |
 | `src/provider.ts` | `CardDataProvider` interface — the only contract between API and data |
 | `src/logger.ts` | Lightweight logging utility |
 | `src/providers/index.ts` | Factory: `createProvider()` — returns `SupabaseCardProvider` |

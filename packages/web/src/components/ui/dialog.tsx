@@ -85,6 +85,8 @@ function DialogContent({
   )
 }
 
+type DialogContentProps = React.ComponentProps<typeof DialogContent>
+
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -165,4 +167,5 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  type DialogContentProps,
 }

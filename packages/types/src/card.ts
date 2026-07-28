@@ -13,6 +13,12 @@ export interface RelatedCard {
   uri?: string;
   /** Absolute public site URL for the referenced card. Computed at response time. */
   riftseer_uri?: string;
+  /** Set code for printing siblings — populated on related_printings stubs. */
+  set_code?: string;
+  collector_number?: string;
+  /** Release date used to order printings (from set or card). */
+  published_on?: string;
+  alternate_art?: boolean;
 }
 
 export interface CardExternalIds {
@@ -138,6 +144,12 @@ export interface Card {
   related_champions: RelatedCard[];
   /** Legend cards linked to this champion by a shared tag (populated on champions). */
   related_legends: RelatedCard[];
+  /**
+   * Signature cards (supertype "Signature") tied to this legend/champion by a
+   * shared character tag (populated on legends and champions). The reverse link
+   * lives on the signature card's related_legends / related_champions.
+   */
+  related_signatures: RelatedCard[];
   /** Other printings/art variants of the same card. */
   related_printings: RelatedCard[];
   /**
