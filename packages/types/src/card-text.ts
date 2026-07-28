@@ -17,6 +17,16 @@ import {
   takeKeywordBadgeCosts,
 } from "./keywords.ts";
 
+/** True for scalar values `String.fromCodePoint` accepts (not surrogates / out of range). */
+function isUnicodeScalarValue(value: number): boolean {
+  return (
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 0x10ffff &&
+    !(value >= 0xd800 && value <= 0xdfff)
+  );
+}
+
 /** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
 export function decodeCardTextEntities(text: string): string {
   let prev = "";
@@ -28,12 +38,14 @@ export function decodeCardTextEntities(text: string): string {
       .replace(/&apos;/gi, "'")
       .replace(/&lt;/gi, "<")
       .replace(/&gt;/gi, ">")
-      .replace(/&#(\d+);/g, (_, code: string) =>
-        String.fromCharCode(Number(code)),
-      )
-      .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
-        String.fromCharCode(Number.parseInt(hex, 16)),
-      )
+      .replace(/&#(\d+);/g, (_, code: string) => {
+        const value = Number(code);
+        return isUnicodeScalarValue(value) ? String.fromCodePoint(value) : "";
+      })
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => {
+        const value = Number.parseInt(hex, 16);
+        return isUnicodeScalarValue(value) ? String.fromCodePoint(value) : "";
+      })
       .replace(/&amp;/gi, "&");
   }
   return current;
@@ -166,7 +178,7 @@ export function parseCardTextRich(rich: string): CardTextBlock[] | null {
     const inner = match[2]!;
 
     if (tag === "p") {
-      const lines = richFragmentToPlain(inner)
+      const lines = normalizeCardTextLayout(richFragmentToPlain(inner))
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0);
@@ -178,8 +190,11 @@ export function parseCardTextRich(rich: string): CardTextBlock[] | null {
     const itemRe = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
     let itemMatch: RegExpExecArray | null;
     while ((itemMatch = itemRe.exec(inner)) !== null) {
-      const item = richFragmentToPlain(itemMatch[1]!).trim();
-      if (item.length > 0) items.push(item);
+      const plain = richFragmentToPlain(itemMatch[1]!);
+      // Keep break-only items (`<li><br /></li>`) as an explicit `\n` for renderers.
+      if (plain.length === 0) continue;
+      const item = normalizeCardTextLayout(plain);
+      items.push(item.length > 0 ? item : "\n");
     }
     if (items.length > 0) blocks.push({ type: "list", items });
   }
@@ -189,11 +204,18 @@ export function parseCardTextRich(rich: string): CardTextBlock[] | null {
 
 /** Private-use bookends so restored text can't collide with card copy. */
 const TOKEN_PLACEHOLDER = /\uE000(\d+)\uE001/g;
+/** Escaped form of a pre-existing sentinel so restore won't treat it as ours. */
+const ESCAPED_TOKEN_PLACEHOLDER = /\uE002(\d+)\uE003/g;
 
 /** Mask `:rb_…:` tokens before italic/underscore splitting. */
 export function maskIconTokens(text: string): { masked: string; tokens: string[] } {
   const tokens: string[] = [];
-  const masked = text.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
+  // Escape literal sentinel-shaped runs so restore only replaces generated markers.
+  const escaped = text.replace(
+    TOKEN_PLACEHOLDER,
+    (_, index: string) => `\uE002${index}\uE003`,
+  );
+  const masked = escaped.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
     const index = tokens.length;
     tokens.push(match);
     return `\uE000${index}\uE001`;
@@ -202,7 +224,9 @@ export function maskIconTokens(text: string): { masked: string; tokens: string[]
 }
 
 export function restoreIconTokens(text: string, tokens: string[]): string {
-  return text.replace(TOKEN_PLACEHOLDER, (_, index: string) => tokens[Number(index)] ?? "");
+  return text
+    .replace(TOKEN_PLACEHOLDER, (_, index: string) => tokens[Number(index)] ?? "")
+    .replace(ESCAPED_TOKEN_PLACEHOLDER, (_, index: string) => `\uE000${index}\uE001`);
 }
 
 function formatTokenRun(keys: string[], preferText: boolean): string {
@@ -214,7 +238,7 @@ function formatTokenRun(keys: string[], preferText: boolean): string {
 function formatLineForClipboard(line: string, preferText: boolean): string {
   // Drop reminder-italic markers without touching underscores inside `:rb_…:`.
   const { masked, tokens } = maskIconTokens(line);
-  const plain = masked.replace(/_/g, "").replace(TOKEN_PLACEHOLDER, (_, index: string) => tokens[Number(index)] ?? "");
+  const plain = restoreIconTokens(masked.replace(/_/g, ""), tokens);
 
   const regex = new RegExp(
     `${TOKEN_REGEX.source}|${KEYWORD_TAG_REGEX.source}`,

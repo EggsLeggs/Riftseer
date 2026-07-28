@@ -51,7 +51,6 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
-  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -65,10 +64,6 @@ function DialogContent({
           "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
-        onCloseAutoFocus={(event) => {
-          document.body.style.pointerEvents = ""
-          onCloseAutoFocus?.(event)
-        }}
         {...props}
       >
         {children}
@@ -89,6 +84,8 @@ function DialogContent({
     </DialogPortal>
   )
 }
+
+type DialogContentProps = React.ComponentProps<typeof DialogContent>
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -170,4 +167,5 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  type DialogContentProps,
 }

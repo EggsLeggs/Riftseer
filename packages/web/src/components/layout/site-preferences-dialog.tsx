@@ -17,12 +17,12 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { AppDialogContent } from "@/components/layout/clear-body-pointer-events";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -124,7 +124,7 @@ function SitePreferencesDialogContent({
   } = useSitePreferences();
 
   return (
-    <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+    <AppDialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
       <div className="border-b border-border bg-muted/30 px-4 py-4 sm:px-5">
         <DialogHeader className="gap-1.5">
           <DialogTitle>Site preferences</DialogTitle>
@@ -380,6 +380,6 @@ function SitePreferencesDialogContent({
           </Button>
         </DialogClose>
       </div>
-    </DialogContent>
+    </AppDialogContent>
   );
 }

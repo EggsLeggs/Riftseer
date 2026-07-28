@@ -6,9 +6,9 @@ const FLURRY_RICH =
 
 describe("richFragmentToPlain", () => {
   it("converts br tags to newlines and decodes entities", () => {
-    expect(richFragmentToPlain("[Reaction]<br />Choose one —")).toBe(
-      "[Reaction]\nChoose one —",
-    );
+    expect(
+      richFragmentToPlain('[Reaction]<br />Choose one &quot;option&quot; —'),
+    ).toBe('[Reaction]\nChoose one "option" —');
   });
 });
 
@@ -28,6 +28,15 @@ describe("parseCardTextRich", () => {
           "Play four 1 :rb_might: Bird unit tokens with [Deflect]. (Opponents must pay :rb_rune_rainbow: to choose them with a spell or ability.)",
         ],
       },
+    ]);
+  });
+
+  it("preserves break-only list items as explicit rendering breaks", () => {
+    expect(
+      parseCardTextRich("<p>Choose one —</p><ul><li><br /></li><li>Do a thing.</li></ul>"),
+    ).toEqual([
+      { type: "paragraph", lines: ["Choose one —"] },
+      { type: "list", items: ["\n", "Do a thing."] },
     ]);
   });
 });

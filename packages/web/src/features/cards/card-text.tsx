@@ -441,8 +441,16 @@ export function CardText({
               >
                 {block.items.map((item) => {
                   const index = lineCounter++;
+                  const itemLines = item.split("\n");
                   return (
-                    <li key={index}>{renderLine(item, index, preferText)}</li>
+                    <li key={index}>
+                      {itemLines.map((itemLine, lineIdx) => (
+                        <span key={`${index}-${lineIdx}`}>
+                          {lineIdx > 0 ? <br /> : null}
+                          {renderLine(itemLine, index * 1000 + lineIdx, preferText)}
+                        </span>
+                      ))}
+                    </li>
                   );
                 })}
               </ul>

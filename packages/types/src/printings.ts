@@ -73,8 +73,8 @@ export function onlyAltArtSiblings(card: Card): boolean {
 
 /**
  * Whether a printing should show a "Reprint" label in browse/search UIs.
- * Alt-art variants are excluded; true reprints are detected via older non-alt
- * siblings when stub metadata is present (set / date / collector).
+ * Alt-art variants are excluded; true reprints require a comparable
+ * `published_on` chronology (same-day collector order is allowed).
  */
 export function isReprintPrinting(card: Card): boolean {
   if (card.metadata?.alternate_art) return false;
@@ -86,16 +86,22 @@ export function isReprintPrinting(card: Card): boolean {
   const olderCandidates = related.filter((stub) => !stub.alternate_art);
   if (!olderCandidates.length) return false;
 
-  const hasPrintingHints = olderCandidates.some(
-    (stub) =>
-      stub.set_code != null ||
-      stub.published_on != null ||
-      stub.collector_number != null,
-  );
-  if (!hasPrintingHints) return false;
-
   const self = printingRefFromCard(card);
-  return olderCandidates.some(
-    (stub) => comparePrintingRefs(printingRefFromStub(stub), self) < 0,
-  );
+  const selfTime = releaseTime(self);
+  if (!Number.isFinite(selfTime)) return false;
+
+  return olderCandidates.some((stub) => {
+    const stubRef = printingRefFromStub(stub);
+    const stubTime = releaseTime(stubRef);
+    if (!Number.isFinite(stubTime)) return false;
+    if (stubTime < selfTime) return true;
+    if (stubTime > selfTime) return false;
+    // Same release day: collector number only — never fall through to id.
+    const byCollector = (stubRef.collector_number ?? "").localeCompare(
+      self.collector_number ?? "",
+      undefined,
+      { numeric: true },
+    );
+    return byCollector < 0;
+  });
 }

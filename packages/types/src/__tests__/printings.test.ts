@@ -162,6 +162,24 @@ describe("isReprintPrinting", () => {
 
     expect(isReprintPrinting(card)).toBe(false);
   });
+
+  it("does not classify by set_code or id alone without release dates", () => {
+    const card = makeCard({
+      id: "zzz",
+      name: "Sun Disc",
+      related_printings: [
+        {
+          object: "related_card",
+          id: "aaa",
+          name: "Sun Disc",
+          component: "printing",
+          set_code: "OGN",
+        },
+      ],
+    });
+
+    expect(isReprintPrinting(card)).toBe(false);
+  });
 });
 
 describe("comparePrintingRefs", () => {

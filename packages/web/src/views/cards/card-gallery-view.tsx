@@ -150,8 +150,7 @@ export function CardGalleryView() {
     (next: CardResultsView) => {
       patchAccessibility({ cardResultsView: next });
       updateSearchParams((p) => {
-        if (next === "images") p.delete("view");
-        else p.set("view", next);
+        p.set("view", next);
       });
     },
     [patchAccessibility, updateSearchParams],

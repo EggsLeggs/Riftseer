@@ -31,12 +31,8 @@ export function CardsNavMenu() {
 
   const closeUnlessFocusInside = React.useCallback(() => {
     const active = document.activeElement;
-    if (active instanceof Node && rootRef.current?.contains(active)) {
-      // Keep open while keyboard focus is on a link inside the panel.
-      if (active !== triggerRef.current) return;
-      // Click left focus on the trigger; blur so mouse-leave actually closes.
-      triggerRef.current.blur();
-    }
+    // Keep open while keyboard focus is inside (trigger or panel); never blur the trigger.
+    if (active instanceof Node && rootRef.current?.contains(active)) return;
     setOpen(false);
   }, []);
 
@@ -53,8 +49,9 @@ export function CardsNavMenu() {
       }}
       onKeyDown={(event) => {
         if (event.key !== "Escape") return;
-        close();
+        // Refocus before close so onFocus cannot reopen after setOpen(false).
         triggerRef.current?.focus();
+        close();
       }}
     >
       <Button
@@ -65,7 +62,6 @@ export function CardsNavMenu() {
         className="gap-1 px-2.5 text-sm font-medium"
         aria-expanded={open}
         aria-controls="cards-nav-menu"
-        aria-haspopup="true"
         onFocus={() => setOpen(true)}
       >
         Cards

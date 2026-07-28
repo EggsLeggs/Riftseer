@@ -2,6 +2,8 @@ import { describe, expect, it } from "bun:test";
 import {
   decodeCardTextEntities,
   formatCardTextForClipboard,
+  maskIconTokens,
+  restoreIconTokens,
 } from "../card-text.ts";
 
 describe("decodeCardTextEntities", () => {
@@ -13,6 +15,26 @@ describe("decodeCardTextEntities", () => {
       "[Action][>] move",
     );
     expect(decodeCardTextEntities("&amp;quot;")).toBe('"');
+  });
+
+  it("decodes numeric entities via fromCodePoint and drops invalid scalars", () => {
+    expect(decodeCardTextEntities("&#34;quoted&#34;")).toBe('"quoted"');
+    expect(decodeCardTextEntities("&#x1F600;")).toBe("\u{1F600}");
+    expect(decodeCardTextEntities("&#x110000;")).toBe("");
+    expect(decodeCardTextEntities("&#55296;")).toBe(""); // U+D800 surrogate
+  });
+});
+
+describe("maskIconTokens / restoreIconTokens", () => {
+  it("does not treat literal sentinel sequences as token placeholders", () => {
+    const literal = "\uE0000\uE001";
+    const { masked, tokens } = maskIconTokens(
+      `${literal} costs :rb_energy_1: more.`,
+    );
+    expect(masked).toContain("\uE0020\uE003");
+    expect(restoreIconTokens(masked, tokens)).toBe(
+      `${literal} costs :rb_energy_1: more.`,
+    );
   });
 });
 

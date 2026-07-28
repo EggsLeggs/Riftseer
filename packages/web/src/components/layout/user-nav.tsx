@@ -5,11 +5,11 @@ import Link from "next/link";
 import { Star, Users } from "lucide-react";
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AppDropdownMenuContent } from "@/components/layout/clear-body-pointer-events";
 import { Button } from "@/components/ui/button";
 import { logoutAction } from "@/features/auth/actions";
 
@@ -31,7 +31,7 @@ export function UserNav({ handle, isSupporter, isMember }: UserNavProps) {
           {handle ? `@${handle}` : "Account"}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <AppDropdownMenuContent align="end">
         {handle && (
           <DropdownMenuItem asChild>
             <Link href={`/u/${handle}`}>Profile</Link>
@@ -47,7 +47,7 @@ export function UserNav({ handle, isSupporter, isMember }: UserNavProps) {
         >
           {pending ? "Signing out…" : "Sign out"}
         </DropdownMenuItem>
-      </DropdownMenuContent>
+      </AppDropdownMenuContent>
     </DropdownMenu>
   );
 }
