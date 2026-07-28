@@ -52,6 +52,11 @@ export function cardIsLandscapeOriented(card: Card): boolean {
   return orientation === "landscape" || orientation === "horizontal";
 }
 
+/** Gear printings show card energy cost in a diamond, not a circle. */
+export function cardIsGear(card: Pick<Card, "classification">): boolean {
+  return card.classification?.type?.trim().toLowerCase() === "gear";
+}
+
 /** Drops the placeholder "Colorless" domain, which has no rune of its own. */
 export function meaningfulCardDomains(card: Card): string[] {
   return (card.classification?.domains ?? []).filter(

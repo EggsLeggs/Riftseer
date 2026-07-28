@@ -3,10 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImageOffIcon } from "lucide-react";
+import { ImageOffIcon, LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import type { Card } from "@riftseer/types";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Table,
   TableBody,
@@ -53,6 +54,53 @@ const CARD_GRID_INVISIBLE_LABEL =
 
 export const CARD_RESULTS_VIEWS = ["details", "images", "table"] as const;
 export type CardResultsView = (typeof CARD_RESULTS_VIEWS)[number];
+
+/** Native `<select>` styling shared with card browse toolbars. */
+export const CARD_BROWSE_SELECT_CLASS =
+  "border-input bg-background text-foreground h-9 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+const CARD_RESULTS_VIEW_TOGGLE_GROUP_CLASS = "h-9 items-stretch rounded-md";
+const CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS =
+  "h-full min-h-0 gap-1.5 rounded-none px-2.5 text-sm first:!rounded-l-md last:!rounded-r-md";
+
+export function CardResultsViewToggle({
+  value,
+  onValueChange,
+  "aria-label": ariaLabel = "Card layout",
+}: {
+  value: CardResultsView;
+  onValueChange: (value: CardResultsView) => void;
+  "aria-label"?: string;
+}) {
+  return (
+    <ToggleGroup
+      type="single"
+      spacing={0}
+      variant="outline"
+      size="lg"
+      value={value}
+      onValueChange={(v) => {
+        if (!v) return;
+        onValueChange(v as CardResultsView);
+      }}
+      aria-label={ariaLabel}
+      className={CARD_RESULTS_VIEW_TOGGLE_GROUP_CLASS}
+    >
+      <ToggleGroupItem value="details" className={CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS}>
+        <LayoutList data-icon="inline-start" className="size-3.5" />
+        Full details
+      </ToggleGroupItem>
+      <ToggleGroupItem value="images" className={CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS}>
+        <LayoutGrid data-icon="inline-start" className="size-3.5" />
+        Images
+      </ToggleGroupItem>
+      <ToggleGroupItem value="table" className={CARD_RESULTS_VIEW_TOGGLE_ITEM_CLASS}>
+        <Table2 data-icon="inline-start" className="size-3.5" />
+        Table
+      </ToggleGroupItem>
+    </ToggleGroup>
+  );
+}
 
 // ─── SearchSkeleton ───────────────────────────────────────────────────────────
 
@@ -126,7 +174,6 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
         const domains = meaningfulCardDomains(card);
         const tags = card.classification?.tags ?? [];
         const rulesText = meaningfulRulesText(card.text?.plain);
-        const isGear = card.classification?.type?.toLowerCase() === "gear";
         return (
           <React.Fragment key={card.id}>
             {index > 0 ? <Separator className="my-8" /> : null}
@@ -145,7 +192,7 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
                       {card.attributes?.energy != null ? (
                         <EnergyCost
                           energy={card.attributes.energy}
-                          isGear={isGear}
+                          card={card}
                         />
                       ) : null}
                       {card.attributes?.power != null ? (
@@ -166,6 +213,7 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
                   {rulesText ? (
                     <CardText
                       text={rulesText}
+                      rich={card.text?.rich}
                       className="text-foreground/90 max-w-prose"
                     />
                   ) : null}

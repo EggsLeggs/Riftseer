@@ -94,7 +94,6 @@ export function CardDetailView({ detail }: { detail: CardDetail }) {
     card.media?.media_urls?.normal ??
     card.media?.media_urls?.png ??
     card.media?.media_urls?.small;
-  const isGear = card.classification?.type?.toLowerCase() === "gear";
 
   return (
     <div className="container space-y-6 py-8">
@@ -165,7 +164,6 @@ export function CardDetailView({ detail }: { detail: CardDetail }) {
           domains={domains}
           tags={tags}
           rulesText={rulesText}
-          isGear={isGear}
         />
       ) : (
         <DetailedCardBody
@@ -174,7 +172,6 @@ export function CardDetailView({ detail }: { detail: CardDetail }) {
           domains={domains}
           tags={tags}
           rulesText={rulesText}
-          isGear={isGear}
         />
       )}
 
@@ -193,14 +190,12 @@ function DetailedCardBody({
   domains,
   tags,
   rulesText,
-  isGear,
 }: {
   detail: CardDetail;
   imageUrl: string | undefined;
   domains: string[];
   tags: string[];
   rulesText: string | null;
-  isGear: boolean;
 }) {
   const { card } = detail;
 
@@ -224,7 +219,7 @@ function DetailedCardBody({
                   {card.attributes?.energy != null ? (
                     <EnergyCost
                       energy={card.attributes.energy}
-                      isGear={isGear}
+                      card={card}
                     />
                   ) : null}
                   {card.attributes?.power != null ? (
@@ -254,7 +249,7 @@ function DetailedCardBody({
 
             {rulesText ? (
               <DetailRow label="Ability" alignTop>
-                <CardText text={rulesText} />
+                <CardText text={rulesText} rich={card.text?.rich} />
               </DetailRow>
             ) : null}
 
@@ -335,14 +330,12 @@ function SimpleCardBody({
   domains,
   tags,
   rulesText,
-  isGear,
 }: {
   detail: CardDetail;
   imageUrl: string | undefined;
   domains: string[];
   tags: string[];
   rulesText: string | null;
-  isGear: boolean;
 }) {
   const { card } = detail;
   const { accessibility } = useSitePreferences();
@@ -369,7 +362,7 @@ function SimpleCardBody({
           </h1>
           <span className="inline-flex shrink-0 items-center gap-2 pt-0.5">
             {card.attributes?.energy != null ? (
-              <EnergyCost energy={card.attributes.energy} isGear={isGear} />
+              <EnergyCost energy={card.attributes.energy} card={card} />
             ) : null}
             {card.attributes?.power != null ? (
               <PowerStat power={card.attributes.power} />
@@ -405,6 +398,7 @@ function SimpleCardBody({
         {rulesText ? (
           <CardText
             text={rulesText}
+            rich={card.text?.rich}
             className="text-foreground mt-6 max-w-prose text-[0.95rem] leading-relaxed"
           />
         ) : null}

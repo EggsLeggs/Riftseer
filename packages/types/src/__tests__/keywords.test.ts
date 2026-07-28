@@ -1,10 +1,13 @@
 import { describe, expect, it } from "bun:test";
 import {
+  isKeywordStackConnector,
   isKeywordTag,
+  keywordAbsorbsTrailingCosts,
   keywordBaseKey,
   styleForKeyword,
   DEFAULT_KEYWORD_STYLE,
   KEYWORD_TAG_REGEX,
+  takeKeywordBadgeCosts,
 } from "../keywords.ts";
 
 describe("keywordBaseKey", () => {
@@ -21,6 +24,37 @@ describe("isKeywordTag", () => {
     expect(isKeywordTag("Deflect 3")).toBe(true);
     expect(isKeywordTag("NO TEXT")).toBe(false);
     expect(isKeywordTag("")).toBe(false);
+  });
+});
+
+describe("isKeywordStackConnector", () => {
+  it("recognises stack markers between keyword badges", () => {
+    expect(isKeywordStackConnector(">>")).toBe(true);
+    expect(isKeywordStackConnector("&gt;&gt;")).toBe(true);
+    expect(isKeywordStackConnector("Reaction")).toBe(false);
+  });
+});
+
+describe("keywordAbsorbsTrailingCosts", () => {
+  it("keeps Add resources outside the badge", () => {
+    expect(keywordAbsorbsTrailingCosts("Add")).toBe(false);
+    expect(keywordAbsorbsTrailingCosts("Empower")).toBe(true);
+    expect(keywordAbsorbsTrailingCosts("Equip")).toBe(true);
+  });
+});
+
+describe("takeKeywordBadgeCosts", () => {
+  it("absorbs empower costs but not activated-ability cost runs", () => {
+    expect(takeKeywordBadgeCosts(" :rb_energy_3::rb_rune_rainbow: (", 0)).toEqual({
+      keys: ["energy_3", "rune_rainbow"],
+      end: 31,
+    });
+    expect(
+      takeKeywordBadgeCosts(":rb_energy_2::rb_rune_fury:: Double", 0),
+    ).toEqual({
+      keys: [],
+      end: 0,
+    });
   });
 });
 

@@ -9,7 +9,35 @@ import {
   formatTokenDisplayList,
   tokenPlainLabel,
 } from "./icons.ts";
-import { KEYWORD_TAG_REGEX, isKeywordTag } from "./keywords.ts";
+import {
+  KEYWORD_TAG_REGEX,
+  isKeywordStackConnector,
+  isKeywordTag,
+  keywordAbsorbsTrailingCosts,
+  takeKeywordBadgeCosts,
+} from "./keywords.ts";
+
+/** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
+export function decodeCardTextEntities(text: string): string {
+  let prev = "";
+  let current = text;
+  while (current !== prev) {
+    prev = current;
+    current = current
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&#(\d+);/g, (_, code: string) =>
+        String.fromCharCode(Number(code)),
+      )
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) =>
+        String.fromCharCode(Number.parseInt(hex, 16)),
+      )
+      .replace(/&amp;/gi, "&");
+  }
+  return current;
+}
 
 function buildParenDepthMap(text: string): Uint16Array {
   const depth = new Uint16Array(text.length + 1);
@@ -67,7 +95,7 @@ export function normalizeCardTextLayout(
   text: string,
   paragraphBreak = "\n",
 ): string {
-  let normalized = text
+  let normalized = decodeCardTextEntities(text)
     .trim()
     .replace(/\r\n/g, "\n")
     .replace(/\r/g, "\n");
@@ -75,6 +103,16 @@ export function normalizeCardTextLayout(
   normalized = collapseNewlinesInsideParentheses(normalized)
     .replace(/_ \(/g, "_(")
     .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
+    // Standalone keyword chains (e.g. [Accelerate][Assault 2][Deflect]).
+    .replace(
+      /(\[[A-Za-z][^\]]*\])(?=\[(?!&gt;|>|&gt;&gt;|>>)[A-Za-z])/g,
+      `$1${paragraphBreak}`,
+    )
+    // Activated ability costs glued to a keyword (e.g. [Deflect]:rb_energy_2::…).
+    .replace(
+      /\](?=:rb_(?:energy_\d+|rune_\w+|exhaust|might|power):)/g,
+      `]${paragraphBreak}`,
+    )
     .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
 
   const depthMap = buildParenDepthMap(normalized);
@@ -92,7 +130,62 @@ export function normalizeCardTextLayout(
   return normalized;
 }
 
-const KEYWORD_COST_RUN = /^(?:\s*)((?::rb_(?:energy_\d+|rune_\w+):)+)/;
+/** One paragraph (`<p>`) or bullet list (`<ul>`) from upstream `text.rich`. */
+export type CardTextBlock =
+  | { type: "paragraph"; lines: string[] }
+  | { type: "list"; items: string[] };
+
+/** Strip RiftCodex rich fragments to plain tokens/keywords for rendering. */
+export function richFragmentToPlain(fragment: string): string {
+  let text = fragment.trim();
+  text = text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<em>([\s\S]*?)<\/em>/gi, "_$1_")
+    .replace(/<i>([\s\S]*?)<\/i>/gi, "_$1_")
+    .replace(/<strong>([\s\S]*?)<\/strong>/gi, "$1")
+    .replace(/<b>([\s\S]*?)<\/b>/gi, "$1")
+    .replace(/<[^>]+>/g, "");
+  return decodeCardTextEntities(text);
+}
+
+/**
+ * Parses the small HTML subset used in `text.rich` (`<p>`, `<br>`, `<ul>`,
+ * `<li>`). Returns null when there is no bullet list — callers should fall
+ * back to `text.plain` + {@link normalizeCardTextLayout}.
+ */
+export function parseCardTextRich(rich: string): CardTextBlock[] | null {
+  const trimmed = rich.trim();
+  if (!/<ul\b/i.test(trimmed)) return null;
+
+  const blocks: CardTextBlock[] = [];
+  const blockRe = /<(p|ul)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = blockRe.exec(trimmed)) !== null) {
+    const tag = match[1]!.toLowerCase();
+    const inner = match[2]!;
+
+    if (tag === "p") {
+      const lines = richFragmentToPlain(inner)
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+      if (lines.length > 0) blocks.push({ type: "paragraph", lines });
+      continue;
+    }
+
+    const items: string[] = [];
+    const itemRe = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+    let itemMatch: RegExpExecArray | null;
+    while ((itemMatch = itemRe.exec(inner)) !== null) {
+      const item = richFragmentToPlain(itemMatch[1]!).trim();
+      if (item.length > 0) items.push(item);
+    }
+    if (items.length > 0) blocks.push({ type: "list", items });
+  }
+
+  return blocks.some((block) => block.type === "list") ? blocks : null;
+}
 
 /** Private-use bookends so restored text can't collide with card copy. */
 const TOKEN_PLACEHOLDER = /\uE000(\d+)\uE001/g;
@@ -154,12 +247,20 @@ function formatLineForClipboard(line: string, preferText: boolean): string {
       continue;
     }
 
+    if (keywordLabel != null && isKeywordStackConnector(keywordLabel)) {
+      lastIndex = regex.lastIndex;
+      continue;
+    }
+
     if (keywordLabel != null && isKeywordTag(keywordLabel)) {
-      const costMatch = KEYWORD_COST_RUN.exec(plain.slice(regex.lastIndex));
-      const costKeys = costMatch
-        ? [...costMatch[1]!.matchAll(/:rb_(\w+):/g)].map((m) => m[1]!)
-        : [];
-      if (costMatch) regex.lastIndex += costMatch[0].length;
+      let costKeys: string[] = [];
+      let costEnd = regex.lastIndex;
+      if (keywordAbsorbsTrailingCosts(keywordLabel)) {
+        const costs = takeKeywordBadgeCosts(plain, regex.lastIndex);
+        costKeys = costs.keys;
+        costEnd = costs.end;
+      }
+      if (costKeys.length > 0) regex.lastIndex = costEnd;
       const costs = formatTokenRun(costKeys, preferText);
       out += `[${keywordLabel.trim()}]${arrow ? ">" : ""}${costs ? ` ${costs}` : ""}`;
       lastIndex = regex.lastIndex;

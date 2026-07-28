@@ -64,6 +64,35 @@
   );
 }
 
+/* `[>>]` stack connector — concave notch on the left mates with the prior badge's right tip */
+.card-keyword--arrow-left {
+  --keyword-arrow: 0.42em;
+  --keyword-notch-pad: 0.24em;
+
+  margin-left: calc(-1 * var(--keyword-arrow) + 0.02em);
+  padding-left: calc(0.5em + var(--keyword-notch-pad));
+  clip-path: polygon(
+    var(--keyword-inset) 0,
+    100% 0,
+    calc(100% - var(--keyword-inset)) 100%,
+    0 100%,
+    var(--keyword-arrow) 50%
+  );
+}
+
+/* Stacked chain: `[Level 6][>][>>][Reaction][>]` — socket left, tip right */
+.card-keyword--arrow-left.card-keyword--arrow {
+  padding-right: calc(0.4em + var(--keyword-arrow));
+  clip-path: polygon(
+    var(--keyword-inset) 0,
+    calc(100% - var(--keyword-arrow)) 0,
+    100% 50%,
+    calc(100% - var(--keyword-arrow)) 100%,
+    0 100%,
+    var(--keyword-arrow) 50%
+  );
+}
+
 /*
  * Nested costs: `[Empower]{3}{Rainbow}` etc.
  * Energy circle = keyword text colour; digit = opposite B/W.

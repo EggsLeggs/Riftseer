@@ -2,7 +2,7 @@
 
 import type { Card } from "@riftseer/types";
 
-import { cardTypeIconKey, cardTypeLine } from "@/features/cards/format";
+import { cardIsGear, cardTypeIconKey, cardTypeLine } from "@/features/cards/format";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
 import { cn } from "@/lib/utils";
 
@@ -28,16 +28,20 @@ const DOMAINS_WITH_GLYPHS = new Set([
 /** Energy cost bubble. Gear cards show a diamond instead of a circle. */
 export function EnergyCost({
   energy,
-  isGear = false,
+  card,
   className,
 }: {
   energy: number;
-  isGear?: boolean;
+  card: Pick<Card, "classification">;
   className?: string;
 }) {
   return (
     <span
-      className={cn("icon-energy-value", isGear && "icon-energy-gear", className)}
+      className={cn(
+        "icon-energy-value",
+        cardIsGear(card) && "icon-energy-gear",
+        className,
+      )}
       data-value={energy}
       aria-label={`${energy} energy`}
     />

@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useConsentManager } from "@c15t/nextjs";
-import { LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Pagination,
   PaginationContent,
@@ -25,7 +23,9 @@ import {
   CardTableResults,
   SearchSkeleton,
   buildPageRange,
+  CARD_BROWSE_SELECT_CLASS,
   CARD_RESULTS_VIEWS,
+  CardResultsViewToggle,
   type CardResultsView,
 } from "@/features/cards/card-display";
 import { parseMetaKeywords, sortCards } from "@/features/cards/meta-keywords";
@@ -304,31 +304,11 @@ export function SearchCardsView() {
               <span className="text-muted-foreground text-sm font-medium">
                 View
               </span>
-              <ToggleGroup
-                type="single"
-                spacing={0}
-                variant="outline"
-                size="sm"
+              <CardResultsViewToggle
                 value={resultsView}
-                onValueChange={(v: string) => {
-                  if (!v) return;
-                  setResultsView(v as CardResultsView);
-                }}
+                onValueChange={setResultsView}
                 aria-label="Search results layout"
-              >
-                <ToggleGroupItem value="details" className="gap-1.5 px-2.5">
-                  <LayoutList data-icon="inline-start" className="size-3.5" />
-                  Full details
-                </ToggleGroupItem>
-                <ToggleGroupItem value="images" className="gap-1.5 px-2.5">
-                  <LayoutGrid data-icon="inline-start" className="size-3.5" />
-                  Images
-                </ToggleGroupItem>
-                <ToggleGroupItem value="table" className="gap-1.5 px-2.5">
-                  <Table2 data-icon="inline-start" className="size-3.5" />
-                  Table
-                </ToggleGroupItem>
-              </ToggleGroup>
+              />
             </div>
             <div className="flex flex-col gap-1.5 sm:items-end">
               <Label htmlFor="search-per-page" className="text-muted-foreground">
@@ -340,7 +320,7 @@ export function SearchCardsView() {
                 onChange={(e) =>
                   setPerPage(Number.parseInt(e.target.value, 10) as PageSize)
                 }
-                className="border-input bg-background text-foreground h-9 w-22 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className={cn(CARD_BROWSE_SELECT_CLASS, "w-22")}
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (
                   <option key={n} value={n}>

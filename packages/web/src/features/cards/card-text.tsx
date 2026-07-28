@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import {
   maskIconTokens,
   normalizeCardTextLayout,
+  parseCardTextRich,
   restoreIconTokens,
 } from "@riftseer/types/card-text";
 import {
@@ -15,9 +16,12 @@ import {
   tokenPlainLabel,
 } from "@riftseer/types/icons";
 import {
+  isKeywordStackConnector,
   isKeywordTag,
   KEYWORD_TAG_REGEX,
+  keywordAbsorbsTrailingCosts,
   styleForKeyword,
+  takeKeywordBadgeCosts,
 } from "@riftseer/types/keywords";
 
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
@@ -25,12 +29,6 @@ import { cn } from "@/lib/utils";
 
 /** `energy_3` renders as a numbered bubble rather than a fixed icon. */
 const ENERGY_VALUE_PATTERN = /^energy_(\d+)$/;
-
-/**
- * Costs that sit inside a keyword badge: energy bubbles and domain runes
- * (`[Empower] :rb_energy_3::rb_rune_rainbow:`). Exhaust / might stay outside.
- */
-const KEYWORD_COST_RUN = /^(?:\s*)((?::rb_(?:energy_\d+|rune_\w+):)+)/;
 
 /**
  * Italic reminder spans are wrapped in `_…_`. Underscores inside `:rb_…:`
@@ -43,16 +41,6 @@ function contrastingBw(hex: string): string {
   const normalized = hex.trim().toUpperCase();
   if (normalized === "#FFF" || normalized === "#FFFFFF") return "#000000";
   return "#FFFFFF";
-}
-
-function takeKeywordCosts(
-  text: string,
-  from: number,
-): { keys: string[]; end: number } {
-  const match = KEYWORD_COST_RUN.exec(text.slice(from));
-  if (!match) return { keys: [], end: from };
-  const keys = [...match[1]!.matchAll(/:rb_(\w+):/g)].map((m) => m[1]!);
-  return { keys, end: from + match[0].length };
 }
 
 function escapeHtml(text: string): string {
@@ -89,6 +77,14 @@ function plainTextFromSelection(root: HTMLElement): string | null {
   });
   holder.querySelectorAll("br").forEach((br) => {
     br.replaceWith(document.createTextNode("\n"));
+  });
+  holder.querySelectorAll("li").forEach((item, index) => {
+    if (index > 0) {
+      item.parentNode?.insertBefore(
+        document.createTextNode("\n"),
+        item,
+      );
+    }
   });
   // Selection across ability paragraphs → keep a single newline between them.
   holder.querySelectorAll("p").forEach((paragraph, index) => {
@@ -185,12 +181,15 @@ function renderIconToken(
 function KeywordBadge({
   label,
   arrow,
+  arrowLeft,
   costKeys,
   preferText,
 }: {
   label: string;
   /** True when the source text had `[Keyword][&gt;]` / `[Keyword][>]`. */
   arrow?: boolean;
+  /** True when this badge follows a `[>>]` / `[&gt;&gt;]` stack connector. */
+  arrowLeft?: boolean;
   /** Trailing `:rb_energy_*:` / `:rb_rune_*:` absorbed into the badge. */
   costKeys?: string[];
   preferText: boolean;
@@ -209,7 +208,11 @@ function KeywordBadge({
   return (
     <span className="card-text-atom">
       <span
-        className={cn("card-keyword", arrow && "card-keyword--arrow")}
+        className={cn(
+          "card-keyword",
+          arrow && "card-keyword--arrow",
+          arrowLeft && "card-keyword--arrow-left",
+        )}
         style={
           {
             "--keyword-bg": style.background,
@@ -258,6 +261,7 @@ function renderInline(
   );
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+  let pendingStackLeft = false;
 
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
@@ -295,18 +299,27 @@ function renderInline(
         continue;
       }
       parts.push(renderIconToken(iconKey, key, false));
+    } else if (keywordLabel != null && isKeywordStackConnector(keywordLabel)) {
+      pendingStackLeft = true;
+      lastIndex = regex.lastIndex;
+      continue;
     } else if (keywordLabel != null && isKeywordTag(keywordLabel)) {
-      const { keys: costKeys, end } = takeKeywordCosts(text, regex.lastIndex);
+      const absorbCosts = keywordAbsorbsTrailingCosts(keywordLabel);
+      const { keys: costKeys, end } = absorbCosts
+        ? takeKeywordBadgeCosts(text, regex.lastIndex)
+        : { keys: [], end: regex.lastIndex };
       regex.lastIndex = end;
       parts.push(
         <KeywordBadge
           key={key}
           label={keywordLabel}
           arrow={keywordArrow}
+          arrowLeft={pendingStackLeft}
           costKeys={costKeys}
           preferText={preferText}
         />,
       );
+      pendingStackLeft = false;
       lastIndex = end;
       continue;
     } else if (keywordLabel != null) {
@@ -364,14 +377,20 @@ function renderLine(
  */
 export function CardText({
   text,
+  rich,
   className,
 }: {
   text: string;
+  /** Upstream `text.rich` — used for bullet lists when it contains `<ul>`. */
+  rich?: string | null;
   className?: string;
 }) {
   const { accessibility } = useSitePreferences();
   const preferText = accessibility.preferTextOverSymbols;
-  const lines = normalizeCardTextLayout(text).split("\n");
+  const richBlocks = rich ? parseCardTextRich(rich) : null;
+  const lines = richBlocks
+    ? null
+    : normalizeCardTextLayout(text).split("\n");
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -400,14 +419,38 @@ export function CardText({
     return () => root.removeEventListener("copy", onCopy, true);
   }, []);
 
+  let lineCounter = 0;
+
   return (
     <div
       ref={rootRef}
       className={cn("space-y-2 text-sm leading-relaxed", className)}
     >
-      {lines.map((line, index) => (
-        <p key={index}>{renderLine(line, index, preferText)}</p>
-      ))}
+      {richBlocks
+        ? richBlocks.map((block, blockIndex) => {
+            if (block.type === "paragraph") {
+              return block.lines.map((line) => {
+                const index = lineCounter++;
+                return <p key={`${blockIndex}-${index}`}>{renderLine(line, index, preferText)}</p>;
+              });
+            }
+            return (
+              <ul
+                key={blockIndex}
+                className="list-disc space-y-1 pl-5 marker:text-foreground/70"
+              >
+                {block.items.map((item) => {
+                  const index = lineCounter++;
+                  return (
+                    <li key={index}>{renderLine(item, index, preferText)}</li>
+                  );
+                })}
+              </ul>
+            );
+          })
+        : lines!.map((line, index) => (
+            <p key={index}>{renderLine(line, index, preferText)}</p>
+          ))}
     </div>
   );
 }

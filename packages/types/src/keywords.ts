@@ -88,6 +88,42 @@ export function isKeywordTag(label: string): boolean {
   return /^[A-Za-z]/u.test(trimmed);
 }
 
+/**
+ * `[>>]` / `[&gt;&gt;]` between keyword badges — the next keyword gets a left
+ * chevron connecting to the previous keyword's right chevron.
+ */
+export function isKeywordStackConnector(label: string): boolean {
+  const trimmed = label.trim();
+  return trimmed === ">>" || trimmed === "&gt;&gt;";
+}
+
+/**
+ * Trailing `:rb_energy_*:` / `:rb_rune_*:` nest inside the badge as costs
+ * (Empower, Equip, Repeat, Flow, …). [Add] is the exception — added resources
+ * are the effect result and render after the badge.
+ */
+export function keywordAbsorbsTrailingCosts(label: string): boolean {
+  return keywordBaseKey(label) !== "add";
+}
+
+/**
+ * Energy/rune costs absorbed into a keyword badge. Activated abilities end the
+ * cost run with an extra `:` (`:rb_energy_2::rb_rune_fury:: Double…`) and must
+ * not match.
+ */
+export const KEYWORD_BADGE_COST_RUN =
+  /^(?:\s*)((?::rb_(?:energy_\d+|rune_\w+):)+)(?!:)/;
+
+export function takeKeywordBadgeCosts(
+  text: string,
+  from: number,
+): { keys: string[]; end: number } {
+  const match = KEYWORD_BADGE_COST_RUN.exec(text.slice(from));
+  if (!match) return { keys: [], end: from };
+  const keys = [...match[1]!.matchAll(/:rb_(\w+):/g)].map((m) => m[1]!);
+  return { keys, end: from + match[0].length };
+}
+
 export function styleForKeyword(label: string): KeywordStyle {
   return KEYWORD_STYLES[keywordBaseKey(label)] ?? DEFAULT_KEYWORD_STYLE;
 }
