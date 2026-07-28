@@ -11,7 +11,8 @@
     "./icons": "./src/icons.ts",
     "./parser": "./src/parser.ts",
     "./slug": "./src/slug.ts",
-    "./social-links": "./src/social-links.ts"
+    "./social-links": "./src/social-links.ts",
+    "./printings": "./src/printings.ts"
   },
   "scripts": {
     "test": "bun test src/__tests__"

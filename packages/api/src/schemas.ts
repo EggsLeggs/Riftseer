@@ -9,6 +9,10 @@ export const RelatedCardSchema = t.Object({
   riftseer_uri: t.Optional(
     t.String({ description: "Absolute public site URL for the referenced card" }),
   ),
+  set_code: t.Optional(t.String({ description: "Set code — on related_printings stubs" })),
+  collector_number: t.Optional(t.String()),
+  published_on: t.Optional(t.String({ description: "ISO release date for printing order" })),
+  alternate_art: t.Optional(t.Boolean()),
 });
 
 const PriceEntrySchema = t.Partial(

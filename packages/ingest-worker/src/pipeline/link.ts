@@ -270,6 +270,20 @@ function baseName(name: string): string {
   return normalizeCardName(s);
 }
 
+function toPrintingStub(other: Card): RelatedCard {
+  return {
+    object: "related_card",
+    id: other.id,
+    name: other.name,
+    component: "printing",
+    uri: `/api/v1/cards/${other.id}`,
+    set_code: other.set?.set_code,
+    collector_number: other.collector_number,
+    published_on: other.set?.published_on ?? other.released_at,
+    alternate_art: other.metadata?.alternate_art ?? false,
+  };
+}
+
 export function linkRelatedPrintings(cards: Card[]): void {
   // Group non-token cards by base name
   const byBase = new Map<string, Card[]>();
@@ -286,13 +300,7 @@ export function linkRelatedPrintings(cards: Card[]): void {
     for (const card of group) {
       card.related_printings = group
         .filter((other) => other.id !== card.id)
-        .map((other) => ({
-          object: "related_card" as const,
-          id: other.id,
-          name: other.name,
-          component: "printing",
-          uri: `/api/v1/cards/${other.id}`,
-        }));
+        .map((other) => toPrintingStub(other));
       linked++;
     }
   }

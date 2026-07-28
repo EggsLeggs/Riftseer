@@ -51,7 +51,7 @@ export function tokenDisplayName(key: string): string {
 
   // Own-property check so keys like `constructor` / `toString` don't resolve to
   // inherited Object.prototype members.
-  const known = Object.hasOwn(TOKEN_PLAIN_LABELS, key)
+  const known = Object.prototype.hasOwnProperty.call(TOKEN_PLAIN_LABELS, key)
     ? TOKEN_PLAIN_LABELS[key]
     : undefined;
   if (known) return known;

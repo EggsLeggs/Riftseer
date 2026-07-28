@@ -6,3 +6,4 @@ export * from "./src/parser.ts";
 export * from "./src/icons.ts";
 export * from "./src/slug.ts";
 export * from "./src/social-links.ts";
+export * from "./src/printings.ts";

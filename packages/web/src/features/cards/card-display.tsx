@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImageOffIcon, LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import type { Card } from "@riftseer/types";
+import { isReprintPrinting } from "@riftseer/types";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -245,13 +246,15 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
   );
 }
 
-/** Foil / alt-art / reprint chips (classification tags use CardTags rhombuses). */
+/** Foil / variant chips (classification tags use CardTags rhombuses). */
 function DetailMetaChips({ card }: { card: Card }) {
   const chips: string[] = [];
   const finishes = card.metadata?.finishes ?? [];
   if (finishes.includes("Foil")) chips.push("Foil");
   if (card.metadata?.alternate_art) chips.push("Alt art");
-  if (card.related_printings?.length) chips.push("Reprint");
+  if (card.metadata?.signature) chips.push("Signature");
+  if (card.metadata?.overnumbered) chips.push("Overnumbered");
+  if (isReprintPrinting(card)) chips.push("Reprint");
 
   if (chips.length === 0) return null;
 
