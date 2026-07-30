@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -52,7 +53,7 @@ function draftFrom(ruling: AdminCardRuling): RulingDraft {
     text: ruling.text,
     dated: ruling.dated ?? "",
     source: ruling.source ?? "",
-    applyToAll: ruling.card_id === null,
+    applyToAll: ruling.all_printings,
   };
 }
 
@@ -261,10 +262,21 @@ export function AdminCardRulingsPanel({ card }: { card: Card }) {
                         {ruling.type}
                       </span>
                       <span className="text-muted-foreground">
-                        {ruling.card_id === null
-                          ? "All printings"
-                          : "This printing only"}
+                        {ruling.scope === "rule"
+                          ? "Matched by a rule"
+                          : ruling.all_printings
+                            ? "All printings"
+                            : "This printing only"}
                       </span>
+                      {ruling.shared && ruling.scope !== "rule" && (
+                        <span className="text-muted-foreground">
+                          Shared with {ruling.target_count - 1} other target
+                          {ruling.target_count === 2 ? "" : "s"}
+                        </span>
+                      )}
+                      {!ruling.active && (
+                        <span className="text-muted-foreground">Disabled</span>
+                      )}
                       {ruling.dated && (
                         <span className="text-muted-foreground tabular-nums">
                           {ruling.dated}
@@ -277,28 +289,45 @@ export function AdminCardRulingsPanel({ card }: { card: Card }) {
                       )}
                     </div>
                     <p className="text-sm whitespace-pre-line">{ruling.text}</p>
-                    <div className="mt-2 flex gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditing(ruling.id);
-                          setDraft(draftFrom(ruling));
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPendingDelete(ruling)}
-                      >
-                        <Trash2 aria-hidden="true" />
-                        <span className="sr-only">Delete this entry</span>
-                      </Button>
-                    </div>
+                    {ruling.shared ? (
+                      // Editing here would silently change what other cards
+                      // show, so a shared entry is read-only on this page.
+                      <p className="text-muted-foreground mt-2 text-xs">
+                        {ruling.scope === "rule"
+                          ? "This entry comes from a rule and applies to every card the rule matches. "
+                          : "This entry is shared with other cards. "}
+                        <Link
+                          href="/admin/rulings"
+                          className="text-primary underline-offset-4 hover:underline"
+                        >
+                          Edit it in Rulings
+                        </Link>
+                        .
+                      </p>
+                    ) : (
+                      <div className="mt-2 flex gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditing(ruling.id);
+                            setDraft(draftFrom(ruling));
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPendingDelete(ruling)}
+                        >
+                          <Trash2 aria-hidden="true" />
+                          <span className="sr-only">Delete this entry</span>
+                        </Button>
+                      </div>
+                    )}
                   </>
                 )}
               </li>
@@ -314,7 +343,7 @@ export function AdminCardRulingsPanel({ card }: { card: Card }) {
         }}
         title={`Delete this ${pendingDelete?.type ?? "entry"}?`}
         description={
-          pendingDelete?.card_id === null
+          pendingDelete?.all_printings
             ? "This entry shows on every printing of the card, so it will disappear from all of them."
             : "This entry only shows on this printing."
         }

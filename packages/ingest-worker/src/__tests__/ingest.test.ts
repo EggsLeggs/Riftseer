@@ -5,12 +5,22 @@ import {
   INGEST_RPC_CARD_BATCH_SIZE,
   runBatchedIngestRpc,
 } from "../pipeline/db.ts";
-import { buildProductMap, enrichCards } from "../pipeline/enrich.ts";
+import {
+  backfillLinkedPrices,
+  buildProductMap,
+  enrichCards,
+} from "../pipeline/enrich.ts";
 import { linkRelatedPrintings } from "../pipeline/link.ts";
 import {
   applyDbOverrides,
   applyDbSetOverrides,
 } from "../pipeline/overrides-db.ts";
+import {
+  RECONCILIATION_BATCH_SIZE,
+  buildReconciliationEntries,
+  syncReconciliationQueue,
+} from "../pipeline/reconcile.ts";
+import type { TCGProduct } from "../sources/tcgcsv.ts";
 import {
   printedVariantSignals,
   rawToCard,
@@ -86,6 +96,31 @@ function rawCard(overrides: Partial<RawCard> = {}): RawCard {
       signature: false,
     },
     ...overrides,
+  };
+}
+
+function tcgProduct({
+  productId,
+  cleanName,
+  number,
+  releasedOn,
+}: {
+  productId: number;
+  cleanName: string;
+  number: string | null;
+  releasedOn?: string;
+}): TCGProduct {
+  return {
+    productId,
+    name: cleanName,
+    cleanName,
+    imageUrl: `https://tcgplayer-cdn.tcgplayer.com/product/${productId}_200w.jpg`,
+    url: `https://www.tcgplayer.com/product/${productId}/test`,
+    extendedData:
+      number === null
+        ? []
+        : [{ name: "Number", displayName: "Number", value: number }],
+    ...(releasedOn ? { presaleInfo: { releasedOn } } : {}),
   };
 }
 
@@ -697,5 +732,193 @@ describe("ingest helpers", () => {
         parent_set_code: "TST",
       }),
     ]);
+  });
+
+  test("queues unmatched products but not sealed ones or claimed products", () => {
+    const cards = [
+      card({
+        id: "matched-card",
+        name: "Sun Disc",
+        collector_number: "12",
+        external_ids: { riftcodex_id: "matched-card", tcgplayer_id: "1001" },
+        set: { set_code: "OGN", set_name: "Origins" },
+      }),
+      // Same set and collector number as the unmatched product below, so it is
+      // offered as the suggestion.
+      card({
+        id: "suggestion-card",
+        name: "Solari Priestess",
+        collector_number: "77",
+        external_ids: { riftcodex_id: "suggestion-card" },
+        set: { set_code: "OGN", set_name: "Origins" },
+      }),
+    ];
+    const maps = buildProductMap([
+      {
+        groupId: 24344,
+        products: [
+          tcgProduct({ productId: 1001, cleanName: "Sun Disc", number: "12" }),
+          tcgProduct({
+            productId: 1002,
+            cleanName: "Solari Priestess Foil",
+            number: "77",
+          }),
+          tcgProduct({
+            productId: 1003,
+            cleanName: "Origins Booster Box",
+            number: null,
+          }),
+        ],
+        prices: [],
+      },
+    ]);
+
+    const entries = buildReconciliationEntries(
+      cards,
+      maps,
+      new Map([["OGN", 24344]]),
+    );
+
+    expect(entries).toEqual([
+      {
+        fingerprint: "product:1002",
+        kind: "unmatched_product",
+        tcgplayer_payload: expect.objectContaining({
+          product: expect.objectContaining({
+            product_id: 1002,
+            set_code: "OGN",
+            collector_number: "77",
+          }),
+          card_id: "suggestion-card",
+        }),
+        proposed_card_id: "suggestion-card",
+      },
+    ]);
+  });
+
+  test("flags a released-date disagreement but not a variant collector suffix", () => {
+    const cards = [
+      card({
+        id: "alt-art",
+        name: "Sett - Brawler (Alternate Art)",
+        collector_number: "164",
+        released_at: "2025-10-31",
+        metadata: { alternate_art: true },
+        external_ids: { riftcodex_id: "alt-art", tcgplayer_id: "2001" },
+        set: { set_code: "OGN", set_name: "Origins" },
+      }),
+    ];
+    const maps = buildProductMap([
+      {
+        groupId: 24344,
+        products: [
+          tcgProduct({
+            productId: 2001,
+            cleanName: "Sett Brawler Alternate Art",
+            // TCGPlayer's `a` suffix is how it spells our number, not a diff.
+            number: "164a/298",
+            releasedOn: "2025-11-14T00:00:00",
+          }),
+        ],
+        prices: [],
+      },
+    ]);
+
+    const entries = buildReconciliationEntries(
+      cards,
+      maps,
+      new Map([["OGN", 24344]]),
+    );
+
+    expect(entries).toEqual([
+      {
+        fingerprint: "diff:released_at:alt-art:2025-11-14",
+        kind: "field_diff",
+        tcgplayer_payload: expect.objectContaining({
+          field: "released_at",
+          current_value: "2025-10-31",
+          proposed_value: "2025-11-14",
+          card_id: "alt-art",
+        }),
+        proposed_card_id: "alt-art",
+      },
+    ]);
+  });
+
+  test("prunes the reconciliation queue only after every batch is upserted", async () => {
+    const calls: Array<{
+      p_entries: unknown[];
+      p_fingerprints: string[];
+      p_prune: boolean;
+    }> = [];
+    const client = {
+      rpc: async (_name: string, payload: (typeof calls)[number]) => {
+        calls.push(payload);
+        return { data: { ok: true, upserted: payload.p_entries.length }, error: null };
+      },
+    };
+    const entries = Array.from(
+      { length: RECONCILIATION_BATCH_SIZE + 1 },
+      (_, index) => ({
+        fingerprint: `product:${index}`,
+        kind: "unmatched_product" as const,
+        tcgplayer_payload: {
+          product: {
+            product_id: index,
+            name: `Product ${index}`,
+            url: "https://example.com",
+            image_url: null,
+            collector_number: null,
+            group_id: 1,
+            set_code: "OGN",
+          },
+        },
+        proposed_card_id: null,
+      }),
+    );
+
+    const result = await syncReconciliationQueue(client as never, entries, true);
+
+    expect(calls.map((call) => call.p_entries.length)).toEqual([
+      RECONCILIATION_BATCH_SIZE,
+      1,
+      0,
+    ]);
+    expect(calls.slice(0, 2).every((call) => call.p_prune === false)).toBe(true);
+    expect(calls[2].p_prune).toBe(true);
+    expect(calls[2].p_fingerprints).toHaveLength(entries.length);
+    expect(result.upserted).toBe(entries.length);
+  });
+
+  test("backfills prices for a card linked only by an admin override", () => {
+    const linked = card({
+      id: "confirmed",
+      name: "Sun Disc",
+      external_ids: { riftcodex_id: "confirmed", tcgplayer_id: "3001" },
+      set: { set_code: "OGN", set_name: "Origins" },
+    });
+    const maps = buildProductMap([
+      {
+        groupId: 24344,
+        products: [
+          tcgProduct({ productId: 3001, cleanName: "Sun Disc", number: "12" }),
+        ],
+        prices: [
+          {
+            productId: 3001,
+            lowPrice: 0.5,
+            midPrice: 1.5,
+            marketPrice: 1.25,
+            subTypeName: "Normal",
+          },
+        ],
+      },
+    ]);
+
+    expect(backfillLinkedPrices([linked], maps)).toBe(1);
+    expect(linked.prices?.tcgplayer?.normal).toBe(1.25);
+    expect(linked.purchase_uris?.tcgplayer).toContain("/product/3001/");
+    // A second pass must not undo an admin's media override or re-apply prices.
+    expect(backfillLinkedPrices([linked], maps)).toBe(0);
   });
 });

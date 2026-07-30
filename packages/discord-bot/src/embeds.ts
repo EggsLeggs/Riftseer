@@ -3,6 +3,7 @@
  */
 import type { APIEmbed, APIEmbedField } from "discord-api-types/v10";
 import { renderTextForDiscord } from "@riftseer/core/icons";
+import { cardImageUrl } from "@riftseer/types";
 import type { Card, CardSet } from "./api.ts";
 
 // Domain → embed accent colour
@@ -49,7 +50,7 @@ export function buildCardEmbed(
   const energy = card.attributes?.energy;
   const might = card.attributes?.might;
   const power = card.attributes?.power;
-  const imageUrl = card.media?.media_urls?.normal;
+  const imageUrl = cardImageUrl(card.media, "normal");
   const setCode = card.set?.set_code;
   const collectorNumber = card.collector_number;
   const plainText = card.text?.plain;
@@ -109,7 +110,7 @@ export function buildCardEmbed(
 
 /** Compact card embed — image only, minimal fields. Mirrors Scryfall's [[!Name]] mode. */
 export function buildCardImageEmbed(card: Card, siteBaseUrl: string): APIEmbed {
-  const imageUrl = card.media?.media_urls?.normal;
+  const imageUrl = cardImageUrl(card.media, "large");
   const domains = card.classification?.domains;
   return {
     title: card.name,

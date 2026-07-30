@@ -7,8 +7,10 @@
  *   3. Enrich only from TCGPlayer (prices, purchase URIs, fallback images)
  *   4. Link tokens, champions/legends, signatures, related printings
  *   5. Overlay DB overrides (manual cards, patches, relationship edits, deletions)
- *   6. Preserve unchanged hosted media; prepare jobs for changed source URLs
- *   7. Atomic upsert + prune, then enqueue image jobs for the queue consumer
+ *   6. File unmatched TCGPlayer products and field disagreements for admin review
+ *   7. Preserve unchanged hosted media; prepare jobs for changed source URLs
+ *   8. Atomic upsert + prune
+ *   9. Re-match rule-scoped rulings, then enqueue image jobs for the consumer
  */
 
 import type { Env } from "./env.ts";
@@ -16,9 +18,19 @@ import { logger } from "./utils.ts";
 import { fetchAllSets, fetchAllPages } from "./sources/riftcodex.ts";
 import { fetchGroups, fetchAllGroupResults } from "./sources/tcgcsv.ts";
 import { normalizeSets, normalizeCards } from "./pipeline/normalize.ts";
-import { matchTcgGroupsToSets, buildProductMap, enrichCards } from "./pipeline/enrich.ts";
+import {
+  backfillLinkedPrices,
+  buildProductMap,
+  enrichCards,
+  matchTcgGroupsToSets,
+  type ProductMaps,
+} from "./pipeline/enrich.ts";
+import {
+  buildReconciliationEntries,
+  syncReconciliationQueue,
+} from "./pipeline/reconcile.ts";
 import { linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings } from "./pipeline/link.ts";
-import { ingestCardData } from "./pipeline/db.ts";
+import { ingestCardData, refreshRulingRuleMatches } from "./pipeline/db.ts";
 import { collapseDuplicates } from "./pipeline/dedup.ts";
 import {
   overlayDbOverrides,
@@ -42,6 +54,8 @@ export interface IngestResult {
   cardsCount: number;
   setsCount: number;
   imageJobsCount: number;
+  /** Unmatched TCGPlayer products and field disagreements awaiting admin review. */
+  reviewEntriesCount: number;
   elapsedMs: number;
   ok: boolean;
   error?: string;
@@ -77,9 +91,13 @@ export async function runIngest(env: Env): Promise<IngestResult> {
 
     // 3. TCGPlayer enrichment (non-fatal if it fails). TCGPlayer never creates
     // sets or cards; it only enriches the RiftCodex-authoritative records.
+    // The product map is kept so step 6 can review what enrichment could not
+    // reconcile; a failure here leaves it null and skips that step entirely.
+    let productMap: ProductMaps | null = null;
+    let setGroupMap = new Map<string, number>();
     try {
       const tcgGroups = await fetchGroups(timeoutMs);
-      const setGroupMap = matchTcgGroupsToSets(ingestSets, tcgGroups);
+      setGroupMap = matchTcgGroupsToSets(ingestSets, tcgGroups);
       const matchedGroupIds = new Set(setGroupMap.values());
       const matchedGroups = tcgGroups.filter((group) =>
         matchedGroupIds.has(group.groupId)
@@ -88,10 +106,11 @@ export async function runIngest(env: Env): Promise<IngestResult> {
         matchedGroups,
         timeoutMs,
       );
-      const productMap = buildProductMap(groupResults);
+      productMap = buildProductMap(groupResults);
       const enrichment = enrichCards(cards, productMap, setGroupMap);
       logger.info("TCGPlayer enrichment complete", enrichment);
     } catch (err) {
+      productMap = null;
       logger.warn("TCGPlayer enrichment failed — continuing without prices", {
         error: String(err),
       });
@@ -103,14 +122,37 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     linkSignatures(cards);
     linkRelatedPrintings(cards);
 
-    // 5–7. Overlay DB overrides, preserve unchanged R2 media, then atomic
-    // upsert + prune. Changed/missing images are processed asynchronously.
+    // 5–8. Overlay DB overrides, review what TCGPlayer could not be reconciled
+    // with, preserve unchanged R2 media, then atomic upsert + prune.
+    // Changed/missing images are processed asynchronously.
     const supabase = createSupabase(env);
     // Independent reads over different tables — no ordering between them.
     const [finalSets, finalCards] = await Promise.all([
       overlayDbSetOverrides(supabase, ingestSets),
       overlayDbOverrides(supabase, cards),
     ]);
+
+    // 6. Reconciliation runs on the final cards so it sees admin-confirmed
+    // links, which is what stops a confirmed entry re-surfacing next run. Those
+    // links land too late for enrichment, so their prices are backfilled here.
+    // The whole step is advisory — a failure must not cost us the ingest.
+    let reviewEntriesCount = 0;
+    if (productMap) {
+      backfillLinkedPrices(finalCards, productMap);
+      try {
+        const entries = buildReconciliationEntries(
+          finalCards,
+          productMap,
+          setGroupMap,
+        );
+        await syncReconciliationQueue(supabase, entries, true);
+        reviewEntriesCount = entries.length;
+      } catch (err) {
+        logger.warn("Reconciliation queue sync failed — continuing", {
+          error: String(err),
+        });
+      }
+    }
 
     // Image preparation is advisory next to the card upsert: it only carries
     // hosted URLs forward and hashes sources. A failure costs one cycle of
@@ -137,6 +179,11 @@ export async function runIngest(env: Env): Promise<IngestResult> {
 
     await ingestCardData(supabase, finalSets, finalCards);
 
+    // 9. Rule-scoped rulings are re-materialised against the catalogue we just
+    // wrote, so a rule written months ago picks up this run's new printings.
+    // Must follow the upsert — it reads `cards`, not the in-memory list.
+    const ruleMatches = await refreshRulingRuleMatches(supabase);
+
     // The card data is committed by this point. Enqueuing the catalogue scan is
     // only a prompt to go host images, and the next scheduled run re-sends it,
     // so a queue failure must not report an ingest that succeeded as failed.
@@ -156,12 +203,16 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       reusedImages: preparedImages.reused,
       adminImagesPreserved: preparedImages.adminPreserved,
       cardsWithoutQueueSource: preparedImages.withoutSource,
+      reviewEntries: reviewEntriesCount,
+      rulingRuleTargets: ruleMatches?.targets ?? 0,
+      rulingRuleMatches: ruleMatches?.matches ?? 0,
       elapsedMs,
     });
     return {
       cardsCount: finalCards.length,
       setsCount: finalSets.length,
       imageJobsCount: preparedImages.jobs.length,
+      reviewEntriesCount,
       elapsedMs,
       ok: true,
     };
@@ -173,6 +224,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       cardsCount: 0,
       setsCount: 0,
       imageJobsCount: 0,
+      reviewEntriesCount: 0,
       elapsedMs,
       ok: false,
       error,

@@ -12,7 +12,7 @@ sidebar_position: 3
 
 | Param | Description |
 | --- | --- |
-| `name` | Search query. Structured keyword language with `t:` / `a:` / `r:` filters (see below). |
+| `name` | Search query. Structured keyword language with field filters, numeric comparisons, legality and flags (see below). |
 | `q` | Alias for `name`. When both are present, `name` wins. |
 | `type` | Optional explicit type filter. Merged with the parsed query as `AND t:value`. |
 | `artist` | Optional explicit artist filter (`AND a:value`). |
@@ -34,17 +34,43 @@ The `name` (or `q`) parameter is parsed into an AST and combined with any explic
 | --- | --- | --- |
 | Free text | `poro gear` | Full-text name match (multiple words combine). |
 | Type filter | `t:champion`, `t:"champion unit"` | Match `classification.type`, `supertype`, or any tag. |
+| Supertype filter | `st:champion` | Match `classification.supertype` only. |
+| Tag filter | `tag:poro` | Match `classification.tags` only. |
 | Artist filter | `a:lee`, `a:"kim park"` | Match the joined artist name. |
 | Rarity filter | `r:rare` | Match `classification.rarity`. |
+| Name filter | `name:disc` | Substring match on `name` (free text uses FTS instead). |
+| Set filter | `set:OGN`, `s:ogn` | Match the printing's set code. |
+| Keyword filter | `kw:deathknell`, `kw:deflect,shield` | **Exact** match against `cards.keywords`. |
+| Domain filter | `d:fury`, `d:fury,order` | **Exact** match against any of `classification.domains`. |
+| Produces filter | `produces:gem` | Substring match on any `all_parts` entry name. |
+| Numeric compare | `might>=4`, `energy!=0`, `d>=2` | `energy` / `might` / `power`, plus `d` for domain count. |
+| Legality | `f:standard`, `banned:standard`, `notlegal:standard` | Status in one format, resolved through all three layers. |
+| Flags | `is:token`, `is:signature`, `-is:alt` | Printing properties. |
 | Exact name | `!Sun`, `!"Sun Disc"` | Match a single normalized card name. |
 | Negation | `-t:gear`, `-(t:gear or t:spell)` | Exclude matching cards. |
 | Boolean OR | `t:gear or t:spell` | Union of matches (lowercase `or` keyword). |
 | Grouping | `t:unit (a:lee or a:kim)` | Use parentheses to override implicit precedence. |
 | Implicit AND | `poro t:unit` | Adjacent clauses combine with AND. |
 
-Implicit AND binds tighter than `or`. So `t:a or t:b t:c` parses as `t:a OR (t:b AND t:c)` — use parentheses when in doubt. Field aliases: `a` / `artist`, `t` / `type`, `r` / `rarity`.
+Implicit AND binds tighter than `or`. So `t:a or t:b t:c` parses as `t:a OR (t:b AND t:c)` — use parentheses when in doubt.
 
-Unknown fields, oversized inputs, unbalanced parentheses, or unterminated quoted strings produce a **400** with `code: "BAD_QUERY"`.
+Field aliases: `a`/`artist`, `t`/`type`, `st`/`supertype`, `r`/`rarity`, `tag`/`tags`, `kw`/`keyword`/`keywords`, `d`/`domain`/`domains`, `s`/`set`, `produces`/`makes`, `e`/`energy`/`cost`, `m`/`might`, `p`/`power`, `f`/`format`/`legal`, `banned`, `notlegal`/`illegal`, `is`.
+
+Notes on the less obvious rules:
+
+- **`d` is disambiguated by its operator.** `d:fury` filters *which* domains a card has; `d>=2` counts them. The comparison form maps to the `domain_count` numeric field.
+- **Keyword and domain matching is exact**, not substring, because both are closed vocabularies stored as normalized arrays — substring matching would make `d:or` hit "Order". Every other text filter is substring + case-insensitive.
+- **Keyword values are folded to a base key.** `kw:"Deflect 3"` and `kw:deflect` are the same query; the printed number belongs to the badge, not the keyword.
+- **Comma lists expand to OR** on `kw` / `d` / `tag` only, and only when unquoted. `d:fury,order` is `(d:fury or d:order)`; `tag:"a,b"` is a literal.
+- **A colon on a numeric field means equals.** `energy:2` ≡ `energy=2`.
+- **Null stats never satisfy a comparison**, including `!=` — SQL comparisons against NULL are unknown, and the TS evaluator matches that.
+- **Legality is default-legal.** Only non-legal statuses are stored, so `f:standard` matches cards with no row at all. Precedence is printing override → oracle row → `legal`. An unknown format code matches nothing rather than everything.
+
+Unknown fields, oversized inputs, unbalanced parentheses, unterminated quoted strings, non-numeric values in a comparison, comparisons on non-numeric fields, and unknown `is:` values all produce a **400** with `code: "BAD_QUERY"`.
+
+### Reused by ruling rules
+
+The same parser backs rule-scoped rulings (`POST /api/v1/admin/rulings` with a `query` target). An admin-written query is parsed here, stored as its AST, and re-evaluated by the same RPC after every ingest — which is how a rule such as `t:unit kw:deathknell` picks up cards released after it was written. Anything added to this grammar becomes available to rules automatically, and a leaf that cannot be rendered to SQL must not parse.
 
 ---
 

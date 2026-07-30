@@ -35,6 +35,7 @@ Every card endpoint returns the same card shape. Key fields:
 | `set.set_code` | string | Short code, e.g. `OGN` |
 | `set.card_count` | number \| undefined | Total cards in this set |
 | `oracle_key` | string \| undefined | Name-derived key shared by every printing of this card. Rulings and format legalities are keyed on it, not on `id` |
+| `keywords` | string[] \| undefined | `[Keyword]` tags in this printing's rules text, as base keys (`deflect`, not `Deflect 3`). Kept in sync by a DB trigger; searchable with `kw:` |
 | `attributes` | object | `energy`, `might`, `power` |
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
@@ -104,14 +105,20 @@ Response:
 | `rulings` | CardRuling[] | Rulings and notes visible on this printing — the card-wide entries plus any scoped to this printing, oldest first |
 | `legalities` | CardLegality[] | One entry per active format, in format order, already resolved |
 
-`rulings` and `legalities` are keyed on the card's `oracle_key`, so they are
-shared by every printing unless an entry is scoped to one. Both are
+`legalities` is keyed on the card's `oracle_key`, so a status is shared by every
+printing unless a printing-level override says otherwise. Both fields are
 supplementary: if the lookup fails they come back empty and the rest of the
 payload is unaffected.
 
-Each `CardRuling` is `{ object, id, type, text, dated?, source?, card_id? }`,
-where `type` is `ruling` or `note` and `card_id` is present only on entries
-scoped to this printing.
+Each `CardRuling` is `{ object, id, type, text, dated?, source?, scope? }`, where
+`type` is `ruling` or `note`. `scope` says how the entry reached this card:
+
+- `printing` — written for this exact printing
+- `oracle` — written for the card, shared by every printing
+- `rule` — matched by a query-scoped ruling (for example "every unit with
+  `[Deathknell]`"), so it applies for as long as the card keeps matching
+
+An entry reachable by several of those reports the most specific one.
 
 Each `CardLegality` is
 `{ object, format_id, format_code, format_name, status, scope, updated_at? }`.

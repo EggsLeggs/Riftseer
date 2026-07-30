@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { Card } from "@riftseer/types";
+import { cardImageUrl } from "@riftseer/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +43,7 @@ export function AdminCardImagePanel({ card }: { card: Card }) {
 
   const { uploadImage } = useCardMutations();
 
-  const preview = card.media?.media_urls?.small ?? card.media?.media_urls?.normal;
+  const preview = cardImageUrl(card.media, "small");
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();

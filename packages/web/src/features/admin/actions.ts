@@ -22,9 +22,18 @@ import type {
   AdminRelationshipEntry,
   AdminReorderResult,
   AdminResult,
+  AdminReviewFilters,
+  AdminReviewMutationResult,
+  AdminReviewPage,
+  AdminRuling,
+  AdminRulingCreateInput,
   AdminRulingInput,
   AdminRulingMutationResult,
   AdminRulingPatch,
+  AdminRulingRecordPatch,
+  AdminRulingsPage,
+  AdminRulingsQuery,
+  AdminRulePreview,
   AdminSetDefinition,
   AdminSetMutationResult,
   AdminSetPatch,
@@ -61,6 +70,41 @@ export async function listAuditLogAction(
   filters: AdminAuditFilters = {},
 ): Promise<AdminResult<AdminAuditPage>> {
   return withToken((token) => adminApi.listAuditLog(token, filters));
+}
+
+// ─── TCGPlayer review queue ───────────────────────────────────────────────────
+
+export async function listReviewAction(
+  filters: AdminReviewFilters = {},
+): Promise<AdminResult<AdminReviewPage>> {
+  return withToken((token) => adminApi.listReview(token, filters));
+}
+
+export async function confirmReviewEntryAction(
+  entryId: string,
+  cardId?: string,
+  note?: string,
+): Promise<AdminResult<AdminReviewMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.confirmReviewEntry(token, entryId, cardId, note),
+  );
+  if (result.ok) {
+    revalidatePath("/admin/review");
+    // Confirming writes a card override, so the affected card page is stale.
+    if (result.data.card_id) revalidateCard(result.data.card_id);
+  }
+  return result;
+}
+
+export async function dismissReviewEntryAction(
+  entryId: string,
+  note?: string,
+): Promise<AdminResult<AdminReviewMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.dismissReviewEntry(token, entryId, note),
+  );
+  if (result.ok) revalidatePath("/admin/review");
+  return result;
 }
 
 export async function createCardAction(
@@ -335,4 +379,58 @@ function revalidateRuling(
 ) {
   if (cardWide === false) revalidateCard(cardId, publicSlug);
   else revalidatePath("/card", "layout");
+}
+
+// ─── Rulings tab ──────────────────────────────────────────────────────────────
+
+/**
+ * A ruling from this tab can point at any number of cards — and a rule target at
+ * cards nobody has enumerated — so there is no useful narrower revalidation than
+ * the whole `/card` subtree.
+ */
+function revalidateRulings() {
+  revalidatePath("/admin/rulings");
+  revalidatePath("/card", "layout");
+}
+
+export async function listRulingsAction(
+  filters: AdminRulingsQuery = {},
+): Promise<AdminResult<AdminRulingsPage>> {
+  return withToken((token) => adminApi.listRulings(token, filters));
+}
+
+export async function previewRuleAction(
+  query: string,
+  limit?: number,
+): Promise<AdminResult<AdminRulePreview>> {
+  return withToken((token) => adminApi.previewRule(token, query, limit));
+}
+
+export async function createRulingAction(
+  input: AdminRulingCreateInput,
+): Promise<AdminResult<{ ok: true; ruling: AdminRuling }>> {
+  const result = await withToken((token) => adminApi.createRuling(token, input));
+  if (result.ok) revalidateRulings();
+  return result;
+}
+
+export async function patchRulingAction(
+  rulingId: string,
+  patch: AdminRulingRecordPatch,
+): Promise<AdminResult<{ ok: true; ruling: AdminRuling }>> {
+  const result = await withToken((token) =>
+    adminApi.patchRuling(token, rulingId, patch),
+  );
+  if (result.ok) revalidateRulings();
+  return result;
+}
+
+export async function deleteRulingAction(
+  rulingId: string,
+): Promise<AdminResult<{ ok: true; ruling_id: string }>> {
+  const result = await withToken((token) =>
+    adminApi.deleteRuling(token, rulingId),
+  );
+  if (result.ok) revalidateRulings();
+  return result;
 }

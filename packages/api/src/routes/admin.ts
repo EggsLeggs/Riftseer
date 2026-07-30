@@ -12,6 +12,7 @@ import {
   AdminRepositoryError,
   createAdminDataRepository,
   type AdminDataRepository,
+  type AdminReconciliationEntry,
   type AdminRpcResult,
   type AdminSlugCard,
 } from "../lib/admin-data";
@@ -19,12 +20,18 @@ import {
   adminPlugin,
   createAdminPlugin,
 } from "../plugins/admin-auth";
+import {
+  BadCardSearchQueryError,
+  CARD_SEARCH_LIMITS,
+  parseCardSearchQuery,
+} from "@riftseer/core";
 import { ErrorSchema } from "../schemas";
 
 const DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
 const NON_BLANK_PATTERN = ".*\\S.*";
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const AUDIT_LOG_MAX_LIMIT = 200;
+const RECONCILIATION_MAX_LIMIT = 200;
 const ADMIN_IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 const NullableStringSchema = t.Nullable(t.String());
@@ -329,11 +336,21 @@ const AdminCardRulingsResponseSchema = t.Object({
       text: t.String(),
       dated: t.Nullable(t.String()),
       source: t.Nullable(t.String()),
-      card_id: t.Nullable(
-        t.String({
-          description: "Null when the entry applies to every printing.",
-        }),
-      ),
+      active: t.Boolean(),
+      scope: t.UnionEnum(["printing", "oracle", "rule"], {
+        description:
+          "Which target kind put this entry on the card: this printing, the " +
+          "whole card, or a query-scoped rule.",
+      }),
+      all_printings: t.Boolean({
+        description: "True when the entry is shared by every printing.",
+      }),
+      shared: t.Boolean({
+        description:
+          "True when the ruling has several targets or any rule target — it is " +
+          "read-only here and edited from /admin/rulings.",
+      }),
+      target_count: t.Number(),
       created_at: t.Nullable(t.String()),
       updated_at: t.Nullable(t.String()),
     }),
@@ -344,6 +361,241 @@ const RulingMutationResponseSchema = t.Object({
   ok: t.Literal(true),
   card_id: t.String(),
   ruling_id: t.String(),
+});
+
+// ─── Rulings tab ──────────────────────────────────────────────────────────────
+
+/**
+ * What a ruling applies to. A `query` target carries the search string the admin
+ * typed; the API parses it with the same parser the search bar uses and stores
+ * the resulting AST alongside it, so the rule language and the search language
+ * can never drift apart.
+ */
+const RulingTargetInputSchema = t.Union([
+  t.Object({
+    kind: t.Literal("oracle"),
+    oracle_key: t.String({ minLength: 1, maxLength: 256 }),
+  }),
+  t.Object({
+    kind: t.Literal("printing"),
+    card_id: t.String({ minLength: 1, maxLength: 128 }),
+  }),
+  t.Object({
+    kind: t.Literal("query"),
+    query: t.String({
+      minLength: 1,
+      maxLength: CARD_SEARCH_LIMITS.maxInputLength,
+      pattern: NON_BLANK_PATTERN,
+    }),
+  }),
+]);
+
+const RulingTargetSchema = t.Object({
+  id: t.String(),
+  kind: t.UnionEnum(["oracle", "printing", "query"]),
+  oracle_key: t.Nullable(t.String()),
+  card_id: t.Nullable(t.String()),
+  card_name: t.Nullable(t.String()),
+  query: t.Nullable(t.String()),
+  ast: t.Unknown(),
+  match_count: t.Nullable(t.Number()),
+});
+
+const RulingSchema = t.Object({
+  id: t.String(),
+  type: RulingTypeSchema,
+  text: t.String(),
+  dated: t.Nullable(t.String()),
+  source: t.Nullable(t.String()),
+  active: t.Boolean(),
+  targets: t.Array(RulingTargetSchema),
+  created_at: t.Nullable(t.String()),
+  updated_at: t.Nullable(t.String()),
+});
+
+const RulingsPageSchema = t.Object({
+  rulings: t.Array(RulingSchema),
+  total: t.Number(),
+});
+
+const RulingRecordResponseSchema = t.Object({
+  ok: t.Literal(true),
+  ruling: t.Unknown(),
+});
+
+const RulePreviewResponseSchema = t.Object({
+  query: t.String(),
+  total: t.Number(),
+  sample: t.Array(
+    t.Object({
+      id: t.String(),
+      name: t.String(),
+      set_code: t.Nullable(t.String()),
+      collector_number: t.Nullable(t.String()),
+      public_slug: t.Nullable(t.String()),
+    }),
+  ),
+});
+
+type RulingTargetInput =
+  | { kind: "oracle"; oracle_key: string }
+  | { kind: "printing"; card_id: string }
+  | { kind: "query"; query: string };
+
+/**
+ * Map target inputs to the RPC payload, parsing every rule query up front.
+ *
+ * Returns a `FailureResponse` instead of throwing so a bad query reports which
+ * one failed and why — an admin editing four rules needs to know which of them
+ * is wrong, not just that something is.
+ */
+function buildRulingTargets(
+  inputs: readonly RulingTargetInput[],
+):
+  | { targets: Array<Record<string, unknown>> }
+  | { error: FailureResponse } {
+  if (inputs.length === 0) {
+    return {
+      error: {
+        status: 400,
+        body: {
+          error: "A ruling needs at least one target",
+          code: "RULING_TARGETS_REQUIRED",
+        },
+      },
+    };
+  }
+
+  const targets: Array<Record<string, unknown>> = [];
+  for (const input of inputs) {
+    if (input.kind === "oracle") {
+      targets.push({ kind: "oracle", oracle_key: input.oracle_key.trim() });
+      continue;
+    }
+    if (input.kind === "printing") {
+      targets.push({ kind: "printing", card_id: input.card_id.trim() });
+      continue;
+    }
+
+    const query = input.query.trim();
+    let ast: unknown;
+    try {
+      ast = parseCardSearchQuery(query).ast;
+    } catch (err) {
+      return {
+        error: {
+          status: 400,
+          body: {
+            error:
+              err instanceof BadCardSearchQueryError
+                ? `Rule "${query}": ${err.message}`
+                : `Rule "${query}" could not be parsed`,
+            code: "RULING_RULE_INVALID",
+          },
+        },
+      };
+    }
+    // A query that parses to nothing (whitespace, or only stripped tokens) would
+    // render as `true` and silently attach the ruling to the entire catalogue.
+    if (!ast) {
+      return {
+        error: {
+          status: 400,
+          body: {
+            error: `Rule "${query}" does not select anything`,
+            code: "RULING_RULE_EMPTY",
+          },
+        },
+      };
+    }
+    targets.push({ kind: "query", query, ast });
+  }
+  return { targets };
+}
+
+// ─── Reconciliation queue ─────────────────────────────────────────────────────
+
+const ReconciliationKindSchema = t.UnionEnum([
+  "unmatched_product",
+  "field_diff",
+]);
+
+const ReconciliationStatusSchema = t.UnionEnum([
+  "pending",
+  "confirmed",
+  "dismissed",
+]);
+
+const ReconciliationFieldSchema = t.UnionEnum([
+  "collector_number",
+  "released_at",
+]);
+
+/**
+ * Query-position variants. `t.UnionEnum` fills in its first member as a default
+ * when the key is absent — harmless in a body where the field is required, but
+ * in a query it would silently filter every unfiltered list to that one value.
+ * A union of literals stays undefined when omitted.
+ */
+const ReconciliationStatusQuerySchema = t.Union([
+  t.Literal("pending"),
+  t.Literal("confirmed"),
+  t.Literal("dismissed"),
+]);
+
+const ReconciliationKindQuerySchema = t.Union([
+  t.Literal("unmatched_product"),
+  t.Literal("field_diff"),
+]);
+
+const ReconciliationProductSchema = t.Object({
+  product_id: t.Number(),
+  name: t.String(),
+  url: t.String(),
+  image_url: NullableStringSchema,
+  collector_number: NullableStringSchema,
+  group_id: t.Number(),
+  set_code: NullableStringSchema,
+});
+
+const ReconciliationEntrySchema = t.Object({
+  id: t.String(),
+  kind: ReconciliationKindSchema,
+  fingerprint: t.String(),
+  status: ReconciliationStatusSchema,
+  tcgplayer_payload: t.Object({
+    product: ReconciliationProductSchema,
+    field: t.Optional(ReconciliationFieldSchema),
+    current_value: t.Optional(NullableStringSchema),
+    proposed_value: t.Optional(NullableStringSchema),
+    card_id: t.Optional(t.String()),
+    card_name: t.Optional(t.String()),
+  }),
+  proposed_card_id: NullableStringSchema,
+  note: NullableStringSchema,
+  resolved_by: NullableStringSchema,
+  resolved_at: NullableStringSchema,
+  created_at: t.String(),
+  last_seen_at: t.String(),
+});
+
+const ReconciliationListResponseSchema = t.Object({
+  entries: t.Array(ReconciliationEntrySchema),
+  total: t.Number(),
+  counts: t.Object({
+    pending: t.Number(),
+    confirmed: t.Number(),
+    dismissed: t.Number(),
+  }),
+  limit: t.Number(),
+  offset: t.Number(),
+});
+
+const ReconciliationMutationResponseSchema = t.Object({
+  ok: t.Literal(true),
+  entry_id: t.String(),
+  status: t.UnionEnum(["confirmed", "dismissed"]),
+  card_id: NullableStringSchema,
 });
 
 const ImageMutationResponseSchema = t.Object({
@@ -482,6 +734,39 @@ function mutationFailure(result: AdminRpcResult): FailureResponse | null {
         status: 404,
         body: { error: "Ruling not found", code: "RULING_NOT_FOUND" },
       };
+    case "ruling_is_shared":
+      return {
+        status: 409,
+        body: {
+          error:
+            "This ruling applies to more than one card — retarget it from the Rulings tab",
+          code: "RULING_IS_SHARED",
+        },
+      };
+    case "reconciliation_entry_not_found":
+      return {
+        status: 404,
+        body: {
+          error: "Review entry not found",
+          code: "REVIEW_ENTRY_NOT_FOUND",
+        },
+      };
+    case "reconciliation_entry_resolved":
+      return {
+        status: 409,
+        body: {
+          error: "Review entry has already been resolved",
+          code: "REVIEW_ENTRY_RESOLVED",
+        },
+      };
+    case "card_required":
+      return {
+        status: 400,
+        body: {
+          error: "Choose a card to link this product to",
+          code: "CARD_REQUIRED",
+        },
+      };
     default:
       return {
         status: 400,
@@ -549,6 +834,39 @@ function toSlugCard(card: AdminSlugCard): Card {
     related_signatures: [],
     related_printings: [],
   };
+}
+
+/**
+ * The card patch a confirmation applies, built here rather than in SQL so the
+ * `name`-derivation rules stay in one place and the RPC never has to interpret
+ * a payload shape.
+ *
+ * Confirming an unmatched product is what "creates a persistent link": the
+ * `tcgplayer_id` lands in `card_overrides`, ingest's override overlay re-applies
+ * it every run, and the product stops being unmatched. Returns null when the
+ * payload carries a field this API does not know how to apply.
+ */
+function buildConfirmPatch(
+  entry: AdminReconciliationEntry,
+): Record<string, unknown> | null {
+  const payload = entry.tcgplayer_payload;
+
+  if (entry.kind === "unmatched_product") {
+    return {
+      external_ids: { tcgplayer_id: String(payload.product.product_id) },
+      purchase_uris: { tcgplayer: payload.product.url },
+    };
+  }
+
+  const value = payload.proposed_value ?? null;
+  switch (payload.field) {
+    case "collector_number":
+      return { collector_number: value };
+    case "released_at":
+      return { released_at: value };
+    default:
+      return null;
+  }
 }
 
 function normalizeBaseUrl(baseUrl: string): string {
@@ -652,6 +970,30 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
   const imageBindings = options.imageBindings ?? null;
   const routeAdminPlugin = options.adminAuthPlugin ?? adminPlugin;
 
+  /**
+   * Re-evaluate rule-scoped rulings against one card after it has been written.
+   *
+   * Ingest refreshes every rule at the end of a run, but that is up to six hours
+   * away — an admin who creates a card with `[Deathknell]`, or edits one into
+   * matching a rule, should see the ruling attach straight away. Also handles
+   * the reverse: an edit can move a card *out* of a rule.
+   *
+   * Advisory by design. Rulings are supplementary to the card page, and the
+   * write has already committed by the time this runs, so a failure is
+   * swallowed rather than reported as a failed edit — the next ingest
+   * recomputes it either way.
+   */
+  async function refreshCardRuleMatches(cardId: string): Promise<void> {
+    if (!repository) return;
+    try {
+      await repository.callRpc("refresh_ruling_matches_for_card", {
+        p_card_id: cardId,
+      });
+    } catch {
+      // Deliberately ignored — see above.
+    }
+  }
+
   return new Elysia({ prefix: "/admin" })
     .use(routeAdminPlugin)
     .onError(({ code, error, status }) => {
@@ -744,6 +1086,210 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         },
       },
     )
+
+    // ── TCGPlayer review queue ────────────────────────────────────────────────
+    .get(
+      "/reconciliation",
+      async ({ query, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+
+        const limit = Math.min(
+          Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
+          RECONCILIATION_MAX_LIMIT,
+        );
+        const offset = Math.max(
+          Number.parseInt(query.offset ?? "0", 10) || 0,
+          0,
+        );
+
+        const result = await safely("reconciliation.list", () =>
+          repository.listReconciliation({
+            limit,
+            offset,
+            // Default to the only actionable status — the review page opens on
+            // work to do, not on a history of everything ever dismissed.
+            status: query.status ?? "pending",
+            kind: query.kind,
+          }),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+
+        return {
+          entries: result.data.entries,
+          total: result.data.total,
+          counts: result.data.counts,
+          limit,
+          offset,
+        };
+      },
+      {
+        query: t.Object({
+          limit: t.Optional(t.String()),
+          offset: t.Optional(t.String()),
+          status: t.Optional(ReconciliationStatusQuerySchema),
+          kind: t.Optional(ReconciliationKindQuerySchema),
+        }),
+        response: {
+          200: ReconciliationListResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "List review-queue entries",
+          description:
+            "TCGPlayer products ingest could not attach to a card, plus field disagreements. Defaults to pending entries, newest first.",
+        },
+      },
+    )
+    .post(
+      "/reconciliation/:id/confirm",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+
+        const entryResult = await safely("reconciliation.confirm.load", () =>
+          repository.getReconciliationEntry(params.id),
+        );
+        if ("error" in entryResult) {
+          return status(entryResult.error.status, entryResult.error.body);
+        }
+        if (!entryResult.data) {
+          return status(404, {
+            error: "Review entry not found",
+            code: "REVIEW_ENTRY_NOT_FOUND",
+          });
+        }
+
+        const patch = buildConfirmPatch(entryResult.data);
+        if (!patch) {
+          return status(400, {
+            error: "This entry proposes a field the API cannot apply",
+            code: "REVIEW_FIELD_UNSUPPORTED",
+          });
+        }
+
+        const rpcResult = await safely("reconciliation.confirm", () =>
+          repository.callRpc("admin_resolve_reconciliation_entry", {
+            p_entry_id: params.id,
+            p_action: "confirm",
+            p_card_id: body?.card_id?.trim() || null,
+            p_patch: patch,
+            p_note: body?.note ?? null,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+
+        // Confirming applies a card patch, so the card may have moved into (or
+        // out of) a rule's reach.
+        const confirmedCardId =
+          typeof rpcResult.data.card_id === "string"
+            ? rpcResult.data.card_id
+            : null;
+        if (confirmedCardId) await refreshCardRuleMatches(confirmedCardId);
+
+        return {
+          ok: true as const,
+          entry_id: params.id,
+          status: "confirmed" as const,
+          card_id: confirmedCardId,
+        };
+      },
+      {
+        params: t.Object({ id: t.String({ format: "uuid" }) }),
+        body: t.Optional(
+          t.Object({
+            /** Overrides ingest's suggestion; required when it made none. */
+            card_id: t.Optional(
+              t.String({
+                minLength: 1,
+                maxLength: 128,
+                pattern: NON_BLANK_PATTERN,
+              }),
+            ),
+            note: t.Optional(t.String({ maxLength: 2000 })),
+          }),
+        ),
+        response: {
+          200: ReconciliationMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Confirm a review entry",
+          description:
+            "Applies the proposal as a durable card override and closes the entry. Linking a product writes its tcgplayer_id, so the next ingest matches it automatically.",
+        },
+      },
+    )
+    .post(
+      "/reconciliation/:id/dismiss",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+
+        const rpcResult = await safely("reconciliation.dismiss", () =>
+          repository.callRpc("admin_resolve_reconciliation_entry", {
+            p_entry_id: params.id,
+            p_action: "dismiss",
+            p_card_id: null,
+            p_patch: {},
+            p_note: body?.note ?? null,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+
+        return {
+          ok: true as const,
+          entry_id: params.id,
+          status: "dismissed" as const,
+          card_id: null,
+        };
+      },
+      {
+        params: t.Object({ id: t.String({ format: "uuid" }) }),
+        body: t.Optional(
+          t.Object({
+            note: t.Optional(t.String({ maxLength: 2000 })),
+          }),
+        ),
+        response: {
+          200: ReconciliationMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Dismiss a review entry",
+          description:
+            "Closes the entry without touching any card. The dismissal is durable, so later ingests do not resurface it.",
+        },
+      },
+    )
+
     .post(
       "/cards",
       async ({ body, adminUser, status }) => {
@@ -826,6 +1372,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         const failure = mutationFailure(rpcResult.data);
         if (failure) return status(failure.status, failure.body);
 
+        await refreshCardRuleMatches(cardId);
         return { ok: true as const, card_id: cardId };
       },
       {
@@ -891,6 +1438,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         }
         const failure = mutationFailure(rpcResult.data);
         if (failure) return status(failure.status, failure.body);
+        await refreshCardRuleMatches(params.id);
         return { ok: true as const, card_id: params.id };
       },
       {
@@ -933,6 +1481,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         }
         const failure = mutationFailure(rpcResult.data);
         if (failure) return status(failure.status, failure.body);
+        await refreshCardRuleMatches(params.id);
         return { ok: true as const, card_id: params.id };
       },
       {
@@ -1051,6 +1600,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         }
         const failure = mutationFailure(rpcResult.data);
         if (failure) return status(failure.status, failure.body);
+        await refreshCardRuleMatches(params.id);
         return { ok: true as const, card_id: params.id };
       },
       {
@@ -1119,6 +1669,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         }
         const failure = mutationFailure(rpcResult.data);
         if (failure) return status(failure.status, failure.body);
+        await refreshCardRuleMatches(params.id);
         return { ok: true as const, card_id: params.id };
       },
       {
@@ -1849,7 +2400,274 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           tags: ["Admin"],
           summary: "Delete a ruling or note",
           description:
-            "Removes an entry reached through this card. A ruling belonging to a different card is rejected as not found.",
+            "Removes an entry reached through this card. A ruling shared with other cards is detached from this one instead of destroyed.",
+        },
+      },
+    )
+
+    // ── Rulings tab ───────────────────────────────────────────────────────────
+    // Card-independent CRUD. Unlike the per-card routes above, these can point a
+    // ruling at several printings at once, or at a search query that keeps
+    // matching new cards as they are released.
+    .get(
+      "/rulings",
+      async ({ query, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const result = await safely("ruling.list", () =>
+          repository.listRulings({
+            limit: query.limit ?? 50,
+            offset: query.offset ?? 0,
+            query: query.q?.trim() || undefined,
+            kind: query.kind,
+          }),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        return result.data;
+      },
+      {
+        query: t.Object({
+          q: t.Optional(t.String({ maxLength: 200 })),
+          // A t.Union of literals, not t.UnionEnum: UnionEnum fills in its first
+          // member when the key is absent, which would silently filter every
+          // unfiltered list to `oracle`.
+          kind: t.Optional(
+            t.Union([
+              t.Literal("oracle"),
+              t.Literal("printing"),
+              t.Literal("query"),
+            ]),
+          ),
+          limit: t.Optional(t.Number({ minimum: 1, maximum: 200 })),
+          offset: t.Optional(t.Number({ minimum: 0 })),
+        }),
+        response: {
+          200: RulingsPageSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "List rulings",
+          description:
+            "Every ruling with its targets, newest first. `q` matches ruling text or source; `kind` narrows to rulings carrying a target of that kind.",
+        },
+      },
+    )
+    .post(
+      "/rulings/preview",
+      async ({ body, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const built = buildRulingTargets([
+          { kind: "query", query: body.query },
+        ]);
+        if ("error" in built) {
+          return status(built.error.status, built.error.body);
+        }
+        const ast = built.targets[0]?.ast;
+        const result = await safely("ruling.preview", () =>
+          repository.previewRule(ast, body.limit ?? 20),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        return { query: body.query.trim(), ...result.data };
+      },
+      {
+        body: t.Object({
+          query: t.String({
+            minLength: 1,
+            maxLength: CARD_SEARCH_LIMITS.maxInputLength,
+            pattern: NON_BLANK_PATTERN,
+          }),
+          limit: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+        }),
+        response: {
+          200: RulePreviewResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Preview what a rule matches",
+          description:
+            "Evaluates a rule query without storing anything, returning the match count plus a bounded sample. Backs the rule editor's live readout.",
+        },
+      },
+    )
+    .post(
+      "/rulings",
+      async ({ body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const built = buildRulingTargets(body.targets);
+        if ("error" in built) {
+          return status(built.error.status, built.error.body);
+        }
+        const rpcResult = await safely("ruling.create", () =>
+          repository.callRpc("admin_create_ruling", {
+            p_type: body.type,
+            p_text: body.text.trim(),
+            p_dated: body.dated ?? null,
+            p_source: body.source?.trim() || null,
+            p_targets: built.targets,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return { ok: true as const, ruling: rpcResult.data.ruling };
+      },
+      {
+        body: t.Object({
+          type: RulingTypeSchema,
+          text: t.String({
+            minLength: 1,
+            maxLength: 4000,
+            pattern: NON_BLANK_PATTERN,
+          }),
+          dated: t.Optional(t.String({ pattern: DATE_PATTERN })),
+          source: t.Optional(t.String({ maxLength: 500 })),
+          targets: t.Array(RulingTargetInputSchema, {
+            minItems: 1,
+            maxItems: 100,
+          }),
+        }),
+        response: {
+          200: RulingRecordResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Create a ruling",
+          description:
+            "Creates a ruling and its targets. Rule targets are materialised immediately, so the response already reports what each one matched.",
+        },
+      },
+    )
+    .patch(
+      "/rulings/:rulingId",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        if (Object.keys(body.patch).length === 0) {
+          return status(400, {
+            error: "Patch must contain at least one field",
+            code: "EMPTY_PATCH",
+          });
+        }
+
+        // `targets` replaces the whole list, so it is parsed and validated
+        // before anything is written; omitting the key leaves targeting alone.
+        const { targets, ...rest } = body.patch;
+        const patch: Record<string, unknown> = { ...rest };
+        if (targets !== undefined) {
+          const built = buildRulingTargets(targets);
+          if ("error" in built) {
+            return status(built.error.status, built.error.body);
+          }
+          patch.targets = built.targets;
+        }
+
+        const rpcResult = await safely("ruling.patch", () =>
+          repository.callRpc("admin_patch_ruling", {
+            p_ruling_id: params.rulingId,
+            p_patch: patch,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return { ok: true as const, ruling: rpcResult.data.ruling };
+      },
+      {
+        params: t.Object({ rulingId: t.String({ format: "uuid" }) }),
+        body: t.Object({
+          patch: t.Object({
+            type: t.Optional(RulingTypeSchema),
+            text: t.Optional(
+              t.String({
+                minLength: 1,
+                maxLength: 4000,
+                pattern: NON_BLANK_PATTERN,
+              }),
+            ),
+            dated: t.Optional(t.Nullable(t.String({ pattern: DATE_PATTERN }))),
+            source: t.Optional(t.Nullable(t.String({ maxLength: 500 }))),
+            active: t.Optional(t.Boolean()),
+            targets: t.Optional(
+              t.Array(RulingTargetInputSchema, { minItems: 1, maxItems: 100 }),
+            ),
+          }),
+        }),
+        response: {
+          200: RulingRecordResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Edit a ruling",
+          description:
+            "Patches a ruling. `targets` replaces the entire target list; omit it to leave targeting unchanged. Rule targets are re-materialised on every patch.",
+        },
+      },
+    )
+    .delete(
+      "/rulings/:rulingId",
+      async ({ params, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const rpcResult = await safely("ruling.delete", () =>
+          repository.callRpc("admin_delete_ruling", {
+            p_ruling_id: params.rulingId,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return { ok: true as const, ruling_id: params.rulingId };
+      },
+      {
+        params: t.Object({ rulingId: t.String({ format: "uuid" }) }),
+        response: {
+          200: t.Object({ ok: t.Literal(true), ruling_id: t.String() }),
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Delete a ruling",
+          description:
+            "Deletes a ruling and every target it carries, wherever it appeared.",
         },
       },
     )

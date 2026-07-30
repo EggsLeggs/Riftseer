@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   ChevronRight,
   Gavel,
+  Inbox,
   Layers,
   Library,
   ScrollText,
@@ -44,6 +45,13 @@ const ADMIN_SECTIONS: AdminSection[] = [
     title: "Formats",
     description:
       "Add, retire and reorder play formats. Per-card legalities are edited on the card itself.",
+  },
+  {
+    href: "/admin/review",
+    icon: Inbox,
+    title: "TCGPlayer review",
+    description:
+      "Products ingest could not match, and fields where TCGPlayer disagrees. Confirm or dismiss — nothing applies itself.",
   },
   {
     href: "/admin/audit",

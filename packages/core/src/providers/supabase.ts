@@ -33,6 +33,7 @@ import type {
 } from "../types.ts";
 import { repairFlavourText } from "@riftseer/types/card-text";
 import { oracleKeyForName } from "@riftseer/types/oracle";
+import { extractCardKeywords } from "@riftseer/types/keywords";
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { normalizeCardName } from "../normalize.ts";
@@ -74,6 +75,7 @@ interface DBCardRow {
   name: string;
   name_normalized: string;
   oracle_key: string | null;
+  keywords: string[] | null;
   collector_number: string | null;
   released_at: string | null;
   set_id: string | null;
@@ -118,6 +120,10 @@ function dbRowToCard(row: DBCardRow): Card {
     // Fall back to the name-derived key so a row that predates the column (or a
     // manual card seeded before its patch landed) still resolves its rulings.
     oracle_key: row.oracle_key ?? oracleKeyForName(row.name),
+    // Kept in sync by a trigger, so a row can only be missing it if the phase 7
+    // migration has not run yet; derive locally so `kw:` badges still render.
+    keywords:
+      row.keywords ?? extractCardKeywords(row.text?.rich ?? row.text?.plain),
     collector_number: row.collector_number ?? undefined,
     released_at: row.released_at ?? undefined,
     external_ids: row.external_ids,
@@ -175,11 +181,11 @@ interface DBLegalityRow {
 
 interface DBCardRulingRow {
   id: string;
-  card_id: string | null;
   type: "ruling" | "note";
   text: string;
   dated: string | null;
   source: string | null;
+  scope: "printing" | "oracle" | "rule" | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -209,7 +215,7 @@ function dbRowToCardRuling(row: DBCardRulingRow): CardRuling {
     text: row.text,
     dated: row.dated ?? undefined,
     source: row.source ?? undefined,
-    card_id: row.card_id ?? undefined,
+    scope: row.scope ?? undefined,
     created_at: row.created_at ?? undefined,
     updated_at: row.updated_at ?? undefined,
   };
@@ -922,20 +928,20 @@ export class SupabaseCardProvider implements CardDataProvider {
     oracleKey: string,
     cardId: string,
   ): Promise<CardRuling[]> {
-    const { data, error } = await getSupabaseClient()
-      .from("card_rulings")
-      .select("id, card_id, type, text, dated, source, created_at, updated_at")
-      .eq("oracle_key", oracleKey)
-      .order("dated", { ascending: true, nullsFirst: false })
-      .order("created_at", { ascending: true });
+    // One RPC rather than a PostgREST query: a ruling can now arrive via a
+    // printing target, an oracle target, or a materialised rule match, and
+    // resolving those three layers (plus their precedence for `scope`) is not
+    // expressible as a single PostgREST filter. It also keeps admin-chosen
+    // manual card ids out of filter strings, where a comma or parenthesis would
+    // otherwise rewrite the query.
+    const { data, error } = await getSupabaseClient().rpc(
+      "card_rulings_for_card",
+      { p_card_id: cardId, p_oracle_key: oracleKey },
+    );
 
     if (error) throw new Error(`getCardRulings failed: ${error.message}`);
-    // Printing scoping is applied here rather than as an `or(...)` filter: card
-    // ids for manual cards are admin-chosen text, and interpolating one into a
-    // PostgREST filter string would let a comma or parenthesis rewrite the query.
-    return ((data ?? []) as DBCardRulingRow[])
-      .filter((row) => row.card_id === null || row.card_id === cardId)
-      .map(dbRowToCardRuling);
+    const rows = Array.isArray(data) ? (data as DBCardRulingRow[]) : [];
+    return rows.map(dbRowToCardRuling);
   }
 
   getStats(): { lastRefresh: number; cardCount: number } {

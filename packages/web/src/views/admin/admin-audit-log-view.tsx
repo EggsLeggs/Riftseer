@@ -24,9 +24,10 @@ const PAGE_SIZE = 50;
 
 /**
  * The exact `action` values the admin RPCs write (see the Phase 3 migration
- * `20260730120000_phase3_admin_api.sql` and the Phase 5 migration
- * `20260731000000_phase5_rulings_legalities_formats.sql`). Keep in sync when an
- * admin RPC is added — a stale entry here silently filters to nothing.
+ * `20260730120000_phase3_admin_api.sql`, the Phase 5 migration
+ * `20260731000000_phase5_rulings_legalities_formats.sql`, and the Phase 6
+ * migration `20260801000000_phase6_reconciliation_queue.sql`). Keep in sync when
+ * an admin RPC is added — a stale entry here silently filters to nothing.
  */
 const ACTIONS = [
   "card.create_manual",
@@ -41,6 +42,12 @@ const ACTIONS = [
   "card.ruling.create",
   "card.ruling.patch",
   "card.ruling.delete",
+  // Detaching a shared ruling from one card, rather than deleting it outright.
+  "card.ruling.detach",
+  // The card-independent Rulings tab.
+  "ruling.create",
+  "ruling.patch",
+  "ruling.delete",
   "set.create",
   "set.patch",
   "set.delete",
@@ -48,6 +55,10 @@ const ACTIONS = [
   "format.patch",
   "format.delete",
   "format.reorder",
+  "reconciliation.confirm",
+  // The card patch a confirmation applies is logged separately, against the card.
+  "reconciliation.confirm.patch",
+  "reconciliation.dismiss",
 ] as const;
 
 function formatTimestamp(value: string): string {

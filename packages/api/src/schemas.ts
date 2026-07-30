@@ -65,6 +65,13 @@ export const CardSchema = t.Object({
         "Name-derived key shared by every printing of this card. Rulings and format legalities are keyed on it.",
     }),
   ),
+  keywords: t.Optional(
+    t.Array(t.String(), {
+      description:
+        "`[Keyword]` tags in this printing's rules text, as base keys " +
+        "(`deflect`, not `Deflect 3`). Searchable with `kw:`.",
+    }),
+  ),
   attributes: t.Optional(t.Partial(t.Object({
     energy: t.Nullable(t.Number()),
     might: t.Nullable(t.Number()),
@@ -192,10 +199,11 @@ export const CardRulingSchema = t.Object({
   text: t.String(),
   dated: t.Optional(t.String({ description: "ISO date the ruling was issued." })),
   source: t.Optional(t.String()),
-  card_id: t.Optional(
-    t.String({
+  scope: t.Optional(
+    t.UnionEnum(["printing", "oracle", "rule"], {
       description:
-        "Present only when the entry is scoped to this printing; absent means it applies to every printing.",
+        "How the entry reached this card: written for this printing, shared by " +
+        "every printing of the card, or matched by a query-scoped ruling.",
     }),
   ),
   created_at: t.Optional(t.String()),
