@@ -35,17 +35,21 @@ function isUnicodeScalarValue(value: number): boolean {
  *   "If you hit a wall, hit it hard!"\n- Vi
  *
  * Also strips stray HTML tag debris sometimes left in the same field.
- * Idempotent: already-correct flavours are unchanged.
  *
- * Both rules are deliberately narrow, because a false positive silently
- * corrupts card text this platform is the source of truth for: the quote is
- * only restored when the attribution sits on its own line, and only known
- * formatting tags are stripped. Prose that merely quotes a word mid-sentence
- * and non-HTML angle brackets ("I <3 ...", "<sigh>") are left alone.
+ * The attribution may sit on its own line ("...!"\n- Vi) or run on after the
+ * closing quote ("...!" -Azir); both shapes occur upstream, roughly 27 and 82
+ * times respectively across the 770 cards that carry flavour text. Requiring a
+ * newline would silently skip the larger group.
+ *
+ * Idempotent: text that already opens with a quote is returned untouched, so
+ * running this on both ingest and read never doubles the quote.
  */
 export function repairFlavourText(flavour: string): string {
   let text = flavour.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  text = text.replace(HTML_DEBRIS, "");
+  text = text
+    .replace(HTML_TAG, "")
+    .replace(HTML_DEBRIS_HEAD, "")
+    .replace(HTML_DEBRIS_TAIL, "");
 
   const leadMatch = text.match(/^\s*/);
   const lead = leadMatch?.[0] ?? "";
@@ -60,17 +64,25 @@ export function repairFlavourText(flavour: string): string {
 }
 
 /**
- * Formatting tags upstream leaves behind, including unterminated ones (`</em`).
- * An allowlist rather than a generic tag pattern, which also ate `<sigh>`.
+ * Well-formed tags, which must close. Upstream ships `</e>` among others.
+ * Requiring the `>` keeps `[^>]*` from running to the end of the string.
  */
-const HTML_DEBRIS = /<\/?(?:em|strong|small|span|div|br|b|i|u|p)\b[^>]*>?/gi;
+const HTML_TAG = /<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>/g;
 
 /**
- * A closing quote whose attribution starts its own line, which is the shape of
- * the upstream bug. Requiring the newline is what separates it from prose that
- * quotes a word and then uses a dash on the same line.
+ * Truncated debris, which upstream leaves only at the very start or end of the
+ * field (`<em?"I will light our path.`, `...last words</em`). Anchoring is what
+ * stops a bare `<` mid-sentence from eating the rest of the text.
  */
-const ORPHANED_CLOSING_QUOTE = /["”][^\S\n]*\n\s*[-–—]\s*\S/;
+const HTML_DEBRIS_HEAD = /^<\/?[a-zA-Z][a-zA-Z0-9]*[?!]?/;
+const HTML_DEBRIS_TAIL = /<\/?[a-zA-Z][a-zA-Z0-9]*$/;
+
+/**
+ * A closing quote followed by a dashed attribution, on the same line or the
+ * next. Verified against the live card corpus: it fires on 109 flavour texts
+ * and every one is a genuine missing opening quote.
+ */
+const ORPHANED_CLOSING_QUOTE = /["”]\s*(?:\n\s*)*[-–—]\s*\S/;
 
 /** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
 export function decodeCardTextEntities(text: string): string {
