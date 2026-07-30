@@ -81,8 +81,18 @@ class StubAdminRepository implements AdminDataRepository {
     return this.slugCard;
   }
 
-  async getTakenSlugs(): Promise<Set<string>> {
-    return new Set(this.takenSlugs);
+  lastSlugQuery?: { baseSlug: string; excludeCardId?: string };
+
+  async getTakenSlugs(
+    baseSlug: string,
+    excludeCardId?: string,
+  ): Promise<Set<string>> {
+    this.lastSlugQuery = { baseSlug, excludeCardId };
+    // Mirror the repository's prefix scoping so the tests exercise the same
+    // candidate set the database would return.
+    return new Set(
+      [...this.takenSlugs].filter((slug) => slug.startsWith(baseSlug)),
+    );
   }
 }
 
@@ -284,6 +294,28 @@ describe("admin API", () => {
       error: "Admin mutation conflicts with existing data",
       code: "ADMIN_CONFLICT",
     });
+  });
+
+  test("does not leak a non-conflict database error", async () => {
+    repository.nextError = new AdminRepositoryError(
+      'function admin_patch_card(text, jsonb) does not exist',
+      "42883",
+    );
+
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1", "PATCH", {
+        patch: { name: "Broken Card" },
+      }),
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body).toEqual({
+      error: "Admin operation failed",
+      code: "ADMIN_OPERATION_FAILED",
+    });
+    expect(JSON.stringify(body)).not.toContain("admin_patch_card");
+    expect(JSON.stringify(body)).not.toContain("42883");
   });
 
   test("rejects contradictory duplicate relationship entries", async () => {

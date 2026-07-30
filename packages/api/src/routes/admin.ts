@@ -1,7 +1,9 @@
 import { Elysia, t } from "elysia";
 import type { Card } from "@riftseer/types";
 import {
+  buildPublicSlugSegments,
   generatePublicSlug,
+  joinPublicSlug,
   normalizeCardName,
 } from "@riftseer/types";
 import { authAdminClient } from "../lib/supabase";
@@ -584,15 +586,19 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
             : undefined,
         };
 
+        const createCard = toSlugCard(slugCard);
         const takenResult = await safely(
           "card.create.load_slugs",
-          () => repository.getTakenSlugs(),
+          () =>
+            repository.getTakenSlugs(
+              joinPublicSlug(buildPublicSlugSegments(createCard)),
+            ),
         );
         if ("error" in takenResult) {
           return status(takenResult.error.status, takenResult.error.body);
         }
         const publicSlug = generatePublicSlug(
-          toSlugCard(slugCard),
+          createCard,
           (slug) => takenResult.data.has(slug),
         );
 
@@ -767,15 +773,20 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           });
         }
 
+        const regenerateCard = toSlugCard(cardResult.data);
         const takenResult = await safely(
           "card.regenerate_slug.load_slugs",
-          () => repository.getTakenSlugs(params.id),
+          () =>
+            repository.getTakenSlugs(
+              joinPublicSlug(buildPublicSlugSegments(regenerateCard)),
+              params.id,
+            ),
         );
         if ("error" in takenResult) {
           return status(takenResult.error.status, takenResult.error.body);
         }
         const publicSlug = generatePublicSlug(
-          toSlugCard(cardResult.data),
+          regenerateCard,
           (slug) => takenResult.data.has(slug),
         );
 

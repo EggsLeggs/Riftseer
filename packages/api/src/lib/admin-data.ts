@@ -27,7 +27,15 @@ export interface AdminDataRepository {
     args: Record<string, unknown>,
   ): Promise<AdminRpcResult>;
   getSlugCard(cardId: string): Promise<AdminSlugCard | null>;
-  getTakenSlugs(excludeCardId?: string): Promise<Set<string>>;
+  /**
+   * Slugs that could collide with `baseSlug`. `generatePublicSlug` only ever
+   * proposes `<base>` or `<base>-<n>`, so the caller scopes the read to that
+   * prefix instead of loading the whole catalogue.
+   */
+  getTakenSlugs(
+    baseSlug: string,
+    excludeCardId?: string,
+  ): Promise<Set<string>>;
 }
 
 export class AdminRepositoryError extends Error {
@@ -127,33 +135,30 @@ export function createAdminDataRepository(
       return data ? parseSlugCard(data) : null;
     },
 
-    async getTakenSlugs(excludeCardId) {
-      const taken = new Set<string>();
-      const pageSize = 1000;
-
-      for (let from = 0; ; from += pageSize) {
-        const { data, error } = await client
-          .from("cards")
-          .select("id, public_slug")
-          .order("id")
-          .range(from, from + pageSize - 1);
-        if (error) {
-          throw new AdminRepositoryError(error.message, error.code);
-        }
-
-        const rows = data ?? [];
-        for (const row of rows) {
-          if (
-            row.id !== excludeCardId &&
-            typeof row.public_slug === "string" &&
-            row.public_slug
-          ) {
-            taken.add(row.public_slug);
-          }
-        }
-        if (rows.length < pageSize) break;
+    async getTakenSlugs(baseSlug, excludeCardId) {
+      // Prefix match rather than equality: the candidates are `<base>` and
+      // `<base>-<n>`. It can over-match (`.../card` also returns `.../cardio`),
+      // which is harmless — such rows never equal a proposed candidate — while
+      // under-matching is impossible, so no collision can slip through.
+      let query = client
+        .from("cards")
+        .select("public_slug")
+        .like("public_slug", `${baseSlug}%`);
+      if (excludeCardId) {
+        query = query.neq("id", excludeCardId);
       }
 
+      const { data, error } = await query;
+      if (error) {
+        throw new AdminRepositoryError(error.message, error.code);
+      }
+
+      const taken = new Set<string>();
+      for (const row of data ?? []) {
+        if (typeof row.public_slug === "string" && row.public_slug) {
+          taken.add(row.public_slug);
+        }
+      }
       return taken;
     },
   };

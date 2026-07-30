@@ -6,11 +6,14 @@ import {
   resolveSupabaseToken,
 } from "./auth";
 
+// Both sides are lowercased: these are Supabase user UUIDs, whose canonical
+// form is lowercase, but a hand-pasted ADMIN_USER_IDS entry may not be. An
+// undefined value still yields an empty set, so the gate stays closed.
 export function parseAdminUserIds(raw: string | undefined): Set<string> {
   return new Set(
     (raw ?? "")
       .split(",")
-      .map((value) => value.trim())
+      .map((value) => value.trim().toLowerCase())
       .filter(Boolean),
   );
 }
@@ -19,7 +22,7 @@ export function isAdminUser(
   user: Pick<AuthenticatedUser, "id">,
   raw: string | undefined = process.env.ADMIN_USER_IDS,
 ): boolean {
-  return parseAdminUserIds(raw).has(user.id);
+  return parseAdminUserIds(raw).has(user.id.toLowerCase());
 }
 
 export function createAdminPlugin(
