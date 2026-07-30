@@ -22,8 +22,8 @@ export interface RawSetInfo {
   set_id: string;
   name?: string;
   label: string;
-  tcgplayer_id?: number | null;
-  cardmarket_id?: string | null;
+  tcgplayer_id?: string | number | null;
+  cardmarket_id?: string | string[] | null;
   published_on?: string | null;
 }
 
@@ -108,6 +108,26 @@ interface PagedResponse {
 
 // ─── Raw → Card mapping ───────────────────────────────────────────────────────
 
+function normalizeDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+  return match?.[0];
+}
+
+/**
+ * RiftCodex currently marks tokens with classification.supertype = "Token".
+ * Keep structural fallbacks too: older token rows are dual-faced
+ * "<token> // Buff" printings, and token riftbound IDs may carry a segment like
+ * "sfd-t03".
+ */
+export function isTokenCard(raw: RawCard): boolean {
+  if (raw.classification?.supertype?.toLowerCase() === "token") return true;
+  if (raw.classification?.type?.toLowerCase() === "token") return true;
+  if (raw.name?.includes("//")) return true;
+  if (/(^|-)t\d+($|-)/i.test(raw.riftbound_id ?? "")) return true;
+  return false;
+}
+
 export function rawToCard(raw: RawCard): Card {
   const setCode = raw.set?.set_id?.toUpperCase();
   return {
@@ -116,7 +136,7 @@ export function rawToCard(raw: RawCard): Card {
     name: raw.name,
     name_normalized: normalizeCardName(raw.metadata?.clean_name || raw.name),
     collector_number: String(raw.collector_number),
-    released_at: raw.released_at || undefined,
+    released_at: normalizeDate(raw.released_at),
     external_ids: {
       riftcodex_id: raw.id,
       riftbound_id: raw.riftbound_id || undefined,
@@ -174,10 +194,8 @@ export function rawToCard(raw: RawCard): Card {
           }
         : undefined,
     },
-    is_token:
-      raw.classification?.type?.toLowerCase() === "token" ||
-      raw.classification?.supertype?.toLowerCase() === "token" ||
-      false,
+    is_token: isTokenCard(raw),
+    source: "riftcodex",
     all_parts: [],
     used_by: [],
     related_champions: [],

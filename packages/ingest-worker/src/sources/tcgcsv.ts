@@ -35,6 +35,7 @@ export interface TCGProduct {
 export interface TCGPrice {
   productId: number;
   lowPrice: number | null;
+  midPrice: number | null;
   marketPrice: number | null;
   subTypeName: string;
 }

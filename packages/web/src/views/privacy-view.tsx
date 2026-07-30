@@ -9,7 +9,7 @@ export function PrivacyView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 28 July 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 29 July 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -86,6 +86,12 @@ export function PrivacyView() {
               terms, and card lookups). Our hosting provider (and we) may log request metadata such
               as IP address, timestamp, and path for operation, security, and abuse prevention. We do
               not use this data to build profiles of you or to advertise.
+            </ListItem>
+            <ListItem>
+              <strong className="font-semibold">Admin edits.</strong> If your account has admin
+              access, we may store your account user ID with card data edits, manual card records,
+              relationship changes, and deletion records so those changes are attributable,
+              reversible, and preserved across data imports.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">PostHog (site analytics).</strong> We use{" "}
@@ -256,8 +262,9 @@ export function PrivacyView() {
             prevent double replies) are kept indefinitely so the bot continues to avoid duplicate
             replies. API-side logs of requested card names and subreddit from bot traffic are retained
             on the same basis as other API analytics and server logs described above. Account data
-            (email and hashed password) is retained by Supabase for as long as your account exists;
-            contact us to request account deletion.
+            (email and hashed password) is retained by Supabase for as long as your account exists.
+            Admin edit attribution records may be retained for as long as the related card data
+            override is active or needed for auditability; contact us to request account deletion.
           </Text>
         </div>
 

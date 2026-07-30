@@ -128,11 +128,12 @@ The pipeline runs inside `packages/ingest-worker` and is orchestrated by `src/in
 RiftCodex /sets + /cards
     ↓ src/sources/riftcodex.ts  — fetch + map to Card[]
     ↓ src/pipeline/normalize.ts — apply overrides, build IngestSet[]
-    ↓ src/pipeline/enrich.ts    — clearDuplicateImages (alt-art/reprints)
+    ↓ src/pipeline/dedup.ts     — collapse genuine duplicate upstream printings
     ↓ src/sources/tcgcsv.ts     — fetch TCGPlayer groups, products, prices
-    ↓ src/pipeline/enrich.ts    — reconcileSets + enrichCards (prices, purchase URIs, fallback images)
+    ↓ src/pipeline/enrich.ts    — match groups to existing sets + enrichCards (prices, purchase URIs, fallback images)
     ↓ src/pipeline/link.ts      — linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings
-    ↓ src/pipeline/db.ts        — ingestCardData() RPC → Supabase (atomic upsert)
+    ↓ src/pipeline/overrides-db.ts — overlay durable admin DB overrides
+    ↓ src/pipeline/db.ts        — ingestCardData() RPC → Supabase (atomic upsert + prune)
 ```
 
 **Key files:**
@@ -146,9 +147,11 @@ RiftCodex /sets + /cards
 | `src/sources/tcgcsv.ts` | Fetch TCGPlayer groups, products, and prices via TCGCSV |
 | `src/pipeline/types.ts` | `IngestSet` — internal set type with external_ids |
 | `src/pipeline/normalize.ts` | `normalizeSets` / `normalizeCards` — apply overrides |
-| `src/pipeline/enrich.ts` | `reconcileSets`, `clearDuplicateImages`, `buildProductMap`, `enrichCards` |
+| `src/pipeline/dedup.ts` | `collapseDuplicates` — collapse true duplicate RiftCodex printings while preserving printed collector variants |
+| `src/pipeline/enrich.ts` | `matchTcgGroupsToSets`, `buildProductMap`, `enrichCards` |
 | `src/pipeline/link.ts` | `linkTokens`, `linkChampionsLegends`, `linkSignatures`, `linkRelatedPrintings` |
-| `src/pipeline/db.ts` | `ingestCardData()` — calls `ingest_card_data` Postgres RPC |
+| `src/pipeline/overrides-db.ts` | Applies `card_overrides`, `manual_cards`, `card_relationship_overrides`, and `card_deletions` |
+| `src/pipeline/db.ts` | `ingestCardData()` — calls `ingest_card_data_v2` Postgres RPC |
 | `src/overrides/` | JSON override files for sets, TCGPlayer groups, individual cards |
 
 **Overrides** (`src/overrides/*.json`) allow correcting or augmenting upstream data without code changes:
@@ -158,7 +161,7 @@ RiftCodex /sets + /cards
 
 **TCGPlayer enrichment is non-fatal**: if TCGCSV is unavailable, the pipeline continues without prices/images. Cards still get upserted with RiftCodex data only.
 
-**Supabase RPC**: All three tables (sets, artists, cards) are written atomically via `ingest_card_data(p_sets, p_artists, p_cards)`. The current definition lives in `supabase/migrations/20260510030000_add_cards_public_slug.sql` (extends the earlier `20260407160000_fix_ingest_rpc_id_cast.sql` with the `public_slug` column). The `ON CONFLICT` clause `coalesce`s on `public_slug` so URLs are stable across ingest runs but still backfilled when null.
+**Supabase RPC**: Sets, artists, cards, and stale-card pruning are handled atomically via `ingest_card_data_v2(p_sets, p_artists, p_cards, p_valid_ids)`. The current definition lives in `supabase/migrations/20260729000000_ingest_v2_and_overrides.sql`. The `ON CONFLICT` clause `coalesce`s on `public_slug` so URLs are stable across ingest runs but still backfilled when null. The worker applies DB override tables before calling the RPC so admin edits survive re-ingest.
 
 ## Deployment
 - **API**: Cloudflare Workers via `cd packages/api && wrangler deploy`. Secrets set with `wrangler secret put`. Worker name: `riftseer-api`.

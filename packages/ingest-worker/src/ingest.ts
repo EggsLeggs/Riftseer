@@ -3,14 +3,11 @@
  *
  * Flow:
  *   1. Fetch RiftCodex /sets + /cards
- *   2. Normalize to IngestSet + Card; apply overrides
- *   3. Clear duplicate images on alt-art/signature cards (so TCGPlayer fallback works)
- *   4. Fetch TCGCSV groups
- *   5. Reconcile sets (match by tcgplayer_group_id; create promo sets for unmatched groups)
- *   6. Fetch TCGCSV products + prices for all groups
- *   7. Enrich cards with TCGPlayer prices, purchase URIs, and fallback images
- *   8. Link tokens, champions/legends, signatures, related printings
- *   9. Atomic upsert via ingest_card_data Postgres RPC
+ *   2. Normalize to IngestSet + Card; apply file overrides; collapse duplicates
+ *   3. Enrich only from TCGPlayer (prices, purchase URIs, fallback images)
+ *   4. Link tokens, champions/legends, signatures, related printings
+ *   5. Overlay DB overrides (manual cards, patches, relationship edits, deletions)
+ *   6. Atomic upsert + prune via ingest_card_data_v2 Postgres RPC
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -18,9 +15,11 @@ import { logger } from "./utils.ts";
 import { fetchAllSets, fetchAllPages } from "./sources/riftcodex.ts";
 import { fetchGroups, fetchAllGroupResults } from "./sources/tcgcsv.ts";
 import { normalizeSets, normalizeCards } from "./pipeline/normalize.ts";
-import { reconcileSets, buildProductMap, enrichCards, clearDuplicateImages } from "./pipeline/enrich.ts";
+import { matchTcgGroupsToSets, buildProductMap, enrichCards } from "./pipeline/enrich.ts";
 import { linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings } from "./pipeline/link.ts";
 import { ingestCardData } from "./pipeline/db.ts";
+import { collapseDuplicates } from "./pipeline/dedup.ts";
+import { overlayDbOverrides } from "./pipeline/overrides-db.ts";
 
 export interface Env {
   SUPABASE_URL: string;
@@ -72,55 +71,53 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       fetchAllPages(riftcodexConfig),
     ]);
 
-    // 2. Normalize
+    // 2. Normalize + collapse genuine upstream duplicate printings
     const ingestSets = normalizeSets(rawSets);
-    const cards = normalizeCards(rawCards);
+    const cards = collapseDuplicates(normalizeCards(rawCards));
     logger.info("Normalized RiftCodex data", {
       sets: ingestSets.length,
+      rawCards: rawCards.length,
       cards: cards.length,
     });
 
-    // 3. Clear duplicate images (alt-art within set + cross-set reprints)
-    clearDuplicateImages(cards);
-
-    // 4–7. TCGPlayer enrichment (non-fatal if it fails)
-    let finalSets = ingestSets;
+    // 3. TCGPlayer enrichment (non-fatal if it fails). TCGPlayer never creates
+    // sets or cards; it only enriches the RiftCodex-authoritative records.
     try {
       const tcgGroups = await fetchGroups(timeoutMs);
-
-      // 5. Reconcile sets
-      finalSets = reconcileSets(ingestSets, tcgGroups);
-
-      // 6. Fetch products+prices for all groups
+      const setGroupMap = matchTcgGroupsToSets(ingestSets, tcgGroups);
       const groupResults = await fetchAllGroupResults(tcgGroups, timeoutMs);
-
-      // 7. Enrich cards
       const productMap = buildProductMap(groupResults);
-      const { enriched, unmatched } = enrichCards(cards, productMap);
-      logger.info("TCGPlayer enrichment complete", { enriched, unmatched });
+      const enrichment = enrichCards(cards, productMap, setGroupMap);
+      logger.info("TCGPlayer enrichment complete", enrichment);
     } catch (err) {
       logger.warn("TCGPlayer enrichment failed — continuing without prices", {
         error: String(err),
       });
     }
 
-    // 8. Link relationships
+    // 4. Link relationships
     linkTokens(cards);
     linkChampionsLegends(cards);
     linkSignatures(cards);
     linkRelatedPrintings(cards);
 
-    // 9. Atomic upsert
+    // 5–6. Overlay DB overrides, then atomic upsert + prune
     const supabase = createSupabase(env);
-    await ingestCardData(supabase, finalSets, cards);
+    const finalCards = await overlayDbOverrides(supabase, cards);
+    await ingestCardData(supabase, ingestSets, finalCards);
 
     const elapsedMs = Date.now() - t0;
     logger.info("Ingestion complete", {
-      sets: finalSets.length,
-      cards: cards.length,
+      sets: ingestSets.length,
+      cards: finalCards.length,
       elapsedMs,
     });
-    return { cardsCount: cards.length, setsCount: finalSets.length, elapsedMs, ok: true };
+    return {
+      cardsCount: finalCards.length,
+      setsCount: ingestSets.length,
+      elapsedMs,
+      ok: true,
+    };
   } catch (err) {
     const elapsedMs = Date.now() - t0;
     const error = err instanceof Error ? err.message : String(err);

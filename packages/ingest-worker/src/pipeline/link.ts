@@ -257,11 +257,12 @@ export function linkSignatures(cards: Card[]): void {
 }
 
 /**
- * Strip the "(Alternate Art)" suffix (and similar) to get a base name for grouping.
- * Cards that share the same base name but have different ids are related printings.
+ * Strip alternate-art/signature suffixes and token face disambiguators to get a
+ * base name for grouping. Cards that share the same base name but have different
+ * ids are related printings, including token printings.
  */
 function baseName(name: string): string {
-  let s = name.trim();
+  let s = name.split("//")[0]?.trim() ?? name.trim();
   let prev: string;
   do {
     prev = s;
@@ -285,10 +286,10 @@ function toPrintingStub(other: Card): RelatedCard {
 }
 
 export function linkRelatedPrintings(cards: Card[]): void {
-  // Group non-token cards by base name
+  // Group all cards by base name. Tokens are included so variants such as
+  // "Recruit (271) // Buff" / "Recruit (272) // Buff" link to each other.
   const byBase = new Map<string, Card[]>();
   for (const card of cards) {
-    if (card.is_token) continue;
     const key = baseName(card.name);
     if (!byBase.has(key)) byBase.set(key, []);
     byBase.get(key)!.push(card);

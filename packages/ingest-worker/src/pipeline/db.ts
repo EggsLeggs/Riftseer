@@ -1,6 +1,6 @@
 /**
- * Atomic Supabase upsert via the ingest_card_data Postgres RPC.
- * All three tables (sets, artists, cards) are written in a single transaction.
+ * Atomic Supabase upsert via the ingest_card_data_v2 Postgres RPC.
+ * Sets, artists, cards, and stale-card pruning happen in a single transaction.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -51,6 +51,7 @@ interface RpcCardPayload {
   related_signatures: unknown[];
   related_printings: unknown[];
   is_token: boolean;
+  source: "riftcodex" | "manual";
   /**
    * Stable public URL path. Set on first ingest (or backfill) and never
    * overwritten by the RPC, so card URLs do not drift between runs.
@@ -220,21 +221,26 @@ export async function ingestCardData(
     related_signatures: card.related_signatures,
     related_printings: card.related_printings,
     is_token: card.is_token,
+    source: card.source ?? "riftcodex",
     public_slug: slugByCardId.get(card.id) ?? null,
   }));
 
-  logger.info("Calling ingest_card_data RPC", {
+  const p_valid_ids = cards.map((card) => card.id);
+
+  logger.info("Calling ingest_card_data_v2 RPC", {
     sets: p_sets.length,
     artists: p_artists.length,
     cards: p_cards.length,
+    validIds: p_valid_ids.length,
   });
 
-  const { error } = await supabase.rpc("ingest_card_data", {
+  const { error } = await supabase.rpc("ingest_card_data_v2", {
     p_sets,
     p_artists,
     p_cards,
+    p_valid_ids,
   });
 
-  if (error) throw new Error(`ingest_card_data RPC failed: ${error.message}`);
-  logger.info("ingest_card_data RPC complete");
+  if (error) throw new Error(`ingest_card_data_v2 RPC failed: ${error.message}`);
+  logger.info("ingest_card_data_v2 RPC complete");
 }

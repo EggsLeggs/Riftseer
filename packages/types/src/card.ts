@@ -136,6 +136,12 @@ export interface Card {
   purchase_uris?: CardPurchaseUris;
   prices?: CardPrices;
   is_token: boolean;
+  /**
+   * Provenance of the row: "riftcodex" (ingested from upstream, eligible for the
+   * ingest prune) or "manual" (admin-authored, never pruned). Defaults to
+   * "riftcodex" when unset.
+   */
+  source?: "riftcodex" | "manual";
   /** Related token/part cards produced or referenced by this card. */
   all_parts: RelatedCard[];
   /** Non-token cards that create or reference this card (populated on tokens). */

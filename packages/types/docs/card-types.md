@@ -33,10 +33,15 @@ interface Card {
   purchase_uris?: CardPurchaseUris;
   prices?: CardPrices;
   is_token: boolean;
+  source?: "riftcodex" | "manual";  // Row provenance used by ingest/admin tooling
   all_parts: RelatedCard[];         // Tokens or meld parts produced by this card
   used_by: RelatedCard[];           // Cards that create or reference this card (populated on tokens)
   related_champions: RelatedCard[]; // Champions linked to this legend
   related_legends: RelatedCard[];   // Legends linked to this champion
+  related_signatures: RelatedCard[];
+  related_printings: RelatedCard[];
+  public_slug?: string;
+  riftseer_uri?: string;
   updated_at?: string;
   ingested_at?: string;
 }
