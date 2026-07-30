@@ -7,11 +7,24 @@ import type {
   AdminAuditFilters,
   AdminAuditPage,
   AdminCardDefinition,
+  AdminCardLegalities,
   AdminCardMutationResult,
   AdminCardPatch,
+  AdminCardRulings,
+  AdminFormatDeleteResult,
+  AdminFormatInput,
+  AdminFormatListResult,
+  AdminFormatMutationResult,
+  AdminFormatPatch,
   AdminImageMutationResult,
+  AdminLegalityMutationResult,
+  AdminLegalityStatusInput,
   AdminRelationshipEntry,
+  AdminReorderResult,
   AdminResult,
+  AdminRulingInput,
+  AdminRulingMutationResult,
+  AdminRulingPatch,
   AdminSetDefinition,
   AdminSetMutationResult,
   AdminSetPatch,
@@ -178,4 +191,148 @@ export async function deleteSetAction(
     revalidatePath("/sets");
   }
   return result;
+}
+
+// ─── Formats ──────────────────────────────────────────────────────────────────
+
+/**
+ * A format change moves the legality table on every card page, so these
+ * revalidate `/card` wholesale rather than trying to guess which cards were
+ * affected.
+ */
+function revalidateFormats() {
+  revalidatePath("/admin/formats");
+  revalidatePath("/card", "layout");
+}
+
+export async function listFormatsAction(): Promise<
+  AdminResult<AdminFormatListResult>
+> {
+  return withToken((token) => adminApi.listFormats(token));
+}
+
+export async function createFormatAction(
+  input: AdminFormatInput,
+): Promise<AdminResult<AdminFormatMutationResult>> {
+  const result = await withToken((token) => adminApi.createFormat(token, input));
+  if (result.ok) revalidateFormats();
+  return result;
+}
+
+export async function patchFormatAction(
+  code: string,
+  patch: AdminFormatPatch,
+): Promise<AdminResult<AdminFormatMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.patchFormat(token, code, patch),
+  );
+  if (result.ok) revalidateFormats();
+  return result;
+}
+
+export async function deleteFormatAction(
+  code: string,
+): Promise<AdminResult<AdminFormatDeleteResult>> {
+  const result = await withToken((token) => adminApi.deleteFormat(token, code));
+  if (result.ok) revalidateFormats();
+  return result;
+}
+
+export async function reorderFormatsAction(
+  codes: string[],
+): Promise<AdminResult<AdminReorderResult>> {
+  const result = await withToken((token) =>
+    adminApi.reorderFormats(token, codes),
+  );
+  if (result.ok) revalidateFormats();
+  return result;
+}
+
+// ─── Legalities and rulings ───────────────────────────────────────────────────
+
+export async function listCardLegalitiesAction(
+  cardId: string,
+): Promise<AdminResult<AdminCardLegalities>> {
+  return withToken((token) => adminApi.listCardLegalities(token, cardId));
+}
+
+export async function setCardLegalityAction(
+  cardId: string,
+  formatCode: string,
+  status: AdminLegalityStatusInput,
+  applyToAllPrintings: boolean,
+  publicSlug?: string,
+): Promise<AdminResult<AdminLegalityMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.setCardLegality(
+      token,
+      cardId,
+      formatCode,
+      status,
+      applyToAllPrintings,
+    ),
+  );
+  if (result.ok) {
+    // A card-level status changes every printing's page, and the sibling slugs
+    // are not known here, so revalidate the whole card subtree in that case.
+    if (applyToAllPrintings) revalidatePath("/card", "layout");
+    else revalidateCard(cardId, publicSlug);
+  }
+  return result;
+}
+
+export async function listCardRulingsAction(
+  cardId: string,
+): Promise<AdminResult<AdminCardRulings>> {
+  return withToken((token) => adminApi.listCardRulings(token, cardId));
+}
+
+export async function createCardRulingAction(
+  cardId: string,
+  input: AdminRulingInput,
+  publicSlug?: string,
+): Promise<AdminResult<AdminRulingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.createCardRuling(token, cardId, input),
+  );
+  if (result.ok) revalidateRuling(cardId, input.apply_to_all_printings, publicSlug);
+  return result;
+}
+
+export async function patchCardRulingAction(
+  cardId: string,
+  rulingId: string,
+  patch: AdminRulingPatch,
+  publicSlug?: string,
+): Promise<AdminResult<AdminRulingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.patchCardRuling(token, cardId, rulingId, patch),
+  );
+  if (result.ok) revalidateRuling(cardId, true, publicSlug);
+  return result;
+}
+
+export async function deleteCardRulingAction(
+  cardId: string,
+  rulingId: string,
+  publicSlug?: string,
+): Promise<AdminResult<AdminRulingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.deleteCardRuling(token, cardId, rulingId),
+  );
+  if (result.ok) revalidateRuling(cardId, true, publicSlug);
+  return result;
+}
+
+/**
+ * A card-wide ruling shows on every printing, so drop the whole `/card`
+ * subtree unless the entry is known to be scoped to this printing alone.
+ */
+function revalidateRuling(
+  cardId: string,
+  cardWide: boolean | undefined,
+  publicSlug?: string,
+) {
+  if (cardWide === false) revalidateCard(cardId, publicSlug);
+  else revalidatePath("/card", "layout");
 }

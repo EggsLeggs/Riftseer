@@ -39,6 +39,7 @@ export default app;
 
 See [`packages/api/docs/`](./docs/) for endpoint reference:
 - [`cards.md`](./docs/cards.md) — card lookup, resolve, sets
+- [`formats.md`](./docs/formats.md) — play formats and how card legality resolves
 - [`search.md`](./docs/search.md) — `GET /cards` search mechanics, params, fuzzy/autocomplete
 - [`decks.md`](./docs/decks.md) — deck short-form endpoints
 - [`meta.md`](./docs/meta.md) — health and provider state
@@ -91,7 +92,10 @@ const json = await res.json()
 - Auth routes (`/api/v1/auth/*`) skip card provider warmup, but they are no longer anon-key-only: `SUPABASE_ANON_KEY` covers the Supabase Auth calls (register/login/refresh via `@supabase/supabase-js`, logout via direct REST), while `register`, `login`, and the Metafy routes also need `SUPABASE_SERVICE_ROLE_KEY` for `profiles` / `linked_accounts` writes — `POST /auth/register` returns 503 without it
 - **Protected routes**: use `authPlugin` from `src/plugins/auth.ts` — `.use(authPlugin)` injects the authenticated user shape into the handler context via `.resolve({ as: 'scoped' })`. Scope is `scoped` so the middleware only runs for routes in the Elysia instance that explicitly uses the plugin; public routes in the same chain are unaffected. The shared Supabase client lives in `src/lib/supabase.ts`
 - **Admin routes**: `adminPlugin` independently reuses the shared bearer-token resolver, then checks `user.id` against comma-separated `ADMIN_USER_IDS`. Every `/api/v1/admin/*` route uses the plugin and writes through `authAdminClient`; the service-role key never leaves the Worker.
-- `GET /api/v1/admin/audit-log` is the only read endpoint under `/admin` — it pages `admin_audit_log` newest first via `AdminDataRepository.listAuditLog`. The table is append-only; there is no write endpoint for it.
+- Read endpoints under `/admin`: `audit-log` (pages `admin_audit_log` newest first; append-only, no write endpoint), `formats`, and the per-card `cards/:id/legalities` / `cards/:id/rulings`. The last two expose the card-level and per-printing layers separately, which the public payload does not — the editor needs to tell an inherited status from a printing-specific one.
+- **Rulings and legalities are keyed on `cards.oracle_key`**, not on the card id, so they are shared by every printing. `oracle_key` is derived with `oracleKeyForName()` from `@riftseer/types/oracle` — never in SQL — and the admin routes send it alongside `name_normalized` whenever a name changes. Legality precedence is printing override → oracle row → default `legal`; only non-legal statuses are stored, so an absent row means legal.
+- The ruling routes are nested under the card deliberately: a ruling belongs to an oracle group rather than one printing, so `admin_patch_card_ruling` / `admin_delete_card_ruling` take the path card and reject a ruling from a different group. A mistyped card id cannot reach an unrelated card's ruling.
+- `rulings` / `legalities` on the card-detail payload are supplementary — `buildCardDetail` logs and degrades to empty arrays if either read fails, so an unapplied migration cannot 500 the card page. `GET /formats` does the same.
 - Admin image uploads use the `CARD_IMAGES` R2 binding and `CARD_IMAGE_QUEUE` producer binding. The request stores a bounded content-addressed source and queues the Phase 2 image consumer rather than transforming images inline.
 - **In Elysia v1.4.x**: use `status(code, body)` (not `error(code, body)`) to return early responses from `resolve`/`derive` — the context has `status`, not `error`
 - CF Workers forbid async I/O (fetch) in global scope — `warmup()` is deferred to the first request via `onBeforeHandle` using a lazy promise singleton (retries on failure)

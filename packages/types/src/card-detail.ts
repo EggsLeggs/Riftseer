@@ -3,7 +3,13 @@
 // into printing summaries, sorted and deduplicated server-side so clients render
 // the page from a single response.
 
-import type { Card, CardPrices, CardPurchaseUris } from "./card.ts";
+import type {
+  Card,
+  CardLegality,
+  CardPrices,
+  CardPurchaseUris,
+  CardRuling,
+} from "./card.ts";
 
 /**
  * A related printing rendered in a table or list — enough to display a row and
@@ -53,4 +59,14 @@ export interface CardDetail {
   signatures: CardPrintingSummary[];
   /** Resolved marketplace links, falling back to search URLs when no product id exists. */
   purchase: CardPurchaseUris;
+  /**
+   * Rulings and notes for this printing: everything shared across the card's
+   * printings plus anything scoped to this one, oldest first.
+   */
+  rulings: CardRuling[];
+  /**
+   * One entry per active format, in format sort order, with the status already
+   * resolved through printing override → oracle → default legal.
+   */
+  legalities: CardLegality[];
 }

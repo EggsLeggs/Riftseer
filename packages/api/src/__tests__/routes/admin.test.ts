@@ -4,7 +4,10 @@ import {
   AdminRepositoryError,
   type AdminAuditPage,
   type AdminAuditQuery,
+  type AdminCardLegalities,
+  type AdminCardRulings,
   type AdminDataRepository,
+  type AdminFormat,
   type AdminRpcResult,
   type AdminSlugCard,
 } from "../../lib/admin-data";
@@ -99,6 +102,64 @@ class StubAdminRepository implements AdminDataRepository {
       throw error;
     }
     return this.auditPage;
+  }
+
+  formats: AdminFormat[] = [
+    {
+      id: "format-1",
+      code: "standard",
+      name: "Standard",
+      sort_order: 0,
+      active: true,
+      legality_count: 2,
+      override_count: 1,
+    },
+  ];
+
+  async listFormats(): Promise<AdminFormat[]> {
+    return this.formats;
+  }
+
+  /** Null models a card id that does not exist, so the route must 404. */
+  legalities: AdminCardLegalities | null = {
+    card_id: "card-1",
+    oracle_key: "test card",
+    entries: [
+      {
+        format_id: "format-1",
+        format_code: "standard",
+        format_name: "Standard",
+        format_active: true,
+        oracle_status: "banned",
+        printing_status: "legal",
+        effective_status: "legal",
+      },
+    ],
+  };
+
+  async listCardLegalities(): Promise<AdminCardLegalities | null> {
+    return this.legalities;
+  }
+
+  rulings: AdminCardRulings | null = {
+    card_id: "card-1",
+    oracle_key: "test card",
+    entries: [
+      {
+        id: "99999999-9999-4999-8999-999999999999",
+        type: "ruling",
+        text: "Applies to every printing.",
+        dated: "2026-05-01",
+        source: null,
+        card_id: null,
+        created_at: "2026-05-01T00:00:00Z",
+        updated_at: "2026-05-01T00:00:00Z",
+      },
+    ],
+  };
+
+  async listCardRulings(): Promise<AdminCardRulings | null> {
+    return this.rulings;
   }
 }
 
@@ -215,6 +276,7 @@ describe("admin API", () => {
           p_patch: {
             name: "Thousand-Tailed Watcher",
             name_normalized: "thousand tailed watcher",
+            oracle_key: "thousand tailed watcher",
             text: { plain: "Admin text" },
           },
           p_note: "Fix source typo",
@@ -247,6 +309,7 @@ describe("admin API", () => {
       expect.objectContaining({
         name: "Test Card",
         name_normalized: "test card",
+        oracle_key: "test card",
         public_slug: "ogn/12/test-card",
         is_token: false,
         set: {
@@ -478,6 +541,396 @@ describe("admin API", () => {
       expect(await response.json()).toEqual({
         error: "Admin operation failed",
         code: "ADMIN_OPERATION_FAILED",
+      });
+    });
+  });
+
+  describe("formats", () => {
+    test("lists every format with the counts a delete would cascade", async () => {
+      const response = await app.handle(jsonRequest("/admin/formats", "GET"));
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        formats: [
+          {
+            id: "format-1",
+            code: "standard",
+            name: "Standard",
+            sort_order: 0,
+            active: true,
+            legality_count: 2,
+            override_count: 1,
+          },
+        ],
+      });
+    });
+
+    test("lowercases a created code and defers ordering to the RPC", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/formats", "POST", {
+          code: "standard",
+          name: "  Standard  ",
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ ok: true, code: "standard" });
+      expect(repository.calls).toEqual([
+        {
+          name: "admin_create_format",
+          args: {
+            p_code: "standard",
+            p_name: "Standard",
+            p_sort_order: null,
+            p_active: true,
+            p_actor: ADMIN_ID,
+          },
+        },
+      ]);
+    });
+
+    test("rejects a code that is not a lowercase handle", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/formats", "POST", {
+          code: "Standard Format",
+          name: "Standard",
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(repository.calls).toHaveLength(0);
+    });
+
+    test("maps a duplicate code to a 409 with a machine code", async () => {
+      repository.nextResult = { ok: false, reason: "format_exists" };
+
+      const response = await app.handle(
+        jsonRequest("/admin/formats", "POST", {
+          code: "standard",
+          name: "Standard",
+        }),
+      );
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "Format code already exists",
+        code: "FORMAT_EXISTS",
+      });
+    });
+
+    test("reads /formats/order as a reorder, not a format code", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/formats/order", "PUT", {
+          codes: ["limited", "standard"],
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(repository.calls).toEqual([
+        {
+          name: "admin_reorder_formats",
+          args: {
+            p_codes: ["limited", "standard"],
+            p_actor: ADMIN_ID,
+          },
+        },
+      ]);
+    });
+
+    test("rejects a reorder that repeats a code", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/formats/order", "PUT", {
+          codes: ["standard", "standard"],
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "Format codes must be unique",
+        code: "DUPLICATE_FORMAT",
+      });
+      expect(repository.calls).toHaveLength(0);
+    });
+
+    test("refuses an empty format patch", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/formats/standard", "PATCH", { patch: {} }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "Patch must contain at least one field",
+        code: "EMPTY_PATCH",
+      });
+      expect(repository.calls).toHaveLength(0);
+    });
+
+    test("reports what a delete cascaded away", async () => {
+      repository.nextResult = {
+        ok: true,
+        legalities_removed: 4,
+        overrides_removed: 2,
+      };
+
+      const response = await app.handle(
+        jsonRequest("/admin/formats/standard", "DELETE"),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        ok: true,
+        code: "standard",
+        legalities_removed: 4,
+        overrides_removed: 2,
+      });
+    });
+
+    test("maps an unknown format to a 404", async () => {
+      repository.nextResult = { ok: false, reason: "format_not_found" };
+
+      const response = await app.handle(
+        jsonRequest("/admin/formats/nope", "DELETE"),
+      );
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({
+        error: "Format not found",
+        code: "FORMAT_NOT_FOUND",
+      });
+    });
+  });
+
+  describe("card legalities", () => {
+    test("exposes the card status and the printing override separately", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/legalities", "GET"),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        card_id: "card-1",
+        oracle_key: "test card",
+        entries: [
+          {
+            format_id: "format-1",
+            format_code: "standard",
+            format_name: "Standard",
+            format_active: true,
+            oracle_status: "banned",
+            printing_status: "legal",
+            effective_status: "legal",
+          },
+        ],
+      });
+    });
+
+    test("404s rather than showing an empty table for an unknown card", async () => {
+      repository.legalities = null;
+
+      const response = await app.handle(
+        jsonRequest("/admin/cards/nope/legalities", "GET"),
+      );
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({
+        error: "Card not found",
+        code: "CARD_NOT_FOUND",
+      });
+    });
+
+    test("writes a printing-scoped status by default", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/legalities", "PUT", {
+          format_code: "STANDARD",
+          status: "banned",
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        ok: true,
+        card_id: "card-1",
+        format_code: "standard",
+        scope: "printing",
+        status: "banned",
+      });
+      expect(repository.calls).toEqual([
+        {
+          name: "admin_set_card_legality",
+          args: {
+            p_card_id: "card-1",
+            p_format_code: "standard",
+            p_status: "banned",
+            p_all_printings: false,
+            p_actor: ADMIN_ID,
+          },
+        },
+      ]);
+    });
+
+    test("applies to every printing when asked", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/legalities", "PUT", {
+          format_code: "standard",
+          status: "not_legal",
+          apply_to_all_printings: true,
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(
+        (await response.json()) as Record<string, unknown>,
+      ).toMatchObject({ scope: "oracle" });
+      expect(repository.calls[0].args).toMatchObject({
+        p_all_printings: true,
+        p_status: "not_legal",
+      });
+    });
+
+    test("sends `default` as a null status so the row is cleared", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/legalities", "PUT", {
+          format_code: "standard",
+          status: "default",
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(repository.calls[0].args.p_status).toBeNull();
+      expect(
+        (await response.json()) as Record<string, unknown>,
+      ).toMatchObject({ status: null });
+    });
+
+    test("rejects a status outside the allowed set", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/legalities", "PUT", {
+          format_code: "standard",
+          status: "restricted",
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(repository.calls).toHaveLength(0);
+    });
+  });
+
+  describe("card rulings", () => {
+    const RULING_ID = "99999999-9999-4999-8999-999999999999";
+
+    test("returns the entries visible on this printing", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/rulings", "GET"),
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { entries: unknown[] };
+      expect(body.entries).toHaveLength(1);
+    });
+
+    test("defaults a new ruling to every printing", async () => {
+      repository.nextResult = { ok: true, ruling_id: RULING_ID };
+
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/rulings", "POST", {
+          type: "ruling",
+          text: "  Resolves before the unit readies.  ",
+          dated: "2026-03-14",
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        ok: true,
+        card_id: "card-1",
+        ruling_id: RULING_ID,
+      });
+      expect(repository.calls).toEqual([
+        {
+          name: "admin_create_card_ruling",
+          args: {
+            p_card_id: "card-1",
+            p_all_printings: true,
+            p_type: "ruling",
+            p_text: "Resolves before the unit readies.",
+            p_dated: "2026-03-14",
+            p_source: null,
+            p_actor: ADMIN_ID,
+          },
+        },
+      ]);
+    });
+
+    test("scopes a ruling to one printing when asked", async () => {
+      repository.nextResult = { ok: true, ruling_id: RULING_ID };
+
+      await app.handle(
+        jsonRequest("/admin/cards/card-1/rulings", "POST", {
+          type: "note",
+          text: "This printing has a misprinted cost.",
+          apply_to_all_printings: false,
+        }),
+      );
+
+      expect(repository.calls[0].args).toMatchObject({
+        p_all_printings: false,
+        p_type: "note",
+      });
+    });
+
+    test("rejects a blank ruling before reaching the database", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/rulings", "POST", {
+          type: "ruling",
+          text: "   ",
+        }),
+      );
+
+      expect(response.status).toBe(400);
+      expect(repository.calls).toHaveLength(0);
+    });
+
+    test("translates the patch scope flag to the durable shape", async () => {
+      const response = await app.handle(
+        jsonRequest(`/admin/cards/card-1/rulings/${RULING_ID}`, "PATCH", {
+          patch: { text: "  Updated.  ", apply_to_all_printings: false },
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(repository.calls).toEqual([
+        {
+          name: "admin_patch_card_ruling",
+          args: {
+            p_card_id: "card-1",
+            p_ruling_id: RULING_ID,
+            p_patch: { text: "Updated.", all_printings: false },
+            p_actor: ADMIN_ID,
+          },
+        },
+      ]);
+    });
+
+    test("rejects a ruling id that is not a uuid", async () => {
+      const response = await app.handle(
+        jsonRequest("/admin/cards/card-1/rulings/not-a-uuid", "DELETE"),
+      );
+
+      expect(response.status).toBe(400);
+      expect(repository.calls).toHaveLength(0);
+    });
+
+    test("maps a ruling from another card to a 404", async () => {
+      repository.nextResult = { ok: false, reason: "ruling_not_found" };
+
+      const response = await app.handle(
+        jsonRequest(`/admin/cards/card-1/rulings/${RULING_ID}`, "DELETE"),
+      );
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({
+        error: "Ruling not found",
+        code: "RULING_NOT_FOUND",
       });
     });
   });

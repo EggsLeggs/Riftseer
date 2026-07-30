@@ -1,12 +1,16 @@
 import {
   absoluteRiftseerUri,
   normalizeCardName,
+  oracleKeyForName,
   type Card,
   type CardDetail,
+  type CardLegality,
   type CardPrintingSummary,
   type CardPurchaseUris,
+  type CardRuling,
   type RelatedCard,
 } from "@riftseer/types";
+import { logger } from "./logger.ts";
 import type { CardDataProvider } from "./provider.ts";
 
 // ─── Marketplace links ─────────────────────────────────────────────────────────
@@ -210,13 +214,63 @@ function relatedIds(stubs: RelatedCard[]): string[] {
 }
 
 /**
+ * Rulings and legalities are keyed on the oracle group, so they need one lookup
+ * each regardless of how many printings exist.
+ *
+ * Both are optional on the provider so a stub or a partial test double can be
+ * passed without implementing them; when absent the payload carries empty
+ * arrays, which the card page renders as "no rulings" and "legal everywhere" —
+ * the same thing the real provider returns for a card with nothing stored.
+ */
+type CardDetailProvider = Pick<CardDataProvider, "getCardsByIds"> &
+  Partial<Pick<CardDataProvider, "getCardLegalities" | "getCardRulings">>;
+
+/**
+ * Rulings and legalities are supplementary: the card page is fully useful
+ * without them. A failure here — most likely the Phase 5 tables not yet existing
+ * on this environment — must not turn the whole card response into a 500, so it
+ * is logged and degrades to the same empty result as a card with nothing stored.
+ */
+async function loadOptional<T>(
+  what: string,
+  cardId: string,
+  load: () => Promise<T[]> | undefined,
+): Promise<T[]> {
+  try {
+    return (await load()) ?? [];
+  } catch (error) {
+    logger.warn(`Failed to load card ${what}`, {
+      cardId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return [];
+  }
+}
+
+async function loadOracleData(
+  card: Card,
+  provider: CardDetailProvider,
+): Promise<{ rulings: CardRuling[]; legalities: CardLegality[] }> {
+  const oracleKey = card.oracle_key ?? oracleKeyForName(card.name);
+  const [rulings, legalities] = await Promise.all([
+    loadOptional("rulings", card.id, () =>
+      provider.getCardRulings?.(oracleKey, card.id),
+    ),
+    loadOptional("legalities", card.id, () =>
+      provider.getCardLegalities?.(oracleKey, card.id),
+    ),
+  ]);
+  return { rulings, legalities };
+}
+
+/**
  * Expands a card's related-card stubs into the aggregate payload behind the
  * public card page. Every stub across all five relationship arrays is resolved
  * in a single batched provider call.
  */
 export async function buildCardDetail(
   card: Card,
-  provider: Pick<CardDataProvider, "getCardsByIds">,
+  provider: CardDetailProvider,
   opts: BuildCardDetailOptions = {},
 ): Promise<CardDetail> {
   const { siteOrigin, prepare } = opts;
@@ -231,7 +285,10 @@ export async function buildCardDetail(
     ...relatedIds(card.related_signatures),
   ];
 
-  const resolved = ids.length > 0 ? await provider.getCardsByIds(ids) : [];
+  const [resolved, oracleData] = await Promise.all([
+    ids.length > 0 ? provider.getCardsByIds(ids) : Promise.resolve([]),
+    loadOracleData(card, provider),
+  ]);
   const byId = new Map(
     resolved.map((c) => [c.id, prepare ? prepare(c) : c] as const),
   );
@@ -269,5 +326,7 @@ export async function buildCardDetail(
     // same signature to one preferred printing per name.
     signatures: dedupeByCharacter(expand(card.related_signatures), siteOrigin),
     purchase,
+    rulings: oracleData.rulings,
+    legalities: oracleData.legalities,
   };
 }

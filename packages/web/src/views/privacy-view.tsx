@@ -90,8 +90,9 @@ export function PrivacyView() {
             <ListItem>
               <strong className="font-semibold">Admin edits.</strong> If your account has admin
               access, we may store your account user ID with card and set data edits, manual
-              records, relationship changes, image uploads, and deletion records so those changes
-              are attributable, reversible, and preserved across data imports.
+              records, relationship changes, image uploads, deletion records, format definitions,
+              card legality statuses, and rulings or notes, so those changes are attributable,
+              reversible, and preserved across data imports.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">PostHog (site analytics).</strong> We use{" "}

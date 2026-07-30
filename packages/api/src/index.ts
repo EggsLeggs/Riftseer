@@ -11,6 +11,7 @@
  *   GET  /api/v1/cards/by-slug/* — look up a card by its persisted public_slug
  *   POST /api/v1/cards/resolve  body: { requests: string[] }
  *   GET  /api/v1/sets
+ *   GET  /api/v1/formats
  *   GET  /api/v1/decks/u/:shortForm
  *   POST /api/v1/decks/u/:shortForm
  *   POST /api/v1/decks/u
@@ -48,6 +49,7 @@ import {
 import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
 import { setsRoutes } from "./routes/sets";
+import { formatsRoutes } from "./routes/formats";
 import { decksRoutes } from "./routes/decks";
 import { authRoutes } from "./routes/auth";
 import { usersRoutes } from "./routes/users";
@@ -142,6 +144,7 @@ export const app = new Elysia({
       .use(metaRoutes(cardProvider, startTime))
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
+      .use(formatsRoutes(cardProvider))
       .use(decksRoutes(deckProvider))
       .use(authRoutes())
       .use(usersRoutes())

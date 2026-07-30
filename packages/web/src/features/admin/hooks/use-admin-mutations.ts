@@ -6,21 +6,34 @@ import { cardsQueryKeys } from "@/features/cards/api";
 import { setsQueryKeys } from "@/features/sets/api";
 import {
   createCardAction,
+  createCardRulingAction,
+  createFormatAction,
   createSetAction,
   deleteCardAction,
+  deleteCardRulingAction,
+  deleteFormatAction,
   deleteSetAction,
   moveCardAction,
   patchCardAction,
+  patchCardRulingAction,
+  patchFormatAction,
   patchSetAction,
   regenerateSlugAction,
+  reorderFormatsAction,
+  setCardLegalityAction,
   setRelationshipsAction,
   uploadCardImageAction,
 } from "../actions";
 import type {
   AdminCardDefinition,
   AdminCardPatch,
+  AdminFormatInput,
+  AdminFormatPatch,
+  AdminLegalityStatusInput,
   AdminRelationshipEntry,
   AdminResult,
+  AdminRulingInput,
+  AdminRulingPatch,
   AdminSetDefinition,
   AdminSetPatch,
 } from "../types";
@@ -142,5 +155,118 @@ export function useSetMutations() {
       "Set deleted",
       invalidateSets,
     ),
+  };
+}
+
+/** Query key for the admin format list, so a mutation can refresh the table. */
+export const adminFormatsQueryKey = ["admin", "formats"] as const;
+
+export function useFormatMutations() {
+  const queryClient = useQueryClient();
+  const invalidateFormats = () => {
+    void queryClient.invalidateQueries({ queryKey: adminFormatsQueryKey });
+  };
+
+  return {
+    create: useToastMutation<[input: AdminFormatInput], { code: string }>(
+      createFormatAction,
+      (data) => `Format “${data.code}” created`,
+      invalidateFormats,
+    ),
+
+    patch: useToastMutation<
+      [code: string, patch: AdminFormatPatch],
+      { code: string }
+    >(patchFormatAction, "Format saved", invalidateFormats),
+
+    remove: useToastMutation<
+      [code: string],
+      { legalities_removed: number; overrides_removed: number }
+    >(
+      deleteFormatAction,
+      (data) => {
+        const removed = data.legalities_removed + data.overrides_removed;
+        return removed > 0
+          ? `Format deleted, along with ${removed} legality ${
+              removed === 1 ? "entry" : "entries"
+            }`
+          : "Format deleted";
+      },
+      invalidateFormats,
+    ),
+
+    reorder: useToastMutation<[codes: string[]], { ok: true }>(
+      reorderFormatsAction,
+      "Format order saved",
+      invalidateFormats,
+    ),
+  };
+}
+
+export const adminCardLegalitiesQueryKey = (cardId: string) =>
+  ["admin", "card-legalities", cardId] as const;
+
+export const adminCardRulingsQueryKey = (cardId: string) =>
+  ["admin", "card-rulings", cardId] as const;
+
+export function useCardLegalityMutations(cardId: string) {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    void queryClient.invalidateQueries({
+      queryKey: adminCardLegalitiesQueryKey(cardId),
+    });
+    void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
+  };
+
+  return {
+    set: useToastMutation<
+      [
+        cardId: string,
+        formatCode: string,
+        status: AdminLegalityStatusInput,
+        applyToAllPrintings: boolean,
+        publicSlug?: string,
+      ],
+      { scope: "printing" | "oracle" }
+    >(
+      setCardLegalityAction,
+      (data) =>
+        data.scope === "oracle"
+          ? "Legality saved for every printing"
+          : "Legality saved for this printing",
+      invalidate,
+    ),
+  };
+}
+
+export function useCardRulingMutations(cardId: string) {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    void queryClient.invalidateQueries({
+      queryKey: adminCardRulingsQueryKey(cardId),
+    });
+    void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
+  };
+
+  return {
+    create: useToastMutation<
+      [cardId: string, input: AdminRulingInput, publicSlug?: string],
+      { ruling_id: string }
+    >(createCardRulingAction, "Entry added", invalidate),
+
+    patch: useToastMutation<
+      [
+        cardId: string,
+        rulingId: string,
+        patch: AdminRulingPatch,
+        publicSlug?: string,
+      ],
+      { ruling_id: string }
+    >(patchCardRulingAction, "Entry saved", invalidate),
+
+    remove: useToastMutation<
+      [cardId: string, rulingId: string, publicSlug?: string],
+      { ruling_id: string }
+    >(deleteCardRulingAction, "Entry deleted", invalidate),
   };
 }

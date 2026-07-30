@@ -5,6 +5,7 @@ import {
   normalizeCardName,
 } from "@riftseer/types";
 import { authAdminClient } from "../lib/supabase";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 import {
   AdminRepositoryError,
   createAdminDataRepository,
@@ -239,6 +240,110 @@ const AuditLogResponseSchema = t.Object({
   offset: t.Number(),
 });
 
+// ─── Formats, legalities, rulings ─────────────────────────────────────────────
+
+/**
+ * Accepted on input in either case — the handler lowercases before the RPC, and
+ * the stored code is always lowercase (enforced by `formats_code_check`).
+ */
+const FORMAT_CODE_PATTERN = "^[A-Za-z0-9][A-Za-z0-9_-]*$";
+
+const LegalityStatusSchema = t.UnionEnum(["legal", "not_legal", "banned"]);
+
+/**
+ * `default` clears the stored row rather than writing a status: absence of a
+ * card-level row *is* legal, so this is how a format goes back to unmarked.
+ */
+const LegalityStatusInputSchema = t.UnionEnum([
+  "legal",
+  "not_legal",
+  "banned",
+  "default",
+]);
+
+const RulingTypeSchema = t.UnionEnum(["ruling", "note"]);
+
+const AdminFormatSchema = t.Object({
+  id: t.String(),
+  code: t.String(),
+  name: t.String(),
+  sort_order: t.Number(),
+  active: t.Boolean(),
+  legality_count: t.Number({
+    description: "Card-level legality rows a delete would cascade away.",
+  }),
+  override_count: t.Number({
+    description: "Per-printing override rows a delete would cascade away.",
+  }),
+});
+
+const AdminFormatListResponseSchema = t.Object({
+  formats: t.Array(AdminFormatSchema),
+});
+
+const FormatMutationResponseSchema = t.Object({
+  ok: t.Literal(true),
+  code: t.String(),
+});
+
+const FormatDeleteResponseSchema = t.Object({
+  ok: t.Literal(true),
+  code: t.String(),
+  legalities_removed: t.Number(),
+  overrides_removed: t.Number(),
+});
+
+const AdminCardLegalitiesResponseSchema = t.Object({
+  card_id: t.String(),
+  oracle_key: t.String(),
+  entries: t.Array(
+    t.Object({
+      format_id: t.String(),
+      format_code: t.String(),
+      format_name: t.String(),
+      format_active: t.Boolean(),
+      oracle_status: t.Nullable(LegalityStatusSchema),
+      printing_status: t.Nullable(LegalityStatusSchema),
+      effective_status: LegalityStatusSchema,
+    }),
+  ),
+});
+
+const LegalityMutationResponseSchema = t.Object({
+  ok: t.Literal(true),
+  card_id: t.String(),
+  format_code: t.String(),
+  scope: t.UnionEnum(["printing", "oracle"]),
+  status: t.Nullable(LegalityStatusSchema),
+});
+
+const AdminCardRulingsResponseSchema = t.Object({
+  card_id: t.String(),
+  oracle_key: t.String(),
+  entries: t.Array(
+    t.Object({
+      id: t.String(),
+      type: RulingTypeSchema,
+      text: t.String(),
+      dated: t.Nullable(t.String()),
+      source: t.Nullable(t.String()),
+      card_id: t.Nullable(
+        t.String({
+          description: "Null when the entry applies to every printing.",
+        }),
+      ),
+      created_at: t.Nullable(t.String()),
+      updated_at: t.Nullable(t.String()),
+    }),
+  ),
+});
+
+const RulingMutationResponseSchema = t.Object({
+  ok: t.Literal(true),
+  card_id: t.String(),
+  ruling_id: t.String(),
+});
+
 const ImageMutationResponseSchema = t.Object({
   ok: t.Literal(true),
   card_id: t.String(),
@@ -359,6 +464,21 @@ function mutationFailure(result: AdminRpcResult): FailureResponse | null {
           error: "Move or delete every card in the set first",
           code: "SET_NOT_EMPTY",
         },
+      };
+    case "format_not_found":
+      return {
+        status: 404,
+        body: { error: "Format not found", code: "FORMAT_NOT_FOUND" },
+      };
+    case "format_exists":
+      return {
+        status: 409,
+        body: { error: "Format code already exists", code: "FORMAT_EXISTS" },
+      };
+    case "ruling_not_found":
+      return {
+        status: 404,
+        body: { error: "Ruling not found", code: "RULING_NOT_FOUND" },
       };
     default:
       return {
@@ -675,6 +795,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           ...body.definition,
           name,
           name_normalized: normalizeCardName(name),
+          oracle_key: oracleKeyForName(name),
           public_slug: publicSlug,
           is_token: body.definition.is_token ?? false,
         };
@@ -738,7 +859,11 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         if (typeof body.patch.name === "string") {
           const name = body.patch.name.trim();
           patch.name = name;
+          // Both derived values are computed here, never in SQL, so the
+          // normalization rules live in exactly one place. A rename also moves
+          // the card into a new oracle group, which re-points its rulings.
           patch.name_normalized = normalizeCardName(name);
+          patch.oracle_key = oracleKeyForName(name);
         }
 
         const rpcResult = await safely(
@@ -1159,6 +1284,556 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         },
       },
     )
+    // ── Formats ───────────────────────────────────────────────────────────────
+    .get(
+      "/formats",
+      async ({ status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const result = await safely("format.list", () =>
+          repository.listFormats(),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        return { formats: result.data };
+      },
+      {
+        response: {
+          200: AdminFormatListResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "List formats",
+          description:
+            "Returns every format including retired ones, each with the legality row counts a delete would cascade away.",
+        },
+      },
+    )
+    .post(
+      "/formats",
+      async ({ body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const code = body.code.trim().toLowerCase();
+        const rpcResult = await safely("format.create", () =>
+          repository.callRpc("admin_create_format", {
+            p_code: code,
+            p_name: body.name.trim(),
+            p_sort_order: body.sort_order ?? null,
+            p_active: body.active ?? true,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return { ok: true as const, code };
+      },
+      {
+        body: t.Object({
+          code: t.String({
+            minLength: 1,
+            maxLength: 64,
+            pattern: FORMAT_CODE_PATTERN,
+          }),
+          name: t.String({
+            minLength: 1,
+            maxLength: 120,
+            pattern: NON_BLANK_PATTERN,
+          }),
+          sort_order: t.Optional(t.Integer({ minimum: 0, maximum: 10_000 })),
+          active: t.Optional(t.Boolean()),
+        }),
+        response: {
+          200: FormatMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Create a format",
+          description:
+            "Creates a play format. Omitting sort_order appends it to the end of the list.",
+        },
+      },
+    )
+    // Registered before /formats/:code so "order" is never read as a format code.
+    .put(
+      "/formats/order",
+      async ({ body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const codes = body.codes.map((code) => code.trim().toLowerCase());
+        if (new Set(codes).size !== codes.length) {
+          return status(400, {
+            error: "Format codes must be unique",
+            code: "DUPLICATE_FORMAT",
+          });
+        }
+        const rpcResult = await safely("format.reorder", () =>
+          repository.callRpc("admin_reorder_formats", {
+            p_codes: codes,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return { ok: true as const };
+      },
+      {
+        body: t.Object({
+          codes: t.Array(
+            t.String({
+              minLength: 1,
+              maxLength: 64,
+              pattern: FORMAT_CODE_PATTERN,
+            }),
+            { maxItems: 200 },
+          ),
+        }),
+        response: {
+          200: t.Object({ ok: t.Literal(true) }),
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Reorder formats",
+          description:
+            "Rewrites sort_order from the position of each code. Send the complete list — an unknown code is rejected rather than skipped.",
+        },
+      },
+    )
+    .patch(
+      "/formats/:code",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        if (Object.keys(body.patch).length === 0) {
+          return status(400, {
+            error: "Patch must contain at least one field",
+            code: "EMPTY_PATCH",
+          });
+        }
+        const code = params.code.trim().toLowerCase();
+        const patch: Record<string, unknown> = { ...body.patch };
+        if (typeof body.patch.name === "string") {
+          patch.name = body.patch.name.trim();
+        }
+        const rpcResult = await safely("format.patch", () =>
+          repository.callRpc("admin_patch_format", {
+            p_code: code,
+            p_patch: patch,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return { ok: true as const, code };
+      },
+      {
+        body: t.Object({
+          patch: t.Object({
+            name: t.Optional(
+              t.String({
+                minLength: 1,
+                maxLength: 120,
+                pattern: NON_BLANK_PATTERN,
+              }),
+            ),
+            sort_order: t.Optional(t.Integer({ minimum: 0, maximum: 10_000 })),
+            active: t.Optional(t.Boolean()),
+          }),
+        }),
+        response: {
+          200: FormatMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Patch a format",
+          description:
+            "Updates a format's name, order or active flag. `code` is immutable — it is the public handle used by API clients.",
+        },
+      },
+    )
+    .delete(
+      "/formats/:code",
+      async ({ params, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const code = params.code.trim().toLowerCase();
+        const rpcResult = await safely("format.delete", () =>
+          repository.callRpc("admin_delete_format", {
+            p_code: code,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          code,
+          legalities_removed: Number(rpcResult.data.legalities_removed ?? 0),
+          overrides_removed: Number(rpcResult.data.overrides_removed ?? 0),
+        };
+      },
+      {
+        response: {
+          200: FormatDeleteResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Delete a format",
+          description:
+            "Deletes a format and cascades away its legality rows. The response reports how many were removed.",
+        },
+      },
+    )
+
+    // ── Card legalities ───────────────────────────────────────────────────────
+    .get(
+      "/cards/:id/legalities",
+      async ({ params, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const result = await safely("card.legalities.list", () =>
+          repository.listCardLegalities(params.id),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        if (!result.data) {
+          return status(404, {
+            error: "Card not found",
+            code: "CARD_NOT_FOUND",
+          });
+        }
+        return result.data;
+      },
+      {
+        response: {
+          200: AdminCardLegalitiesResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Read a card's legalities",
+          description:
+            "One entry per format with the card-level status and this printing's override exposed separately, plus the resolved status.",
+        },
+      },
+    )
+    .put(
+      "/cards/:id/legalities",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const formatCode = body.format_code.trim().toLowerCase();
+        const applyToAll = body.apply_to_all_printings ?? false;
+        const rpcResult = await safely("card.legality", () =>
+          repository.callRpc("admin_set_card_legality", {
+            p_card_id: params.id,
+            p_format_code: formatCode,
+            // `default` clears the row; every other value is stored as-is.
+            p_status: body.status === "default" ? null : body.status,
+            p_all_printings: applyToAll,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          card_id: params.id,
+          format_code: formatCode,
+          scope: applyToAll ? ("oracle" as const) : ("printing" as const),
+          status: body.status === "default" ? null : body.status,
+        };
+      },
+      {
+        body: t.Object({
+          format_code: t.String({
+            minLength: 1,
+            maxLength: 64,
+            pattern: FORMAT_CODE_PATTERN,
+          }),
+          status: LegalityStatusInputSchema,
+          apply_to_all_printings: t.Optional(t.Boolean()),
+        }),
+        response: {
+          200: LegalityMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Set a card's legality in one format",
+          description:
+            "With apply_to_all_printings the status is stored on the card and every per-printing override for that format is cleared; " +
+            "without it, only this printing is affected. `default` removes the stored status (absence means legal).",
+        },
+      },
+    )
+
+    // ── Card rulings and notes ────────────────────────────────────────────────
+    .get(
+      "/cards/:id/rulings",
+      async ({ params, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const result = await safely("card.rulings.list", () =>
+          repository.listCardRulings(params.id),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        if (!result.data) {
+          return status(404, {
+            error: "Card not found",
+            code: "CARD_NOT_FOUND",
+          });
+        }
+        return result.data;
+      },
+      {
+        response: {
+          200: AdminCardRulingsResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Read a card's rulings",
+          description:
+            "Rulings and notes visible on this printing: the card-wide entries plus any scoped to this printing.",
+        },
+      },
+    )
+    .post(
+      "/cards/:id/rulings",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const rpcResult = await safely("card.ruling.create", () =>
+          repository.callRpc("admin_create_card_ruling", {
+            p_card_id: params.id,
+            p_all_printings: body.apply_to_all_printings ?? true,
+            p_type: body.type,
+            p_text: body.text.trim(),
+            p_dated: body.dated ?? null,
+            p_source: body.source?.trim() || null,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          card_id: params.id,
+          ruling_id: String(rpcResult.data.ruling_id ?? ""),
+        };
+      },
+      {
+        body: t.Object({
+          type: RulingTypeSchema,
+          text: t.String({
+            minLength: 1,
+            maxLength: 4000,
+            pattern: NON_BLANK_PATTERN,
+          }),
+          dated: t.Optional(t.String({ pattern: DATE_PATTERN })),
+          source: t.Optional(t.String({ maxLength: 500 })),
+          /** Defaults to true: a ruling normally describes the card, not a printing. */
+          apply_to_all_printings: t.Optional(t.Boolean()),
+        }),
+        response: {
+          200: RulingMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Add a ruling or note",
+          description:
+            "Adds an entry to the card. It applies to every printing unless apply_to_all_printings is false.",
+        },
+      },
+    )
+    .patch(
+      "/cards/:id/rulings/:rulingId",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        if (Object.keys(body.patch).length === 0) {
+          return status(400, {
+            error: "Patch must contain at least one field",
+            code: "EMPTY_PATCH",
+          });
+        }
+        const patch: Record<string, unknown> = { ...body.patch };
+        if (typeof body.patch.text === "string") {
+          patch.text = body.patch.text.trim();
+        }
+        // The RPC takes the durable `all_printings` shape, not the request's
+        // `apply_to_all_printings`, so translate rather than pass through.
+        if (body.patch.apply_to_all_printings !== undefined) {
+          delete patch.apply_to_all_printings;
+          patch.all_printings = body.patch.apply_to_all_printings;
+        }
+        const rpcResult = await safely("card.ruling.patch", () =>
+          repository.callRpc("admin_patch_card_ruling", {
+            p_card_id: params.id,
+            p_ruling_id: params.rulingId,
+            p_patch: patch,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          card_id: params.id,
+          ruling_id: params.rulingId,
+        };
+      },
+      {
+        params: t.Object({
+          id: t.String({ minLength: 1, maxLength: 128 }),
+          rulingId: t.String({ format: "uuid" }),
+        }),
+        body: t.Object({
+          patch: t.Object({
+            type: t.Optional(RulingTypeSchema),
+            text: t.Optional(
+              t.String({
+                minLength: 1,
+                maxLength: 4000,
+                pattern: NON_BLANK_PATTERN,
+              }),
+            ),
+            dated: t.Optional(
+              t.Nullable(t.String({ pattern: DATE_PATTERN })),
+            ),
+            source: t.Optional(t.Nullable(t.String({ maxLength: 500 }))),
+            apply_to_all_printings: t.Optional(t.Boolean()),
+          }),
+        }),
+        response: {
+          200: RulingMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Edit a ruling or note",
+          description:
+            "Patches an entry reached through this card. A ruling belonging to a different card is rejected as not found.",
+        },
+      },
+    )
+    .delete(
+      "/cards/:id/rulings/:rulingId",
+      async ({ params, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const rpcResult = await safely("card.ruling.delete", () =>
+          repository.callRpc("admin_delete_card_ruling", {
+            p_card_id: params.id,
+            p_ruling_id: params.rulingId,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          card_id: params.id,
+          ruling_id: params.rulingId,
+        };
+      },
+      {
+        params: t.Object({
+          id: t.String({ minLength: 1, maxLength: 128 }),
+          rulingId: t.String({ format: "uuid" }),
+        }),
+        response: {
+          200: RulingMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Delete a ruling or note",
+          description:
+            "Removes an entry reached through this card. A ruling belonging to a different card is rejected as not found.",
+        },
+      },
+    )
+
     .post(
       "/sets",
       async ({ body, adminUser, status }) => {

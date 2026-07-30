@@ -53,6 +53,8 @@ npx devvit upload
 - Card IDs are text MongoDB ObjectIds, not UUIDs.
 - Card search uses exact `name_normalized` matching before Postgres full-text fallback.
 - Each printing receives a stable `public_slug`; ingest must preserve an existing slug. Prefer API-provided `riftseer_uri` over constructing card URLs.
+- Rulings and format legalities are keyed on `cards.oracle_key` — a name-derived group shared by every printing — not on the card id. `oracleKeyForName()` in `packages/types/src/oracle.ts` is the only derivation; a SQL mirror exists solely for the migration backfill.
+- Legality is **default-legal**: only non-legal statuses are stored, and precedence is per-printing override → oracle row → legal.
 - Do not import `@riftseer/core` into the ingest Worker. It has Worker-incompatible dependencies; use the local utilities there.
 
 ## Ingest
@@ -99,7 +101,7 @@ Image infrastructure uses R2 bucket `riftseer-cards`, queues `riftseer-card-imag
 
 - Add a new timestamped file under `supabase/migrations/` for every schema change; never edit an existing migration.
 - Prefer `supabase db push` for linked projects. Dashboard SQL or `psql "$SUPABASE_DB_URL" -f <migration>` are fallbacks.
-- The current ingest/override RPC is defined by `20260729000000_ingest_v2_and_overrides.sql`; image publication is defined by `20260730001503_phase2_card_image_hosting.sql`.
+- The current ingest/override RPC is defined by `20260731000000_phase5_rulings_legalities_formats.sql` (which supersedes the `ingest_card_data_v2` body in `20260729000000_ingest_v2_and_overrides.sql` to persist `oracle_key`); image publication is defined by `20260730001503_phase2_card_image_hosting.sql`; admin mutation RPCs by `20260730120000_phase3_admin_api.sql`.
 
 ## Legal pages
 

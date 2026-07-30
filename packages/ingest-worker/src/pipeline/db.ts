@@ -8,6 +8,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Card } from "@riftseer/types";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 import {
   buildPublicSlugSegments,
   joinPublicSlug,
@@ -35,6 +36,12 @@ interface RpcCardPayload {
   id: string;
   name: string;
   name_normalized: string;
+  /**
+   * Name-derived group shared by every printing, keying rulings and legalities.
+   * Derived here rather than upstream so an override that renames a card also
+   * moves it into the right oracle group.
+   */
+  oracle_key: string;
   collector_number: string | null;
   released_at: string | null;
   set_code: string | null;
@@ -257,6 +264,8 @@ export async function ingestCardData(
     id: card.id,
     name: card.name,
     name_normalized: card.name_normalized,
+    // Recomputed from the final name, after every override has been applied.
+    oracle_key: oracleKeyForName(card.name),
     collector_number: card.collector_number ?? null,
     released_at: card.released_at ?? null,
     set_code: card.set?.set_code ?? null,

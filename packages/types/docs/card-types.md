@@ -22,7 +22,7 @@ interface Card {
   collector_number?: string;       // e.g. "OGN-001"
   external_ids?: CardExternalIds;
   set?: CardSet;
-  rulings?: CardRulings;
+  oracle_key?: string;             // Name-derived group shared by every printing
   attributes?: CardAttributes;
   classification?: CardClassification;
   text?: CardText;
@@ -145,15 +145,6 @@ interface CardExternalIds {
 }
 ```
 
-### CardRulings
-
-```typescript
-interface CardRulings {
-  rulings_id?: string;
-  rulings_uri?: string;
-}
-```
-
 ### CardPurchaseUris
 
 ```typescript
@@ -180,6 +171,83 @@ interface RelatedCard {
 ---
 
 ## Request and resolution types
+
+---
+
+## Oracle grouping: rulings, legalities and formats
+
+Rulings and format legalities describe a **card**, not a printing, so they are
+keyed on `Card.oracle_key` rather than `Card.id`. `oracleKeyForName()` in
+`src/oracle.ts` is the single source of truth for that derivation — take the
+first face, strip trailing parentheticals, then normalize:
+
+```typescript
+import { oracleKeyForName } from "@riftseer/types/oracle";
+
+oracleKeyForName("Recruit (271) // Buff");               // "recruit"
+oracleKeyForName("Ambessa, Matriarch of War (Signature)"); // "ambessa matriarch of war"
+```
+
+The ingest worker stamps `cards.oracle_key` on every upsert and
+`linkRelatedPrintings` groups by the same key, so a printing's siblings are
+exactly the printings that share its rulings. A SQL mirror
+(`card_oracle_key()`) exists for the migration backfill and must stay in step
+with this function.
+
+### Format
+
+```typescript
+interface Format {
+  object: "format";
+  id: string;
+  code: string;      // Stable lowercase handle, e.g. "standard"
+  name: string;
+  sort_order: number; // Display order, ascending
+  active: boolean;    // False for retired formats — hidden from public payloads
+}
+```
+
+### CardLegality
+
+One format's status for the printing being viewed. **Absence means legal** —
+only non-legal statuses are stored — and `scope` reports which layer decided it
+(printing override → oracle row → default).
+
+```typescript
+type CardLegalityStatus = "legal" | "not_legal" | "banned";
+
+interface CardLegality {
+  object: "card_legality";
+  format_id: string;
+  format_code: string;
+  format_name: string;
+  status: CardLegalityStatus;
+  scope: "printing" | "oracle" | "default";
+  updated_at?: string;
+}
+```
+
+### CardRuling
+
+An official ruling or an editorial note. `card_id` absent means it applies to
+every printing; set, it applies only to that printing.
+
+```typescript
+interface CardRuling {
+  object: "card_ruling";
+  id: string;
+  type: "ruling" | "note";
+  text: string;
+  dated?: string;   // ISO date the ruling was issued
+  source?: string;  // Free-text provenance
+  card_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+```
+
+Both arrive on `CardDetail` as `rulings` and `legalities`, already resolved and
+ordered by the API — see [@riftseer/api — Cards](../api/cards).
 
 ### CardRequest
 

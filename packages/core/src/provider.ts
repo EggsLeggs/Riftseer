@@ -3,9 +3,12 @@ import { DeckSerializer } from "./serialiser.ts";
 import type { CardSearchAst } from "./card-search-query.ts";
 import type {
   Card,
+  CardLegality,
   CardRequest,
+  CardRuling,
   CardSearchOptions,
   CardSearchResult,
+  Format,
   ResolvedCard,
   SimplifiedDeck,
 } from "./types.ts";
@@ -115,6 +118,27 @@ export interface CardDataProvider {
    * Returns null if the index is empty.
    */
   getRandomCard(): Promise<Card | null>;
+
+  /**
+   * Return the admin-managed play formats in display order. Retired
+   * (`active: false`) formats are omitted unless `includeInactive` is set.
+   */
+  getFormats(opts?: { includeInactive?: boolean }): Promise<Format[]>;
+
+  /**
+   * Resolve one printing's legality in every active format.
+   *
+   * `oracleKey` selects the shared card-level statuses and `cardId` the
+   * per-printing overrides; precedence is printing → oracle → default `legal`.
+   * Every active format is represented, so callers never have to assume.
+   */
+  getCardLegalities(oracleKey: string, cardId: string): Promise<CardLegality[]>;
+
+  /**
+   * Return the rulings and notes visible on one printing: those shared across
+   * the oracle group plus any scoped to this printing, oldest first.
+   */
+  getCardRulings(oracleKey: string, cardId: string): Promise<CardRuling[]>;
 
   /**
    * Return provider stats for the /meta endpoint.

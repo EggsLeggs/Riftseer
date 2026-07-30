@@ -26,6 +26,9 @@ interface CardDataProvider {
   getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number }>>;
   getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<Card[]>;
   getRandomCard(): Promise<Card | null>;
+  getFormats(opts?: { includeInactive?: boolean }): Promise<Format[]>;
+  getCardLegalities(oracleKey: string, cardId: string): Promise<CardLegality[]>;
+  getCardRulings(oracleKey: string, cardId: string): Promise<CardRuling[]>;
   getStats(): { lastRefresh: number; cardCount: number };
 }
 ```
@@ -72,6 +75,28 @@ Returns cards in a set ordered by collector number.
 #### `getRandomCard()`
 
 Returns one random card from the index. Returns `null` if the index is empty.
+
+#### `getFormats(opts?)`
+
+Returns the admin-managed play formats in display order. Retired formats
+(`active: false`) are omitted unless `includeInactive` is set.
+
+#### `getCardLegalities(oracleKey, cardId)`
+
+Resolves one printing's legality in **every** active format, so callers never
+have to infer a missing entry. `oracleKey` selects the card-level statuses shared
+by all printings and `cardId` the per-printing overrides; precedence is printing
+→ oracle → default `legal`. Each entry's `scope` reports which layer decided it.
+
+#### `getCardRulings(oracleKey, cardId)`
+
+Returns the rulings and notes visible on one printing: those shared across the
+oracle group (`card_id` null) plus any scoped to this printing, oldest first.
+
+Both are keyed on `oracle_key` rather than the card id, so a ruling is authored
+once and inherited by every printing — see [Card Types](../types/card-types) for
+the derivation. `buildCardDetail` treats both as supplementary: a failure is
+logged and degrades to an empty array rather than failing the whole payload.
 
 #### `getStats()`
 

@@ -134,6 +134,109 @@ export interface AdminSetDefinition extends AdminSetFields {
   set_name: string;
 }
 
+// ─── Formats, legalities, rulings ─────────────────────────────────────────────
+
+export const ADMIN_LEGALITY_STATUSES = [
+  "legal",
+  "not_legal",
+  "banned",
+] as const;
+
+export type AdminLegalityStatus = (typeof ADMIN_LEGALITY_STATUSES)[number];
+
+/**
+ * `default` is not a stored status — it clears the row, and absence of a row
+ * means legal. Keep it out of `ADMIN_LEGALITY_STATUSES` so display code cannot
+ * accidentally render it as a badge.
+ */
+export type AdminLegalityStatusInput = AdminLegalityStatus | "default";
+
+export interface AdminFormat {
+  id: string;
+  code: string;
+  name: string;
+  sort_order: number;
+  active: boolean;
+  /** Card-level rows a delete would cascade away. */
+  legality_count: number;
+  /** Per-printing override rows a delete would cascade away. */
+  override_count: number;
+}
+
+export interface AdminFormatListResult {
+  formats: AdminFormat[];
+}
+
+export interface AdminFormatInput {
+  code: string;
+  name: string;
+  sort_order?: number;
+  active?: boolean;
+}
+
+export interface AdminFormatPatch {
+  name?: string;
+  sort_order?: number;
+  active?: boolean;
+}
+
+export interface AdminCardLegalityEntry {
+  format_id: string;
+  format_code: string;
+  format_name: string;
+  format_active: boolean;
+  /** Status shared by every printing, or null when nothing is stored. */
+  oracle_status: AdminLegalityStatus | null;
+  /** This printing's exception, or null when it inherits. */
+  printing_status: AdminLegalityStatus | null;
+  effective_status: AdminLegalityStatus;
+}
+
+export interface AdminCardLegalities {
+  card_id: string;
+  oracle_key: string;
+  entries: AdminCardLegalityEntry[];
+}
+
+export const ADMIN_RULING_TYPES = ["ruling", "note"] as const;
+
+export type AdminRulingType = (typeof ADMIN_RULING_TYPES)[number];
+
+export interface AdminCardRuling {
+  id: string;
+  type: AdminRulingType;
+  text: string;
+  dated: string | null;
+  source: string | null;
+  /** Null means the entry applies to every printing of the card. */
+  card_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminCardRulings {
+  card_id: string;
+  oracle_key: string;
+  entries: AdminCardRuling[];
+}
+
+export interface AdminRulingInput {
+  type: AdminRulingType;
+  text: string;
+  dated?: string;
+  source?: string;
+  /** Defaults to true — a ruling normally describes the card, not one printing. */
+  apply_to_all_printings?: boolean;
+}
+
+export interface AdminRulingPatch {
+  type?: AdminRulingType;
+  text?: string;
+  dated?: Nullable<string>;
+  source?: Nullable<string>;
+  apply_to_all_printings?: boolean;
+}
+
 // ─── Audit log ────────────────────────────────────────────────────────────────
 
 export interface AdminAuditEntry {
@@ -179,6 +282,36 @@ export interface AdminSlugMutationResult {
 export interface AdminSetMutationResult {
   ok: true;
   set_code: string;
+}
+
+export interface AdminFormatMutationResult {
+  ok: true;
+  code: string;
+}
+
+export interface AdminFormatDeleteResult {
+  ok: true;
+  code: string;
+  legalities_removed: number;
+  overrides_removed: number;
+}
+
+export interface AdminReorderResult {
+  ok: true;
+}
+
+export interface AdminLegalityMutationResult {
+  ok: true;
+  card_id: string;
+  format_code: string;
+  scope: "printing" | "oracle";
+  status: AdminLegalityStatus | null;
+}
+
+export interface AdminRulingMutationResult {
+  ok: true;
+  card_id: string;
+  ruling_id: string;
 }
 
 export interface AdminImageMutationResult {

@@ -41,6 +41,29 @@ Enable with: `CARD_PROVIDER=supabase`
 
 ---
 
+## Rulings, legalities and formats
+
+`getFormats`, `getCardLegalities`, and `getCardRulings` read the Phase 5 tables
+(`formats`, `card_legalities`, `card_legality_overrides`, `card_rulings`). All
+three query on demand — the data is small and changes rarely, so it is not cached
+alongside the row-count stats.
+
+`getCardLegalities` fetches the format list and both legality layers in parallel,
+then resolves each format through printing override → oracle row → default
+`legal`. Every active format is returned, so a caller never has to distinguish
+"legal" from "not recorded".
+
+`getCardRulings` filters the printing scope **in TypeScript** rather than as a
+PostgREST `or(...)` filter. Card ids for manual cards are admin-chosen text, and
+interpolating one into a filter string would let a comma or parenthesis rewrite
+the query.
+
+`dbRowToCard` falls back to `oracleKeyForName(row.name)` when `oracle_key` is
+null, so a row predating the column — or a manual card seeded before its patch
+landed — still resolves its rulings.
+
+---
+
 ## `stop()`
 
 `stop()` clears the refresh interval. Call it in test teardown or graceful shutdown handlers.
