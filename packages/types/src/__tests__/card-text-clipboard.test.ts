@@ -35,13 +35,23 @@ describe("repairFlavourText", () => {
   // The attribution runs on after the closing quote far more often than it
   // starts a new line (82 vs 27 of the 109 affected cards), so this shape
   // matters more than the newline one above.
-  it("restores the quote when the attribution is on the same line", () => {
+  it("restores the quote and breaks a run-on attribution onto its own line", () => {
     expect(
       repairFlavourText('Those who follow me follow destiny!" - Azir'),
-    ).toBe('"Those who follow me follow destiny!" - Azir');
-    expect(repairFlavourText(`GET 'EM, CHOMPIES!" -Jinx`)).toBe(
-      `"GET 'EM, CHOMPIES!" -Jinx`,
+    ).toBe('"Those who follow me follow destiny!"\n- Azir');
+    expect(repairFlavourText(`We're gonna be rich!" -Common Last Words`)).toBe(
+      `"We're gonna be rich!"\n-Common Last Words`,
     );
+  });
+
+  it("leaves an attribution that already has its own line where it is", () => {
+    const spaced = '"If you hit a wall, hit it hard!"\n \n- Vi';
+    expect(repairFlavourText(spaced)).toBe(spaced);
+  });
+
+  it("does not break on a dash inside the quoted line", () => {
+    const inline = '"A half-measure is no measure."';
+    expect(repairFlavourText(inline)).toBe(inline);
   });
 
   it("strips a closing tag that upstream leaves after the quote", () => {
