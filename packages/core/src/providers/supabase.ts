@@ -27,6 +27,7 @@ import type {
   RelatedCard,
   CardPriceEntry,
 } from "../types.ts";
+import { repairFlavourText } from "@riftseer/types/card-text";
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { normalizeCardName } from "../normalize.ts";
@@ -126,7 +127,9 @@ function dbRowToCard(row: DBCardRow): Card {
     rulings: row.rulings_id ? { rulings_id: row.rulings_id } : undefined,
     attributes: row.attributes,
     classification: row.classification,
-    text: row.text,
+    text: row.text?.flavour
+      ? { ...row.text, flavour: repairFlavourText(row.text.flavour) }
+      : row.text,
     artist: row.artists?.name,
     artist_id: row.artist_id ?? undefined,
     metadata: row.metadata,
