@@ -55,12 +55,15 @@ export function repairFlavourText(flavour: string): string {
   const lead = leadMatch?.[0] ?? "";
   const body = text.slice(lead.length);
   if (body.length === 0) return text;
-  if (body.startsWith('"') || body.startsWith("\u201c")) return lead + body;
 
-  if (ORPHANED_CLOSING_QUOTE.test(body)) {
-    return `${lead}"${body}`;
-  }
-  return lead + body;
+  const quoted =
+    body.startsWith('"') || body.startsWith("\u201c")
+      ? body
+      : ORPHANED_CLOSING_QUOTE.test(body)
+        ? `"${body}`
+        : body;
+
+  return lead + quoted.replace(RUN_ON_ATTRIBUTION, "$1\n$2");
 }
 
 /**
@@ -83,6 +86,17 @@ const HTML_DEBRIS_TAIL = /<\/?[a-zA-Z][a-zA-Z0-9]*$/;
  * and every one is a genuine missing opening quote.
  */
 const ORPHANED_CLOSING_QUOTE = /["”]\s*(?:\n\s*)*[-–—]\s*\S/;
+
+/**
+ * A dashed attribution running on after the closing quote (`..." -Azir`).
+ * Upstream is inconsistent about this: 27 cards put the attribution on its own
+ * line and 82 leave it inline. Normalising to the newline form makes the two
+ * groups render alike, and is what lets `whitespace-pre-line` show the break.
+ *
+ * Anchored to the end so only a trailing attribution is moved, never a dash
+ * inside the quoted line.
+ */
+const RUN_ON_ATTRIBUTION = /(["”])[^\S\n]*([-–—][^\n]*\S)\s*$/;
 
 /** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
 export function decodeCardTextEntities(text: string): string {
