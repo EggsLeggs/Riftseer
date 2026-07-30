@@ -31,8 +31,8 @@ and appends `admin_audit_log` in the same transaction.
 | `limit` | string (optional) | Page size, default `50`, clamped to `[1, 200]` |
 | `offset` | string (optional) | 0-based offset, default `0` |
 | `action` | string (optional) | Exact match, e.g. `card.patch` |
-| `target_type` | string (optional) | `card`, `set`, `format`, or `card_ruling` |
-| `target_id` | string (optional) | Card ID, set code, format code, or ruling ID |
+| `target_type` | string (optional) | `card`, `set`, `format`, `card_ruling`, or `reconciliation_entry` |
+| `target_id` | string (optional) | Card ID, set code, format code, ruling ID, or review-entry ID |
 | `actor_id` | string (optional) | Supabase user UUID |
 
 ```json
@@ -193,20 +193,165 @@ can tell an inherited status from a printing-specific one:
 | `PATCH` | `/cards/:id/rulings/:rulingId` | Apply `{ patch }` |
 | `DELETE` | `/cards/:id/rulings/:rulingId` | Remove an entry |
 
-`type` is `ruling` (an official rules answer) or `note` (editorial). Entries are
-keyed on the card's `oracle_key`; `apply_to_all_printings` defaults to **true**,
-because a ruling normally describes the card rather than one printing. Setting it
-to `false` scopes the entry to the printing in the path.
+`type` is `ruling` (an official rules answer) or `note` (editorial).
+`apply_to_all_printings` defaults to **true**, because a ruling normally
+describes the card rather than one printing. Setting it to `false` scopes the
+entry to the printing in the path.
 
-`GET` returns the card-wide entries plus any scoped to this printing, oldest
-first, with `card_id: null` marking the card-wide ones. Entries scoped to a
-*sibling* printing are omitted — they are not visible here and are edited from
-that printing.
+`GET` returns everything visible on this printing, oldest first. Each entry
+carries how it got there:
 
-The ruling routes are nested under the card on purpose. A ruling belongs to an
-oracle group rather than to one printing, so both `PATCH` and `DELETE` verify the
-entry is in the path card's group and return `404 RULING_NOT_FOUND` otherwise —
-a mistyped card ID cannot reach an unrelated card's ruling.
+| Field | Meaning |
+| --- | --- |
+| `scope` | `printing`, `oracle`, or `rule` — which target kind matched |
+| `all_printings` | True when shared by every printing of the card |
+| `shared` | True when the ruling has several targets or any rule target |
+| `target_count` | How many targets the ruling carries in total |
+
+Entries scoped to a *sibling* printing are omitted — they are not visible here
+and are edited from that printing.
+
+The ruling routes are nested under the card on purpose. Both `PATCH` and
+`DELETE` verify the entry actually applies to the path card and return
+`404 RULING_NOT_FOUND` otherwise, so a mistyped card ID cannot reach an
+unrelated card's ruling.
+
+A `shared` entry cannot be retargeted from here: `apply_to_all_printings` on a
+ruling with several targets returns `409 RULING_IS_SHARED`, because "applies to
+every printing" has no single meaning for a ruling covering several cards.
+`DELETE` on a shared entry **detaches** it from this card rather than destroying
+it, and responds with `detached: true`. Both are managed from the rulings
+endpoints below.
+
+## Rulings
+
+Card-independent CRUD. Unlike the per-card routes, these can point one ruling at
+several printings at once, or at a search query that keeps matching new cards.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/rulings` | List rulings with their targets (`q`, `kind`, `limit`, `offset`) |
+| `POST` | `/rulings/preview` | Evaluate `{ query, limit? }` without storing anything |
+| `POST` | `/rulings` | Create `{ type, text, dated?, source?, targets }` |
+| `PATCH` | `/rulings/:rulingId` | Apply `{ patch }` |
+| `DELETE` | `/rulings/:rulingId` | Delete the ruling and every target it carries |
+
+A **target** is one of:
+
+```jsonc
+{ "kind": "oracle",   "oracle_key": "sun disc" }  // every printing of the card
+{ "kind": "printing", "card_id": "…" }            // exactly one printing
+{ "kind": "query",    "query": "t:unit kw:deathknell" }
+```
+
+`targets` **replaces** the whole list, like `PUT /cards/:id/relationships` —
+omitting it on a `PATCH` leaves targeting alone. At least one target is required
+(`400 RULING_TARGETS_REQUIRED`).
+
+Query targets are parsed by the API with the same parser the search bar uses
+(see [`search.md`](./search.md)), and the resulting AST is stored alongside the
+source text. A query that fails to parse returns `400 RULING_RULE_INVALID` naming
+the offending rule; a query that parses to *nothing* returns
+`400 RULING_RULE_EMPTY` rather than being stored, because an empty AST renders as
+`true` and would silently attach the ruling to the entire catalogue. Nothing is
+written until every rule in the request has parsed.
+
+Query targets are **materialised**: matches are recomputed when the ruling is
+saved, for every active rule at the end of each ingest, and for a single card
+whenever an admin creates, patches, moves, deletes or re-links it (or confirms a
+review entry against it). That last one closes the gap between ingest runs — a
+manual card carrying `[Deathknell]` joins a `kw:deathknell` rule immediately
+rather than at the next cron. The per-card rematch is advisory: it runs after the
+write has committed, so a failure there never fails the edit. That refresh is what
+makes a rule cover cards released after it was written. `match_count` on each
+query target reports what it currently covers, so a rule that matches nothing is
+visible immediately rather than at the next card page load.
+
+`POST /rulings/preview` runs the same parse and the same evaluator without
+storing anything, returning `{ query, total, sample }` — it backs the rule
+editor's live "matches N cards" readout, and never mutates.
+
+## TCGPlayer review queue
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/reconciliation` | List entries, defaulting to pending |
+| `POST` | `/reconciliation/:id/confirm` | Apply the proposal as a durable card override |
+| `POST` | `/reconciliation/:id/dismiss` | Close the entry without touching a card |
+
+Ingest files two kinds of discrepancy instead of acting on them:
+
+- **`unmatched_product`** — a TCGPlayer product in a mapped group that no card
+  claims. Obvious sealed products (boxes, sleeves, playmats) are filtered out.
+- **`field_diff`** — a linked product disagrees with us on `collector_number` or
+  `released_at`. Names are excluded (stylistic, and RiftCodex is authoritative)
+  and **prices are never queued** — they change every run and are applied
+  automatically.
+
+| Parameter | Type | Notes |
+| --- | --- | --- |
+| `limit` | string (optional) | Page size, default `50`, clamped to `[1, 200]` |
+| `offset` | string (optional) | 0-based offset, default `0` |
+| `status` | string (optional) | `pending` (default), `confirmed`, or `dismissed` |
+| `kind` | string (optional) | `unmatched_product` or `field_diff` |
+
+```json
+{
+  "entries": [
+    {
+      "id": "…",
+      "kind": "unmatched_product",
+      "fingerprint": "product:652952",
+      "status": "pending",
+      "tcgplayer_payload": {
+        "product": {
+          "product_id": 652952,
+          "name": "Sett Brawler Alternate Art",
+          "url": "https://www.tcgplayer.com/product/652952/…",
+          "image_url": null,
+          "collector_number": "164a",
+          "group_id": 24344,
+          "set_code": "OGN"
+        },
+        "card_id": "67f4064886be8495f7165dd7",
+        "card_name": "Sett, Brawler"
+      },
+      "proposed_card_id": "67f4064886be8495f7165dd7",
+      "note": null,
+      "resolved_by": null,
+      "resolved_at": null,
+      "created_at": "2026-08-01T00:00:00Z",
+      "last_seen_at": "2026-08-01T06:00:00Z"
+    }
+  ],
+  "total": 1,
+  "counts": { "pending": 1, "confirmed": 0, "dismissed": 0 },
+  "limit": 50,
+  "offset": 0
+}
+```
+
+`counts` covers every status regardless of the filter, so a UI can label its
+tabs from one request.
+
+`POST …/confirm` takes optional `{ card_id, note }`. `card_id` overrides
+`proposed_card_id` and is **required** when ingest made no suggestion —
+otherwise the call returns `400 CARD_REQUIRED`. The API builds the patch and
+applies it through the same RPC that backs `PATCH /cards/:id`, so the change is
+live immediately and stored in `card_overrides`:
+
+- **`unmatched_product`** → `external_ids.tcgplayer_id` and
+  `purchase_uris.tcgplayer`. This is what makes the link persist: the next ingest
+  overlays the override, matches the product by ID, and the entry does not
+  return.
+- **`field_diff`** → the single proposed field.
+
+`POST …/dismiss` takes optional `{ note }` and never touches a card. Both are
+durable — later ingests refresh only *pending* rows and prune only pending rows,
+so a resolved entry is never reopened.
+
+Only pending entries can be resolved; a second call returns
+`409 REVIEW_ENTRY_RESOLVED`. An unknown ID returns `404 REVIEW_ENTRY_NOT_FOUND`.
 
 ## Errors
 

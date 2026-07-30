@@ -1,5 +1,6 @@
 import {
   absoluteRiftseerUri,
+  cardImageUrl,
   normalizeCardName,
   oracleKeyForName,
   type Card,
@@ -143,7 +144,7 @@ function toPrintingSummary(
     is_token: card.is_token,
     alternate_art: card.metadata?.alternate_art,
     signature: card.metadata?.signature,
-    image_small: card.media?.media_urls?.small ?? card.media?.media_urls?.normal,
+    image_small: cardImageUrl(card.media, "small"),
     prices: card.prices,
     purchase_uris: card.purchase_uris,
     ...(isCurrent ? { is_current: true } : {}),

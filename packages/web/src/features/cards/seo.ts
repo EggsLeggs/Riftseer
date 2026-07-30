@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { Card } from "@riftseer/types";
+import { cardImageUrl } from "@riftseer/types";
 
 import { cardTypeLine, meaningfulRulesText } from "@/features/cards/format";
 
@@ -59,11 +60,7 @@ export function cardMetadata(card: Card, path: string): Metadata {
   const title = cardPageTitle(card);
   const description = cardSeoDescription(card);
   const canonical = new URL(path, env.NEXT_PUBLIC_APP_URL).toString();
-  const image =
-    card.media?.media_urls?.normal ??
-    card.media?.media_urls?.large ??
-    card.media?.media_urls?.png ??
-    card.media?.media_urls?.small;
+  const image = cardImageUrl(card.media, "large");
   const images = image
     ? [{ url: image, alt: card.media?.accessibility_text ?? card.name }]
     : undefined;

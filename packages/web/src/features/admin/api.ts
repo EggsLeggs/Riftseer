@@ -19,9 +19,18 @@ import type {
   AdminRelationshipEntry,
   AdminReorderResult,
   AdminResult,
+  AdminReviewFilters,
+  AdminReviewMutationResult,
+  AdminReviewPage,
+  AdminRuling,
+  AdminRulingCreateInput,
   AdminRulingInput,
   AdminRulingMutationResult,
   AdminRulingPatch,
+  AdminRulingRecordPatch,
+  AdminRulingsPage,
+  AdminRulingsQuery,
+  AdminRulePreview,
   AdminSetDefinition,
   AdminSetMutationResult,
   AdminSetPatch,
@@ -130,6 +139,61 @@ export const adminApi = {
       method: "GET",
       path: search ? `/audit-log?${search}` : "/audit-log",
       accessToken,
+    });
+  },
+
+  // ── TCGPlayer review queue ──────────────────────────────────────────────────
+
+  /** Defaults to pending entries when no status is given. */
+  listReview(
+    accessToken: string,
+    filters: AdminReviewFilters = {},
+  ): Promise<AdminResult<AdminReviewPage>> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      const raw = typeof value === "number" ? String(value) : value?.trim();
+      if (raw) params.set(key, raw);
+    }
+    const search = params.toString();
+    return request({
+      method: "GET",
+      path: search ? `/reconciliation?${search}` : "/reconciliation",
+      accessToken,
+    });
+  },
+
+  /**
+   * Applies the entry's proposal as a durable card override. `cardId` overrides
+   * ingest's suggestion and is required when it made none.
+   */
+  confirmReviewEntry(
+    accessToken: string,
+    entryId: string,
+    cardId?: string,
+    note?: string,
+  ): Promise<AdminResult<AdminReviewMutationResult>> {
+    return request({
+      method: "POST",
+      path: `/reconciliation/${encodeURIComponent(entryId)}/confirm`,
+      accessToken,
+      body: {
+        ...(cardId ? { card_id: cardId } : {}),
+        ...(note ? { note } : {}),
+      },
+    });
+  },
+
+  /** Closes the entry without touching a card; the dismissal is durable. */
+  dismissReviewEntry(
+    accessToken: string,
+    entryId: string,
+    note?: string,
+  ): Promise<AdminResult<AdminReviewMutationResult>> {
+    return request({
+      method: "POST",
+      path: `/reconciliation/${encodeURIComponent(entryId)}/dismiss`,
+      accessToken,
+      body: note ? { note } : {},
     });
   },
 
@@ -408,6 +472,78 @@ export const adminApi = {
     return request({
       method: "DELETE",
       path: cardPath(cardId, `/rulings/${encodeURIComponent(rulingId)}`),
+      accessToken,
+    });
+  },
+  // ── Rulings tab ─────────────────────────────────────────────────────────────
+
+  listRulings(
+    accessToken: string,
+    filters: AdminRulingsQuery = {},
+  ): Promise<AdminResult<AdminRulingsPage>> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      const raw = typeof value === "number" ? String(value) : value?.trim();
+      if (raw) params.set(key, raw);
+    }
+    const search = params.toString();
+    return request({
+      method: "GET",
+      path: search ? `/rulings?${search}` : "/rulings",
+      accessToken,
+    });
+  },
+
+  /**
+   * Evaluates a rule without storing it. The API parses the query with the same
+   * parser the search bar uses, so a syntax error here is the same error a user
+   * would see in search.
+   */
+  previewRule(
+    accessToken: string,
+    query: string,
+    limit?: number,
+  ): Promise<AdminResult<AdminRulePreview>> {
+    return request({
+      method: "POST",
+      path: "/rulings/preview",
+      accessToken,
+      body: limit === undefined ? { query } : { query, limit },
+    });
+  },
+
+  createRuling(
+    accessToken: string,
+    input: AdminRulingCreateInput,
+  ): Promise<AdminResult<{ ok: true; ruling: AdminRuling }>> {
+    return request({
+      method: "POST",
+      path: "/rulings",
+      accessToken,
+      body: input,
+    });
+  },
+
+  patchRuling(
+    accessToken: string,
+    rulingId: string,
+    patch: AdminRulingRecordPatch,
+  ): Promise<AdminResult<{ ok: true; ruling: AdminRuling }>> {
+    return request({
+      method: "PATCH",
+      path: `/rulings/${encodeURIComponent(rulingId)}`,
+      accessToken,
+      body: { patch },
+    });
+  },
+
+  deleteRuling(
+    accessToken: string,
+    rulingId: string,
+  ): Promise<AdminResult<{ ok: true; ruling_id: string }>> {
+    return request({
+      method: "DELETE",
+      path: `/rulings/${encodeURIComponent(rulingId)}`,
       accessToken,
     });
   },

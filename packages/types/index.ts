@@ -1,5 +1,6 @@
 export * from "./src/card.ts";
 export * from "./src/card-detail.ts";
+export * from "./src/card-image.ts";
 export * from "./src/card-text.ts";
 export * from "./src/keywords.ts";
 export * from "./src/parser.ts";

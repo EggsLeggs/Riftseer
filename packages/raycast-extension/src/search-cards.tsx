@@ -15,6 +15,7 @@ import Jimp from "jimp";
 import { CardDetail, formatTypeLine } from "./components/CardDetail";
 import { parseMaxRecentHistory, useRecentCardHistory } from "./recentHistory";
 import type { Card } from "@riftseer/types";
+import { cardImageUrl } from "@riftseer/types";
 import type { CardsSearchResponse } from "./types";
 
 // Cache rotated images by URL to avoid re-processing on re-render
@@ -154,8 +155,7 @@ function CardSidebarDetail({
 }) {
   const siteUrl = cardSiteUrl(card, siteBaseUrl);
   const isLandscape = card.media?.orientation === "landscape";
-  const imgUrl =
-    card.media?.media_urls?.small ?? card.media?.media_urls?.normal;
+  const imgUrl = cardImageUrl(card.media, "small");
   const altText = card.media?.accessibility_text ?? card.name;
 
   const [displayUrl, setDisplayUrl] = useState<string | null>(
@@ -250,7 +250,7 @@ function GridCardItem({
   onViewCard: (c: Card) => void;
 }) {
   const isLandscape = card.media?.orientation === "landscape";
-  const imgUrl = card.media?.media_urls?.normal;
+  const imgUrl = cardImageUrl(card.media, "normal");
   const [displayUrl, setDisplayUrl] = useState<string>(
     isLandscape ? TRANSPARENT : (imgUrl ?? TRANSPARENT),
   );

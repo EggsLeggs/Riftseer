@@ -208,8 +208,18 @@ export interface AdminCardRuling {
   text: string;
   dated: string | null;
   source: string | null;
-  /** Null means the entry applies to every printing of the card. */
-  card_id: string | null;
+  active: boolean;
+  /** Which target kind put this entry on the card being edited. */
+  scope: "printing" | "oracle" | "rule";
+  /** True when the entry is shared by every printing of this card. */
+  all_printings: boolean;
+  /**
+   * True when the ruling has several targets or any rule target. The panel shows
+   * those read-only — retargeting or deleting one here would silently affect
+   * other cards, so they are edited from `/admin/rulings`.
+   */
+  shared: boolean;
+  target_count: number;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -235,6 +245,170 @@ export interface AdminRulingPatch {
   dated?: Nullable<string>;
   source?: Nullable<string>;
   apply_to_all_printings?: boolean;
+}
+
+// ─── Rulings tab (`/admin/rulings`) ───────────────────────────────────────────
+
+export const ADMIN_RULING_TARGET_KINDS = [
+  "oracle",
+  "printing",
+  "query",
+] as const;
+
+export type AdminRulingTargetKind =
+  (typeof ADMIN_RULING_TARGET_KINDS)[number];
+
+/**
+ * A stored target. `query` targets carry the search string the admin typed plus
+ * the AST the API parsed it to; `match_count` is how many cards it currently
+ * covers, refreshed on save and after every ingest.
+ */
+export interface AdminRulingTarget {
+  id: string;
+  kind: AdminRulingTargetKind;
+  oracle_key: string | null;
+  card_id: string | null;
+  card_name: string | null;
+  query: string | null;
+  ast: unknown;
+  match_count: number | null;
+}
+
+/** Target input — the API derives the AST, so only the query text is sent. */
+export type AdminRulingTargetInput =
+  | { kind: "oracle"; oracle_key: string }
+  | { kind: "printing"; card_id: string }
+  | { kind: "query"; query: string };
+
+export interface AdminRuling {
+  id: string;
+  type: AdminRulingType;
+  text: string;
+  dated: string | null;
+  source: string | null;
+  active: boolean;
+  targets: AdminRulingTarget[];
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminRulingsPage {
+  rulings: AdminRuling[];
+  total: number;
+}
+
+export interface AdminRulingsQuery {
+  q?: string;
+  kind?: AdminRulingTargetKind;
+  limit?: number;
+  offset?: number;
+}
+
+export interface AdminRulingCreateInput {
+  type: AdminRulingType;
+  text: string;
+  dated?: string;
+  source?: string;
+  targets: AdminRulingTargetInput[];
+}
+
+export interface AdminRulingRecordPatch {
+  type?: AdminRulingType;
+  text?: string;
+  dated?: Nullable<string>;
+  source?: Nullable<string>;
+  active?: boolean;
+  /** Replaces the entire target list; omit to leave targeting unchanged. */
+  targets?: AdminRulingTargetInput[];
+}
+
+export interface AdminRulePreviewCard {
+  id: string;
+  name: string;
+  set_code: string | null;
+  collector_number: string | null;
+  public_slug: string | null;
+}
+
+export interface AdminRulePreview {
+  query: string;
+  total: number;
+  sample: AdminRulePreviewCard[];
+}
+
+// ─── TCGPlayer review queue ───────────────────────────────────────────────────
+
+export const ADMIN_REVIEW_STATUSES = [
+  "pending",
+  "confirmed",
+  "dismissed",
+] as const;
+
+export type AdminReviewStatus = (typeof ADMIN_REVIEW_STATUSES)[number];
+
+export const ADMIN_REVIEW_KINDS = [
+  "unmatched_product",
+  "field_diff",
+] as const;
+
+export type AdminReviewKind = (typeof ADMIN_REVIEW_KINDS)[number];
+
+/** The only fields ingest proposes; prices are never queued. */
+export type AdminReviewField = "collector_number" | "released_at";
+
+export interface AdminReviewProduct {
+  product_id: number;
+  name: string;
+  url: string;
+  image_url: string | null;
+  collector_number: string | null;
+  group_id: number;
+  set_code: string | null;
+}
+
+export interface AdminReviewEntry {
+  id: string;
+  kind: AdminReviewKind;
+  fingerprint: string;
+  status: AdminReviewStatus;
+  tcgplayer_payload: {
+    product: AdminReviewProduct;
+    field?: AdminReviewField;
+    current_value?: Nullable<string>;
+    proposed_value?: Nullable<string>;
+    card_id?: string;
+    card_name?: string;
+  };
+  /** Ingest's suggestion, or the card the entry was confirmed against. */
+  proposed_card_id: Nullable<string>;
+  note: Nullable<string>;
+  resolved_by: Nullable<string>;
+  resolved_at: Nullable<string>;
+  created_at: string;
+  last_seen_at: string;
+}
+
+export interface AdminReviewPage {
+  entries: AdminReviewEntry[];
+  total: number;
+  /** Totals per status regardless of the current filter, for the tabs. */
+  counts: Record<AdminReviewStatus, number>;
+  limit: number;
+  offset: number;
+}
+
+export interface AdminReviewFilters {
+  limit?: number;
+  offset?: number;
+  status?: AdminReviewStatus;
+  kind?: AdminReviewKind;
+}
+
+export interface AdminReviewMutationResult {
+  ok: true;
+  entry_id: string;
+  status: "confirmed" | "dismissed";
+  card_id: Nullable<string>;
 }
 
 // ─── Audit log ────────────────────────────────────────────────────────────────

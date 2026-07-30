@@ -13,8 +13,9 @@ Because it has no runtime dependencies it can safely be imported from anywhere �
 |------|---------|
 | `src/card.ts` | Canonical `Card`, all sub-interfaces, `CardRequest`, `ResolvedCard`, `CardSearchOptions`, `SimplifiedDeck` |
 | `src/card-detail.ts` | `CardDetail` and `CardPrintingSummary` — the aggregate payload behind `GET /api/v1/cards/detail` |
+| `src/card-image.ts` | `cardImageUrl()` / `cardImageDownloadUrl()` — pick CDN size variants (`small` 200 / `normal` 400 / `large` 1000) when media is on `img.riftseer.com`; unmigrated upstream art keeps the legacy URL chain |
 | `src/card-text.ts` | `normalizeCardTextLayout()` — paragraph splitting for rules text, shared by every renderer |
-| `src/keywords.ts` | `[Keyword]` badge helpers — `KEYWORD_STYLES`, `styleForKeyword()`, `isKeywordTag()` |
+| `src/keywords.ts` | `[Keyword]` badge helpers — `KEYWORD_STYLES`, `styleForKeyword()`, `isKeywordTag()` — plus `extractCardKeywords()`, the searchable base-key list mirrored by `card_keywords_from_text()` in SQL |
 | `src/oracle.ts` | `oracleKeyForName()` — the base-name key that groups printings for rulings and legalities |
 | `src/parser.ts` | `parseCardRequests()` and `normalizeCardName()` |
 | `src/icons.ts` | `TOKEN_REGEX`, `TOKEN_ICON_MAP`, and `tokenPlainLabel()` (copy-paste stand-ins for icon tokens) |
@@ -29,6 +30,7 @@ import { parseCardRequests, normalizeCardName } from "@riftseer/types";
 
 // Sub-path exports (tree-shakeable)
 import { normalizeCardTextLayout } from "@riftseer/types/card-text";
+import { cardImageUrl } from "@riftseer/types/card-image";
 import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types/icons";
 import { oracleKeyForName } from "@riftseer/types/oracle";
 import { parseCardRequests, normalizeCardName } from "@riftseer/types/parser";

@@ -8,6 +8,7 @@
  */
 
 import type { Card, CardRequest } from "@riftseer/types";
+import { cardImageUrl } from "@riftseer/types";
 
 interface ApiResolvedCard {
   request: { raw: string; name: string; set?: string; collector?: string };
@@ -91,7 +92,7 @@ function formatCard(
   }
 
   const { id, name: cardName } = result.card;
-  const imageUrl = result.card.media?.media_urls?.normal;
+  const imageUrl = cardImageUrl(result.card.media, "normal");
   // Prefer the API-provided absolute URL so we follow whatever public path
   // shape the API decides on; fall back to /card/<id> for older API responses.
   const siteUrl = result.card.riftseer_uri ?? `${siteBase}/card/${id}`;

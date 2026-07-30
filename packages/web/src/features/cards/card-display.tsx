@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImageOffIcon, LayoutGrid, LayoutList, Table2 } from "lucide-react";
 import type { Card } from "@riftseer/types";
-import { isReprintPrinting } from "@riftseer/types";
+import { cardImageUrl, isReprintPrinting } from "@riftseer/types";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -275,7 +275,7 @@ function DetailMetaChips({ card }: { card: Card }) {
 }
 
 function DetailsCardArt({ card }: { card: Card }) {
-  const imageUrl = card.media?.media_urls?.normal;
+  const imageUrl = cardImageUrl(card.media, "normal");
   const [failed, setFailed] = React.useState(false);
   const isLandscape = cardIsLandscapeOriented(card);
 
@@ -501,7 +501,7 @@ function CardThumbnail({
   cardName?: string;
   cardNamePlacement: "overlay" | "below";
 }) {
-  const imageUrl = card.media?.media_urls?.normal;
+  const imageUrl = cardImageUrl(card.media, "normal");
   const [failed, setFailed] = React.useState(false);
   const aspectClass = naturalLandscapeLayout ? "aspect-[7/5]" : "aspect-[5/7]";
   const showOverlayName =

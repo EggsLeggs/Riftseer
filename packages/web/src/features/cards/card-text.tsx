@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   maskIconTokens,
   normalizeCardTextLayout,
@@ -24,6 +25,7 @@ import {
   takeKeywordBadgeCosts,
 } from "@riftseer/types/keywords";
 
+import { keywordSearchQuery, searchHref } from "@/features/cards/search-links";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
 import { cn } from "@/lib/utils";
 
@@ -184,6 +186,7 @@ function KeywordBadge({
   arrowLeft,
   costKeys,
   preferText,
+  linked = false,
 }: {
   label: string;
   /** True when the source text had `[Keyword][&gt;]` / `[Keyword][>]`. */
@@ -193,55 +196,86 @@ function KeywordBadge({
   /** Trailing `:rb_energy_*:` / `:rb_rune_*:` absorbed into the badge. */
   costKeys?: string[];
   preferText: boolean;
+  /** Link the badge to a `kw:` search. Card detail only — see CardText. */
+  linked?: boolean;
 }) {
   const display = label.trim();
   const costs = costKeys ?? [];
   const copy = keywordClipboardText(display, Boolean(arrow), costs, preferText);
 
   if (preferText) {
-    return <span className="font-medium">{copy}</span>;
+    if (!linked) return <span className="font-medium">{copy}</span>;
+    return (
+      <Link
+        href={searchHref(keywordSearchQuery(display))}
+        className="font-medium underline-offset-4 hover:underline"
+      >
+        {copy}
+      </Link>
+    );
   }
 
   const style = styleForKeyword(display);
   const energyFg = contrastingBw(style.color);
 
+  const badge = (
+    <span
+      className={cn(
+        "card-keyword",
+        arrow && "card-keyword--arrow",
+        arrowLeft && "card-keyword--arrow-left",
+      )}
+      style={
+        {
+          "--keyword-bg": style.background,
+          "--keyword-fg": style.color,
+          "--keyword-energy-bg": style.color,
+          "--keyword-energy-fg": energyFg,
+          "--keyword-icon-filter":
+            energyFg === "#FFFFFF"
+              ? "brightness(0)"
+              : "brightness(0) invert(1)",
+        } as CSSProperties
+      }
+      title={
+        costs.length > 0
+          ? `${display} ${formatTokenDisplayList(costs)}`
+          : display
+      }
+      aria-hidden="true"
+    >
+      <span className="card-keyword-label">{display}</span>
+      {costs.map((iconKey, index) =>
+        renderIconToken(iconKey, `cost-${index}-${iconKey}`, false, {
+          inKeyword: true,
+        }),
+      )}
+    </span>
+  );
+
   return (
     <span className="card-text-atom">
-      <span
-        className={cn(
-          "card-keyword",
-          arrow && "card-keyword--arrow",
-          arrowLeft && "card-keyword--arrow-left",
-        )}
-        style={
-          {
-            "--keyword-bg": style.background,
-            "--keyword-fg": style.color,
-            "--keyword-energy-bg": style.color,
-            "--keyword-energy-fg": energyFg,
-            "--keyword-icon-filter":
-              energyFg === "#FFFFFF"
-                ? "brightness(0)"
-                : "brightness(0) invert(1)",
-          } as CSSProperties
-        }
-        title={
-          costs.length > 0
-            ? `${display} ${formatTokenDisplayList(costs)}`
-            : display
-        }
-        aria-hidden="true"
-      >
-        <span className="card-keyword-label">{display}</span>
-        {costs.map((iconKey, index) =>
-          renderIconToken(iconKey, `cost-${index}-${iconKey}`, false, {
-            inKeyword: true,
-          }),
-        )}
-      </span>
+      {linked ? (
+        <Link
+          href={searchHref(keywordSearchQuery(display))}
+          // The badge itself is aria-hidden, so the link carries the name.
+          aria-label={`Search for ${display} cards`}
+          className="inline-flex rounded-sm transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:outline-none"
+        >
+          {badge}
+        </Link>
+      ) : (
+        badge
+      )}
       <CopyText>{copy}</CopyText>
     </span>
   );
+}
+
+interface RenderOpts {
+  preferText: boolean;
+  /** Link `[Keyword]` badges to a `kw:` search. */
+  linkKeywords: boolean;
 }
 
 /**
@@ -251,7 +285,7 @@ function KeywordBadge({
 function renderInline(
   text: string,
   keyPrefix: string,
-  preferText: boolean,
+  { preferText, linkKeywords }: RenderOpts,
 ): ReactNode[] {
   const parts: ReactNode[] = [];
   // Groups: 1 = icon key, 2 = keyword label, 3 = optional arrow marker.
@@ -317,6 +351,7 @@ function renderInline(
           arrowLeft={pendingStackLeft}
           costKeys={costKeys}
           preferText={preferText}
+          linked={linkKeywords}
         />,
       );
       pendingStackLeft = false;
@@ -337,7 +372,7 @@ function renderInline(
 function renderLine(
   line: string,
   lineIndex: number,
-  preferText: boolean,
+  opts: RenderOpts,
 ): ReactNode[] {
   // `:rb_exhaust:` / `:rb_rune_rainbow:` contain `_`, which the italic splitter
   // would otherwise treat as `_…_` markers (Ornn's ability text is the classic case).
@@ -352,14 +387,14 @@ function renderLine(
           {renderInline(
             restoreIconTokens(segment.slice(1, -1), tokens),
             keyPrefix,
-            preferText,
+            opts,
           )}
         </em>,
       );
       return;
     }
     parts.push(
-      ...renderInline(restoreIconTokens(segment, tokens), keyPrefix, preferText),
+      ...renderInline(restoreIconTokens(segment, tokens), keyPrefix, opts),
     );
   });
   return parts;
@@ -379,14 +414,22 @@ export function CardText({
   text,
   rich,
   className,
+  linkKeywords = false,
 }: {
   text: string;
   /** Upstream `text.rich` — used for bullet lists when it contains `<ul>`. */
   rich?: string | null;
   className?: string;
+  /**
+   * Link each `[Keyword]` badge to a `kw:` search. Opt-in: the browse grid
+   * renders rules text inside its own click target, where a nested link would
+   * hijack the tile's navigation.
+   */
+  linkKeywords?: boolean;
 }) {
   const { accessibility } = useSitePreferences();
   const preferText = accessibility.preferTextOverSymbols;
+  const renderOpts: RenderOpts = { preferText, linkKeywords };
   const richBlocks = rich ? parseCardTextRich(rich) : null;
   const lines = richBlocks
     ? null
@@ -431,7 +474,7 @@ export function CardText({
             if (block.type === "paragraph") {
               return block.lines.map((line) => {
                 const index = lineCounter++;
-                return <p key={`${blockIndex}-${index}`}>{renderLine(line, index, preferText)}</p>;
+                return <p key={`${blockIndex}-${index}`}>{renderLine(line, index, renderOpts)}</p>;
               });
             }
             return (
@@ -447,7 +490,7 @@ export function CardText({
                       {itemLines.map((itemLine, lineIdx) => (
                         <span key={`${index}-${lineIdx}`}>
                           {lineIdx > 0 ? <br /> : null}
-                          {renderLine(itemLine, index * 1000 + lineIdx, preferText)}
+                          {renderLine(itemLine, index * 1000 + lineIdx, renderOpts)}
                         </span>
                       ))}
                     </li>
@@ -457,7 +500,7 @@ export function CardText({
             );
           })
         : lines!.map((line, index) => (
-            <p key={index}>{renderLine(line, index, preferText)}</p>
+            <p key={index}>{renderLine(line, index, renderOpts)}</p>
           ))}
     </div>
   );

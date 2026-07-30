@@ -308,3 +308,49 @@ export async function ingestCardData(
 
   logger.info("Batched ingest_card_data_v2 RPC complete");
 }
+
+/**
+ * Re-evaluate every rule-scoped ruling target against the freshly ingested
+ * catalogue.
+ *
+ * This is what makes a rule like `t:unit kw:deathknell` cover cards that did not
+ * exist when it was written: the admin UI materialises a rule when it is saved,
+ * and this call re-materialises all of them once new printings have landed.
+ *
+ * Advisory, like the review queue — rulings are supplementary to the card page,
+ * so a failure here is logged and swallowed rather than failing an ingest that
+ * has already committed its card data.
+ */
+export async function refreshRulingRuleMatches(
+  supabase: SupabaseClient,
+): Promise<{ targets: number; matches: number; skipped: number } | null> {
+  try {
+    const { data, error } = await supabase.rpc("refresh_ruling_rule_matches", {
+      p_target_id: null,
+    });
+    if (error) throw new Error(error.message);
+
+    const payload = (data ?? {}) as {
+      targets?: number;
+      matches?: number;
+      skipped?: number;
+    };
+    const result = {
+      targets: payload.targets ?? 0,
+      matches: payload.matches ?? 0,
+      skipped: payload.skipped ?? 0,
+    };
+    if (result.skipped > 0) {
+      // A skipped target kept its previous matches — its stored AST no longer
+      // renders, which means the grammar moved on without it.
+      logger.warn("Some ruling rules could not be evaluated", result);
+    }
+    logger.info("Ruling rule matches refreshed", result);
+    return result;
+  } catch (err) {
+    logger.warn("Ruling rule refresh failed — continuing", {
+      error: String(err),
+    });
+    return null;
+  }
+}

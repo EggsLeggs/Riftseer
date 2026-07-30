@@ -26,6 +26,7 @@ src/
 │   ├── enrich.ts         # TCGPlayer group matching + product/price/image enrichment
 │   ├── link.ts           # linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings
 │   ├── overrides-db.ts   # DB override overlay (manual cards, patches, relationships, deletions)
+│   ├── reconcile.ts      # TCGPlayer review queue — unmatched products + field diffs
 │   └── db.ts             # ingestCardData() — calls ingest_card_data_v2 Postgres RPC
 └── overrides/
     ├── index.ts           # Typed exports for all override maps
@@ -44,11 +45,19 @@ src/
 6. buildProductMap + enrichCards  (pipeline/enrich.ts) ← non-fatal if fails
 7. linkTokens + linkChampionsLegends + linkSignatures + linkRelatedPrintings  (pipeline/link.ts)
 8. overlayDbSetOverrides + overlayDbOverrides  (pipeline/overrides-db.ts)
-9. prepareCardImageJobs — preserve unchanged R2 URLs; hash changed sources
-10. ingestCardData → ingest_card_data_v2 RPC  (pipeline/db.ts)
-11. enqueue a catalogue scan → riftseer-card-images; the consumer fans out pending card jobs
+9. backfillLinkedPrices + buildReconciliationEntries + syncReconciliationQueue  (pipeline/reconcile.ts)
+10. prepareCardImageJobs — preserve unchanged R2 URLs; hash changed sources
+11. ingestCardData → ingest_card_data_v2 RPC  (pipeline/db.ts)
+12. refreshRulingRuleMatches → refresh_ruling_rule_matches RPC  (pipeline/db.ts)
+13. enqueue a catalogue scan → riftseer-card-images; the consumer fans out pending card jobs
 ```
-Steps 4–6 (TCGPlayer enrichment) are wrapped in a try/catch; failure is logged as a warning and the pipeline continues with RiftCodex-only data. TCGPlayer never creates sets or cards.
+Steps 4–6 (TCGPlayer enrichment) are wrapped in a try/catch; failure is logged as a warning and the pipeline continues with RiftCodex-only data. TCGPlayer never creates sets or cards. Step 9 is skipped entirely when enrichment failed, and is itself wrapped in a try/catch — the review queue is advisory and must never cost an ingest.
+
+Step 9 runs **after** the override overlay, on the final cards, on purpose:
+
+- An admin-confirmed `external_ids.tcgplayer_id` lands via `card_overrides`, which the overlay applies at step 8. Detecting against pre-override cards would re-file the same "unmatched product" on every run despite the confirmation.
+- Those links arrive too late for `enrichCards`, so `backfillLinkedPrices` applies prices and the purchase URI for them. It touches nothing else — media is already final and an admin image override must survive.
+- Entries are identified by a `fingerprint` that encodes the observed upstream value, so a dismissal sticks while a genuinely *new* disagreement re-surfaces.
 
 The queue consumer downloads a maximum 20 MB source image, detects orientation
 with the Cloudflare Images binding, writes the original plus 200/400/1000px WebP
@@ -103,7 +112,10 @@ wrangler types src/worker-configuration.d.ts \
 - **Card IDs are `text`** (MongoDB ObjectIds — 24-char hex from RiftCodex), not UUIDs.
 - **Supabase RPC** `ingest_card_data_v2` handles FK resolution (set_code → set_id, artist name → artist_id), upsert, admin deletion enforcement, and stale RiftCodex-card pruning. The worker sends bounded, individually atomic card batches with pruning disabled, then sends the complete valid-ID list in a final prune call. See `supabase/migrations/20260729000000_ingest_v2_and_overrides.sql` for the current definition.
 - **Image publish RPC** `apply_card_hosted_media` is service-role-only and hash-guarded. See `supabase/migrations/20260730001503_phase2_card_image_hosting.sql`.
+- **Review queue RPC** `ingest_reconciliation_queue` mirrors the card RPC's batching: bounded entry batches upsert with pruning disabled, then one final call carries the complete fingerprint list. Only **pending** rows are refreshed or pruned — a confirmed or dismissed row is never touched, which is what makes an admin's decision durable. See `supabase/migrations/20260801000000_phase6_reconciliation_queue.sql`.
 - **`oracle_key` assignment** also lives in `pipeline/db.ts`, computed with `oracleKeyForName()` from `@riftseer/types/oracle` from each card's *final* name, after every override is applied — so a rename moves the card into the right oracle group. Rulings and format legalities are keyed on it, and `linkRelatedPrintings` groups by the same key, so a printing's siblings are exactly the printings sharing its rulings. The migration carries a SQL mirror (`card_oracle_key()`) for the backfill; keep the two in step.
+- **Rule-scoped rulings** are re-materialised by `refreshRulingRuleMatches` after the card upsert — it reads `cards`, so it must follow it. A ruling can target a saved search query instead of a card, and this refresh is what makes such a rule cover printings that did not exist when it was written. Advisory, like the review queue: a failure is logged and swallowed, never costing an ingest that already committed.
+- **`cards.keywords` is not sent in the payload.** A DB trigger derives it from the card's rules text on every write, which keeps ingest, admin patches and manual cards in sync without three separate call sites. See `20260802000000_phase7_keywords_and_ruling_rules.sql`.
 - **`public_slug` assignment** lives in `pipeline/db.ts`. Slug logic comes from `@riftseer/types/slug` (zero-dep, also used by tests). Each card's slug is `<set>/<collector>(/signature)?/<name>`, with `a` appended to numeric collectors for alternate art and a `-2`, `-3`, … suffix on the name segment for collisions. Cards with no collector number get the sentinel segment `x`. The RPC `coalesce`s on conflict so the value persisted on first insert is **never overwritten** — public URLs stay stable across re-runs. Re-runs after a slug-column migration backfill nulls automatically.
 - **Image idempotency** lives in `media.source_hash`. An unchanged hash carries the existing R2 URLs through ingest; a changed hash queues new variants. Public URLs carry `?v=<hash>` so corrected images bypass immutable caches.
 - **File overrides** are still the right place for source-specific ingest fixes (set names, TCGPlayer group mappings, image preferences).

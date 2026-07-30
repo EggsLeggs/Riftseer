@@ -335,6 +335,10 @@ function matchAst(card: Card, ast: CardSearchAst): boolean {
       return card.name_normalized === ast.value;
     case "filter": {
       const needle = ast.value.toLowerCase();
+      const includes = (h: string | null | undefined) =>
+        (h ?? "").toLowerCase().includes(needle);
+      const equalsAny = (values: string[] | undefined) =>
+        (values ?? []).some((v) => v.toLowerCase() === needle);
       switch (ast.field) {
         case "type": {
           const haystacks = [
@@ -342,18 +346,81 @@ function matchAst(card: Card, ast: CardSearchAst): boolean {
             card.classification?.supertype ?? "",
             ...(card.classification?.tags ?? []),
           ];
-          return haystacks.some((h) => h.toLowerCase().includes(needle));
+          return haystacks.some(includes);
         }
+        case "supertype":
+          return includes(card.classification?.supertype);
         case "rarity":
-          return (card.classification?.rarity ?? "")
-            .toLowerCase()
-            .includes(needle);
+          return includes(card.classification?.rarity);
         case "artist":
-          return (card.artist ?? "").toLowerCase().includes(needle);
+          return includes(card.artist);
+        case "name":
+          return includes(card.name);
+        case "set":
+          return (card.set?.set_code ?? "").toLowerCase() === needle;
+        // Keyword and domain match exactly — see CardSearchField's doc comment.
+        case "keyword":
+          return equalsAny(card.keywords);
+        case "domain":
+          return equalsAny(card.classification?.domains);
+        case "tag":
+          return (card.classification?.tags ?? []).some(includes);
+        case "produces":
+          return card.all_parts.some((p) => includes(p.name));
         default:
           return false;
       }
     }
+    case "numeric": {
+      const actual =
+        ast.field === "domain_count"
+          ? (card.classification?.domains ?? []).length
+          : (card.attributes?.[ast.field] ?? null);
+      // A null stat never satisfies a comparison — not even `!=`, matching the
+      // SQL, where every comparison against NULL is unknown.
+      if (actual === null || actual === undefined) return false;
+      switch (ast.cmp) {
+        case "eq":
+          return actual === ast.value;
+        case "ne":
+          return actual !== ast.value;
+        case "gt":
+          return actual > ast.value;
+        case "gte":
+          return actual >= ast.value;
+        case "lt":
+          return actual < ast.value;
+        case "lte":
+          return actual <= ast.value;
+      }
+      return false;
+    }
+    case "legality": {
+      // The stub stores one banned format on STUB_CARD; everything else is
+      // default-legal, which is the production fallback too.
+      const banned =
+        card.id === STUB_CARD.id && ast.format === STUB_FORMAT.code;
+      const status = banned ? "banned" : "legal";
+      return status === ast.status;
+    }
+    case "flag":
+      switch (ast.value) {
+        case "token":
+          return card.is_token;
+        case "signature":
+          return card.metadata?.signature === true;
+        case "alternate":
+          return card.metadata?.alternate_art === true;
+        case "overnumbered":
+          return card.metadata?.overnumbered === true;
+        case "manual":
+          return card.source === "manual";
+        case "foil":
+          return (card.metadata?.finishes ?? []).some(
+            (f) => f.toLowerCase() === "foil",
+          );
+      }
+      return false;
     default: {
       const unreachable: never = ast;
       throw new Error(

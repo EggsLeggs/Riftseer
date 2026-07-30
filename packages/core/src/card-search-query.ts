@@ -1,7 +1,8 @@
 /**
- * Card search query language — keyword filters (`t:` / `a:` / `r:`), booleans, and exact names — parsed into an AST.
+ * Card search query language — field filters, numeric comparisons, legality
+ * lookups, booleans and exact names — parsed into an AST.
  *
- * Grammar (v1):
+ * Grammar (v2):
  *   expr     := orExpr
  *   orExpr   := andExpr ( "or" andExpr )*
  *   andExpr  := unaryExpr unaryExpr*           -- adjacency = AND
@@ -9,24 +10,87 @@
  *   atom     := "(" expr ")"
  *             | "!" value                       -- exact card name
  *             | field ":" value                 -- structured filter
+ *             | numField cmp NUMBER             -- numeric comparison
  *             | value                           -- free text (FTS)
+ *   cmp      := ":" | "=" | "!=" | ">" | ">=" | "<" | "<="
  *   value    := QUOTED_STRING | BARE_WORD
- *   field    := "a" | "artist" | "t" | "type" | "r" | "rarity"
  *
  * Implicit AND binds tighter than `or`. Use parentheses to disambiguate.
  *
+ * Field families (see the alias tables below for the full list):
+ *   - text filters   `t:` `st:` `r:` `a:` `kw:` `d:` `tag:` `set:` `produces:` `name:`
+ *   - numeric        `energy` `might` `power` `d` (domain count) with a comparator
+ *   - legality       `f:` / `legal:` / `banned:` / `notlegal:` + a format code
+ *   - flags          `is:token` `is:signature` `is:alternate` `is:overnumbered`
+ *                    `is:manual` `is:foil`
+ *
+ * `d` is disambiguated by its operator: `d:fury` filters domains, `d>=2` counts
+ * them. Comma-separated values on `kw` / `d` / `tag` expand to OR, so
+ * `d:fury,order` is `(d:fury or d:order)` — quote the value to opt out.
+ *
  * The AST is the contract between the HTTP layer (which parses) and the
  * provider (which executes). Free-text leaves go through Postgres FTS;
- * exact-name leaves use the `name_normalized` index; filter leaves whitelist
- * a small set of jsonb / artist columns. See `requiresRpc` for the routing
- * gate that decides between PostgREST direct paths and the RPC.
+ * exact-name leaves use the `name_normalized` index; every other leaf is
+ * whitelisted and rendered to SQL by `card_search_ast_to_sql` in Postgres. See
+ * `requiresRpc` for the routing gate that decides between PostgREST direct
+ * paths and the RPC.
+ *
+ * The same parser backs **ruling rules**: an admin-authored query string is
+ * parsed here, stored as its AST, and re-evaluated by the same RPC to decide
+ * which printings a rule-scoped ruling attaches to. Anything added to this
+ * grammar becomes available to rules automatically — and vice versa, so a leaf
+ * that cannot be rendered to SQL must not parse.
  */
 
+import { keywordBaseKey } from "@riftseer/types/keywords";
 import { normalizeCardName } from "./normalize.ts";
 
 // ─── AST types ───────────────────────────────────────────────────────────────
 
-export type CardSearchField = "type" | "rarity" | "artist";
+/**
+ * Substring/equality filters over a single card attribute.
+ *
+ * Matching is substring + case-insensitive for the free-form fields, but
+ * **exact** (case-insensitive) for `keyword` and `domain`: both are closed
+ * vocabularies stored as normalized arrays, and substring matching there would
+ * make `d:or` hit "Order" while `kw:de` hit half the keyword list.
+ */
+export type CardSearchField =
+  | "type"
+  | "supertype"
+  | "rarity"
+  | "artist"
+  | "keyword"
+  | "domain"
+  | "tag"
+  | "set"
+  | "produces"
+  | "name";
+
+/** Numerically comparable card attributes. `domain_count` is `|domains|`. */
+export type CardSearchNumericField =
+  | "energy"
+  | "might"
+  | "power"
+  | "domain_count";
+
+export type CardSearchComparator = "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
+
+/** Boolean card flags reachable through `is:`. */
+export type CardSearchFlag =
+  | "token"
+  | "signature"
+  | "alternate"
+  | "overnumbered"
+  | "manual"
+  | "foil";
+
+/**
+ * Legality statuses a query can ask for. Mirrors `CardLegalityStatus` in
+ * `@riftseer/types`; `legal` means "resolves to legal", which includes the
+ * default-legal case where no row is stored at all.
+ */
+export type CardSearchLegalityStatus = "legal" | "not_legal" | "banned";
 
 export type CardSearchAst =
   | { op: "and"; children: CardSearchAst[] }
@@ -34,7 +98,15 @@ export type CardSearchAst =
   | { op: "not"; child: CardSearchAst }
   | { op: "text"; value: string }
   | { op: "exact_name"; value: string }
-  | { op: "filter"; field: CardSearchField; value: string };
+  | { op: "filter"; field: CardSearchField; value: string }
+  | {
+      op: "numeric";
+      field: CardSearchNumericField;
+      cmp: CardSearchComparator;
+      value: number;
+    }
+  | { op: "legality"; format: string; status: CardSearchLegalityStatus }
+  | { op: "flag"; value: CardSearchFlag };
 
 export interface ParsedCardSearch {
   /** Root AST, or `null` when the query parses to nothing meaningful. */
@@ -62,6 +134,8 @@ export const CARD_SEARCH_LIMITS = {
   maxAstNodes: 64,
   maxAstDepth: 8,
   maxLeafValueLength: 64,
+  /** Bound on `energy`/`might`/`power`/domain-count comparisons. */
+  maxNumericValue: 1_000_000,
 } as const;
 
 const FIELD_ALIASES: Record<string, CardSearchField> = {
@@ -69,9 +143,95 @@ const FIELD_ALIASES: Record<string, CardSearchField> = {
   artist: "artist",
   t: "type",
   type: "type",
+  st: "supertype",
+  supertype: "supertype",
   r: "rarity",
   rarity: "rarity",
+  kw: "keyword",
+  keyword: "keyword",
+  keywords: "keyword",
+  d: "domain",
+  domain: "domain",
+  domains: "domain",
+  tag: "tag",
+  tags: "tag",
+  set: "set",
+  s: "set",
+  produces: "produces",
+  makes: "produces",
+  name: "name",
 };
+
+/**
+ * Fields that accept a comparator. `d` / `domain` / `domains` appear here *and*
+ * in {@link FIELD_ALIASES}: with `:` they filter which domains a card has, with
+ * a comparator they count them.
+ */
+const NUMERIC_FIELD_ALIASES: Record<string, CardSearchNumericField> = {
+  e: "energy",
+  energy: "energy",
+  cost: "energy",
+  m: "might",
+  might: "might",
+  p: "power",
+  power: "power",
+  d: "domain_count",
+  domain: "domain_count",
+  domains: "domain_count",
+};
+
+/** `f:`/`legal:` ask for legal; the other spellings ask for a specific status. */
+const LEGALITY_FIELD_ALIASES: Record<string, CardSearchLegalityStatus> = {
+  f: "legal",
+  format: "legal",
+  legal: "legal",
+  banned: "banned",
+  notlegal: "not_legal",
+  not_legal: "not_legal",
+  illegal: "not_legal",
+};
+
+const FLAG_VALUES: Record<string, CardSearchFlag> = {
+  token: "token",
+  signature: "signature",
+  sig: "signature",
+  alternate: "alternate",
+  alt: "alternate",
+  alternate_art: "alternate",
+  overnumbered: "overnumbered",
+  manual: "manual",
+  foil: "foil",
+};
+
+/** Fields whose unquoted values expand a comma list into an OR of leaves. */
+const COMMA_LIST_FIELDS = new Set<CardSearchField>([
+  "keyword",
+  "domain",
+  "tag",
+]);
+
+const COMPARATORS: Record<string, CardSearchComparator> = {
+  "=": "eq",
+  "!=": "ne",
+  ">": "gt",
+  ">=": "gte",
+  "<": "lt",
+  "<=": "lte",
+};
+
+/** Every field name the grammar accepts, for error messages. */
+function knownFieldList(): string {
+  return [
+    ...new Set([
+      ...Object.keys(FIELD_ALIASES),
+      ...Object.keys(NUMERIC_FIELD_ALIASES),
+      ...Object.keys(LEGALITY_FIELD_ALIASES),
+      "is",
+    ]),
+  ]
+    .sort()
+    .join(", ");
+}
 
 // ─── Builders ───────────────────────────────────────────────────────────────
 
@@ -129,7 +289,65 @@ export function filterLeaf(
   value: string,
 ): CardSearchAst | null {
   const v = value.trim();
-  return v.length === 0 ? null : { op: "filter", field, value: v };
+  if (v.length === 0) return null;
+  // Keywords are stored as base keys, so fold `Deflect 3` → `deflect` at parse
+  // time; the executor can then use plain array containment against the index.
+  if (field === "keyword") {
+    const key = keywordBaseKey(v);
+    return key.length === 0 ? null : { op: "filter", field, value: key };
+  }
+  return { op: "filter", field, value: v };
+}
+
+/**
+ * A filter leaf, expanding an unquoted comma list into an OR for the fields
+ * that support it (`kw:deflect,shield`). Quoted values never split, so a tag
+ * that genuinely contains a comma stays intact.
+ */
+function filterLeafOrList(
+  field: CardSearchField,
+  value: string,
+  quoted: boolean,
+): CardSearchAst | null {
+  if (quoted || !COMMA_LIST_FIELDS.has(field) || !value.includes(",")) {
+    return filterLeaf(field, value);
+  }
+  return orAst(...value.split(",").map((part) => filterLeaf(field, part)));
+}
+
+export function numericLeaf(
+  field: CardSearchNumericField,
+  cmp: CardSearchComparator,
+  value: string,
+): CardSearchAst | null {
+  const raw = value.trim();
+  if (raw.length === 0) return null;
+  if (!/^-?\d+(?:\.\d+)?$/.test(raw)) {
+    throw new BadCardSearchQueryError(
+      `"${field}" needs a number, got "${raw}".`,
+    );
+  }
+  return { op: "numeric", field, cmp, value: Number(raw) };
+}
+
+export function legalityLeaf(
+  status: CardSearchLegalityStatus,
+  format: string,
+): CardSearchAst | null {
+  const code = format.trim().toLowerCase();
+  return code.length === 0 ? null : { op: "legality", format: code, status };
+}
+
+export function flagLeaf(value: string): CardSearchAst | null {
+  const key = value.trim().toLowerCase();
+  if (key.length === 0) return null;
+  const flag = FLAG_VALUES[key];
+  if (!flag) {
+    throw new BadCardSearchQueryError(
+      `Unknown is: value "${value}". Allowed: ${[...new Set(Object.values(FLAG_VALUES))].sort().join(", ")}.`,
+    );
+  }
+  return { op: "flag", value: flag };
 }
 
 function mergeSiblingTexts(ast: CardSearchAst): CardSearchAst {
@@ -154,10 +372,22 @@ type Token =
   | { kind: "minus" }
   | { kind: "or" }
   | { kind: "exact"; value: string }
-  | { kind: "field"; field: CardSearchField; value: string }
+  /** Field name and operator as written; the parser resolves them to a leaf. */
+  | {
+      kind: "field";
+      name: string;
+      op: ":" | "=" | "!=" | ">" | ">=" | "<" | "<=";
+      value: string;
+      quoted: boolean;
+    }
   | { kind: "text"; value: string };
 
-const FIELD_NAME_RE = /^[a-zA-Z]+$/;
+const FIELD_NAME_RE = /^[a-zA-Z_]+$/;
+
+/** Characters that can end a field name and begin an operator. */
+function isOperatorStart(c: string | undefined): boolean {
+  return c === ":" || c === ">" || c === "<" || c === "=" || c === "!";
+}
 
 function isWhitespace(c: string | undefined): boolean {
   return c === " " || c === "\t" || c === "\n" || c === "\r";
@@ -200,9 +430,9 @@ function lex(input: string): Token[] {
     return out;
   }
 
-  function readValue(): string {
-    if (input[i] === '"') return readQuoted();
-    return readBareWord();
+  function readValue(): { value: string; quoted: boolean } {
+    if (input[i] === '"') return { value: readQuoted(), quoted: true };
+    return { value: readBareWord(), quoted: false };
   }
 
   while (i < n) {
@@ -231,8 +461,7 @@ function lex(input: string): Token[] {
     }
     if (c === "!") {
       i += 1;
-      const value = readValue();
-      tokens.push({ kind: "exact", value });
+      tokens.push({ kind: "exact", value: readValue().value });
       continue;
     }
     if (c === '"') {
@@ -240,26 +469,34 @@ function lex(input: string): Token[] {
       continue;
     }
 
-    // Try `field:value`. Look ahead for a colon before whitespace/paren.
+    // Try `field<op>value`. Look ahead for an operator before whitespace/paren.
     let j = i;
     while (j < n) {
       const ch = input[j];
-      if (isWhitespace(ch) || ch === "(" || ch === ")" || ch === ":") break;
+      if (isWhitespace(ch) || ch === "(" || ch === ")") break;
+      if (isOperatorStart(ch)) break;
       j += 1;
     }
-    if (j < n && input[j] === ":") {
+    if (j > i && j < n && isOperatorStart(input[j])) {
       const name = input.slice(i, j);
-      if (FIELD_NAME_RE.test(name)) {
-        const fieldKey = name.toLowerCase();
-        const field = FIELD_ALIASES[fieldKey];
-        if (!field) {
-          throw new BadCardSearchQueryError(
-            `Unknown filter field "${name}". Allowed: a, t, r (artist, type, rarity).`,
-          );
-        }
-        i = j + 1;
-        const value = readValue();
-        tokens.push({ kind: "field", field, value });
+      // Two-character operators first, so `>=` never lexes as `>` then `=`.
+      const two = input.slice(j, j + 2);
+      const op =
+        two === ">=" || two === "<=" || two === "!="
+          ? two
+          : input[j] === ":" || input[j] === ">" || input[j] === "<" || input[j] === "="
+            ? input[j]!
+            : null;
+      if (op && FIELD_NAME_RE.test(name)) {
+        i = j + op.length;
+        const { value, quoted } = readValue();
+        tokens.push({
+          kind: "field",
+          name: name.toLowerCase(),
+          op: op as ":" | "=" | "!=" | ">" | ">=" | "<" | "<=",
+          value,
+          quoted,
+        });
         continue;
       }
     }
@@ -282,6 +519,48 @@ function lex(input: string): Token[] {
 }
 
 // ─── Parser ─────────────────────────────────────────────────────────────────
+
+/**
+ * Resolve a lexed `field<op>value` token to a leaf.
+ *
+ * `:` dispatches on the field family — flags, legality, text filter, or a
+ * numeric field used with implicit equality (`energy:2` ≡ `energy=2`). Any
+ * other operator is numeric-only.
+ */
+function fieldTokenToLeaf(
+  t: Extract<Token, { kind: "field" }>,
+): CardSearchAst | null {
+  const { name, op, value, quoted } = t;
+
+  if (op === ":") {
+    if (name === "is") return flagLeaf(value);
+
+    const legalityStatus = LEGALITY_FIELD_ALIASES[name];
+    if (legalityStatus) return legalityLeaf(legalityStatus, value);
+
+    const field = FIELD_ALIASES[name];
+    if (field) return filterLeafOrList(field, value, quoted);
+
+    const numeric = NUMERIC_FIELD_ALIASES[name];
+    if (numeric) return numericLeaf(numeric, "eq", value);
+
+    throw new BadCardSearchQueryError(
+      `Unknown filter field "${name}". Allowed: ${knownFieldList()}.`,
+    );
+  }
+
+  const numeric = NUMERIC_FIELD_ALIASES[name];
+  if (!numeric) {
+    throw new BadCardSearchQueryError(
+      `"${name}" cannot be compared with "${op}". Comparable fields: ${[
+        ...new Set(Object.keys(NUMERIC_FIELD_ALIASES)),
+      ]
+        .sort()
+        .join(", ")}.`,
+    );
+  }
+  return numericLeaf(numeric, COMPARATORS[op]!, value);
+}
 
 function parseTokens(tokens: Token[]): CardSearchAst | null {
   let pos = 0;
@@ -343,7 +622,7 @@ function parseTokens(tokens: Token[]): CardSearchAst | null {
       case "exact":
         return exactNameLeaf(t.value);
       case "field":
-        return filterLeaf(t.field, t.value);
+        return fieldTokenToLeaf(t);
       case "text":
         return textLeaf(t.value);
       case "rparen":
@@ -364,7 +643,28 @@ function parseTokens(tokens: Token[]): CardSearchAst | null {
 
 // ─── Validation ─────────────────────────────────────────────────────────────
 
-const ALLOWED_FIELDS = new Set<CardSearchField>(["type", "rarity", "artist"]);
+const ALLOWED_FIELDS = new Set<CardSearchField>(
+  Object.values(FIELD_ALIASES),
+);
+const ALLOWED_NUMERIC_FIELDS = new Set<CardSearchNumericField>(
+  Object.values(NUMERIC_FIELD_ALIASES),
+);
+const ALLOWED_COMPARATORS = new Set<CardSearchComparator>(
+  Object.values(COMPARATORS),
+);
+const ALLOWED_FLAGS = new Set<CardSearchFlag>(Object.values(FLAG_VALUES));
+const ALLOWED_LEGALITY_STATUSES = new Set<CardSearchLegalityStatus>([
+  "legal",
+  "not_legal",
+  "banned",
+]);
+
+/**
+ * Format codes reach SQL as an identifier-ish literal. Keep them to the shape
+ * `formats.code` actually uses so a hand-built AST cannot smuggle anything odd
+ * through the RPC.
+ */
+const FORMAT_CODE_RE = /^[a-z0-9][a-z0-9_-]*$/;
 
 /** Walk the AST enforcing node count, depth and leaf-value caps. */
 export function validateCardSearchAst(ast: CardSearchAst): void {
@@ -403,6 +703,42 @@ export function validateCardSearchAst(ast: CardSearchAst): void {
         }
         if (n.value.length > CARD_SEARCH_LIMITS.maxLeafValueLength) {
           throw new BadCardSearchQueryError("Filter value too long.");
+        }
+        return;
+      case "numeric":
+        if (!ALLOWED_NUMERIC_FIELDS.has(n.field)) {
+          throw new BadCardSearchQueryError(
+            `Unsupported numeric field: ${n.field}`,
+          );
+        }
+        if (!ALLOWED_COMPARATORS.has(n.cmp)) {
+          throw new BadCardSearchQueryError(`Unsupported comparator: ${n.cmp}`);
+        }
+        if (!Number.isFinite(n.value)) {
+          throw new BadCardSearchQueryError("Numeric filter needs a number.");
+        }
+        if (Math.abs(n.value) > CARD_SEARCH_LIMITS.maxNumericValue) {
+          throw new BadCardSearchQueryError("Numeric filter value out of range.");
+        }
+        return;
+      case "legality":
+        if (!ALLOWED_LEGALITY_STATUSES.has(n.status)) {
+          throw new BadCardSearchQueryError(
+            `Unsupported legality status: ${n.status}`,
+          );
+        }
+        if (!FORMAT_CODE_RE.test(n.format)) {
+          throw new BadCardSearchQueryError(
+            `Invalid format code: "${n.format}".`,
+          );
+        }
+        if (n.format.length > CARD_SEARCH_LIMITS.maxLeafValueLength) {
+          throw new BadCardSearchQueryError("Format code too long.");
+        }
+        return;
+      case "flag":
+        if (!ALLOWED_FLAGS.has(n.value)) {
+          throw new BadCardSearchQueryError(`Unsupported is: value: ${n.value}`);
         }
         return;
     }
@@ -448,24 +784,36 @@ export function isLegacyTextOnly(
 }
 
 /**
+ * Leaf ops with no PostgREST equivalent — array containment against a computed
+ * column, a domain-count comparison and a three-layer legality resolution all
+ * need real SQL, so any AST mentioning one goes to the RPC.
+ */
+function isRpcOnlyLeaf(ast: CardSearchAst): boolean {
+  return ast.op === "numeric" || ast.op === "legality" || ast.op === "flag";
+}
+
+/**
  * True when the AST cannot be expressed with simple PostgREST filters and must
- * be evaluated by the RPC. Currently: any OR, any nested AND/OR/NOT inside a
- * NOT, or any non-leaf-or-NOT-leaf child of an AND.
+ * be evaluated by the RPC: any OR, any RPC-only leaf, any nested AND/OR/NOT
+ * inside a NOT, or any non-leaf-or-NOT-leaf child of an AND.
  */
 export function requiresRpc(ast: CardSearchAst): boolean {
+  if (isRpcOnlyLeaf(ast)) return true;
   switch (ast.op) {
     case "or":
       return true;
     case "not": {
       const c = ast.child;
-      return c.op === "and" || c.op === "or" || c.op === "not";
+      return c.op === "and" || c.op === "or" || c.op === "not" || isRpcOnlyLeaf(c);
     }
     case "and":
       for (const c of ast.children) {
         if (c.op === "and" || c.op === "or") return true;
+        if (isRpcOnlyLeaf(c)) return true;
         if (c.op === "not") {
           const gc = c.child;
           if (gc.op === "and" || gc.op === "or" || gc.op === "not") return true;
+          if (isRpcOnlyLeaf(gc)) return true;
         }
       }
       return false;

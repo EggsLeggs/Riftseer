@@ -283,7 +283,7 @@ describe("validateCardSearchAst", () => {
       validateCardSearchAst({
         op: "filter",
         // @ts-expect-error - intentional bad field
-        field: "set",
+        field: "flavour",
         value: "x",
       }),
     ).toThrow(BadCardSearchQueryError);
@@ -372,5 +372,182 @@ describe("findTextLeafValue", () => {
   it("returns null when no text leaf is present", () => {
     const tree = ast("t:legend a:foo");
     expect(findTextLeafValue(tree!)).toBeNull();
+  });
+});
+
+// ─── v2 grammar: keywords, domains, numerics, legality, flags ────────────────
+
+describe("keyword, domain and tag filters", () => {
+  it("folds keyword values to their base key", () => {
+    expect(ast("kw:Deflect")).toEqual({
+      op: "filter",
+      field: "keyword",
+      value: "deflect",
+    });
+    // The printed number is part of the badge, not the keyword identity.
+    expect(ast('kw:"Deflect 3"')).toEqual(ast("kw:deflect"));
+    expect(ast("keyword:deathknell")).toEqual(ast("kw:deathknell"));
+  });
+
+  it("filters domains and tags", () => {
+    expect(ast("d:fury")).toEqual({
+      op: "filter",
+      field: "domain",
+      value: "fury",
+    });
+    expect(ast("domain:Order")).toEqual({
+      op: "filter",
+      field: "domain",
+      value: "Order",
+    });
+    expect(ast("tag:poro")).toEqual({
+      op: "filter",
+      field: "tag",
+      value: "poro",
+    });
+  });
+
+  it("expands unquoted comma lists to OR", () => {
+    expect(ast("d:fury,order")).toEqual({
+      op: "or",
+      children: [
+        { op: "filter", field: "domain", value: "fury" },
+        { op: "filter", field: "domain", value: "order" },
+      ],
+    });
+  });
+
+  it("keeps quoted commas literal", () => {
+    expect(ast('tag:"a,b"')).toEqual({
+      op: "filter",
+      field: "tag",
+      value: "a,b",
+    });
+  });
+
+  it("does not comma-split fields that are not list fields", () => {
+    expect(ast("a:smith,jones")).toEqual({
+      op: "filter",
+      field: "artist",
+      value: "smith,jones",
+    });
+  });
+});
+
+describe("numeric comparisons", () => {
+  it("parses every comparator", () => {
+    expect(ast("might>=4")).toEqual({
+      op: "numeric",
+      field: "might",
+      cmp: "gte",
+      value: 4,
+    });
+    expect(ast("might>4")).toEqual({ op: "numeric", field: "might", cmp: "gt", value: 4 });
+    expect(ast("power<3")).toEqual({ op: "numeric", field: "power", cmp: "lt", value: 3 });
+    expect(ast("power<=3")).toEqual({ op: "numeric", field: "power", cmp: "lte", value: 3 });
+    expect(ast("energy=2")).toEqual({ op: "numeric", field: "energy", cmp: "eq", value: 2 });
+    expect(ast("energy!=2")).toEqual({ op: "numeric", field: "energy", cmp: "ne", value: 2 });
+  });
+
+  it("treats `:` on a numeric field as equality", () => {
+    expect(ast("energy:2")).toEqual(ast("energy=2"));
+    expect(ast("cost:2")).toEqual(ast("energy=2"));
+  });
+
+  it("disambiguates `d` by operator", () => {
+    expect(ast("d:fury")).toEqual({ op: "filter", field: "domain", value: "fury" });
+    expect(ast("d>=2")).toEqual({
+      op: "numeric",
+      field: "domain_count",
+      cmp: "gte",
+      value: 2,
+    });
+  });
+
+  it("rejects non-numeric values and non-numeric fields", () => {
+    expect(() => ast("might>=big")).toThrow(BadCardSearchQueryError);
+    expect(() => ast("t>=2")).toThrow(BadCardSearchQueryError);
+  });
+
+  it("combines with other terms", () => {
+    expect(ast("t:unit might>=4 kw:deathknell")).toEqual({
+      op: "and",
+      children: [
+        { op: "filter", field: "type", value: "unit" },
+        { op: "numeric", field: "might", cmp: "gte", value: 4 },
+        { op: "filter", field: "keyword", value: "deathknell" },
+      ],
+    });
+  });
+});
+
+describe("legality filters", () => {
+  it("maps each spelling to a status", () => {
+    expect(ast("f:standard")).toEqual({
+      op: "legality",
+      format: "standard",
+      status: "legal",
+    });
+    expect(ast("legal:standard")).toEqual(ast("f:standard"));
+    expect(ast("banned:standard")).toEqual({
+      op: "legality",
+      format: "standard",
+      status: "banned",
+    });
+    expect(ast("notlegal:standard")).toEqual({
+      op: "legality",
+      format: "standard",
+      status: "not_legal",
+    });
+  });
+
+  it("lowercases the format code", () => {
+    expect(ast("f:STANDARD")).toEqual(ast("f:standard"));
+  });
+
+  it("rejects format codes outside the allowed shape", () => {
+    expect(() =>
+      validateCardSearchAst({ op: "legality", format: "bad code", status: "legal" }),
+    ).toThrow(BadCardSearchQueryError);
+  });
+});
+
+describe("is: flags", () => {
+  it("parses known flags and their aliases", () => {
+    expect(ast("is:token")).toEqual({ op: "flag", value: "token" });
+    expect(ast("is:sig")).toEqual({ op: "flag", value: "signature" });
+    expect(ast("is:alt")).toEqual({ op: "flag", value: "alternate" });
+  });
+
+  it("negates", () => {
+    expect(ast("-is:token")).toEqual({
+      op: "not",
+      child: { op: "flag", value: "token" },
+    });
+  });
+
+  it("rejects unknown flags", () => {
+    expect(() => ast("is:sparkly")).toThrow(BadCardSearchQueryError);
+  });
+});
+
+describe("requiresRpc with v2 leaves", () => {
+  it("is true for any RPC-only leaf, alone or nested", () => {
+    expect(requiresRpc(ast("might>=4")!)).toBe(true);
+    expect(requiresRpc(ast("f:standard")!)).toBe(true);
+    expect(requiresRpc(ast("is:token")!)).toBe(true);
+    expect(requiresRpc(ast("t:unit might>=4")!)).toBe(true);
+    expect(requiresRpc(ast("-is:token")!)).toBe(true);
+    expect(requiresRpc(ast("t:unit -might>=4")!)).toBe(true);
+  });
+
+  it("is still false for plain filter ANDs", () => {
+    expect(requiresRpc(ast("t:unit r:rare")!)).toBe(false);
+  });
+});
+
+describe("unknown fields", () => {
+  it("names the field and lists the allowed ones", () => {
+    expect(() => ast("nope:x")).toThrow(/Unknown filter field "nope"/);
   });
 });

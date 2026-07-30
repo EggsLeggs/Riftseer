@@ -16,6 +16,7 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { useEffect } from "react";
 import type { Card } from "@riftseer/types";
+import { cardImageDownloadUrl, cardImageUrl } from "@riftseer/types";
 
 function tinted(source: string): Image.ImageLike {
   return { source, tintColor: Color.PrimaryText };
@@ -293,8 +294,7 @@ function buildMarkdown(card: Card): string {
   // Portrait cards: 300 tall (matches lotus-mtg-companion); width=200 preserves 2:3 ratio.
   // Landscape cards: height=200 (= width of a portrait card at height=300 with 2:3 ratio); width=300.
   const isLandscape = card.media?.orientation === "landscape";
-  const imageUrl =
-    card.media?.media_urls?.normal ?? card.media?.media_urls?.large;
+  const imageUrl = cardImageUrl(card.media, "normal");
   if (imageUrl) {
     const altText = (card.media?.accessibility_text ?? card.name).replace(
       /\n/g,
@@ -462,15 +462,12 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
                 shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
               />
             )}
-            {(card.media?.media_urls?.normal ??
-              card.media?.media_urls?.large) && (
+            {cardImageDownloadUrl(card.media) && (
               <Action
                 title="Copy Card Image"
                 shortcut={{ modifiers: ["cmd", "opt"], key: "c" }}
                 onAction={async () => {
-                  const imageUrl =
-                    card.media!.media_urls!.normal ??
-                    card.media!.media_urls!.large!;
+                  const imageUrl = cardImageDownloadUrl(card.media)!;
                   const toast = await showToast({
                     style: Toast.Style.Animated,
                     title: "Copying image…",

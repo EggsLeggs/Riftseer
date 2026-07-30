@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { ConsentManager } from "@/components/consent-manager";
 import { Providers } from "@/providers";
@@ -51,13 +51,16 @@ export const metadata: Metadata = {
   title: "Riftseer",
   description: "Card database and deck builder for the Riftbound TCG",
   applicationName: "Riftseer",
+  appleWebApp: {
+    title: "Riftseer",
+  },
+};
+
+export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
-  appleWebApp: {
-    title: "Riftseer",
-  },
 };
 
 export default function RootLayout({

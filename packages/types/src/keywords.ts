@@ -127,3 +127,36 @@ export function takeKeywordBadgeCosts(
 export function styleForKeyword(label: string): KeywordStyle {
   return KEYWORD_STYLES[keywordBaseKey(label)] ?? DEFAULT_KEYWORD_STYLE;
 }
+
+// ─── Extraction (search + ruling rules) ────────────────────────────────────────
+
+/**
+ * Every `[Keyword]` a card's rules text carries, as {@link keywordBaseKey}
+ * values — `"[Deflect 3]"` and `"[Deflect 1]"` both yield `"deflect"`, so
+ * `kw:deflect` finds them regardless of the printed number.
+ *
+ * Deduplicated and sorted so the result is a stable value: ingest compares it
+ * against the stored column, and an unstable order would rewrite every card on
+ * every run. Connectors (`[>]`, `[>>]`) and data junk are filtered by
+ * {@link isKeywordTag}.
+ *
+ * This is the sole TypeScript derivation. A SQL mirror
+ * (`card_keywords_from_text()`) exists only to backfill the column for cards
+ * ingested before it existed — keep the two in step.
+ */
+export function extractCardKeywords(
+  text: string | null | undefined,
+): string[] {
+  if (!text) return [];
+  const found = new Set<string>();
+  // `matchAll` needs its own regex instance — KEYWORD_TAG_REGEX is a shared
+  // global-flagged literal and would otherwise carry `lastIndex` between calls.
+  const re = new RegExp(KEYWORD_TAG_REGEX.source, "g");
+  for (const match of text.matchAll(re)) {
+    const label = match[1];
+    if (!label || !isKeywordTag(label)) continue;
+    const key = keywordBaseKey(label);
+    if (key.length > 0) found.add(key);
+  }
+  return [...found].sort();
+}
