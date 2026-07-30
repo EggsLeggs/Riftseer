@@ -7,6 +7,7 @@
 
 import { normalizeCardName, logger } from "../utils.ts";
 import type { Card } from "@riftseer/types";
+import { repairFlavourText } from "@riftseer/types/card-text";
 
 const PAGE_SIZE = 100;
 
@@ -217,7 +218,9 @@ export function rawToCard(raw: RawCard): Card {
     text: {
       rich: raw.text?.rich || undefined,
       plain: raw.text?.plain || undefined,
-      flavour: raw.text?.flavour || undefined,
+      flavour: raw.text?.flavour
+        ? repairFlavourText(raw.text.flavour)
+        : undefined,
     },
     artist: raw.media?.artist || undefined,
     metadata: {

@@ -3,8 +3,56 @@ import {
   decodeCardTextEntities,
   formatCardTextForClipboard,
   maskIconTokens,
+  repairFlavourText,
   restoreIconTokens,
 } from "../card-text.ts";
+
+describe("repairFlavourText", () => {
+  it("restores a missing opening dialogue quote before attribution", () => {
+    expect(repairFlavourText('If you hit a wall, hit it hard!"\r\n \r\n- Vi')).toBe(
+      '"If you hit a wall, hit it hard!"\n \n- Vi',
+    );
+    expect(repairFlavourText('Art shall blossom from your fear."\n - Jhin')).toBe(
+      '"Art shall blossom from your fear."\n - Jhin',
+    );
+  });
+
+  it("is idempotent when the opening quote is already present", () => {
+    const ok = '"Peace within, peace without."\n\n- Master Yi';
+    expect(repairFlavourText(ok)).toBe(ok);
+  });
+
+  it("leaves unquoted flavour unchanged", () => {
+    expect(repairFlavourText("A quiet resolve.")).toBe("A quiet resolve.");
+  });
+
+  it("strips stray HTML debris from upstream flavour", () => {
+    expect(
+      repairFlavourText('Hey, where is everyone?" \r\n- Common last words</em'),
+    ).toBe('"Hey, where is everyone?" \n- Common last words');
+  });
+
+  it("leaves prose that quotes a word mid-sentence alone", () => {
+    // The attribution rule keys on a newline; a same-line dash after a quoted
+    // word is ordinary prose, not the upstream missing-opening-quote bug.
+    const prose = 'He said "run" - and she ran.';
+    expect(repairFlavourText(prose)).toBe(prose);
+    expect(repairFlavourText('They called it the "Rift" - a wound.')).toBe(
+      'They called it the "Rift" - a wound.',
+    );
+  });
+
+  it("keeps angle brackets that are not HTML tags", () => {
+    expect(repairFlavourText("<sigh> Another day.")).toBe("<sigh> Another day.");
+    expect(repairFlavourText("I <3 the Rift.")).toBe("I <3 the Rift.");
+  });
+
+  it("still repairs when the attribution uses an en or em dash", () => {
+    expect(repairFlavourText('Only the worthy."\n— Leona')).toBe(
+      '"Only the worthy."\n— Leona',
+    );
+  });
+});
 
 describe("decodeCardTextEntities", () => {
   it("decodes common HTML entities from upstream rules text", () => {

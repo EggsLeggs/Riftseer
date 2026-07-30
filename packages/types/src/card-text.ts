@@ -27,6 +27,51 @@ function isUnicodeScalarValue(value: number): boolean {
   );
 }
 
+/**
+ * RiftCodex flavour text systematically drops the opening dialogue quote while
+ * leaving the closer and attribution, e.g.
+ *   If you hit a wall, hit it hard!"\n- Vi
+ * instead of
+ *   "If you hit a wall, hit it hard!"\n- Vi
+ *
+ * Also strips stray HTML tag debris sometimes left in the same field.
+ * Idempotent: already-correct flavours are unchanged.
+ *
+ * Both rules are deliberately narrow, because a false positive silently
+ * corrupts card text this platform is the source of truth for: the quote is
+ * only restored when the attribution sits on its own line, and only known
+ * formatting tags are stripped. Prose that merely quotes a word mid-sentence
+ * and non-HTML angle brackets ("I <3 ...", "<sigh>") are left alone.
+ */
+export function repairFlavourText(flavour: string): string {
+  let text = flavour.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  text = text.replace(HTML_DEBRIS, "");
+
+  const leadMatch = text.match(/^\s*/);
+  const lead = leadMatch?.[0] ?? "";
+  const body = text.slice(lead.length);
+  if (body.length === 0) return text;
+  if (body.startsWith('"') || body.startsWith("\u201c")) return lead + body;
+
+  if (ORPHANED_CLOSING_QUOTE.test(body)) {
+    return `${lead}"${body}`;
+  }
+  return lead + body;
+}
+
+/**
+ * Formatting tags upstream leaves behind, including unterminated ones (`</em`).
+ * An allowlist rather than a generic tag pattern, which also ate `<sigh>`.
+ */
+const HTML_DEBRIS = /<\/?(?:em|strong|small|span|div|br|b|i|u|p)\b[^>]*>?/gi;
+
+/**
+ * A closing quote whose attribution starts its own line, which is the shape of
+ * the upstream bug. Requiring the newline is what separates it from prose that
+ * quotes a word and then uses a dash on the same line.
+ */
+const ORPHANED_CLOSING_QUOTE = /["”][^\S\n]*\n\s*[-–—]\s*\S/;
+
 /** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
 export function decodeCardTextEntities(text: string): string {
   let prev = "";
