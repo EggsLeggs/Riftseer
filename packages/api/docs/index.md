@@ -13,7 +13,10 @@ The Riftseer API is a read-mostly REST API that exposes Riftbound TCG card data.
 
 ## Authentication
 
-Most endpoints are publicly accessible and require no authentication. The `/api/v1/auth` endpoints manage user sessions; authenticated requests should include `Authorization: Bearer <access_token>` where required.
+Most endpoints are publicly accessible and require no authentication. The
+`/api/v1/auth` endpoints manage user sessions; authenticated requests should
+include `Authorization: Bearer <access_token>` where required. Admin mutations
+also require the token's user UUID to be listed in `ADMIN_USER_IDS`.
 
 ---
 
@@ -109,12 +112,17 @@ Route modules live in `packages/api/src/routes/`:
 | `sets.ts` | `/sets` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
 | `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/me`, `/auth/reset-password` |
+| `admin.ts` | `/admin/cards/*`, `/admin/sets/*` |
 
 ---
 
 ## Provider pattern
 
-The API does not query the database directly. All data access goes through the `CardDataProvider` interface from `@riftseer/core`. The active implementation is `SupabaseCardProvider`, selected at startup via the `CARD_PROVIDER` env var.
+Public card reads go through the `CardDataProvider` interface from `@riftseer/core`.
+The active implementation is `SupabaseCardProvider`, selected at startup via the
+`CARD_PROVIDER` env var. Admin mutations use the service-role-backed admin
+repository so each RPC can persist an override, update the live row, and append an
+audit event atomically.
 
 This means the API has no opinion on where data comes from — swapping the provider requires no changes to route code.
 
@@ -152,3 +160,13 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `POST` | `/api/v1/auth/forgot-password` | [Auth](./auth.md) |
 | `GET` | `/api/v1/auth/me` | [Auth](./auth.md) |
 | `POST` | `/api/v1/auth/reset-password` | [Auth](./auth.md) |
+| `POST` | `/api/v1/admin/cards` | [Admin](./admin.md) |
+| `PATCH` | `/api/v1/admin/cards/:id` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/cards/:id` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/cards/:id/regenerate-slug` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/cards/:id/move` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/cards/:id/relationships` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/cards/:id/image` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/sets` | [Admin](./admin.md) |
+| `PATCH` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |

@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
 import { authAdminClient, authClient, supabaseUrl, supabaseAnonKey } from "../lib/supabase";
-import { authPlugin } from "../plugins/auth";
+import { authPlugin, createAuthPlugin } from "../plugins/auth";
+import { isAdminUser } from "../plugins/admin-auth";
 import { ErrorSchema } from "../schemas";
 import { refreshMetafySupporterStatus } from "../lib/metafy";
 import { runInBackground } from "../lib/background";
@@ -28,9 +29,21 @@ const UserSchema = t.Object({
   id: t.String({ description: "User UUID" }),
   email: t.Optional(t.String()),
   created_at: t.String(),
+  is_admin: t.Boolean({
+    description: "True when the user id is listed in ADMIN_USER_IDS.",
+  }),
 });
 
-export function authRoutes() {
+export interface AuthRoutesOptions {
+  protectedAuthPlugin?: ReturnType<typeof createAuthPlugin>;
+  getAdminUserIds?: () => string | undefined;
+}
+
+export function authRoutes(options: AuthRoutesOptions = {}) {
+  const protectedAuthPlugin = options.protectedAuthPlugin ?? authPlugin;
+  const getAdminUserIds =
+    options.getAdminUserIds ?? (() => process.env.ADMIN_USER_IDS);
+
   return (
     new Elysia()
       // ── POST /auth/register ───────────────────────────────────────────────
@@ -417,7 +430,7 @@ export function authRoutes() {
       // unaffected — the plugin scope does not propagate past this sub-app.
       .use(
         new Elysia()
-          .use(authPlugin)
+          .use(protectedAuthPlugin)
 
           // ── GET /auth/me ────────────────────────────────────────────────
           .get(
@@ -426,6 +439,7 @@ export function authRoutes() {
               id: user.id,
               email: user.email ?? undefined,
               created_at: user.created_at,
+              is_admin: isAdminUser(user, getAdminUserIds()),
             }),
             {
               response: {
@@ -437,7 +451,7 @@ export function authRoutes() {
                 tags: ["Auth"],
                 summary: "Get current user",
                 description:
-                  "Returns the authenticated user's profile. " +
+                  "Returns the authenticated user's profile and computed admin status. " +
                   "Requires a valid `Authorization: Bearer <access_token>` header.",
               },
             },
