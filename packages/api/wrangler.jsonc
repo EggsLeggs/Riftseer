@@ -2,7 +2,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "riftseer-api",
 	"main": "src/index.ts",
-	"compatibility_date": "2025-06-01",
+	"compatibility_date": "2026-07-29",
 	"workers_dev": false,
 	"preview_urls": false,
 	"dev": { "port": 8789 },
@@ -11,15 +11,34 @@
 	"vars": {
 		"CARD_PROVIDER": "supabase",
 		"LEGAL_TERMS_VERSION": "2",
-		// 2 — 27 July 2026: Metafy webhook processing disclosure.
-		"LEGAL_PRIVACY_VERSION": "3",
+		// 4 — 30 July 2026: admin edit attribution and audit retention.
+		"LEGAL_PRIVACY_VERSION": "4",
 		// Public site origin used to build absolute riftseer_uri values on every
 		// card response. Override per-environment if needed.
 		"SITE_ORIGIN": "https://riftseer.com",
+		// Comma-separated Supabase auth user UUIDs allowed to call /api/v1/admin.
+		// Keep empty until the production admin UUIDs are configured.
+		"ADMIN_USER_IDS": "",
+		// Shared card-image custom domain used by admin uploads.
+		"CARD_IMAGE_BASE_URL": "https://img.riftseer.com",
 		// Metafy OAuth — non-confidential: both values are sent to the browser as
 		// part of the authorize URL.
 		"METAFY_COMMUNITY_ID": "riftseer",
 		"METAFY_REDIRECT_URI": "https://riftseer.com/auth/metafy/callback",
+	},
+	"r2_buckets": [
+		{
+			"binding": "CARD_IMAGES",
+			"bucket_name": "riftseer-cards"
+		}
+	],
+	"queues": {
+		"producers": [
+			{
+				"binding": "CARD_IMAGE_QUEUE",
+				"queue": "riftseer-card-images"
+			}
+		]
 	},
 	// Required for core API + Supabase auth routes.
 	// Optional secrets (omit from required): UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, TCGPLAYER_AFFILIATE_ID

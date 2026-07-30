@@ -24,6 +24,7 @@ import { cardsRoutes } from "../src/routes/cards";
 import { setsRoutes } from "../src/routes/sets";
 import { decksRoutes } from "../src/routes/decks";
 import { authRoutes } from "../src/routes/auth";
+import { adminRoutes } from "../src/routes/admin";
 
 const cardProvider = createProvider();
 try {
@@ -48,7 +49,8 @@ const app = new Elysia()
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
       .use(decksRoutes(deckProvider))
-      .use(authRoutes()),
+      .use(authRoutes())
+      .use(adminRoutes()),
   )
   .use(
     swagger({
@@ -61,6 +63,10 @@ const app = new Elysia()
           { name: "Sets", description: "Card set listing" },
           { name: "Decks", description: "Deck building and sharing" },
           { name: "Auth", description: "User registration and session management" },
+          {
+            name: "Admin",
+            description: "Admin-only durable card and set mutations",
+          },
         ],
       },
     }),

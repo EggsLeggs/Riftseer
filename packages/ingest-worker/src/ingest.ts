@@ -20,7 +20,10 @@ import { matchTcgGroupsToSets, buildProductMap, enrichCards } from "./pipeline/e
 import { linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings } from "./pipeline/link.ts";
 import { ingestCardData } from "./pipeline/db.ts";
 import { collapseDuplicates } from "./pipeline/dedup.ts";
-import { overlayDbOverrides } from "./pipeline/overrides-db.ts";
+import {
+  overlayDbOverrides,
+  overlayDbSetOverrides,
+} from "./pipeline/overrides-db.ts";
 import { createSupabase } from "./supabase.ts";
 import {
   enqueueCardImageCatalogJob,
@@ -103,6 +106,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // 5–7. Overlay DB overrides, preserve unchanged R2 media, then atomic
     // upsert + prune. Changed/missing images are processed asynchronously.
     const supabase = createSupabase(env);
+    const finalSets = await overlayDbSetOverrides(supabase, ingestSets);
     const finalCards = await overlayDbOverrides(supabase, cards);
 
     // Image preparation is advisory next to the card upsert: it only carries
@@ -128,7 +132,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       });
     }
 
-    await ingestCardData(supabase, ingestSets, finalCards);
+    await ingestCardData(supabase, finalSets, finalCards);
 
     // The card data is committed by this point. Enqueuing the catalogue scan is
     // only a prompt to go host images, and the next scheduled run re-sends it,
@@ -143,7 +147,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
 
     const elapsedMs = Date.now() - t0;
     logger.info("Ingestion complete", {
-      sets: ingestSets.length,
+      sets: finalSets.length,
       cards: finalCards.length,
       imageJobs: preparedImages.jobs.length,
       reusedImages: preparedImages.reused,
@@ -153,7 +157,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     });
     return {
       cardsCount: finalCards.length,
-      setsCount: ingestSets.length,
+      setsCount: finalSets.length,
       imageJobsCount: preparedImages.jobs.length,
       elapsedMs,
       ok: true,
