@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { Elysia } from "elysia";
 import {
   AdminRepositoryError,
+  type AdminAuditPage,
+  type AdminAuditQuery,
   type AdminDataRepository,
   type AdminRpcResult,
   type AdminSlugCard,
@@ -93,6 +95,20 @@ class StubAdminRepository implements AdminDataRepository {
     return new Set(
       [...this.takenSlugs].filter((slug) => slug.startsWith(baseSlug)),
     );
+  }
+
+  auditQueries: AdminAuditQuery[] = [];
+  auditPage: AdminAuditPage = { entries: [], total: 0 };
+  auditError: AdminRepositoryError | null = null;
+
+  async listAuditLog(query: AdminAuditQuery): Promise<AdminAuditPage> {
+    this.auditQueries.push(query);
+    if (this.auditError) {
+      const error = this.auditError;
+      this.auditError = null;
+      throw error;
+    }
+    return this.auditPage;
   }
 }
 
@@ -485,6 +501,87 @@ describe("admin API", () => {
     expect(imageBindings.stored).toHaveLength(1);
     expect(imageBindings.deleted).toHaveLength(0);
     expect(repository.calls[0]?.name).toBe("admin_set_card_image");
+  });
+
+  describe("GET /admin/audit-log", () => {
+    const entry = {
+      id: 42,
+      actor_id: ADMIN_ID,
+      action: "card.patch",
+      target_type: "card",
+      target_id: "card-1",
+      detail: { name: "Renamed" },
+      created_at: "2026-07-30T12:00:00Z",
+    };
+
+    test("requires an admin token", async () => {
+      const missing = await app.handle(
+        new Request("http://localhost/api/v1/admin/audit-log"),
+      );
+      expect(missing.status).toBe(401);
+
+      const nonAdmin = await app.handle(
+        jsonRequest("/admin/audit-log", "GET", undefined, "user-token"),
+      );
+      expect(nonAdmin.status).toBe(403);
+      expect(repository.auditQueries).toHaveLength(0);
+    });
+
+    test("returns entries with the resolved paging window", async () => {
+      repository.auditPage = { entries: [entry], total: 1 };
+
+      const response = await app.handle(jsonRequest("/admin/audit-log", "GET"));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        entries: [entry],
+        total: 1,
+        limit: 50,
+        offset: 0,
+      });
+    });
+
+    test("passes filters through and clamps the limit", async () => {
+      await app.handle(
+        jsonRequest(
+          "/admin/audit-log?limit=5000&offset=20&action=card.delete&target_type=card&target_id=card-9&actor_id=" +
+            ADMIN_ID,
+          "GET",
+        ),
+      );
+
+      expect(repository.auditQueries[0]).toEqual({
+        limit: 200,
+        offset: 20,
+        action: "card.delete",
+        targetType: "card",
+        targetId: "card-9",
+        actorId: ADMIN_ID,
+      });
+    });
+
+    test("floors a negative or unparseable window to the defaults", async () => {
+      await app.handle(
+        jsonRequest("/admin/audit-log?limit=0&offset=-10", "GET"),
+      );
+
+      expect(repository.auditQueries[0]).toEqual(
+        expect.objectContaining({ limit: 50, offset: 0 }),
+      );
+    });
+
+    test("does not leak database messages when the read fails", async () => {
+      repository.auditError = new AdminRepositoryError(
+        "relation admin_audit_log does not exist",
+        "42P01",
+      );
+
+      const response = await app.handle(jsonRequest("/admin/audit-log", "GET"));
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({
+        error: "Admin operation failed",
+        code: "ADMIN_OPERATION_FAILED",
+      });
+    });
   });
 });
 

@@ -9,6 +9,7 @@ import {
   ExternalLinkIcon,
   FlagIcon,
   LayoutList,
+  PencilLine,
   Rows2,
 } from "lucide-react";
 
@@ -67,7 +68,14 @@ function parseViewParam(raw: string | null): CardDetailViewPreference | null {
   return null;
 }
 
-export function CardDetailView({ detail }: { detail: CardDetail }) {
+export function CardDetailView({
+  detail,
+  isAdmin = false,
+}: {
+  detail: CardDetail;
+  /** Resolved server-side; gates the inline link into the admin card editor. */
+  isAdmin?: boolean;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { accessibility, patchAccessibility } = useSitePreferences();
@@ -154,6 +162,14 @@ export function CardDetailView({ detail }: { detail: CardDetail }) {
               Simple
             </ToggleGroupItem>
           </ToggleGroup>
+          {isAdmin ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/admin/cards/${encodeURIComponent(card.id)}/edit`}>
+                <PencilLine aria-hidden="true" />
+                Edit
+              </Link>
+            </Button>
+          ) : null}
           <ShareButton title={card.name} path={cardHref(card)} />
         </div>
       </div>

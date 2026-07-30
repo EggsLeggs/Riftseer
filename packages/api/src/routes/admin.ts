@@ -23,6 +23,7 @@ import { ErrorSchema } from "../schemas";
 const DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
 const NON_BLANK_PATTERN = ".*\\S.*";
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+const AUDIT_LOG_MAX_LIMIT = 200;
 const ADMIN_IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 const NullableStringSchema = t.Nullable(t.String());
@@ -221,6 +222,23 @@ const SlugMutationResponseSchema = t.Object({
 const SetMutationResponseSchema = t.Object({
   ok: t.Literal(true),
   set_code: t.String(),
+});
+
+const AuditEntrySchema = t.Object({
+  id: t.Number(),
+  actor_id: t.String(),
+  action: t.String(),
+  target_type: t.String(),
+  target_id: t.Nullable(t.String()),
+  detail: t.Record(t.String(), t.Unknown()),
+  created_at: t.String(),
+});
+
+const AuditLogResponseSchema = t.Object({
+  entries: t.Array(AuditEntrySchema),
+  total: t.Number(),
+  limit: t.Number(),
+  offset: t.Number(),
 });
 
 const ImageMutationResponseSchema = t.Object({
@@ -545,6 +563,67 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         code: "ADMIN_OPERATION_FAILED",
       });
     })
+    .get(
+      "/audit-log",
+      async ({ query, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+
+        const limit = Math.min(
+          Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
+          AUDIT_LOG_MAX_LIMIT,
+        );
+        const offset = Math.max(
+          Number.parseInt(query.offset ?? "0", 10) || 0,
+          0,
+        );
+
+        const result = await safely("audit_log.list", () =>
+          repository.listAuditLog({
+            limit,
+            offset,
+            action: query.action?.trim() || undefined,
+            targetType: query.target_type?.trim() || undefined,
+            targetId: query.target_id?.trim() || undefined,
+            actorId: query.actor_id?.trim() || undefined,
+          }),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+
+        return {
+          entries: result.data.entries,
+          total: result.data.total,
+          limit,
+          offset,
+        };
+      },
+      {
+        query: t.Object({
+          limit: t.Optional(t.String()),
+          offset: t.Optional(t.String()),
+          action: t.Optional(t.String({ maxLength: 100 })),
+          target_type: t.Optional(t.String({ maxLength: 50 })),
+          target_id: t.Optional(t.String({ maxLength: 128 })),
+          actor_id: t.Optional(t.String({ maxLength: 64 })),
+        }),
+        response: {
+          200: AuditLogResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Read the admin audit log",
+          description:
+            "Returns admin mutations newest first, optionally filtered by action, target, or actor.",
+        },
+      },
+    )
     .post(
       "/cards",
       async ({ body, adminUser, status }) => {
