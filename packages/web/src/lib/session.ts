@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/features/auth/api";
 import type { Session, SessionUser } from "@/features/auth/types";
 import { env } from "@/lib/env";
 
@@ -60,6 +61,31 @@ export async function requireAuth(next?: string): Promise<Session> {
     const params = next ? `?next=${encodeURIComponent(next)}` : "";
     redirect(`/auth/login${params}`);
   }
+  return session;
+}
+
+/**
+ * Whether the signed-in user is an admin. Safe to call from any server
+ * component — returns false (never throws or redirects) when signed out or when
+ * the API is unreachable, so admin affordances simply stay hidden.
+ */
+export async function isAdminSession(): Promise<boolean> {
+  const session = await getSession();
+  if (!session) return false;
+  const user = await getCurrentUser(session.accessToken);
+  return user?.is_admin === true;
+}
+
+/**
+ * Admin equivalent of {@link requireAuth}: signed-out users go to login, and
+ * signed-in non-admins are redirected home rather than shown the admin shell.
+ * The API enforces the same allowlist on every mutation, so this is a UI gate,
+ * not the security boundary.
+ */
+export async function requireAdmin(next?: string): Promise<Session> {
+  const session = await requireAuth(next);
+  const user = await getCurrentUser(session.accessToken);
+  if (!user?.is_admin) redirect("/");
   return session;
 }
 

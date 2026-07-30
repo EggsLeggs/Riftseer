@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
-import { Star, Users } from "lucide-react";
+import { ShieldCheck, Star, Users } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -17,9 +17,10 @@ interface UserNavProps {
   handle?: string;
   isSupporter?: boolean;
   isMember?: boolean;
+  isAdmin?: boolean;
 }
 
-export function UserNav({ handle, isSupporter, isMember }: UserNavProps) {
+export function UserNav({ handle, isSupporter, isMember, isAdmin }: UserNavProps) {
   const [pending, startTransition] = useTransition();
 
   return (
@@ -40,6 +41,17 @@ export function UserNav({ handle, isSupporter, isMember }: UserNavProps) {
         <DropdownMenuItem asChild>
           <Link href="/settings">Settings</Link>
         </DropdownMenuItem>
+        {isAdmin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin">
+                <ShieldCheck className="size-3.5" aria-hidden="true" />
+                Admin
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={() => startTransition(() => logoutAction())}
