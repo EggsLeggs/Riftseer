@@ -4,11 +4,24 @@ import type {
   AdminAuditFilters,
   AdminAuditPage,
   AdminCardDefinition,
+  AdminCardLegalities,
   AdminCardMutationResult,
   AdminCardPatch,
+  AdminCardRulings,
+  AdminFormatDeleteResult,
+  AdminFormatInput,
+  AdminFormatListResult,
+  AdminFormatMutationResult,
+  AdminFormatPatch,
   AdminImageMutationResult,
+  AdminLegalityMutationResult,
+  AdminLegalityStatusInput,
   AdminRelationshipEntry,
+  AdminReorderResult,
   AdminResult,
+  AdminRulingInput,
+  AdminRulingMutationResult,
+  AdminRulingPatch,
   AdminSetDefinition,
   AdminSetMutationResult,
   AdminSetPatch,
@@ -107,6 +120,10 @@ function cardPath(cardId: string, suffix = ""): string {
 
 function setPath(setCode: string): string {
   return `/sets/${encodeURIComponent(setCode)}`;
+}
+
+function formatPath(code: string): string {
+  return `/formats/${encodeURIComponent(code)}`;
 }
 
 export const adminApi = {
@@ -259,6 +276,151 @@ export const adminApi = {
       path: setPath(setCode),
       accessToken,
       body: reason ? { reason } : {},
+    });
+  },
+
+  // ── Formats ─────────────────────────────────────────────────────────────────
+
+  /** Includes retired formats and the counts a delete would cascade away. */
+  listFormats(
+    accessToken: string,
+  ): Promise<AdminResult<AdminFormatListResult>> {
+    return request({ method: "GET", path: "/formats", accessToken });
+  },
+
+  createFormat(
+    accessToken: string,
+    input: AdminFormatInput,
+  ): Promise<AdminResult<AdminFormatMutationResult>> {
+    return request({
+      method: "POST",
+      path: "/formats",
+      accessToken,
+      body: input,
+    });
+  },
+
+  patchFormat(
+    accessToken: string,
+    code: string,
+    patch: AdminFormatPatch,
+  ): Promise<AdminResult<AdminFormatMutationResult>> {
+    return request({
+      method: "PATCH",
+      path: formatPath(code),
+      accessToken,
+      body: { patch },
+    });
+  },
+
+  deleteFormat(
+    accessToken: string,
+    code: string,
+  ): Promise<AdminResult<AdminFormatDeleteResult>> {
+    return request({
+      method: "DELETE",
+      path: formatPath(code),
+      accessToken,
+    });
+  },
+
+  /** Send the complete ordered list — an unknown code is rejected, not skipped. */
+  reorderFormats(
+    accessToken: string,
+    codes: string[],
+  ): Promise<AdminResult<AdminReorderResult>> {
+    return request({
+      method: "PUT",
+      path: "/formats/order",
+      accessToken,
+      body: { codes },
+    });
+  },
+
+  // ── Legalities and rulings ──────────────────────────────────────────────────
+
+  listCardLegalities(
+    accessToken: string,
+    cardId: string,
+  ): Promise<AdminResult<AdminCardLegalities>> {
+    return request({
+      method: "GET",
+      path: cardPath(cardId, "/legalities"),
+      accessToken,
+    });
+  },
+
+  /**
+   * `applyToAllPrintings` writes the card-level status and clears every
+   * per-printing override for that format; without it only this printing moves.
+   * Pass `"default"` to clear the stored status back to legal.
+   */
+  setCardLegality(
+    accessToken: string,
+    cardId: string,
+    formatCode: string,
+    status: AdminLegalityStatusInput,
+    applyToAllPrintings: boolean,
+  ): Promise<AdminResult<AdminLegalityMutationResult>> {
+    return request({
+      method: "PUT",
+      path: cardPath(cardId, "/legalities"),
+      accessToken,
+      body: {
+        format_code: formatCode,
+        status,
+        apply_to_all_printings: applyToAllPrintings,
+      },
+    });
+  },
+
+  listCardRulings(
+    accessToken: string,
+    cardId: string,
+  ): Promise<AdminResult<AdminCardRulings>> {
+    return request({
+      method: "GET",
+      path: cardPath(cardId, "/rulings"),
+      accessToken,
+    });
+  },
+
+  createCardRuling(
+    accessToken: string,
+    cardId: string,
+    input: AdminRulingInput,
+  ): Promise<AdminResult<AdminRulingMutationResult>> {
+    return request({
+      method: "POST",
+      path: cardPath(cardId, "/rulings"),
+      accessToken,
+      body: input,
+    });
+  },
+
+  patchCardRuling(
+    accessToken: string,
+    cardId: string,
+    rulingId: string,
+    patch: AdminRulingPatch,
+  ): Promise<AdminResult<AdminRulingMutationResult>> {
+    return request({
+      method: "PATCH",
+      path: cardPath(cardId, `/rulings/${encodeURIComponent(rulingId)}`),
+      accessToken,
+      body: { patch },
+    });
+  },
+
+  deleteCardRuling(
+    accessToken: string,
+    cardId: string,
+    rulingId: string,
+  ): Promise<AdminResult<AdminRulingMutationResult>> {
+    return request({
+      method: "DELETE",
+      path: cardPath(cardId, `/rulings/${encodeURIComponent(rulingId)}`),
+      accessToken,
     });
   },
 };

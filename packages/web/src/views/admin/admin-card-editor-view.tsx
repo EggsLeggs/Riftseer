@@ -31,6 +31,8 @@ import {
 import { AdminCardImagePanel } from "./admin-card-image-panel";
 import { AdminCardRelationshipsPanel } from "./admin-card-relationships-panel";
 import { AdminCardPlacementPanel } from "./admin-card-placement-panel";
+import { AdminCardLegalitiesPanel } from "./admin-card-legalities-panel";
+import { AdminCardRulingsPanel } from "./admin-card-rulings-panel";
 
 const ORIENTATION_OPTIONS = [
   { value: "", label: "Auto / unset" },
@@ -465,6 +467,12 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
         <AdminCardImagePanel card={card} />
         <Separator />
         <AdminCardRelationshipsPanel card={card} />
+        <Separator />
+        {/* Legalities and rulings save on their own — they are keyed on the
+            card's oracle group, not on the printing's override patch. */}
+        <AdminCardLegalitiesPanel card={card} />
+        <Separator />
+        <AdminCardRulingsPanel card={card} />
         <Separator />
         <AdminCardPlacementPanel card={card} setCodes={setCodes} />
       </div>

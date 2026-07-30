@@ -12,9 +12,13 @@
 import type { CardDataProvider } from "../provider.ts";
 import type {
   Card,
+  CardLegality,
+  CardLegalityStatus,
   CardRequest,
+  CardRuling,
   CardSearchOptions,
   CardSearchResult,
+  Format,
   ResolvedCard,
   CardAttributes,
   CardClassification,
@@ -28,6 +32,7 @@ import type {
   CardPriceEntry,
 } from "../types.ts";
 import { repairFlavourText } from "@riftseer/types/card-text";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 import { logger } from "../logger.ts";
 import { getSupabaseClient } from "../supabase/client.ts";
 import { normalizeCardName } from "../normalize.ts";
@@ -68,6 +73,7 @@ interface DBCardRow {
   id: string;
   name: string;
   name_normalized: string;
+  oracle_key: string | null;
   collector_number: string | null;
   released_at: string | null;
   set_id: string | null;
@@ -91,7 +97,6 @@ interface DBCardRow {
   public_slug: string | null;
   updated_at: string;
   ingested_at: string;
-  rulings_id: string | null;
   sets: {
     set_code: string;
     set_name: string;
@@ -110,6 +115,9 @@ function dbRowToCard(row: DBCardRow): Card {
     id: row.id,
     name: row.name,
     name_normalized: row.name_normalized,
+    // Fall back to the name-derived key so a row that predates the column (or a
+    // manual card seeded before its patch landed) still resolves its rulings.
+    oracle_key: row.oracle_key ?? oracleKeyForName(row.name),
     collector_number: row.collector_number ?? undefined,
     released_at: row.released_at ?? undefined,
     external_ids: row.external_ids,
@@ -124,7 +132,6 @@ function dbRowToCard(row: DBCardRow): Card {
           card_count: row.sets.card_count ?? undefined,
         }
       : undefined,
-    rulings: row.rulings_id ? { rulings_id: row.rulings_id } : undefined,
     attributes: row.attributes,
     classification: row.classification,
     text: row.text?.flavour
@@ -147,6 +154,64 @@ function dbRowToCard(row: DBCardRow): Card {
     public_slug: row.public_slug ?? undefined,
     updated_at: row.updated_at,
     ingested_at: row.ingested_at,
+  };
+}
+
+// ─── Format / legality / ruling rows ─────────────────────────────────────────
+
+interface DBFormatRow {
+  id: string;
+  code: string;
+  name: string;
+  sort_order: number | null;
+  active: boolean | null;
+}
+
+interface DBLegalityRow {
+  format_id: string;
+  status: CardLegalityStatus;
+  updated_at: string | null;
+}
+
+interface DBCardRulingRow {
+  id: string;
+  card_id: string | null;
+  type: "ruling" | "note";
+  text: string;
+  dated: string | null;
+  source: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+function dbRowToFormat(row: DBFormatRow): Format {
+  return {
+    object: "format",
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    sort_order: row.sort_order ?? 0,
+    active: row.active ?? true,
+  };
+}
+
+function indexLegalityRows(
+  rows: DBLegalityRow[] | null,
+): Map<string, DBLegalityRow> {
+  return new Map((rows ?? []).map((row) => [row.format_id, row]));
+}
+
+function dbRowToCardRuling(row: DBCardRulingRow): CardRuling {
+  return {
+    object: "card_ruling",
+    id: row.id,
+    type: row.type,
+    text: row.text,
+    dated: row.dated ?? undefined,
+    source: row.source ?? undefined,
+    card_id: row.card_id ?? undefined,
+    created_at: row.created_at ?? undefined,
+    updated_at: row.updated_at ?? undefined,
   };
 }
 
@@ -779,6 +844,98 @@ export class SupabaseCardProvider implements CardDataProvider {
     if (error) throw new Error(`getRandomCard failed: ${error.message}`);
     const row = data?.[0] as DBCardRow | undefined;
     return row ? dbRowToCard(row) : null;
+  }
+
+  async getFormats(
+    opts: { includeInactive?: boolean } = {},
+  ): Promise<Format[]> {
+    let query = getSupabaseClient()
+      .from("formats")
+      .select("id, code, name, sort_order, active");
+    if (!opts.includeInactive) query = query.eq("active", true);
+
+    const { data, error } = await query
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+
+    if (error) throw new Error(`getFormats failed: ${error.message}`);
+    return ((data ?? []) as DBFormatRow[]).map(dbRowToFormat);
+  }
+
+  /**
+   * Resolve one printing's legality in every active format.
+   *
+   * Precedence is printing override → oracle row → default `legal`, and every
+   * active format gets an entry so the card page can render a complete table
+   * without knowing which statuses happen to be stored.
+   */
+  async getCardLegalities(
+    oracleKey: string,
+    cardId: string,
+  ): Promise<CardLegality[]> {
+    const supabase = getSupabaseClient();
+    const [formats, oracleRows, overrideRows] = await Promise.all([
+      this.getFormats(),
+      supabase
+        .from("card_legalities")
+        .select("format_id, status, updated_at")
+        .eq("oracle_key", oracleKey),
+      supabase
+        .from("card_legality_overrides")
+        .select("format_id, status, updated_at")
+        .eq("card_id", cardId),
+    ]);
+
+    if (oracleRows.error) {
+      throw new Error(`getCardLegalities oracle failed: ${oracleRows.error.message}`);
+    }
+    if (overrideRows.error) {
+      throw new Error(
+        `getCardLegalities overrides failed: ${overrideRows.error.message}`,
+      );
+    }
+
+    const byOracle = indexLegalityRows(oracleRows.data);
+    const byPrinting = indexLegalityRows(overrideRows.data);
+
+    return formats.map((format) => {
+      const override = byPrinting.get(format.id);
+      const oracle = byOracle.get(format.id);
+      const winner = override ?? oracle;
+      return {
+        object: "card_legality",
+        format_id: format.id,
+        format_code: format.code,
+        format_name: format.name,
+        status: winner?.status ?? "legal",
+        scope: override ? "printing" : oracle ? "oracle" : "default",
+        ...(winner?.updated_at ? { updated_at: winner.updated_at } : {}),
+      };
+    });
+  }
+
+  /**
+   * Rulings and notes visible on one printing: everything shared across the
+   * oracle group (`card_id IS NULL`) plus anything scoped to this printing.
+   */
+  async getCardRulings(
+    oracleKey: string,
+    cardId: string,
+  ): Promise<CardRuling[]> {
+    const { data, error } = await getSupabaseClient()
+      .from("card_rulings")
+      .select("id, card_id, type, text, dated, source, created_at, updated_at")
+      .eq("oracle_key", oracleKey)
+      .order("dated", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
+
+    if (error) throw new Error(`getCardRulings failed: ${error.message}`);
+    // Printing scoping is applied here rather than as an `or(...)` filter: card
+    // ids for manual cards are admin-chosen text, and interpolating one into a
+    // PostgREST filter string would let a comma or parenthesis rewrite the query.
+    return ((data ?? []) as DBCardRulingRow[])
+      .filter((row) => row.card_id === null || row.card_id === cardId)
+      .map(dbRowToCardRuling);
   }
 
   getStats(): { lastRefresh: number; cardCount: number } {

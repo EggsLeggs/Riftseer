@@ -15,6 +15,7 @@ Because it has no runtime dependencies it can safely be imported from anywhere �
 | `src/card-detail.ts` | `CardDetail` and `CardPrintingSummary` — the aggregate payload behind `GET /api/v1/cards/detail` |
 | `src/card-text.ts` | `normalizeCardTextLayout()` — paragraph splitting for rules text, shared by every renderer |
 | `src/keywords.ts` | `[Keyword]` badge helpers — `KEYWORD_STYLES`, `styleForKeyword()`, `isKeywordTag()` |
+| `src/oracle.ts` | `oracleKeyForName()` — the base-name key that groups printings for rulings and legalities |
 | `src/parser.ts` | `parseCardRequests()` and `normalizeCardName()` |
 | `src/icons.ts` | `TOKEN_REGEX`, `TOKEN_ICON_MAP`, and `tokenPlainLabel()` (copy-paste stand-ins for icon tokens) |
 | `src/slug.ts` | Public-URL slug rules — `slugifyCardName`, `buildPublicSlugSegments`, `joinPublicSlug`, `withNameCollisionSuffix`, `generatePublicSlug`, `absoluteRiftseerUri` |
@@ -29,6 +30,7 @@ import { parseCardRequests, normalizeCardName } from "@riftseer/types";
 // Sub-path exports (tree-shakeable)
 import { normalizeCardTextLayout } from "@riftseer/types/card-text";
 import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types/icons";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 import { parseCardRequests, normalizeCardName } from "@riftseer/types/parser";
 import {
   buildPublicSlugSegments,

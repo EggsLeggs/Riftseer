@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 
 export interface AdminRpcResult {
   ok: boolean;
@@ -46,6 +47,62 @@ export interface AdminAuditPage {
   total: number;
 }
 
+export type AdminLegalityStatus = "legal" | "not_legal" | "banned";
+
+/**
+ * A format as the admin sees it: including retired formats, and with the number
+ * of legality rows that a delete would cascade away, so the UI can warn first.
+ */
+export interface AdminFormat {
+  id: string;
+  code: string;
+  name: string;
+  sort_order: number;
+  active: boolean;
+  legality_count: number;
+  override_count: number;
+}
+
+/**
+ * One format's legality for one printing, with both layers exposed separately.
+ * The public payload only carries the resolved status; the editor needs to know
+ * whether it came from the shared card row or this printing's override so the
+ * "apply to all printings" toggle can be shown in the right state.
+ */
+export interface AdminCardLegalityEntry {
+  format_id: string;
+  format_code: string;
+  format_name: string;
+  format_active: boolean;
+  oracle_status: AdminLegalityStatus | null;
+  printing_status: AdminLegalityStatus | null;
+  effective_status: AdminLegalityStatus;
+}
+
+export interface AdminCardLegalities {
+  card_id: string;
+  oracle_key: string;
+  entries: AdminCardLegalityEntry[];
+}
+
+export interface AdminCardRuling {
+  id: string;
+  type: "ruling" | "note";
+  text: string;
+  dated: string | null;
+  source: string | null;
+  /** Null means the entry applies to every printing of the card. */
+  card_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface AdminCardRulings {
+  card_id: string;
+  oracle_key: string;
+  entries: AdminCardRuling[];
+}
+
 export interface AdminDataRepository {
   callRpc(
     name: string,
@@ -62,6 +119,13 @@ export interface AdminDataRepository {
     excludeCardId?: string,
   ): Promise<Set<string>>;
   listAuditLog(query: AdminAuditQuery): Promise<AdminAuditPage>;
+  listFormats(): Promise<AdminFormat[]>;
+  /**
+   * Returns null when the card does not exist, so callers can 404 rather than
+   * render an empty legality/ruling table for a card id that never existed.
+   */
+  listCardLegalities(cardId: string): Promise<AdminCardLegalities | null>;
+  listCardRulings(cardId: string): Promise<AdminCardRulings | null>;
 }
 
 export class AdminRepositoryError extends Error {
@@ -216,6 +280,176 @@ export function createAdminDataRepository(
         total: count ?? 0,
       };
     },
+
+    async listFormats() {
+      const [formats, legalities, overrides] = await Promise.all([
+        client
+          .from("formats")
+          .select("id, code, name, sort_order, active")
+          .order("sort_order", { ascending: true })
+          .order("name", { ascending: true }),
+        client.from("card_legalities").select("format_id"),
+        client.from("card_legality_overrides").select("format_id"),
+      ]);
+
+      for (const result of [formats, legalities, overrides]) {
+        if (result.error) {
+          throw new AdminRepositoryError(result.error.message, result.error.code);
+        }
+      }
+
+      // Counted client-side: there are a handful of formats, and PostgREST has
+      // no grouped-count that also returns the zero-row formats we must show.
+      const countByFormat = (rows: unknown[]): Map<string, number> => {
+        const counts = new Map<string, number>();
+        for (const row of rows) {
+          if (!isRecord(row) || typeof row.format_id !== "string") continue;
+          counts.set(row.format_id, (counts.get(row.format_id) ?? 0) + 1);
+        }
+        return counts;
+      };
+      const legalityCounts = countByFormat(legalities.data ?? []);
+      const overrideCounts = countByFormat(overrides.data ?? []);
+
+      return (formats.data ?? []).map((row) => ({
+        id: String(row.id),
+        code: String(row.code),
+        name: String(row.name),
+        sort_order: typeof row.sort_order === "number" ? row.sort_order : 0,
+        active: row.active !== false,
+        legality_count: legalityCounts.get(String(row.id)) ?? 0,
+        override_count: overrideCounts.get(String(row.id)) ?? 0,
+      }));
+    },
+
+    async listCardLegalities(cardId) {
+      const oracleKey = await loadOracleKey(client, cardId);
+      if (oracleKey === null) return null;
+
+      const [formats, oracleRows, overrideRows] = await Promise.all([
+        client
+          .from("formats")
+          .select("id, code, name, sort_order, active")
+          .order("sort_order", { ascending: true })
+          .order("name", { ascending: true }),
+        client
+          .from("card_legalities")
+          .select("format_id, status")
+          .eq("oracle_key", oracleKey),
+        client
+          .from("card_legality_overrides")
+          .select("format_id, status")
+          .eq("card_id", cardId),
+      ]);
+
+      for (const result of [formats, oracleRows, overrideRows]) {
+        if (result.error) {
+          throw new AdminRepositoryError(result.error.message, result.error.code);
+        }
+      }
+
+      const byOracle = indexStatuses(oracleRows.data ?? []);
+      const byPrinting = indexStatuses(overrideRows.data ?? []);
+
+      return {
+        card_id: cardId,
+        oracle_key: oracleKey,
+        entries: (formats.data ?? []).map((row) => {
+          const formatId = String(row.id);
+          const oracleStatus = byOracle.get(formatId) ?? null;
+          const printingStatus = byPrinting.get(formatId) ?? null;
+          return {
+            format_id: formatId,
+            format_code: String(row.code),
+            format_name: String(row.name),
+            format_active: row.active !== false,
+            oracle_status: oracleStatus,
+            printing_status: printingStatus,
+            effective_status:
+              printingStatus ?? oracleStatus ?? ("legal" as AdminLegalityStatus),
+          };
+        }),
+      };
+    },
+
+    async listCardRulings(cardId) {
+      const oracleKey = await loadOracleKey(client, cardId);
+      if (oracleKey === null) return null;
+
+      const { data, error } = await client
+        .from("card_rulings")
+        .select("id, card_id, type, text, dated, source, created_at, updated_at")
+        .eq("oracle_key", oracleKey)
+        .order("dated", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
+      if (error) {
+        throw new AdminRepositoryError(error.message, error.code);
+      }
+
+      return {
+        card_id: cardId,
+        oracle_key: oracleKey,
+        // Entries scoped to a *sibling* printing are dropped: they are not
+        // visible on this printing and are edited from that printing's page.
+        entries: (data ?? [])
+          .filter((row) => row.card_id === null || row.card_id === cardId)
+          .map(parseCardRuling),
+      };
+    },
+  };
+}
+
+/**
+ * The oracle key for a live card, mirroring the SQL `admin__card_oracle_key`
+ * fallback so a row that predates the column still resolves its group.
+ */
+async function loadOracleKey(
+  client: SupabaseClient,
+  cardId: string,
+): Promise<string | null> {
+  const { data, error } = await client
+    .from("cards")
+    .select("name, oracle_key")
+    .eq("id", cardId)
+    .maybeSingle();
+  if (error) {
+    throw new AdminRepositoryError(error.message, error.code);
+  }
+  if (!isRecord(data)) return null;
+  if (typeof data.oracle_key === "string" && data.oracle_key) {
+    return data.oracle_key;
+  }
+  return typeof data.name === "string" ? oracleKeyForName(data.name) : null;
+}
+
+function indexStatuses(
+  rows: unknown[],
+): Map<string, AdminLegalityStatus> {
+  const byFormat = new Map<string, AdminLegalityStatus>();
+  for (const row of rows) {
+    if (!isRecord(row)) continue;
+    if (typeof row.format_id !== "string") continue;
+    if (
+      row.status === "legal" ||
+      row.status === "not_legal" ||
+      row.status === "banned"
+    ) {
+      byFormat.set(row.format_id, row.status);
+    }
+  }
+  return byFormat;
+}
+
+function parseCardRuling(row: Record<string, unknown>): AdminCardRuling {
+  return {
+    id: String(row.id ?? ""),
+    type: row.type === "note" ? "note" : "ruling",
+    text: typeof row.text === "string" ? row.text : "",
+    dated: typeof row.dated === "string" ? row.dated : null,
+    source: typeof row.source === "string" ? row.source : null,
+    card_id: typeof row.card_id === "string" ? row.card_id : null,
+    created_at: typeof row.created_at === "string" ? row.created_at : null,
+    updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
   };
 }
 

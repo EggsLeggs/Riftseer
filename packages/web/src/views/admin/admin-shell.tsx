@@ -2,13 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Layers, LayoutDashboard, Library, ScrollText } from "lucide-react";
+import {
+  Gavel,
+  Layers,
+  LayoutDashboard,
+  Library,
+  ScrollText,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/cards", label: "Cards", icon: Library },
   { href: "/admin/sets", label: "Sets", icon: Layers },
+  { href: "/admin/formats", label: "Formats", icon: Gavel },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ] as const;
 

@@ -105,7 +105,7 @@ absolute URL. Never assemble card paths by hand.
 | `features/admin/card-id.ts` | `generateCardId()` — 24-char hex IDs in the RiftCodex ObjectId space, for manual cards |
 | `features/admin/dates.ts` | `toDateInputValue()` — coerces card/set dates for `<input type="date">` |
 | `features/admin/hooks/use-admin-mutations.ts` | TanStack Query mutations + toasts, wrapping the server actions |
-| `views/admin/` | Dashboard, card search, new-card form, card editor and its panels, set manager, audit log |
+| `views/admin/` | Dashboard, card search, new-card form, card editor and its panels, set manager, format manager, audit log |
 
 `/admin/audit` reads `GET /api/v1/admin/audit-log`, the one admin endpoint that
 is not a mutation. Its `action` filter list is hard-coded from the RPC names in
@@ -121,6 +121,16 @@ is filled in on the editor page it redirects to.
 request so revoking `ADMIN_USER_IDS` takes effect immediately. `requireAdmin()`
 is a UI gate only; the API enforces the same allowlist on every mutation, so
 never treat a client-side check as the security boundary.
+
+Format legalities and rulings are **not** part of the card patch — they are keyed
+on the card's oracle group rather than the printing, so their panels
+(`admin-card-legalities-panel.tsx`, `admin-card-rulings-panel.tsx`) save on their
+own. Each has an "applies to every printing" toggle: on, the change is shared by
+all printings of the card; off, it affects only the printing being edited. For
+legality, a card with nothing stored is **legal**, so the `default` option
+deletes the row rather than storing a status. `/admin/formats` manages the
+formats themselves — deleting one cascades away its stored statuses, so retiring
+it (`active: false`) is usually what you want.
 
 Card edits use **JSON merge-patch** semantics: an omitted key is left alone and
 an explicit `null` clears the value. `buildCardPatch` diffs the form against the

@@ -23,9 +23,10 @@ import { AdminPageHeader } from "./admin-page-header";
 const PAGE_SIZE = 50;
 
 /**
- * The exact `action` values the Phase 3 RPCs write (see
- * `supabase/migrations/20260730120000_phase3_admin_api.sql`). Keep in sync when
- * an admin RPC is added — a stale entry here silently filters to nothing.
+ * The exact `action` values the admin RPCs write (see the Phase 3 migration
+ * `20260730120000_phase3_admin_api.sql` and the Phase 5 migration
+ * `20260731000000_phase5_rulings_legalities_formats.sql`). Keep in sync when an
+ * admin RPC is added — a stale entry here silently filters to nothing.
  */
 const ACTIONS = [
   "card.create_manual",
@@ -36,9 +37,17 @@ const ACTIONS = [
   "card.regenerate_slug",
   "card.image",
   "card.relationships",
+  "card.legality",
+  "card.ruling.create",
+  "card.ruling.patch",
+  "card.ruling.delete",
   "set.create",
   "set.patch",
   "set.delete",
+  "format.create",
+  "format.patch",
+  "format.delete",
+  "format.reorder",
 ] as const;
 
 function formatTimestamp(value: string): string {

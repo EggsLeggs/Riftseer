@@ -40,7 +40,9 @@ import {
   PowerStat,
   RarityIcon,
 } from "@/features/cards/card-icons";
+import { CardLegalityGrid } from "@/features/cards/card-legalities";
 import { CardPrintingsTable } from "@/features/cards/card-printings-table";
+import { CardRulings } from "@/features/cards/card-rulings";
 import { CardTags } from "@/features/cards/card-tags";
 import { CardText } from "@/features/cards/card-text";
 import { CopyButton } from "@/features/cards/copy-button";
@@ -195,7 +197,27 @@ export function CardDetailView({
       <Separator />
 
       <ToolsPanel detail={detail} imageUrl={imageUrl} />
+
+      {/* Rulings sit last and only appear when there are some, so the section
+          and its separator never show as an empty heading. */}
+      {detail.rulings.length > 0 ? (
+        <>
+          <Separator />
+          <RulingsPanel detail={detail} />
+        </>
+      ) : null}
     </div>
+  );
+}
+
+function RulingsPanel({ detail }: { detail: CardDetail }) {
+  return (
+    <section aria-label={`Notes and rules information for ${detail.card.name}`}>
+      <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
+        Notes &amp; rulings
+      </h2>
+      <CardRulings rulings={detail.rulings} />
+    </section>
   );
 }
 
@@ -329,6 +351,18 @@ function DetailedCardBody({
                   "—"}
               </span>
             </DetailRow>
+
+            {detail.legalities.length > 0 ? (
+              <DetailRow label="Legality" alignTop>
+                {/* Single column here: this cell is the narrower two-thirds of a
+                    5-of-12 column, too tight for a badge plus a full format name
+                    twice over. */}
+                <CardLegalityGrid
+                  legalities={detail.legalities}
+                  className="sm:grid-cols-1"
+                />
+              </DetailRow>
+            ) : null}
           </TableBody>
         </Table>
       </section>
@@ -433,6 +467,15 @@ function SimpleCardBody({
           <p className="text-muted-foreground mt-6 max-w-prose text-sm italic whitespace-pre-line">
             {card.text.flavour}
           </p>
+        ) : null}
+
+        {detail.legalities.length > 0 ? (
+          <div className="mt-8">
+            <h2 className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
+              Legality
+            </h2>
+            <CardLegalityGrid legalities={detail.legalities} />
+          </div>
         ) : null}
       </section>
 

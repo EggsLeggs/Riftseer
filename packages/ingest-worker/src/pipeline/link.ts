@@ -7,6 +7,7 @@
  */
 
 import { normalizeCardName, type Card, type RelatedCard } from "@riftseer/types";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 import { logger } from "../utils.ts";
 
 // Matches a capitalized token name in rules text, optionally followed by a type
@@ -256,21 +257,6 @@ export function linkSignatures(cards: Card[]): void {
   logger.info("Signature linking complete", { linkedSignatures });
 }
 
-/**
- * Strip alternate-art/signature suffixes and token face disambiguators to get a
- * base name for grouping. Cards that share the same base name but have different
- * ids are related printings, including token printings.
- */
-function baseName(name: string): string {
-  let s = name.split("//")[0]?.trim() ?? name.trim();
-  let prev: string;
-  do {
-    prev = s;
-    s = s.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  } while (s !== prev);
-  return normalizeCardName(s);
-}
-
 function toPrintingStub(other: Card): RelatedCard {
   return {
     object: "related_card",
@@ -286,11 +272,13 @@ function toPrintingStub(other: Card): RelatedCard {
 }
 
 export function linkRelatedPrintings(cards: Card[]): void {
-  // Group all cards by base name. Tokens are included so variants such as
+  // Group all cards by oracle key — the same base-name derivation that keys
+  // rulings and legalities, so a printing's siblings here are exactly the
+  // printings that share its rulings. Tokens are included so variants such as
   // "Recruit (271) // Buff" / "Recruit (272) // Buff" link to each other.
   const byBase = new Map<string, Card[]>();
   for (const card of cards) {
-    const key = baseName(card.name);
+    const key = oracleKeyForName(card.name);
     if (!byBase.has(key)) byBase.set(key, []);
     byBase.get(key)!.push(card);
   }

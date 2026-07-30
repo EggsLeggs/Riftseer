@@ -132,6 +132,44 @@ describe("API routes", () => {
       expect(body.purchase.cardmarket).toContain("cardmarket.com");
     });
 
+    it("carries the card's rulings and resolved legalities", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/cards/detail?id=${STUB_CARD.id}`),
+      );
+      const body = (await res.json()) as any;
+
+      expect(body.rulings).toHaveLength(1);
+      expect(body.rulings[0]).toMatchObject({
+        object: "card_ruling",
+        type: "ruling",
+        dated: "2026-03-14",
+      });
+      // No card_id on the stub entry — it applies to every printing.
+      expect(body.rulings[0].card_id).toBeUndefined();
+
+      expect(body.legalities).toHaveLength(1);
+      expect(body.legalities[0]).toMatchObject({
+        object: "card_legality",
+        format_code: "standard",
+        status: "banned",
+        scope: "oracle",
+      });
+    });
+
+    it("reports a card with nothing stored as legal with no rulings", async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/api/v1/cards/detail?id=${STUB_TOKEN_ID}`),
+      );
+      const body = (await res.json()) as any;
+
+      expect(body.rulings).toEqual([]);
+      expect(body.legalities).toHaveLength(1);
+      expect(body.legalities[0]).toMatchObject({
+        status: "legal",
+        scope: "default",
+      });
+    });
+
     it("returns the same payload when looked up by slug", async () => {
       const res = await app.handle(
         new Request("http://localhost/api/v1/cards/detail?slug=ogn/21/sun-disc"),
