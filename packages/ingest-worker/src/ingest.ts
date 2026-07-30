@@ -25,6 +25,7 @@ import { createSupabase } from "./supabase.ts";
 import {
   enqueueCardImageCatalogJob,
   prepareCardImageJobs,
+  type PreparedImageJobs,
 } from "./images/catalog.ts";
 
 export type { Env } from "./env.ts";
@@ -103,11 +104,30 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // upsert + prune. Changed/missing images are processed asynchronously.
     const supabase = createSupabase(env);
     const finalCards = await overlayDbOverrides(supabase, cards);
-    const preparedImages = await prepareCardImageJobs(
-      supabase,
-      finalCards,
-      env.CARD_IMAGE_BASE_URL,
-    );
+
+    // Image preparation is advisory next to the card upsert: it only carries
+    // hosted URLs forward and hashes sources. A failure costs one cycle of
+    // R2-hosted URLs — cards upsert with upstream media and no `source_hash`,
+    // and the next run re-hashes and re-queues them — which is far cheaper than
+    // discarding the authoritative RiftCodex data this run already fetched.
+    let preparedImages: PreparedImageJobs = {
+      jobs: [],
+      reused: 0,
+      withoutSource: 0,
+      adminPreserved: 0,
+    };
+    try {
+      preparedImages = await prepareCardImageJobs(
+        supabase,
+        finalCards,
+        env.CARD_IMAGE_BASE_URL,
+      );
+    } catch (err) {
+      logger.warn("Image preparation failed — upserting without media hashes", {
+        error: String(err),
+      });
+    }
+
     await ingestCardData(supabase, ingestSets, finalCards);
 
     // The card data is committed by this point. Enqueuing the catalogue scan is

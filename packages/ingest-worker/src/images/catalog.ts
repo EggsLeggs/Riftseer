@@ -76,10 +76,11 @@ export async function prepareCardImageJobs(
   cards: Card[],
   imageBaseUrl: string,
 ): Promise<PreparedImageJobs> {
-  // Degrade rather than throw: skipping preparation entirely would upsert cards
-  // with no `source_hash`, which the catalogue scan ignores — they would never
-  // be hosted. Without the previous rows we cannot prove media is unchanged, so
-  // every card is re-hashed and re-queued instead of failing the whole ingest.
+  // Degrade rather than throw. The caller already tolerates a failure here, but
+  // losing only the previous rows is recoverable in-place: without them we
+  // cannot prove media is unchanged, so every card is re-hashed and re-queued.
+  // That still leaves each card with a valid `source_hash`, which is what the
+  // catalogue scan needs to pick it up in this cycle rather than the next.
   let existingById: Map<string, CardMedia>;
   try {
     existingById = await loadExistingMedia(
