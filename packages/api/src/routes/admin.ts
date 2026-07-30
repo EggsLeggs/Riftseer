@@ -423,7 +423,11 @@ function normalizeBaseUrl(baseUrl: string): string {
 }
 
 async function sha256Hex(value: ArrayBuffer | Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", value);
+  // A `Uint8Array` is typed over `ArrayBufferLike`, which the DOM lib's
+  // `BufferSource` rejects because it admits `SharedArrayBuffer`. Every runtime
+  // we target accepts the view as-is, and copying would clone whole uploads, so
+  // assert the contract rather than reallocating.
+  const digest = await crypto.subtle.digest("SHA-256", value as BufferSource);
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");

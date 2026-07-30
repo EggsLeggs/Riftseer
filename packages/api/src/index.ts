@@ -38,7 +38,6 @@
 import { Elysia } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 import { cors } from "@elysiajs/cors";
-import { env } from "cloudflare:workers";
 import {
   createProvider,
   DeckSerializerV1,
@@ -66,17 +65,43 @@ import { withExecutionContext, type WaitUntilContext } from "./lib/background";
 const cardProvider = createProvider();
 const startTime = Date.now();
 
+/**
+ * The slice of the Worker env this module touches, declared structurally.
+ *
+ * Every workspace package that imports the `App` type (web, frontend) also
+ * type-checks this file, and those programs have neither
+ * `@cloudflare/workers-types` nor the generated `GeneratedEnv`. Importing
+ * `cloudflare:workers` or naming `GeneratedEnv` here breaks their builds, so
+ * the bindings are captured from the fetch handler instead.
+ */
+interface CardImageEnv {
+  CARD_IMAGES: AdminImageBindings["bucket"];
+  CARD_IMAGE_QUEUE: AdminImageBindings["queue"];
+  CARD_IMAGE_BASE_URL?: string;
+}
+
+let workerEnv: CardImageEnv | undefined;
+
+function requireWorkerEnv(): CardImageEnv {
+  if (!workerEnv) {
+    throw new Error("Worker bindings are unavailable outside a request");
+  }
+  return workerEnv;
+}
+
+// Every access is lazy, so the singleton can be built at module scope while the
+// bindings themselves only arrive with the first request.
 const adminImageBindings: AdminImageBindings = {
   bucket: {
     put: (key, value, options) =>
-      env.CARD_IMAGES.put(key, value, options),
-    delete: (key) => env.CARD_IMAGES.delete(key),
+      requireWorkerEnv().CARD_IMAGES.put(key, value, options),
+    delete: (key) => requireWorkerEnv().CARD_IMAGES.delete(key),
   },
   queue: {
-    send: (job) => env.CARD_IMAGE_QUEUE.send(job),
+    send: (job) => requireWorkerEnv().CARD_IMAGE_QUEUE.send(job),
   },
   get baseUrl() {
-    return env.CARD_IMAGE_BASE_URL ?? "https://img.riftseer.com";
+    return requireWorkerEnv().CARD_IMAGE_BASE_URL ?? "https://img.riftseer.com";
   },
 };
 
@@ -162,9 +187,10 @@ export type App = typeof app;
 export default {
   async fetch(
     request: Request,
-    _workerEnv: GeneratedEnv,
+    bindings: CardImageEnv,
     ctx: WaitUntilContext,
   ): Promise<Response> {
+    workerEnv = bindings;
     const url = new URL(request.url);
     return withExecutionContext(ctx, () => {
       if (url.pathname === "/api/v1/webhooks/metafy" && request.method === "POST") {
