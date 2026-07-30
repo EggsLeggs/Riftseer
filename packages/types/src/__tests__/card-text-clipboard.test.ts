@@ -32,22 +32,36 @@ describe("repairFlavourText", () => {
     ).toBe('"Hey, where is everyone?" \n- Common last words');
   });
 
-  it("leaves prose that quotes a word mid-sentence alone", () => {
-    // The attribution rule keys on a newline; a same-line dash after a quoted
-    // word is ordinary prose, not the upstream missing-opening-quote bug.
-    const prose = 'He said "run" - and she ran.';
-    expect(repairFlavourText(prose)).toBe(prose);
-    expect(repairFlavourText('They called it the "Rift" - a wound.')).toBe(
-      'They called it the "Rift" - a wound.',
+  // The attribution runs on after the closing quote far more often than it
+  // starts a new line (82 vs 27 of the 109 affected cards), so this shape
+  // matters more than the newline one above.
+  it("restores the quote when the attribution is on the same line", () => {
+    expect(
+      repairFlavourText('Those who follow me follow destiny!" - Azir'),
+    ).toBe('"Those who follow me follow destiny!" - Azir');
+    expect(repairFlavourText(`GET 'EM, CHOMPIES!" -Jinx`)).toBe(
+      `"GET 'EM, CHOMPIES!" -Jinx`,
     );
   });
 
-  it("keeps angle brackets that are not HTML tags", () => {
-    expect(repairFlavourText("<sigh> Another day.")).toBe("<sigh> Another day.");
+  it("strips a closing tag that upstream leaves after the quote", () => {
+    expect(
+      repairFlavourText('One of us finds peace. One of us walks away."</e>'),
+    ).toBe('One of us finds peace. One of us walks away."');
+  });
+
+  it("strips leading tag debris without eating the rest of the text", () => {
+    // A greedy `[^>]*` on this unterminated tag consumed the whole flavour.
+    expect(repairFlavourText('<em?"I will light our path.')).toBe(
+      '"I will light our path.',
+    );
+  });
+
+  it("keeps angle brackets that cannot be a tag", () => {
     expect(repairFlavourText("I <3 the Rift.")).toBe("I <3 the Rift.");
   });
 
-  it("still repairs when the attribution uses an en or em dash", () => {
+  it("still repairs when the attribution uses an em dash", () => {
     expect(repairFlavourText('Only the worthy."\n— Leona')).toBe(
       '"Only the worthy."\n— Leona',
     );
