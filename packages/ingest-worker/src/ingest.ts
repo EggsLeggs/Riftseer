@@ -106,8 +106,11 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // 5–7. Overlay DB overrides, preserve unchanged R2 media, then atomic
     // upsert + prune. Changed/missing images are processed asynchronously.
     const supabase = createSupabase(env);
-    const finalSets = await overlayDbSetOverrides(supabase, ingestSets);
-    const finalCards = await overlayDbOverrides(supabase, cards);
+    // Independent reads over different tables — no ordering between them.
+    const [finalSets, finalCards] = await Promise.all([
+      overlayDbSetOverrides(supabase, ingestSets),
+      overlayDbOverrides(supabase, cards),
+    ]);
 
     // Image preparation is advisory next to the card upsert: it only carries
     // hosted URLs forward and hashes sources. A failure costs one cycle of

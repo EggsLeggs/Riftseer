@@ -119,8 +119,16 @@ class StubImageBindings implements AdminImageBindings {
     },
   };
 
+  /** Set to simulate a queue outage on the next send. */
+  queueError: Error | null = null;
+
   queue = {
     send: async (job: AdminImageJob): Promise<void> => {
+      if (this.queueError) {
+        const error = this.queueError;
+        this.queueError = null;
+        throw error;
+      }
       this.jobs.push(job);
     },
   };
@@ -415,6 +423,68 @@ describe("admin API", () => {
         media_urls: null,
       }),
     );
+  });
+
+  test("maps card_not_found to 404", async () => {
+    repository.nextResult = { ok: false, reason: "card_not_found" };
+
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1", "PATCH", {
+        patch: { name: "Missing Card" },
+      }),
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: "Card not found",
+      code: "CARD_NOT_FOUND",
+    });
+  });
+
+  test("maps set_not_found to 404 when moving a card", async () => {
+    repository.nextResult = { ok: false, reason: "set_not_found" };
+
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1/move", "POST", { set_code: "nope" }),
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: "Set not found",
+      code: "SET_NOT_FOUND",
+    });
+  });
+
+  test("reports queued:false but keeps the upload when the queue fails", async () => {
+    imageBindings.queueError = new Error("queue unavailable");
+    const form = new FormData();
+    form.set(
+      "file",
+      new File([Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+        "base64",
+      )], "card.png", { type: "image/png" }),
+    );
+
+    const response = await app.handle(
+      new Request("http://localhost/api/v1/admin/cards/card-1/image", {
+        method: "POST",
+        headers: { Authorization: "Bearer admin-token" },
+        body: form,
+      }),
+    );
+
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual(
+      expect.objectContaining({ ok: true, queued: false }),
+    );
+    // The upload and the persisted media row must survive: that state is what
+    // the ingest catalogue scan re-queues, and rolling back would discard the
+    // admin's image.
+    expect(imageBindings.jobs).toHaveLength(0);
+    expect(imageBindings.stored).toHaveLength(1);
+    expect(imageBindings.deleted).toHaveLength(0);
+    expect(repository.calls[0]?.name).toBe("admin_set_card_image");
   });
 });
 

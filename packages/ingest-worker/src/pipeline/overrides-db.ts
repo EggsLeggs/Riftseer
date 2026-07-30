@@ -424,6 +424,17 @@ export function applyDbSetOverrides(
     patched++;
   }
 
+  // A deleted set must not survive as a parent reference on the sets that still
+  // point at it. Runs after every override is merged, so it also catches a
+  // parent introduced by a manual definition or a patch.
+  if (state.deletedSetCodes.size > 0) {
+    for (const set of setByCode.values()) {
+      if (set.parent_set_code && state.deletedSetCodes.has(set.parent_set_code)) {
+        set.parent_set_code = null;
+      }
+    }
+  }
+
   const finalSets = order.flatMap((setCode) => {
     const set = setByCode.get(setCode);
     return set ? [set] : [];
@@ -454,9 +465,24 @@ export async function overlayDbSetOverrides(
     { data: manualSets, error: manualSetsError },
     { data: deletions, error: deletionsError },
   ] = await Promise.all([
-    supabase.from("set_overrides").select("set_code, patch"),
-    supabase.from("manual_sets").select("set_code, definition"),
-    supabase.from("set_deletions").select("set_code"),
+    selectAllRows<SetOverrideRow>(
+      supabase,
+      "set_overrides",
+      "set_code, patch",
+      "set_code",
+    ),
+    selectAllRows<ManualSetRow>(
+      supabase,
+      "manual_sets",
+      "set_code, definition",
+      "set_code",
+    ),
+    selectAllRows<{ set_code: string }>(
+      supabase,
+      "set_deletions",
+      "set_code",
+      "set_code",
+    ),
   ]);
 
   if (setOverridesError) {
@@ -470,13 +496,9 @@ export async function overlayDbSetOverrides(
   }
 
   return applyDbSetOverrides(sets, {
-    setOverrides: (setOverrides ?? []) as SetOverrideRow[],
-    manualSets: (manualSets ?? []) as ManualSetRow[],
-    deletedSetCodes: new Set(
-      ((deletions ?? []) as Array<{ set_code: string }>).map(
-        (row) => row.set_code,
-      ),
-    ),
+    setOverrides,
+    manualSets,
+    deletedSetCodes: new Set(deletions.map((row) => row.set_code)),
   });
 }
 

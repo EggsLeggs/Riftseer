@@ -25,7 +25,7 @@ If your site uses a CSP, add the following directives:
 
 ```text
 connect-src https://api.riftseer.com;
-img-src https://img.riftseer.com https://*.riftcodex.com;
+img-src https://img.riftseer.com https://*.riftcodex.com https://tcgplayer-cdn.tcgplayer.com;
 ```
 
 ---

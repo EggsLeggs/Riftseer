@@ -1044,6 +1044,11 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           return status(failure.status, failure.body);
         }
 
+        // A failed enqueue is reported, not rolled back. The media row already
+        // carries the admin source_url, a valid source_hash and a null
+        // media_urls, which is exactly the state the ingest catalogue scan
+        // (loadPendingCardImageJobs) looks for, so the next run re-queues this
+        // card. Rolling back would instead discard an upload the admin made.
         let queued = true;
         try {
           await imageBindings.queue.send({

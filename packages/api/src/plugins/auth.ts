@@ -67,7 +67,15 @@ export async function resolveBearerUser(
           error: "Invalid or expired token",
           code: "INVALID_TOKEN",
         };
-  } catch {
+  } catch (error) {
+    // The public response stays deliberately opaque; the detail only goes to
+    // the Worker log, where an auth outage is otherwise invisible.
+    console.error(
+      JSON.stringify({
+        message: "auth token resolution failed",
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
     return {
       status: 503,
       error: "Auth service unavailable",
