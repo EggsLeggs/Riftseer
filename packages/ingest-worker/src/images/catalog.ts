@@ -7,10 +7,17 @@ import {
   hashImageSourceUrl,
   selectBestImageSource,
 } from "./model.ts";
-import type { CardImageJob } from "./types.ts";
+import {
+  CARD_IMAGE_CATALOG_JOB_VERSION,
+  CARD_IMAGE_JOB_VERSION,
+  SOURCE_HASH_PATTERN,
+  type CardImageJob,
+} from "./types.ts";
 
 const DATABASE_PAGE_SIZE = 1000;
 const QUEUE_BATCH_SIZE = 100;
+/** PostgREST `in` filter URL limits — chunk large id lists. */
+const ID_IN_CHUNK_SIZE = 100;
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -20,18 +27,23 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+/**
+ * Fetch the stored media of exactly the cards in this batch. Scoping the query
+ * to the requested ids keeps the read proportional to the batch rather than to
+ * the whole catalogue.
+ */
 async function loadExistingMedia(
   supabase: SupabaseClient,
   cardIds: string[],
 ): Promise<Map<string, CardMedia>> {
   const existing = new Map<string, CardMedia>();
-  const wantedIds = new Set(cardIds);
-  for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+  const wantedIds = [...new Set(cardIds)];
+
+  for (const idChunk of chunk(wantedIds, ID_IN_CHUNK_SIZE)) {
     const { data, error } = await supabase
       .from("cards")
       .select("id, media")
-      .order("id")
-      .range(from, from + DATABASE_PAGE_SIZE - 1);
+      .in("id", idChunk);
     if (error) {
       throw new Error(`load existing card media failed: ${error.message}`);
     }
@@ -40,11 +52,8 @@ async function loadExistingMedia(
       media: CardMedia | null;
     }>;
     for (const row of rows) {
-      if (row.media && wantedIds.has(row.id)) {
-        existing.set(row.id, row.media);
-      }
+      if (row.media) existing.set(row.id, row.media);
     }
-    if (rows.length < DATABASE_PAGE_SIZE) break;
   }
   return existing;
 }
@@ -53,6 +62,8 @@ export interface PreparedImageJobs {
   jobs: CardImageJob[];
   reused: number;
   withoutSource: number;
+  /** Cards whose admin-curated image outranked the upstream source. */
+  adminPreserved: number;
 }
 
 /**
@@ -65,13 +76,27 @@ export async function prepareCardImageJobs(
   cards: Card[],
   imageBaseUrl: string,
 ): Promise<PreparedImageJobs> {
-  const existingById = await loadExistingMedia(
-    supabase,
-    cards.map((card) => card.id),
-  );
+  // Degrade rather than throw: skipping preparation entirely would upsert cards
+  // with no `source_hash`, which the catalogue scan ignores — they would never
+  // be hosted. Without the previous rows we cannot prove media is unchanged, so
+  // every card is re-hashed and re-queued instead of failing the whole ingest.
+  let existingById: Map<string, CardMedia>;
+  try {
+    existingById = await loadExistingMedia(
+      supabase,
+      cards.map((card) => card.id),
+    );
+  } catch (error) {
+    logger.warn("Existing card media unavailable — re-queuing every image", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    existingById = new Map();
+  }
+
   const jobs: CardImageJob[] = [];
   let reused = 0;
   let withoutSource = 0;
+  let adminPreserved = 0;
 
   await Promise.all(
     cards.map(async (card) => {
@@ -81,9 +106,39 @@ export async function prepareCardImageJobs(
         return;
       }
 
+      const previousMedia = existingById.get(card.id);
+
+      // An admin-curated image outranks anything upstream offers. The queue
+      // consumer already refuses to overwrite admin media, but that guard reads
+      // the row this ingest is about to write — so the provenance has to survive
+      // here too, or the upsert would launder the admin image into an upstream
+      // one before the job ever runs.
+      if (
+        previousMedia?.source_provider === "admin" &&
+        source.provider !== "admin"
+      ) {
+        card.media = previousMedia;
+        adminPreserved++;
+        const adminUrl = previousMedia.source_url;
+        const adminHash = previousMedia.source_hash;
+        if (
+          adminUrl &&
+          adminHash &&
+          !hasCompleteHostedMedia(previousMedia, imageBaseUrl)
+        ) {
+          jobs.push(
+            createImageJob(
+              card.id,
+              { url: adminUrl, provider: "admin" },
+              adminHash,
+            ),
+          );
+        }
+        return;
+      }
+
       const sourceHash = await hashImageSourceUrl(source.url);
       const currentMedia = card.media ?? {};
-      const previousMedia = existingById.get(card.id);
       const sourceMetadata: CardMedia = {
         ...currentMedia,
         source_url: source.url,
@@ -110,7 +165,7 @@ export async function prepareCardImageJobs(
   );
 
   jobs.sort((left, right) => left.cardId.localeCompare(right.cardId));
-  return { jobs, reused, withoutSource };
+  return { jobs, reused, withoutSource, adminPreserved };
 }
 
 export async function enqueueCardImageJobs(
@@ -132,7 +187,7 @@ export async function enqueueCardImageCatalogJob(
   queue: Queue,
 ): Promise<void> {
   await queue.send({
-    version: 1,
+    version: CARD_IMAGE_CATALOG_JOB_VERSION,
     type: "catalog",
   });
   logger.info("Card image catalog job enqueued");
@@ -166,7 +221,7 @@ export async function loadPendingCardImageJobs(
       if (
         typeof sourceUrl !== "string" ||
         typeof sourceHash !== "string" ||
-        !/^[a-f0-9]{64}$/.test(sourceHash) ||
+        !SOURCE_HASH_PATTERN.test(sourceHash) ||
         (sourceProvider !== "riftcodex" &&
           sourceProvider !== "tcgplayer" &&
           sourceProvider !== "admin") ||
@@ -175,7 +230,7 @@ export async function loadPendingCardImageJobs(
         continue;
       }
       jobs.push({
-        version: 1,
+        version: CARD_IMAGE_JOB_VERSION,
         cardId: row.id,
         sourceUrl,
         sourceHash,

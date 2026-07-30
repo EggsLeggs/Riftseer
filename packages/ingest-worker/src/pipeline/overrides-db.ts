@@ -11,6 +11,35 @@ import { logger, normalizeCardName } from "../utils.ts";
 
 type JsonObject = Record<string, unknown>;
 
+/** PostgREST caps a single response; page past it rather than lose rows. */
+const DATABASE_PAGE_SIZE = 1000;
+
+/**
+ * Read an override table in full. A plain `.select()` silently stops at the API
+ * max-rows cap, which would drop admin edits without any error.
+ */
+async function selectAllRows<T>(
+  supabase: SupabaseClient,
+  table: string,
+  columns: string,
+  orderBy: string,
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .order(orderBy)
+      .range(from, from + DATABASE_PAGE_SIZE - 1);
+    if (error) return { data: rows, error };
+
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < DATABASE_PAGE_SIZE) break;
+  }
+  return { data: rows, error: null };
+}
+
 const RELATIONSHIP_KINDS = [
   "all_parts",
   "used_by",
@@ -255,6 +284,23 @@ export function applyDbOverrides(cards: Card[], state: DbOverrideState): Card[] 
     return card ? [card] : [];
   });
 
+  // A deleted card must not survive as a relationship stub on the cards that
+  // still point at it — those stubs would render as links to a card the admin
+  // removed. Runs last so it also catches stubs added by an override above.
+  if (state.deletedCardIds.size > 0) {
+    for (const card of finalCards) {
+      for (const kind of RELATIONSHIP_KINDS) {
+        const current = getRelationshipList(card, kind);
+        const kept = current.filter(
+          (related) => !state.deletedCardIds.has(related.id),
+        );
+        if (kept.length !== current.length) {
+          setRelationshipList(card, kind, kept);
+        }
+      }
+    }
+  }
+
   if (
     patched > 0 ||
     manual > 0 ||
@@ -283,12 +329,30 @@ export async function overlayDbOverrides(
     { data: relationshipOverrides, error: relationshipOverridesError },
     { data: deletions, error: deletionsError },
   ] = await Promise.all([
-    supabase.from("card_overrides").select("card_id, patch"),
-    supabase.from("manual_cards").select("id, definition"),
-    supabase
-      .from("card_relationship_overrides")
-      .select("id, card_id, kind, related_card_id, action, created_at"),
-    supabase.from("card_deletions").select("card_id"),
+    selectAllRows<CardOverrideRow>(
+      supabase,
+      "card_overrides",
+      "card_id, patch",
+      "card_id",
+    ),
+    selectAllRows<ManualCardRow>(
+      supabase,
+      "manual_cards",
+      "id, definition",
+      "id",
+    ),
+    selectAllRows<RelationshipOverrideRow>(
+      supabase,
+      "card_relationship_overrides",
+      "id, card_id, kind, related_card_id, action, created_at",
+      "id",
+    ),
+    selectAllRows<{ card_id: string }>(
+      supabase,
+      "card_deletions",
+      "card_id",
+      "card_id",
+    ),
   ]);
 
   if (cardOverridesError) {
@@ -307,12 +371,9 @@ export async function overlayDbOverrides(
   }
 
   return applyDbOverrides(cards, {
-    cardOverrides: (cardOverrides ?? []) as CardOverrideRow[],
-    manualCards: (manualCards ?? []) as ManualCardRow[],
-    relationshipOverrides:
-      (relationshipOverrides ?? []) as RelationshipOverrideRow[],
-    deletedCardIds: new Set(
-      ((deletions ?? []) as Array<{ card_id: string }>).map((row) => row.card_id),
-    ),
+    cardOverrides,
+    manualCards,
+    relationshipOverrides,
+    deletedCardIds: new Set(deletions.map((row) => row.card_id)),
   });
 }

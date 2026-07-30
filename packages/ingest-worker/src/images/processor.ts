@@ -14,6 +14,7 @@ import {
   loadPendingCardImageJobs,
 } from "./catalog.ts";
 import {
+  CARD_IMAGE_JOB_VERSION,
   isCardImageCatalogJob,
   isCardImageJob,
   isCardImageVariantJob,
@@ -59,13 +60,46 @@ async function loadCurrentCardMedia(
   return row ? { media: row.media ?? {} } : null;
 }
 
+interface DownloadedImage {
+  body: ReadableStream<Uint8Array>;
+  contentType?: string;
+  /** True once the byte cap tripped mid-stream, failing every consumer. */
+  oversized: () => boolean;
+}
+
+/**
+ * Cap the stream itself. `Content-Length` is advertised by the origin and may be
+ * absent or wrong, so without this an oversized (or endless) body would still be
+ * fed to `IMAGES.info()` and `CARD_IMAGES.put()`.
+ */
+function limitStreamBytes(
+  body: ReadableStream<Uint8Array>,
+  maxBytes: number,
+): Pick<DownloadedImage, "body" | "oversized"> {
+  let seen = 0;
+  let tripped = false;
+  const limited = body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        seen += chunk.byteLength;
+        if (seen > maxBytes) {
+          tripped = true;
+          controller.error(
+            new PermanentImageError(`image exceeds ${maxBytes} bytes`),
+          );
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+    }),
+  );
+  return { body: limited, oversized: () => tripped };
+}
+
 async function downloadImage(
   sourceUrl: string,
   timeoutMs: number,
-): Promise<{
-  body: ReadableStream<Uint8Array>;
-  contentType?: string;
-}> {
+): Promise<DownloadedImage> {
   let parsed: URL;
   try {
     parsed = new URL(sourceUrl);
@@ -116,7 +150,7 @@ async function downloadImage(
 
     const contentType = response.headers.get("content-type")?.split(";")[0];
     return {
-      body: response.body,
+      ...limitStreamBytes(response.body, MAX_SOURCE_BYTES),
       contentType: contentType?.startsWith("image/") ? contentType : undefined,
     };
   } finally {
@@ -204,6 +238,13 @@ async function processCardImageJob(
       }),
     ]);
   } catch (error) {
+    // The stream error surfaces through whichever consumer read it first; the
+    // flag is what identifies the cause unambiguously.
+    if (source.oversized()) {
+      throw new PermanentImageError(
+        `image source exceeds ${MAX_SOURCE_BYTES} bytes`,
+      );
+    }
     if (isImagesInputError(error)) {
       throw new PermanentImageError("image source is not a supported image");
     }
@@ -219,7 +260,7 @@ async function processCardImageJob(
   await env.CARD_IMAGE_QUEUE.sendBatch(
     IMAGE_VARIANTS.map((variant) => ({
       body: {
-        version: 1 as const,
+        version: CARD_IMAGE_JOB_VERSION,
         type: "variant" as const,
         cardId: job.cardId,
         sourceHash: job.sourceHash,

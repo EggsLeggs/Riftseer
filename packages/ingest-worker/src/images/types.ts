@@ -1,6 +1,9 @@
 export const CARD_IMAGE_JOB_VERSION = 1 as const;
 export const CARD_IMAGE_CATALOG_JOB_VERSION = 1 as const;
 
+/** Lowercase hex SHA-256 — the only shape `hashImageSourceUrl` produces. */
+export const SOURCE_HASH_PATTERN = /^[a-f0-9]{64}$/;
+
 export type CardImageSourceProvider =
   | "riftcodex"
   | "tcgplayer"
@@ -56,7 +59,7 @@ export function isCardImageJob(value: unknown): value is CardImageJob {
     typeof job.sourceUrl === "string" &&
     job.sourceUrl.length > 0 &&
     typeof job.sourceHash === "string" &&
-    /^[a-f0-9]{64}$/.test(job.sourceHash) &&
+    SOURCE_HASH_PATTERN.test(job.sourceHash) &&
     (job.sourceProvider === "riftcodex" ||
       job.sourceProvider === "tcgplayer" ||
       job.sourceProvider === "admin")
@@ -74,7 +77,7 @@ export function isCardImageVariantJob(
     typeof job.cardId === "string" &&
     job.cardId.length > 0 &&
     typeof job.sourceHash === "string" &&
-    /^[a-f0-9]{64}$/.test(job.sourceHash) &&
+    SOURCE_HASH_PATTERN.test(job.sourceHash) &&
     (job.variant === "small" ||
       job.variant === "normal" ||
       job.variant === "large") &&

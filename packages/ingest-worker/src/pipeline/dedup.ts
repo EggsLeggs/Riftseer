@@ -14,8 +14,35 @@
  * on the lexicographically smallest id so the choice is stable across runs.
  */
 
-import type { Card } from "@riftseer/types";
+import type { Card, CardMediaUrls } from "@riftseer/types";
 import { logger } from "../utils.ts";
+
+const MEDIA_URL_SIZES = [
+  "small",
+  "normal",
+  "large",
+  "original",
+  "png",
+] as const satisfies readonly (keyof CardMediaUrls)[];
+
+/**
+ * Fill only the sizes the survivor lacks. Replacing the whole map would drop a
+ * survivor's own `small`/`large` merely because a duplicate carried a `normal`.
+ */
+function fillMissingMediaUrls(survivor: Card, other: Card): void {
+  const otherUrls = other.media?.media_urls;
+  if (!otherUrls) return;
+
+  const merged: CardMediaUrls = { ...survivor.media?.media_urls };
+  let filled = false;
+  for (const size of MEDIA_URL_SIZES) {
+    if (!merged[size] && otherUrls[size]) {
+      merged[size] = otherUrls[size];
+      filled = true;
+    }
+  }
+  if (filled) survivor.media = { ...survivor.media, media_urls: merged };
+}
 
 function printedCollectorKey(card: Card): string {
   const [, fromRiftboundId] =
@@ -86,9 +113,7 @@ function collapseGroup(group: Card[]): Card {
         tcgplayer_id: other.external_ids.tcgplayer_id,
       };
     }
-    if (!survivor.media?.media_urls?.normal && other.media?.media_urls?.normal) {
-      survivor.media = { ...survivor.media, media_urls: other.media.media_urls };
-    }
+    fillMissingMediaUrls(survivor, other);
   }
   return survivor;
 }

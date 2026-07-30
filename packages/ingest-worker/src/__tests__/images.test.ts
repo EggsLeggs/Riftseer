@@ -43,16 +43,18 @@ function card(id: string, media: CardMedia): Card {
 
 function supabaseWithMedia(
   rows: Array<{ id: string; media: CardMedia }>,
+  onQueriedIds?: (ids: string[]) => void,
 ): SupabaseClient {
   return {
     from: () => ({
       select: () => ({
-        order: () => ({
-          range: async (from: number, to: number) => ({
-            data: rows.slice(from, to + 1),
+        in: async (_column: string, ids: string[]) => {
+          onQueriedIds?.(ids);
+          return {
+            data: rows.filter((row) => ids.includes(row.id)),
             error: null,
-          }),
-        }),
+          };
+        },
       }),
     }),
   } as unknown as SupabaseClient;
@@ -205,6 +207,89 @@ describe("image hosting", () => {
       prepared.jobs[0]?.sourceHash,
     );
     expect(isCardImageJob(prepared.jobs[0])).toBe(true);
+  });
+
+  test("reads only the cards in the batch, not the whole catalogue", async () => {
+    const queried: string[][] = [];
+    const supabase = supabaseWithMedia(
+      [
+        { id: "wanted", media: { source_url: "https://cdn.x/wanted.png" } },
+        { id: "other", media: { source_url: "https://cdn.x/other.png" } },
+      ],
+      (ids) => queried.push(ids),
+    );
+
+    await prepareCardImageJobs(
+      supabase,
+      [card("wanted", { source_url: "https://cdn.x/wanted.png" })],
+      IMAGE_BASE_URL,
+    );
+
+    expect(queried).toEqual([["wanted"]]);
+  });
+
+  test("keeps an admin image when the upstream source is not admin", async () => {
+    const adminUrl = "https://cdn.admin/curated.png";
+    const adminHash = await hashImageSourceUrl(adminUrl);
+    const adminMedia: CardMedia = {
+      source_url: adminUrl,
+      source_hash: adminHash,
+      source_provider: "admin",
+      media_urls: buildHostedMediaUrls(IMAGE_BASE_URL, "curated", adminHash),
+    };
+    const incoming = card("curated", {
+      source_url: "https://cdn.riftcodex.com/upstream.png",
+      source_provider: "riftcodex",
+    });
+    const supabase = supabaseWithMedia([{ id: "curated", media: adminMedia }]);
+
+    const prepared = await prepareCardImageJobs(
+      supabase,
+      [incoming],
+      IMAGE_BASE_URL,
+    );
+
+    // The upsert must not launder the admin image into an upstream one — the
+    // queue consumer's admin guard reads the row this ingest is about to write.
+    expect(prepared.adminPreserved).toBe(1);
+    expect(prepared.jobs).toHaveLength(0);
+    expect(incoming.media).toEqual(adminMedia);
+  });
+
+  test("re-queues an admin image that is not hosted yet", async () => {
+    const adminUrl = "https://cdn.admin/pending.png";
+    const adminHash = await hashImageSourceUrl(adminUrl);
+    const incoming = card("pending", {
+      source_url: "https://cdn.riftcodex.com/upstream.png",
+      source_provider: "riftcodex",
+    });
+    const supabase = supabaseWithMedia([
+      {
+        id: "pending",
+        media: {
+          source_url: adminUrl,
+          source_hash: adminHash,
+          source_provider: "admin",
+        },
+      },
+    ]);
+
+    const prepared = await prepareCardImageJobs(
+      supabase,
+      [incoming],
+      IMAGE_BASE_URL,
+    );
+
+    expect(prepared.adminPreserved).toBe(1);
+    expect(prepared.jobs).toEqual([
+      {
+        version: CARD_IMAGE_JOB_VERSION,
+        cardId: "pending",
+        sourceUrl: adminUrl,
+        sourceHash: adminHash,
+        sourceProvider: "admin",
+      },
+    ]);
   });
 
   test("sends queue jobs in Cloudflare's 100-message batches", async () => {

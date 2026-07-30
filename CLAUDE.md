@@ -35,7 +35,8 @@ bun typecheck
 cd packages/ingest-worker
 bun run dev              # Worker at http://localhost:8787
 curl http://localhost:8787/cdn-cgi/mf/scheduled
-curl -X POST http://localhost:8787/ingest
+curl -X POST http://localhost:8787/ingest \
+  -H "Authorization: Bearer ${INGEST_SECRET}"   # header required only when INGEST_SECRET is set
 
 cd packages/discord-bot
 bun run dev

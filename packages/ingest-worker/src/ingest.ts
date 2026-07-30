@@ -109,7 +109,17 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       env.CARD_IMAGE_BASE_URL,
     );
     await ingestCardData(supabase, ingestSets, finalCards);
-    await enqueueCardImageCatalogJob(env.CARD_IMAGE_QUEUE);
+
+    // The card data is committed by this point. Enqueuing the catalogue scan is
+    // only a prompt to go host images, and the next scheduled run re-sends it,
+    // so a queue failure must not report an ingest that succeeded as failed.
+    try {
+      await enqueueCardImageCatalogJob(env.CARD_IMAGE_QUEUE);
+    } catch (err) {
+      logger.warn("Card image catalog enqueue failed — deferring to next run", {
+        error: String(err),
+      });
+    }
 
     const elapsedMs = Date.now() - t0;
     logger.info("Ingestion complete", {
@@ -117,6 +127,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       cards: finalCards.length,
       imageJobs: preparedImages.jobs.length,
       reusedImages: preparedImages.reused,
+      adminImagesPreserved: preparedImages.adminPreserved,
       cardsWithoutQueueSource: preparedImages.withoutSource,
       elapsedMs,
     });

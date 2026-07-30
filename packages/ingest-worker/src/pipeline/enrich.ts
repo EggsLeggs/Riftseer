@@ -213,7 +213,14 @@ export function buildProductMap(groupResults: TCGGroupResult[]): ProductMaps {
   return { byId, byGroupCollectorName, byGroupName };
 }
 
-function applyProduct(card: Card, product: EnrichedProduct): void {
+/** How `enrichCards` found the product — see the numbered fallbacks there. */
+type ProductMatchSource = "id" | "collector-name" | "name";
+
+function applyProduct(
+  card: Card,
+  product: EnrichedProduct,
+  matchSource: ProductMatchSource,
+): void {
   card.purchase_uris = { ...card.purchase_uris, tcgplayer: product.url };
   card.prices = {
     ...card.prices,
@@ -233,8 +240,10 @@ function applyProduct(card: Card, product: EnrichedProduct): void {
   };
   if (!card.released_at && product.releasedOn) card.released_at = product.releasedOn;
 
-  // Backfill the tcgplayer_id we matched by name, so it's stable next run.
-  if (!card.external_ids?.tcgplayer_id) {
+  // Persist the id we actually matched, so next run resolves it directly. A
+  // fallback match means any stored id failed to resolve to a product — leaving
+  // it in place would keep the card matching by name forever.
+  if (matchSource !== "id") {
     card.external_ids = { ...card.external_ids, tcgplayer_id: String(product.productId) };
   }
 
@@ -292,6 +301,7 @@ export function enrichCards(
 
   for (const card of cards) {
     let product: EnrichedProduct | undefined;
+    let matchSource: ProductMatchSource | undefined;
     const setCode = card.set?.set_code;
     const groupId = setCode ? setGroupMap.get(setCode) : undefined;
 
@@ -299,7 +309,10 @@ export function enrichCards(
     if (tcgIdStr) {
       const productId = parseInt(tcgIdStr, 10);
       if (Number.isFinite(productId)) product = maps.byId.get(productId);
-      if (product) byIdCount++;
+      if (product) {
+        matchSource = "id";
+        byIdCount++;
+      }
     }
 
     if (!product) {
@@ -311,6 +324,7 @@ export function enrichCards(
         );
         if (match) {
           product = match;
+          matchSource = "collector-name";
           byCollectorNameCount++;
           break;
         }
@@ -323,12 +337,13 @@ export function enrichCards(
         const match = nameMap?.get(card.name_normalized);
         if (match) {
           product = match;
+          matchSource = "name";
           byNameCount++;
         }
       }
     }
 
-    if (product) applyProduct(card, product);
+    if (product && matchSource) applyProduct(card, product, matchSource);
   }
 
   const enriched = byIdCount + byCollectorNameCount + byNameCount;
