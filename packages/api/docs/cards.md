@@ -38,6 +38,7 @@ Every card endpoint returns the same card shape. Key fields:
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
 | `text.rich` | string | Rules text with inline symbol tokens |
+| `media` | object \| undefined | Hosted image URLs (`small`, `normal`, `large`, `original`), detected orientation, upstream `source_url`, `source_hash`, and source provider. Hosted URLs use the R2 custom domain after queue processing. |
 | `prices` | object \| undefined | Opt-in — omitted by default; see [Prices](#prices) section |
 | `purchase_uris` | object | Marketplace purchase URLs (`tcgplayer`, `cardmarket`) when available |
 | `is_token` | boolean | `true` for token cards |

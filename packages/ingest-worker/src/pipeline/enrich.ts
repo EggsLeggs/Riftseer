@@ -239,7 +239,15 @@ function applyProduct(card: Card, product: EnrichedProduct): void {
   }
 
   const cardOverride = overrides.cards[card.id];
-  const needsTcgImage = !card.media?.media_urls?.normal || cardOverride?.use_tcgplayer_image;
+  const hasRiftCodexImage = Boolean(
+    card.media?.source_url ||
+      card.media?.media_urls?.large ||
+      card.media?.media_urls?.normal ||
+      card.media?.media_urls?.png ||
+      card.media?.media_urls?.small,
+  );
+  const needsTcgImage =
+    !hasRiftCodexImage || cardOverride?.use_tcgplayer_image;
   if (needsTcgImage && product.imageUrl) {
     const raw = product.imageUrl;
     let small: string;
@@ -258,7 +266,12 @@ function applyProduct(card: Card, product: EnrichedProduct): void {
       normal = raw;
       large = raw;
     }
-    card.media = { ...card.media, media_urls: { small, normal, large } };
+    card.media = {
+      ...card.media,
+      source_url: large,
+      source_provider: "tcgplayer",
+      media_urls: { small, normal, large },
+    };
   }
 }
 

@@ -101,9 +101,17 @@ interface CardSet {
 interface CardMedia {
   orientation?: string;       // "portrait" or "landscape"
   accessibility_text?: string;
-  media_urls?: CardMediaUrls; // { small, normal, large, png }
+  media_urls?: CardMediaUrls; // { small, normal, large, original, png }
+  source_url?: string;        // Best upstream image selected for this printing
+  source_hash?: string;       // SHA-256(source_url), used for idempotent hosting
+  source_provider?: "riftcodex" | "tcgplayer" | "admin";
 }
 ```
+
+After the image queue succeeds, `small`, `normal`, and `large` are WebP objects
+served from the configured R2 custom domain. `original` points to the unchanged
+source bytes. The URLs include a source-hash version query so upstream image
+corrections bypass immutable browser and CDN caches.
 
 ### CardMetadata
 

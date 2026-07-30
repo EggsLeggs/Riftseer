@@ -14,6 +14,7 @@ import {
   CardResultsViewToggle,
   formatEur,
   formatUsd,
+  tcgplayerUsdPrice,
   type CardResultsView,
 } from "@/features/cards/card-display";
 import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
@@ -73,7 +74,7 @@ export function SetDetailView({ code }: { code: string }) {
   const cards = order ? sortCards(rawCards, order, direction) : rawCards;
 
   const totalUsd = rawCards.reduce(
-    (sum, c) => sum + (c.prices?.tcgplayer?.normal ?? 0),
+    (sum, c) => sum + (tcgplayerUsdPrice(c.prices?.tcgplayer) ?? 0),
     0,
   );
   const totalEur = rawCards.reduce(

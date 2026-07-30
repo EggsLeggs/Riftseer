@@ -1,4 +1,14 @@
-import type { Card } from "@riftseer/types";
+import type { Card, CardPriceEntry } from "@riftseer/types";
+
+/**
+ * TCGPlayer may expose a card only under the Foil subtype. Prefer the regular
+ * printing when both exist, but do not hide a valid foil-only USD price.
+ */
+export function tcgplayerUsdPrice(
+  prices: CardPriceEntry | null | undefined,
+): number | null {
+  return prices?.normal ?? prices?.foil ?? null;
+}
 
 export function formatUsd(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return "—";

@@ -87,6 +87,8 @@ export interface CardMediaUrls {
   small?: string;
   normal?: string;
   large?: string;
+  /** Original source bytes re-hosted without transcoding. */
+  original?: string;
   png?: string;
 }
 
@@ -95,6 +97,12 @@ export interface CardMedia {
   orientation?: string;
   accessibility_text?: string;
   media_urls?: CardMediaUrls;
+  /** Best upstream image selected for the current printing. */
+  source_url?: string;
+  /** SHA-256 of source_url, used to make image hosting idempotent. */
+  source_hash?: string;
+  /** Provenance of source_url. Admin images are not replaced by ingest. */
+  source_provider?: "riftcodex" | "tcgplayer" | "admin";
 }
 
 export interface CardPurchaseUris {

@@ -7,14 +7,55 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "riftseer-ingest",
 	"main": "src/index.ts",
-	"compatibility_date": "2025-01-01",
+	"compatibility_date": "2026-07-29",
+	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": true,
 	"preview_urls": false,
 	"triggers": {
 		"crons": ["0 */6 * * *"]
 	},
 	"vars": {
-		"RIFTCODEX_BASE_URL": "https://api.riftcodex.com"
+		"RIFTCODEX_BASE_URL": "https://api.riftcodex.com",
+		"UPSTREAM_TIMEOUT_MS": "30000",
+		"CARD_IMAGE_BASE_URL": "https://img.riftseer.com"
+	},
+	"r2_buckets": [
+		{
+			"binding": "CARD_IMAGES",
+			"bucket_name": "riftseer-cards"
+		}
+	],
+	"images": {
+		"binding": "IMAGES",
+		"remote": true
+	},
+	"queues": {
+		"producers": [
+			{
+				"binding": "CARD_IMAGE_QUEUE",
+				"queue": "riftseer-card-images"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "riftseer-card-images",
+      "max_batch_size": 1,
+				"max_batch_timeout": 5,
+				"max_retries": 5,
+				"retry_delay": 30,
+				"dead_letter_queue": "riftseer-card-images-dlq",
+				// Keep concurrency bounded; jobs re-check source_hash and stable
+				// object keys make duplicate same-source work idempotent.
+				"max_concurrency": 5
+			}
+		]
+	},
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"head_sampling_rate": 1
+		}
 	},
 	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
 	"secrets": {

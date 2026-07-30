@@ -49,6 +49,7 @@ import {
   formatUsd,
   meaningfulCardDomains,
   meaningfulRulesText,
+  tcgplayerUsdPrice,
 } from "@/features/cards/format";
 import { cardHref } from "@/features/cards/paths";
 import { reportCardIssueUrl } from "@/features/cards/report-issue";
@@ -544,7 +545,7 @@ function BuyPanel({ detail }: { detail: CardDetail }) {
       name: "TCGPlayer",
       logoSrc: "/icons/markets/tcgplayer.png",
       url: detail.purchase.tcgplayer,
-      price: formatUsd(current?.prices?.tcgplayer?.normal),
+      price: formatUsd(tcgplayerUsdPrice(current?.prices?.tcgplayer)),
     },
     {
       name: "Cardmarket",

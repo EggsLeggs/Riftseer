@@ -7,10 +7,11 @@
  *   3. Enrich only from TCGPlayer (prices, purchase URIs, fallback images)
  *   4. Link tokens, champions/legends, signatures, related printings
  *   5. Overlay DB overrides (manual cards, patches, relationship edits, deletions)
- *   6. Atomic upsert + prune via ingest_card_data_v2 Postgres RPC
+ *   6. Preserve unchanged hosted media; prepare jobs for changed source URLs
+ *   7. Atomic upsert + prune, then enqueue image jobs for the queue consumer
  */
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Env } from "./env.ts";
 import { logger } from "./utils.ts";
 import { fetchAllSets, fetchAllPages } from "./sources/riftcodex.ts";
 import { fetchGroups, fetchAllGroupResults } from "./sources/tcgcsv.ts";
@@ -20,33 +21,23 @@ import { linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings 
 import { ingestCardData } from "./pipeline/db.ts";
 import { collapseDuplicates } from "./pipeline/dedup.ts";
 import { overlayDbOverrides } from "./pipeline/overrides-db.ts";
+import { createSupabase } from "./supabase.ts";
+import {
+  enqueueCardImageCatalogJob,
+  prepareCardImageJobs,
+} from "./images/catalog.ts";
 
-export interface Env {
-  SUPABASE_URL: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
-  RIFTCODEX_BASE_URL?: string;
-  RIFTCODEX_API_KEY?: string;
-  UPSTREAM_TIMEOUT_MS?: string;
-  INGEST_SECRET?: string;
-}
+export type { Env } from "./env.ts";
 
 function getTimeoutMs(env: Env): number {
   const parsed = parseInt(env.UPSTREAM_TIMEOUT_MS ?? "30000", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 }
 
-function createSupabase(env: Env): SupabaseClient {
-  if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set");
-  }
-  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { persistSession: false },
-  });
-}
-
 export interface IngestResult {
   cardsCount: number;
   setsCount: number;
+  imageJobsCount: number;
   elapsedMs: number;
   ok: boolean;
   error?: string;
@@ -85,7 +76,14 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     try {
       const tcgGroups = await fetchGroups(timeoutMs);
       const setGroupMap = matchTcgGroupsToSets(ingestSets, tcgGroups);
-      const groupResults = await fetchAllGroupResults(tcgGroups, timeoutMs);
+      const matchedGroupIds = new Set(setGroupMap.values());
+      const matchedGroups = tcgGroups.filter((group) =>
+        matchedGroupIds.has(group.groupId)
+      );
+      const groupResults = await fetchAllGroupResults(
+        matchedGroups,
+        timeoutMs,
+      );
       const productMap = buildProductMap(groupResults);
       const enrichment = enrichCards(cards, productMap, setGroupMap);
       logger.info("TCGPlayer enrichment complete", enrichment);
@@ -101,20 +99,31 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     linkSignatures(cards);
     linkRelatedPrintings(cards);
 
-    // 5–6. Overlay DB overrides, then atomic upsert + prune
+    // 5–7. Overlay DB overrides, preserve unchanged R2 media, then atomic
+    // upsert + prune. Changed/missing images are processed asynchronously.
     const supabase = createSupabase(env);
     const finalCards = await overlayDbOverrides(supabase, cards);
+    const preparedImages = await prepareCardImageJobs(
+      supabase,
+      finalCards,
+      env.CARD_IMAGE_BASE_URL,
+    );
     await ingestCardData(supabase, ingestSets, finalCards);
+    await enqueueCardImageCatalogJob(env.CARD_IMAGE_QUEUE);
 
     const elapsedMs = Date.now() - t0;
     logger.info("Ingestion complete", {
       sets: ingestSets.length,
       cards: finalCards.length,
+      imageJobs: preparedImages.jobs.length,
+      reusedImages: preparedImages.reused,
+      cardsWithoutQueueSource: preparedImages.withoutSource,
       elapsedMs,
     });
     return {
       cardsCount: finalCards.length,
       setsCount: ingestSets.length,
+      imageJobsCount: preparedImages.jobs.length,
       elapsedMs,
       ok: true,
     };
@@ -122,6 +131,13 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     const elapsedMs = Date.now() - t0;
     const error = err instanceof Error ? err.message : String(err);
     logger.error("Ingestion pipeline failed", { error });
-    return { cardsCount: 0, setsCount: 0, elapsedMs, ok: false, error };
+    return {
+      cardsCount: 0,
+      setsCount: 0,
+      imageJobsCount: 0,
+      elapsedMs,
+      ok: false,
+      error,
+    };
   }
 }

@@ -14,14 +14,28 @@
  * Optional: RIFTCODEX_API_KEY, RIFTCODEX_BASE_URL, UPSTREAM_TIMEOUT_MS
  */
 
-import type { Env } from "./ingest.ts";
+import type { Env } from "./env.ts";
+import type { CardImageQueueJob } from "./images/types.ts";
+import { processCardImageQueue } from "./images/processor.ts";
 import { runIngest } from "./ingest.ts";
 
 export type { Env };
 
+async function secretsMatch(
+  provided: string,
+  expected: string,
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [providedHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(provided)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  return crypto.subtle.timingSafeEqual(providedHash, expectedHash);
+}
+
 export default {
   async scheduled(
-    _event: ScheduledEvent,
+    _event: ScheduledController,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
@@ -56,7 +70,10 @@ export default {
     ) {
       if (env.INGEST_SECRET) {
         const auth = request.headers.get("Authorization");
-        if (!auth || auth !== `Bearer ${env.INGEST_SECRET}`) {
+        if (
+          !auth ||
+          !(await secretsMatch(auth, `Bearer ${env.INGEST_SECRET}`))
+        ) {
           return new Response("Unauthorized", { status: 401 });
         }
       }
@@ -66,6 +83,7 @@ export default {
           ok: result.ok,
           cardsCount: result.cardsCount,
           setsCount: result.setsCount,
+          imageJobsCount: result.imageJobsCount,
           elapsedMs: result.elapsedMs,
           ...(result.error && { error: result.error }),
         }),
@@ -78,4 +96,12 @@ export default {
 
     return new Response("Not Found", { status: 404 });
   },
-};
+
+  async queue(
+    batch: MessageBatch<CardImageQueueJob>,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    await processCardImageQueue(batch, env);
+  },
+} satisfies ExportedHandler<Env, CardImageQueueJob>;
