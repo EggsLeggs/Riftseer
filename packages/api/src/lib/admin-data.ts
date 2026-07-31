@@ -282,44 +282,52 @@ export function createAdminDataRepository(
     },
 
     async listFormats() {
-      const [formats, legalities, overrides] = await Promise.all([
-        client
-          .from("formats")
-          .select("id, code, name, sort_order, active")
-          .order("sort_order", { ascending: true })
-          .order("name", { ascending: true }),
-        client.from("card_legalities").select("format_id"),
-        client.from("card_legality_overrides").select("format_id"),
-      ]);
+      const formats = await client
+        .from("formats")
+        .select("id, code, name, sort_order, active")
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true });
 
-      for (const result of [formats, legalities, overrides]) {
-        if (result.error) {
-          throw new AdminRepositoryError(result.error.message, result.error.code);
-        }
+      if (formats.error) {
+        throw new AdminRepositoryError(
+          formats.error.message,
+          formats.error.code,
+        );
       }
 
-      // Counted client-side: there are a handful of formats, and PostgREST has
-      // no grouped-count that also returns the zero-row formats we must show.
-      const countByFormat = (rows: unknown[]): Map<string, number> => {
-        const counts = new Map<string, number>();
-        for (const row of rows) {
-          if (!isRecord(row) || typeof row.format_id !== "string") continue;
-          counts.set(row.format_id, (counts.get(row.format_id) ?? 0) + 1);
+      // Selecting the rows and counting them here would silently stop at
+      // PostgREST's 1000-row cap and under-report the delete warning. `head`
+      // requests return the exact count and no rows, and there are only a
+      // handful of formats to ask about.
+      const countFor = async (table: string, formatId: string) => {
+        const { count, error } = await client
+          .from(table)
+          .select("format_id", { count: "exact", head: true })
+          .eq("format_id", formatId);
+        if (error) {
+          throw new AdminRepositoryError(error.message, error.code);
         }
-        return counts;
+        return count ?? 0;
       };
-      const legalityCounts = countByFormat(legalities.data ?? []);
-      const overrideCounts = countByFormat(overrides.data ?? []);
 
-      return (formats.data ?? []).map((row) => ({
-        id: String(row.id),
-        code: String(row.code),
-        name: String(row.name),
-        sort_order: typeof row.sort_order === "number" ? row.sort_order : 0,
-        active: row.active !== false,
-        legality_count: legalityCounts.get(String(row.id)) ?? 0,
-        override_count: overrideCounts.get(String(row.id)) ?? 0,
-      }));
+      return await Promise.all(
+        (formats.data ?? []).map(async (row) => {
+          const id = String(row.id);
+          const [legalityCount, overrideCount] = await Promise.all([
+            countFor("card_legalities", id),
+            countFor("card_legality_overrides", id),
+          ]);
+          return {
+            id,
+            code: String(row.code),
+            name: String(row.name),
+            sort_order: typeof row.sort_order === "number" ? row.sort_order : 0,
+            active: row.active !== false,
+            legality_count: legalityCount,
+            override_count: overrideCount,
+          };
+        }),
+      );
     },
 
     async listCardLegalities(cardId) {

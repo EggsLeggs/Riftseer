@@ -170,10 +170,6 @@ interface RelatedCard {
 
 ---
 
-## Request and resolution types
-
----
-
 ## Oracle grouping: rulings, legalities and formats
 
 Rulings and format legalities describe a **card**, not a printing, so they are
@@ -248,6 +244,10 @@ interface CardRuling {
 
 Both arrive on `CardDetail` as `rulings` and `legalities`, already resolved and
 ordered by the API — see [@riftseer/api — Cards](../api/cards).
+
+---
+
+## Request and resolution types
 
 ### CardRequest
 

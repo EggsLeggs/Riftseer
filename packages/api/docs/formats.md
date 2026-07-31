@@ -49,8 +49,9 @@ Retired formats (`active: false`) are omitted here and from card payloads, but
 their stored statuses are kept — reactivating a format brings its legalities
 back. Admins see retired formats via `GET /api/v1/admin/formats`.
 
-An empty list means no formats are configured, in which case card pages have no
-legality table to show.
+An empty list means no formats are available — either none are configured, or
+the read failed and the route degraded to `200` with `formats: []` rather than
+`500`. Either way card pages have no legality table to show.
 
 ---
 

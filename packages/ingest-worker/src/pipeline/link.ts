@@ -271,6 +271,12 @@ function toPrintingStub(other: Card): RelatedCard {
   };
 }
 
+/**
+ * Idempotent: every card's `related_printings` is rewritten from the current
+ * names, including to `[]` when a card no longer has siblings. The override
+ * overlay re-runs this after renames so the links agree with the final
+ * `oracle_key`.
+ */
 export function linkRelatedPrintings(cards: Card[]): void {
   // Group all cards by oracle key — the same base-name derivation that keys
   // rulings and legalities, so a printing's siblings here are exactly the
@@ -285,7 +291,10 @@ export function linkRelatedPrintings(cards: Card[]): void {
 
   let linked = 0;
   for (const group of byBase.values()) {
-    if (group.length < 2) continue;
+    if (group.length < 2) {
+      group[0]!.related_printings = [];
+      continue;
+    }
     for (const card of group) {
       card.related_printings = group
         .filter((other) => other.id !== card.id)

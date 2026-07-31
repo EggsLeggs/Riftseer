@@ -9,7 +9,7 @@ export function PrivacyView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 30 July 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 31 July 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
