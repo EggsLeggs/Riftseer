@@ -90,6 +90,46 @@ absolute URL. Never assemble card paths by hand.
 - `providers/` — React context providers and TanStack Query setup
 - `lib/` — utilities, API client, env validation
 
+### Admin area
+
+`/admin` is the UI over the `/api/v1/admin/*` endpoints (see `packages/api/docs/admin.md`).
+
+| File | Purpose |
+|------|---------|
+| `lib/session.ts` | `requireAdmin()` gates a route subtree; `isAdminSession()` is the non-throwing check for conditional UI |
+| `features/auth/api.ts` | `getCurrentUser(token)` → `GET /auth/me`, wrapped in React `cache()` so one render costs one round-trip |
+| `features/admin/types.ts` | Request/response contracts derived from the Eden treaty `App` type — never hand-mirror the Elysia `t` schemas |
+| `features/admin/api.ts` | Bearer-token fetches for every admin endpoint. Resolves `AdminResult`, never throws |
+| `features/admin/actions.ts` | Server actions — read the session, call `api.ts`, `revalidatePath` the affected pages |
+| `features/admin/card-form.ts` | Editor value shape, Zod schema, `cardToEditorValues`, and `buildCardPatch` |
+| `features/admin/card-id.ts` | `generateCardId()` — 24-char hex IDs in the RiftCodex ObjectId space, for manual cards |
+| `features/admin/dates.ts` | `toDateInputValue()` — coerces card/set dates for `<input type="date">` |
+| `features/admin/hooks/use-admin-mutations.ts` | TanStack Query mutations + toasts, wrapping the server actions |
+| `views/admin/` | Dashboard, card search, new-card form, card editor and its panels, set manager, audit log |
+
+`/admin/audit` reads `GET /api/v1/admin/audit-log`, the one admin endpoint that
+is not a mutation. Its `action` filter list is hard-coded from the RPC names in
+`supabase/migrations/20260730120000_phase3_admin_api.sql`; add to it whenever an
+admin RPC is added, or the new action silently filters to nothing.
+
+Creating a manual card is a two-step flow: `/admin/cards/new` posts only the
+fields that feed `public_slug` (name, set, collector number, signature,
+alternate art), because the API pins the slug at creation time; everything else
+is filled in on the editor page it redirects to.
+
+`is_admin` is **not** in the session cookie — it comes from `/auth/me` on every
+request so revoking `ADMIN_USER_IDS` takes effect immediately. `requireAdmin()`
+is a UI gate only; the API enforces the same allowlist on every mutation, so
+never treat a client-side check as the security boundary.
+
+Card edits use **JSON merge-patch** semantics: an omitted key is left alone and
+an explicit `null` clears the value. `buildCardPatch` diffs the form against the
+values it was seeded with and sends only changed leaves — never post a whole
+form, or you will overwrite fields another admin just changed. Nested groups
+(`attributes`, `classification`, …) are deep-merged by the RPC, so a partial
+group is safe. `PUT /cards/:id/relationships` is the exception: it **replaces**
+the card's entire override list.
+
 ### Consent (c15t)
 
 Consent uses **@c15t/nextjs** (UI) and **@c15t/backend** (API). Entry points: `src/components/consent-manager/`, `src/app/api/c15t/[...all]/route.ts`, `src/lib/c15t.ts` (Kysely adapter). Root-level `c15t-backend.config.ts` is for backend CLI/migrations.
@@ -127,6 +167,13 @@ src/
     collection/
       collection-view.tsx
   features/
+    admin/
+      hooks/use-admin-mutations.ts
+      api.ts        # bearer-token calls to /api/v1/admin/*
+      actions.ts    # server actions + revalidation
+      card-form.ts  # editor schema, value mapping, merge-patch diff
+      dates.ts
+      types.ts
     auth/
       hooks/use-session.ts
       api.ts
@@ -196,6 +243,7 @@ Build-time variables must be set in the **Workers Builds dashboard**, not just i
 - Bundle size limit is 3 MiB gzip on free tier, 10 MiB on paid — audit server-side deps if builds start failing
 - Always test with `bun run preview` before deploying — `bun dev` runs in Node.js and will not catch Workers-specific issues
 - `nodejs_compat` flag must be set in `wrangler.jsonc` — do not remove it
+- `src/workers-shims.d.ts` declares `cloudflare:workers` and `GeneratedEnv`. The type-only `import type { App } from "@riftseer/api"` pulls the API's source into this program, but this tsconfig excludes `../api`, so the API's own ambient types never load. Without the shim `bun run build` fails on `packages/api/src/index.ts`. Extend it if the API imports more Workers-only ambient types
 
 ## Code style
 
@@ -286,6 +334,8 @@ export default async function SomePage() {
 ```
 
 `requireAuth` redirects unauthenticated users to `/auth/login?next=<path>`. After login, `loginAction` reads `next` and redirects there. Do not use `proxy.ts` or middleware for auth gating — use this pattern.
+
+**Admin-only routes** — use `requireAdmin(next?)` the same way (see `app/(site)/admin/layout.tsx`). It runs `requireAuth` first, then checks `is_admin` from `/auth/me` and redirects signed-in non-admins to `/`. For conditional UI (nav entries, an inline "Edit" button) use `isAdminSession()`, which returns `false` instead of redirecting when signed out or when the API is unreachable.
 
 ### Supabase callback hash errors
 Supabase can redirect to the app root with errors in the URL hash (e.g. `/#error=access_denied&error_description=...`). Hash fragments are client-side only — the proxy cannot see them. The callback page (`app/auth/callback/page.tsx`) handles error hashes when Supabase redirects there, but errors landing on `/` are currently unhandled. **TODO:** add a client component on the root page to detect and surface these errors.

@@ -21,6 +21,31 @@ export interface AdminSlugCard {
   };
 }
 
+export interface AdminAuditEntry {
+  id: number;
+  actor_id: string;
+  action: string;
+  target_type: string;
+  target_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface AdminAuditQuery {
+  limit: number;
+  offset: number;
+  action?: string;
+  targetType?: string;
+  targetId?: string;
+  actorId?: string;
+}
+
+export interface AdminAuditPage {
+  entries: AdminAuditEntry[];
+  /** Total matching rows, so the UI can page without re-counting client-side. */
+  total: number;
+}
+
 export interface AdminDataRepository {
   callRpc(
     name: string,
@@ -36,6 +61,7 @@ export interface AdminDataRepository {
     baseSlug: string,
     excludeCardId?: string,
   ): Promise<Set<string>>;
+  listAuditLog(query: AdminAuditQuery): Promise<AdminAuditPage>;
 }
 
 export class AdminRepositoryError extends Error {
@@ -161,5 +187,73 @@ export function createAdminDataRepository(
       }
       return taken;
     },
+
+    async listAuditLog(query) {
+      let request = client
+        .from("admin_audit_log")
+        .select("id, actor_id, action, target_type, target_id, detail, created_at", {
+          count: "exact",
+        });
+
+      if (query.action) request = request.eq("action", query.action);
+      if (query.targetType) request = request.eq("target_type", query.targetType);
+      if (query.targetId) request = request.eq("target_id", query.targetId);
+      if (query.actorId) request = request.eq("actor_id", query.actorId);
+
+      const { data, error, count } = await request
+        // `id` breaks ties: bigserial is monotonic, and mutations inside one
+        // transaction share a `created_at`, which would make paging unstable.
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(query.offset, query.offset + query.limit - 1);
+
+      if (error) {
+        throw new AdminRepositoryError(error.message, error.code);
+      }
+
+      return {
+        entries: (data ?? []).map(parseAuditEntry),
+        total: count ?? 0,
+      };
+    },
+  };
+}
+
+function parseAuditEntry(row: Record<string, unknown>): AdminAuditEntry {
+  // The defaults keep one bad row from breaking the whole page, but silently
+  // coercing an identifier to "" would hide a genuine schema or write bug, so
+  // the malformed fields are named in the log first.
+  const malformed = (
+    [
+      ["id", typeof row.id === "number" || Number.isFinite(Number(row.id))],
+      ["actor_id", typeof row.actor_id === "string"],
+      ["action", typeof row.action === "string"],
+      ["target_type", typeof row.target_type === "string"],
+      ["target_id", typeof row.target_id === "string" || row.target_id == null],
+      ["detail", isRecord(row.detail)],
+      ["created_at", typeof row.created_at === "string"],
+    ] as const
+  )
+    .filter(([, ok]) => !ok)
+    .map(([field]) => field);
+
+  if (malformed.length > 0) {
+    console.warn(
+      JSON.stringify({
+        message: "malformed admin audit row",
+        fields: malformed,
+        id: row.id ?? null,
+      }),
+    );
+  }
+
+  return {
+    id: typeof row.id === "number" ? row.id : Number(row.id ?? 0),
+    actor_id: typeof row.actor_id === "string" ? row.actor_id : "",
+    action: typeof row.action === "string" ? row.action : "",
+    target_type: typeof row.target_type === "string" ? row.target_type : "",
+    target_id: typeof row.target_id === "string" ? row.target_id : null,
+    detail: isRecord(row.detail) ? row.detail : {},
+    created_at: typeof row.created_at === "string" ? row.created_at : "",
   };
 }

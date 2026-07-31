@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Backpack } from "lucide-react";
-import { getSession } from "@/lib/session";
+import { getSession, isAdminSession } from "@/lib/session";
 import { UserNav } from "./user-nav";
 import { CardSearchTrigger } from "./card-search-trigger";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ interface NavbarProps {
 
 export async function Navbar({ isSupporter, isMember }: NavbarProps) {
   const session = await getSession();
+  const isAdmin = await isAdminSession();
 
   return (
     <header className="border-b border-border">
@@ -44,7 +45,12 @@ export async function Navbar({ isSupporter, isMember }: NavbarProps) {
             </Link>
           </Button>
           {session ? (
-            <UserNav handle={session.user.handle} isSupporter={isSupporter} isMember={isMember} />
+            <UserNav
+              handle={session.user.handle}
+              isSupporter={isSupporter}
+              isMember={isMember}
+              isAdmin={isAdmin}
+            />
           ) : (
             <>
               <Button variant="ghost" size="sm" asChild>

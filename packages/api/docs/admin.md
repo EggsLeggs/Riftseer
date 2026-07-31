@@ -20,6 +20,45 @@ Every database mutation is immediate and durable: one RPC updates the live
 `cards` or `sets` row, writes the corresponding override/manual/deletion record,
 and appends `admin_audit_log` in the same transaction.
 
+## Audit log
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/audit-log` | Read admin mutations, newest first |
+
+| Parameter | Type | Notes |
+| --- | --- | --- |
+| `limit` | string (optional) | Page size, default `50`, clamped to `[1, 200]` |
+| `offset` | string (optional) | 0-based offset, default `0` |
+| `action` | string (optional) | Exact match, e.g. `card.patch` |
+| `target_type` | string (optional) | `card` or `set` |
+| `target_id` | string (optional) | Card ID or set code |
+| `actor_id` | string (optional) | Supabase user UUID |
+
+```json
+{
+  "entries": [
+    {
+      "id": 42,
+      "actor_id": "…",
+      "action": "card.patch",
+      "target_type": "card",
+      "target_id": "67f4064886be8495f7165dd7",
+      "detail": { "name": "Sun Disc" },
+      "created_at": "2026-07-30T12:00:00Z"
+    }
+  ],
+  "total": 1,
+  "limit": 50,
+  "offset": 0
+}
+```
+
+`detail` holds the submitted payload, so an edit can be traced or reverted by
+hand. Entries are ordered by `created_at` then `id`, both descending — mutations
+committed in one transaction share a timestamp, so the ID tiebreak is what keeps
+paging stable. The log is append-only and has no write endpoint.
+
 ## Cards
 
 | Method | Path | Purpose |
