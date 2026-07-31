@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Card, RelatedCard } from "@riftseer/types";
 import { logger, normalizeCardName } from "../utils.ts";
+import type { IngestSet } from "./types.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -70,11 +71,27 @@ interface RelationshipOverrideRow {
   created_at: string;
 }
 
+interface SetOverrideRow {
+  set_code: string;
+  patch: unknown;
+}
+
+interface ManualSetRow {
+  set_code: string;
+  definition: unknown;
+}
+
 export interface DbOverrideState {
   cardOverrides: CardOverrideRow[];
   manualCards: ManualCardRow[];
   relationshipOverrides: RelationshipOverrideRow[];
   deletedCardIds: Set<string>;
+}
+
+export interface DbSetOverrideState {
+  setOverrides: SetOverrideRow[];
+  manualSets: ManualSetRow[];
+  deletedSetCodes: Set<string>;
 }
 
 function isObject(value: unknown): value is JsonObject {
@@ -135,6 +152,44 @@ function withCardDefaults(id: string, value: unknown): Card | null {
   };
 }
 
+function withSetDefaults(setCode: string, value: unknown): IngestSet | null {
+  if (!isObject(value)) return null;
+
+  const name = typeof value.set_name === "string" ? value.set_name.trim() : "";
+  if (!name) return null;
+
+  const externalIds = isObject(value.external_ids)
+    ? value.external_ids
+    : {};
+
+  return {
+    set_code: setCode,
+    set_name: name,
+    set_uri:
+      typeof value.set_uri === "string" && value.set_uri
+        ? value.set_uri
+        : undefined,
+    set_search_uri:
+      typeof value.set_search_uri === "string" && value.set_search_uri
+        ? value.set_search_uri
+        : undefined,
+    published_on:
+      typeof value.published_on === "string"
+        ? value.published_on
+        : value.published_on === null
+          ? null
+          : undefined,
+    is_promo: Boolean(value.is_promo),
+    parent_set_code:
+      typeof value.parent_set_code === "string"
+        ? value.parent_set_code
+        : value.parent_set_code === null
+          ? null
+          : undefined,
+    external_ids: externalIds,
+  };
+}
+
 function relationshipComponent(kind: RelationshipKind): string {
   switch (kind) {
     case "all_parts":
@@ -189,6 +244,23 @@ export function applyDbOverrides(cards: Card[], state: DbOverrideState): Card[] 
     order.push(card.id);
   }
 
+  let manual = 0;
+  for (const row of state.manualCards) {
+    if (state.deletedCardIds.has(row.id)) continue;
+    const card = withCardDefaults(row.id, row.definition);
+    if (!card) {
+      logger.warn("Skipping invalid manual card definition", { cardId: row.id });
+      continue;
+    }
+    card.source = "manual";
+    if (!cardById.has(row.id)) order.push(row.id);
+    cardById.set(row.id, card);
+    manual++;
+  }
+
+  // Manual definitions establish the baseline first. Patches are deliberately
+  // applied afterwards so PATCH /admin/cards/:id persists for both RiftCodex
+  // and manual cards.
   let patched = 0;
   for (const row of state.cardOverrides) {
     if (state.deletedCardIds.has(row.card_id)) continue;
@@ -207,20 +279,6 @@ export function applyDbOverrides(cards: Card[], state: DbOverrideState): Card[] 
     merged.source = current.source ?? "riftcodex";
     cardById.set(row.card_id, merged);
     patched++;
-  }
-
-  let manual = 0;
-  for (const row of state.manualCards) {
-    if (state.deletedCardIds.has(row.id)) continue;
-    const card = withCardDefaults(row.id, row.definition);
-    if (!card) {
-      logger.warn("Skipping invalid manual card definition", { cardId: row.id });
-      continue;
-    }
-    card.source = "manual";
-    if (!cardById.has(row.id)) order.push(row.id);
-    cardById.set(row.id, card);
-    manual++;
   }
 
   const relationshipRows = [...state.relationshipOverrides].sort((a, b) => {
@@ -317,6 +375,131 @@ export function applyDbOverrides(cards: Card[], state: DbOverrideState): Card[] 
   }
 
   return finalCards;
+}
+
+export function applyDbSetOverrides(
+  sets: IngestSet[],
+  state: DbSetOverrideState,
+): IngestSet[] {
+  const setByCode = new Map<string, IngestSet>();
+  const order: string[] = [];
+
+  for (const set of sets) {
+    if (state.deletedSetCodes.has(set.set_code)) continue;
+    setByCode.set(set.set_code, set);
+    order.push(set.set_code);
+  }
+
+  let manual = 0;
+  for (const row of state.manualSets) {
+    if (state.deletedSetCodes.has(row.set_code)) continue;
+    const set = withSetDefaults(row.set_code, row.definition);
+    if (!set) {
+      logger.warn("Skipping invalid manual set definition", {
+        setCode: row.set_code,
+      });
+      continue;
+    }
+    if (!setByCode.has(row.set_code)) order.push(row.set_code);
+    setByCode.set(row.set_code, set);
+    manual++;
+  }
+
+  let patched = 0;
+  for (const row of state.setOverrides) {
+    if (state.deletedSetCodes.has(row.set_code)) continue;
+    const current = setByCode.get(row.set_code);
+    if (!current) continue;
+    const merged = withSetDefaults(
+      row.set_code,
+      mergePatch(current, row.patch),
+    );
+    if (!merged) {
+      logger.warn("Skipping invalid set override patch", {
+        setCode: row.set_code,
+      });
+      continue;
+    }
+    setByCode.set(row.set_code, merged);
+    patched++;
+  }
+
+  // A deleted set must not survive as a parent reference on the sets that still
+  // point at it. Runs after every override is merged, so it also catches a
+  // parent introduced by a manual definition or a patch.
+  if (state.deletedSetCodes.size > 0) {
+    for (const set of setByCode.values()) {
+      if (set.parent_set_code && state.deletedSetCodes.has(set.parent_set_code)) {
+        set.parent_set_code = null;
+      }
+    }
+  }
+
+  const finalSets = order.flatMap((setCode) => {
+    const set = setByCode.get(setCode);
+    return set ? [set] : [];
+  });
+
+  if (
+    patched > 0 ||
+    manual > 0 ||
+    state.deletedSetCodes.size > 0
+  ) {
+    logger.info("Applied DB set overrides", {
+      patched,
+      manual,
+      deleted: state.deletedSetCodes.size,
+      outputSets: finalSets.length,
+    });
+  }
+
+  return finalSets;
+}
+
+export async function overlayDbSetOverrides(
+  supabase: SupabaseClient,
+  sets: IngestSet[],
+): Promise<IngestSet[]> {
+  const [
+    { data: setOverrides, error: setOverridesError },
+    { data: manualSets, error: manualSetsError },
+    { data: deletions, error: deletionsError },
+  ] = await Promise.all([
+    selectAllRows<SetOverrideRow>(
+      supabase,
+      "set_overrides",
+      "set_code, patch",
+      "set_code",
+    ),
+    selectAllRows<ManualSetRow>(
+      supabase,
+      "manual_sets",
+      "set_code, definition",
+      "set_code",
+    ),
+    selectAllRows<{ set_code: string }>(
+      supabase,
+      "set_deletions",
+      "set_code",
+      "set_code",
+    ),
+  ]);
+
+  if (setOverridesError) {
+    throw new Error(`load set_overrides failed: ${setOverridesError.message}`);
+  }
+  if (manualSetsError) {
+    throw new Error(`load manual_sets failed: ${manualSetsError.message}`);
+  }
+  if (deletionsError) {
+    throw new Error(`load set_deletions failed: ${deletionsError.message}`);
+  }
+
+  return applyDbSetOverrides(sets, {
+    setOverrides,
+    manualSets,
+    deletedSetCodes: new Set(deletions.map((row) => row.set_code)),
+  });
 }
 
 export async function overlayDbOverrides(

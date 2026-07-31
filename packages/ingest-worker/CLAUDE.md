@@ -43,7 +43,7 @@ src/
 5. fetchAllGroupResults  (sources/tcgcsv.ts) ← non-fatal if fails
 6. buildProductMap + enrichCards  (pipeline/enrich.ts) ← non-fatal if fails
 7. linkTokens + linkChampionsLegends + linkSignatures + linkRelatedPrintings  (pipeline/link.ts)
-8. overlayDbOverrides  (pipeline/overrides-db.ts)
+8. overlayDbSetOverrides + overlayDbOverrides  (pipeline/overrides-db.ts)
 9. prepareCardImageJobs — preserve unchanged R2 URLs; hash changed sources
 10. ingestCardData → ingest_card_data_v2 RPC  (pipeline/db.ts)
 11. enqueue a catalogue scan → riftseer-card-images; the consumer fans out pending card jobs
@@ -106,7 +106,7 @@ wrangler types src/worker-configuration.d.ts \
 - **`public_slug` assignment** lives in `pipeline/db.ts`. Slug logic comes from `@riftseer/types/slug` (zero-dep, also used by tests). Each card's slug is `<set>/<collector>(/signature)?/<name>`, with `a` appended to numeric collectors for alternate art and a `-2`, `-3`, … suffix on the name segment for collisions. Cards with no collector number get the sentinel segment `x`. The RPC `coalesce`s on conflict so the value persisted on first insert is **never overwritten** — public URLs stay stable across re-runs. Re-runs after a slug-column migration backfill nulls automatically.
 - **Image idempotency** lives in `media.source_hash`. An unchanged hash carries the existing R2 URLs through ingest; a changed hash queues new variants. Public URLs carry `?v=<hash>` so corrected images bypass immutable caches.
 - **File overrides** are still the right place for source-specific ingest fixes (set names, TCGPlayer group mappings, image preferences).
-- **DB overrides** are the durable admin layer. `card_overrides` JSON merge-patches ingested cards, `manual_cards` adds cards with `source='manual'`, `card_relationship_overrides` adds/removes relationship stubs, and `card_deletions` prevents re-ingest of deleted upstream cards.
+- **DB overrides** are the durable admin layer. `card_overrides` JSON merge-patches ingested cards, `manual_cards` adds cards with `source='manual'`, `card_relationship_overrides` adds/removes relationship stubs, and `card_deletions` prevents re-ingest of deleted upstream cards. Sets use the parallel `set_overrides`, `manual_sets`, and `set_deletions` tables before the ingest RPC.
 
 ## Adding a new override
 1. Add the entry to the relevant JSON file in `src/overrides/`

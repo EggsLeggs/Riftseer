@@ -19,6 +19,7 @@
  *   POST /api/v1/auth/refresh   body: { refresh_token }
  *   POST /api/v1/auth/logout    Authorization: Bearer <access_token>
  *   GET  /api/v1/auth/me        Authorization: Bearer <access_token>  (protected)
+ *   *    /api/v1/admin/*        Authorization: Bearer <admin access_token>
  *   GET  /api/v1/auth/metafy/status        (protected)
  *   GET  /api/v1/auth/metafy/connect       (protected)
  *   POST /api/v1/auth/metafy/callback      (protected)
@@ -50,6 +51,10 @@ import { decksRoutes } from "./routes/decks";
 import { authRoutes } from "./routes/auth";
 import { usersRoutes } from "./routes/users";
 import { metafyRoutes } from "./routes/metafy";
+import {
+  adminRoutes,
+  type AdminImageBindings,
+} from "./routes/admin";
 import { handleMetafyWebhook } from "./lib/metafy";
 import { withExecutionContext, type WaitUntilContext } from "./lib/background";
 
@@ -59,6 +64,46 @@ import { withExecutionContext, type WaitUntilContext } from "./lib/background";
 
 const cardProvider = createProvider();
 const startTime = Date.now();
+
+/**
+ * The slice of the Worker env this module touches, declared structurally.
+ *
+ * Every workspace package that imports the `App` type (web, frontend) also
+ * type-checks this file, and those programs have neither
+ * `@cloudflare/workers-types` nor the generated `GeneratedEnv`. Importing
+ * `cloudflare:workers` or naming `GeneratedEnv` here breaks their builds, so
+ * the bindings are captured from the fetch handler instead.
+ */
+interface CardImageEnv {
+  CARD_IMAGES: AdminImageBindings["bucket"];
+  CARD_IMAGE_QUEUE: AdminImageBindings["queue"];
+  CARD_IMAGE_BASE_URL?: string;
+}
+
+let workerEnv: CardImageEnv | undefined;
+
+function requireWorkerEnv(): CardImageEnv {
+  if (!workerEnv) {
+    throw new Error("Worker bindings are unavailable outside a request");
+  }
+  return workerEnv;
+}
+
+// Every access is lazy, so the singleton can be built at module scope while the
+// bindings themselves only arrive with the first request.
+const adminImageBindings: AdminImageBindings = {
+  bucket: {
+    put: (key, value, options) =>
+      requireWorkerEnv().CARD_IMAGES.put(key, value, options),
+    delete: (key) => requireWorkerEnv().CARD_IMAGES.delete(key),
+  },
+  queue: {
+    send: (job) => requireWorkerEnv().CARD_IMAGE_QUEUE.send(job),
+  },
+  get baseUrl() {
+    return requireWorkerEnv().CARD_IMAGE_BASE_URL ?? "https://img.riftseer.com";
+  },
+};
 
 const deckProvider = new SimplifiedDeckProviderImpl(
   new DeckSerializerV1(),
@@ -84,13 +129,23 @@ function ensureWarmedUp(): Promise<void> {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-export const app = new Elysia({ adapter: CloudflareAdapter })
+export const app = new Elysia({
+  adapter: CloudflareAdapter,
+  // Elysia's response/param normalizer (exact-mirror) can't codegen a
+  // mirror function for the literal `"*"` wildcard param key used by
+  // GET /cards/by-slug/* — it throws a SyntaxError building the mirror's
+  // property access. `"typebox"` normalizes dynamically via Value.Clean
+  // instead, which handles non-identifier keys fine.
+  normalize: "typebox",
+})
   .onBeforeHandle(async ({ path, set }) => {
     if (
       path === "/api/v1/health" ||
       path === "/api/v1/users" ||
       path === "/api/v1/webhooks" ||
       path.startsWith("/api/v1/auth/") ||
+      path === "/api/v1/admin" ||
+      path.startsWith("/api/v1/admin/") ||
       path.startsWith("/api/v1/users/") ||
       path.startsWith("/api/v1/webhooks/")
     ) return;
@@ -104,7 +159,7 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
   .use(
     cors({
       origin: true, // Reflect any Origin — public API, browser requests from any site are allowed
-      methods: ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"],
+      methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }),
   )
   .use(
@@ -115,7 +170,12 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
       .use(decksRoutes(deckProvider))
       .use(authRoutes())
       .use(usersRoutes())
-      .use(metafyRoutes()),
+      .use(metafyRoutes())
+      .use(
+        adminRoutes({
+          imageBindings: adminImageBindings,
+        }),
+      ),
   )
   .compile();
 
@@ -125,7 +185,12 @@ export type App = typeof app;
 // Elysia's body parser consumes the body stream before our route handler runs,
 // so we intercept the webhook path here, before mounting Elysia.
 export default {
-  async fetch(request: Request, _env: unknown, ctx: WaitUntilContext): Promise<Response> {
+  async fetch(
+    request: Request,
+    bindings: CardImageEnv,
+    ctx: WaitUntilContext,
+  ): Promise<Response> {
+    workerEnv = bindings;
     const url = new URL(request.url);
     return withExecutionContext(ctx, () => {
       if (url.pathname === "/api/v1/webhooks/metafy" && request.method === "POST") {

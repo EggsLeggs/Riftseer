@@ -7,7 +7,10 @@ import {
 } from "../pipeline/db.ts";
 import { buildProductMap, enrichCards } from "../pipeline/enrich.ts";
 import { linkRelatedPrintings } from "../pipeline/link.ts";
-import { applyDbOverrides } from "../pipeline/overrides-db.ts";
+import {
+  applyDbOverrides,
+  applyDbSetOverrides,
+} from "../pipeline/overrides-db.ts";
 import {
   printedVariantSignals,
   rawToCard,
@@ -551,6 +554,12 @@ describe("ingest helpers", () => {
             collector_number: null,
           },
         },
+        {
+          card_id: "manual-card",
+          patch: {
+            text: { plain: "Manual patch survives ingest." },
+          },
+        },
       ],
       manualCards: [
         {
@@ -600,5 +609,63 @@ describe("ingest helpers", () => {
       }),
     ]);
     expect(byId.get("manual-card")?.source).toBe("manual");
+    expect(byId.get("manual-card")?.text?.plain).toBe(
+      "Manual patch survives ingest.",
+    );
+  });
+
+  test("applyDbSetOverrides applies durable patches, manual sets, and deletions", () => {
+    const finalSets = applyDbSetOverrides(
+      [
+        {
+          set_code: "TST",
+          set_name: "Test Set",
+          is_promo: false,
+          external_ids: { riftcodex_set_id: "tst" },
+        },
+        {
+          set_code: "OLD",
+          set_name: "Deleted Set",
+          is_promo: false,
+          external_ids: {},
+        },
+      ],
+      {
+        setOverrides: [
+          {
+            set_code: "TST",
+            patch: { set_name: "Admin Test Set", is_promo: true },
+          },
+          {
+            set_code: "MAN",
+            patch: { parent_set_code: "TST" },
+          },
+        ],
+        manualSets: [
+          {
+            set_code: "MAN",
+            definition: {
+              set_name: "Manual Set",
+              is_promo: false,
+              external_ids: {},
+            },
+          },
+        ],
+        deletedSetCodes: new Set(["OLD"]),
+      },
+    );
+
+    expect(finalSets).toEqual([
+      expect.objectContaining({
+        set_code: "TST",
+        set_name: "Admin Test Set",
+        is_promo: true,
+      }),
+      expect.objectContaining({
+        set_code: "MAN",
+        set_name: "Manual Set",
+        parent_set_code: "TST",
+      }),
+    ]);
   });
 });

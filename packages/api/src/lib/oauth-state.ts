@@ -24,10 +24,16 @@ function base64UrlEncode(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-function base64UrlDecode(value: string): Uint8Array {
+// The explicit `ArrayBuffer` argument keeps the result assignable to
+// `BufferSource` under the DOM lib, which packages importing this app use.
+function base64UrlDecode(value: string): Uint8Array<ArrayBuffer> {
   const padded = value.replace(/-/g, "+").replace(/_/g, "/");
   const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let index = 0; index < binary.length; index++) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 /** Derives a purpose-bound MAC key so the OAuth client secret is never itself the signing key. */

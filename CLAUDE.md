@@ -35,8 +35,9 @@ bun typecheck
 cd packages/ingest-worker
 bun run dev              # Worker at http://localhost:8787
 curl http://localhost:8787/cdn-cgi/mf/scheduled
-curl -X POST http://localhost:8787/ingest \
-  -H "Authorization: Bearer ${INGEST_SECRET}"   # header required only when INGEST_SECRET is set
+# POST /ingest is unauthenticated unless INGEST_SECRET is set:
+curl -X POST http://localhost:8787/ingest
+curl -X POST http://localhost:8787/ingest -H "Authorization: Bearer ${INGEST_SECRET}"
 
 cd packages/discord-bot
 bun run dev
@@ -81,7 +82,7 @@ Treat each package's `wrangler.jsonc`, `.env.example`, and generated Worker bind
 
 Key configuration groups:
 
-- API: Supabase URL/service/anon keys, optional Upstash, legal consent versions, `SITE_ORIGIN`, and Metafy OAuth/webhook settings.
+- API: Supabase URL/service/anon keys, optional Upstash, legal consent versions, `SITE_ORIGIN`, comma-separated `ADMIN_USER_IDS`, shared `CARD_IMAGES`/`CARD_IMAGE_QUEUE` bindings, `CARD_IMAGE_BASE_URL`, and Metafy OAuth/webhook settings.
 - Ingest: Supabase service credentials, RiftCodex settings, `CARD_IMAGE_BASE_URL`, R2 `CARD_IMAGES`, queue `CARD_IMAGE_QUEUE`, and `IMAGES`.
 - Web: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_APP_URL`, and secret `C15T_DATABASE_URL` (Supabase transaction pooler on port 6543 with `?prepare=false`).
 - CI ingest migration check: `SUPABASE_DB_URL` must be a Postgres connection URI, preferably an IPv4-compatible Supabase pooler URI—not an HTTPS project URL or service-role key.

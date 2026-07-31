@@ -6,6 +6,9 @@ SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
 SUPABASE_ANON_KEY=<anon-public>
 
+# Comma-separated Supabase user UUIDs allowed to call /api/v1/admin
+ADMIN_USER_IDS=
+
 # Optional — leave blank to disable Redis
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
