@@ -50,6 +50,14 @@ const beaufortForLoL = localFont({
 export const metadata: Metadata = {
   title: "Riftseer",
   description: "Card database and deck builder for the Riftbound TCG",
+  applicationName: "Riftseer",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+  appleWebApp: {
+    title: "Riftseer",
+  },
 };
 
 export default function RootLayout({
