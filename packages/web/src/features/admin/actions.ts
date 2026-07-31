@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getSession } from "@/lib/session";
+import { getSession, isAdminSession } from "@/lib/session";
 import { adminApi } from "./api";
 import { detectImageContentType, extensionForImageType } from "./image-type";
 import type {
@@ -215,12 +215,28 @@ const IMPORT_TIMEOUT_MS = 30_000;
  * Fetch a remote image (e.g. the gallery art on a missing-card draft) and
  * upload it through the normal admin image endpoint. Runs server-side so CDN
  * CORS does not block the browser.
+ *
+ * Unlike every other action here, the API's allowlist is *not* enough on its
+ * own: the outbound fetch is a side effect this Worker performs before the API
+ * is ever called, so an ungated action would let anyone use it to probe
+ * arbitrary URLs. `isAdminSession()` gates the request itself; the API still
+ * enforces the allowlist on the upload that follows.
  */
 export async function importCardImageFromUrlAction(
   cardId: string,
   imageUrl: string,
   accessibilityText?: string,
 ): Promise<AdminResult<AdminImageMutationResult>> {
+  const session = await getSession();
+  if (!session) return NOT_SIGNED_IN;
+  if (!(await isAdminSession())) {
+    return {
+      ok: false,
+      error: "Admin access is required",
+      code: "ADMIN_REQUIRED",
+    };
+  }
+
   const trimmed = imageUrl.trim();
   let parsed: URL;
   try {
@@ -232,10 +248,12 @@ export async function importCardImageFromUrlAction(
       code: "INVALID_IMAGE_URL",
     };
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+  // HTTPS only. Every source we import from serves it, and allowing plain HTTP
+  // would widen what this action can be pointed at for no gain.
+  if (parsed.protocol !== "https:") {
     return {
       ok: false,
-      error: "Image URL must be http(s)",
+      error: "Image URL must be https",
       code: "INVALID_IMAGE_URL",
     };
   }

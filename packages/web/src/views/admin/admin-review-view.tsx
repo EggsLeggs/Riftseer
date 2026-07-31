@@ -64,6 +64,23 @@ const FIELD_LABELS: Record<string, string> = {
   text: "Rules text",
 };
 
+/**
+ * Fields `buildConfirmPatch` in the API can turn into a card patch. `text` is
+ * deliberately absent there — the two sources hold different markup for the
+ * same rules, so the compared form is not the form we would store — and
+ * confirming one answers `REVIEW_FIELD_UNSUPPORTED`. Mirror that here so the
+ * button says so instead of erroring.
+ */
+const CONFIRMABLE_FIELDS = new Set([
+  "collector_number",
+  "released_at",
+  "rarity",
+  "type",
+  "energy",
+  "might",
+  "power",
+]);
+
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value || "unknown";
@@ -294,6 +311,11 @@ function ReviewRow({
   const fixedCard = entry.kind === "field_diff";
   const [cardId, setCardId] = React.useState(entry.proposed_card_id ?? "");
 
+  // A diff on a field the API cannot patch is dismiss-only; there is nothing
+  // for confirming to write.
+  const unconfirmable =
+    entry.kind === "field_diff" && !CONFIRMABLE_FIELDS.has(field ?? "");
+
   function confirmEntry() {
     const trimmed = cardId.trim();
     if (!fixedCard && !trimmed) {
@@ -444,8 +466,13 @@ function ReviewRow({
             <Button
               variant="ghost"
               size="sm"
-              disabled={pending}
+              disabled={pending || unconfirmable}
               onClick={confirmEntry}
+              title={
+                unconfirmable
+                  ? `${FIELD_LABELS[field ?? ""] ?? field} differences cannot be applied automatically — edit the card, then dismiss this entry.`
+                  : undefined
+              }
             >
               <Check aria-hidden="true" />
               Confirm

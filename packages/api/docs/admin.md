@@ -379,7 +379,10 @@ live immediately and stored in `card_overrides`:
 - **`missing_card`** → `external_ids.riftbound_id` from the gallery payload, so
   later ingests recognise the printing. The admin create form prefills the rest
   from the same payload.
-- **`field_diff`** → the single proposed field.
+- **`field_diff`** → the single proposed field, except `text`. The two sources
+  hold different markup for the same rules, so the compared form is not the form
+  we would store; confirming one returns `400 REVIEW_FIELD_UNSUPPORTED`. Edit the
+  card, then dismiss the entry. `/admin/review` disables Confirm on those rows.
 
 `POST …/dismiss` takes optional `{ note }` and never touches a card. Both are
 durable — later ingests refresh only *pending* rows and prune only pending rows,

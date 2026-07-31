@@ -124,6 +124,15 @@ create elsewhere and paste the id into Confirm. Only pending entries are
 actionable; the confirmed and dismissed tabs are read-only history. An
 unmatched product's card field is pre-filled with ingest's suggestion but stays
 editable, because the suggestion is only a same-set collector-number guess.
+A rules-text diff is dismiss-only — the API has no patch for it, so Confirm is
+disabled on those rows; `CONFIRMABLE_FIELDS` in `admin-review-view.tsx` mirrors
+`buildConfirmPatch` and must stay in step with it.
+
+`importCardImageFromUrlAction` is the one server action that gates on
+`isAdminSession()` itself rather than leaning on the API's allowlist: it
+performs an outbound `fetch()` before the API is ever called, so an ungated
+action would let anyone point this Worker at arbitrary URLs. Any future action
+with a side effect of its own needs the same treatment.
 
 `/admin/audit` reads `GET /api/v1/admin/audit-log`, the one admin endpoint that
 is not a mutation. Its `action` filter list is hard-coded from the RPC names in
