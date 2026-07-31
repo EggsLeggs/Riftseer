@@ -56,14 +56,22 @@ export function repairFlavourText(flavour: string): string {
   const body = text.slice(lead.length);
   if (body.length === 0) return text;
 
+  // Either the field already opens a quote, or its quotes are unbalanced \u2014
+  // which is exactly the shape upstream leaves behind when it drops the opener.
+  // Balanced quotes mean the field is prose containing a quoted word, so a
+  // trailing dash there is punctuation and not an attribution.
+  const opensQuote = body.startsWith('"') || body.startsWith("\u201c");
+  const isDialogue = opensQuote || countQuotes(body) % 2 === 1;
+  if (!isDialogue) return text;
+
   const quoted =
-    body.startsWith('"') || body.startsWith("\u201c")
-      ? body
-      : ORPHANED_CLOSING_QUOTE.test(body)
-        ? `"${body}`
-        : body;
+    opensQuote || !ORPHANED_CLOSING_QUOTE.test(body) ? body : `"${body}`;
 
   return lead + quoted.replace(RUN_ON_ATTRIBUTION, "$1\n$2");
+}
+
+function countQuotes(text: string): number {
+  return text.match(/["\u201c\u201d]/g)?.length ?? 0;
 }
 
 /**
@@ -84,8 +92,13 @@ const HTML_DEBRIS_TAIL = /<\/?[a-zA-Z][a-zA-Z0-9]*$/;
  * A closing quote followed by a dashed attribution, on the same line or the
  * next. Verified against the live card corpus: it fires on 109 flavour texts
  * and every one is a genuine missing opening quote.
+ *
+ * The attribution has to be the last thing in the field. Without that anchor a
+ * quoted word mid-sentence looked like an attribution (`The word "power" - not
+ * a rule.`) and gained a bogus opening quote.
  */
-const ORPHANED_CLOSING_QUOTE = /["”]\s*(?:\n\s*)*[-–—]\s*\S/;
+const ORPHANED_CLOSING_QUOTE =
+  /["”][^\S\n]*(?:\n\s*)*[-–—]\s*\S(?:[^\n]*\S)?\s*$/;
 
 /**
  * A dashed attribution running on after the closing quote (`..." -Azir`).

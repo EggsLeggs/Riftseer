@@ -26,6 +26,13 @@ describe("repairFlavourText", () => {
     expect(repairFlavourText("A quiet resolve.")).toBe("A quiet resolve.");
   });
 
+  it("does not treat a mid-sentence quoted word as an attribution", () => {
+    // The dash here is punctuation, not a trailing attribution, so nothing
+    // should gain an opening quote.
+    const aside = 'The word "power" - not a rule.';
+    expect(repairFlavourText(aside)).toBe(aside);
+  });
+
   it("strips stray HTML debris from upstream flavour", () => {
     expect(
       repairFlavourText('Hey, where is everyone?" \r\n- Common last words</em'),
