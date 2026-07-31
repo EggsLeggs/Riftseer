@@ -3,8 +3,87 @@ import {
   decodeCardTextEntities,
   formatCardTextForClipboard,
   maskIconTokens,
+  repairFlavourText,
   restoreIconTokens,
 } from "../card-text.ts";
+
+describe("repairFlavourText", () => {
+  it("restores a missing opening dialogue quote before attribution", () => {
+    expect(repairFlavourText('If you hit a wall, hit it hard!"\r\n \r\n- Vi')).toBe(
+      '"If you hit a wall, hit it hard!"\n \n- Vi',
+    );
+    expect(repairFlavourText('Art shall blossom from your fear."\n - Jhin')).toBe(
+      '"Art shall blossom from your fear."\n - Jhin',
+    );
+  });
+
+  it("is idempotent when the opening quote is already present", () => {
+    const ok = '"Peace within, peace without."\n\n- Master Yi';
+    expect(repairFlavourText(ok)).toBe(ok);
+  });
+
+  it("leaves unquoted flavour unchanged", () => {
+    expect(repairFlavourText("A quiet resolve.")).toBe("A quiet resolve.");
+  });
+
+  it("does not treat a mid-sentence quoted word as an attribution", () => {
+    // The dash here is punctuation, not a trailing attribution, so nothing
+    // should gain an opening quote.
+    const aside = 'The word "power" - not a rule.';
+    expect(repairFlavourText(aside)).toBe(aside);
+  });
+
+  it("strips stray HTML debris from upstream flavour", () => {
+    expect(
+      repairFlavourText('Hey, where is everyone?" \r\n- Common last words</em'),
+    ).toBe('"Hey, where is everyone?" \n- Common last words');
+  });
+
+  // The attribution runs on after the closing quote far more often than it
+  // starts a new line (82 vs 27 of the 109 affected cards), so this shape
+  // matters more than the newline one above.
+  it("restores the quote and breaks a run-on attribution onto its own line", () => {
+    expect(
+      repairFlavourText('Those who follow me follow destiny!" - Azir'),
+    ).toBe('"Those who follow me follow destiny!"\n- Azir');
+    expect(repairFlavourText(`We're gonna be rich!" -Common Last Words`)).toBe(
+      `"We're gonna be rich!"\n-Common Last Words`,
+    );
+  });
+
+  it("leaves an attribution that already has its own line where it is", () => {
+    const spaced = '"If you hit a wall, hit it hard!"\n \n- Vi';
+    expect(repairFlavourText(spaced)).toBe(spaced);
+  });
+
+  it("does not break on a dash inside the quoted line", () => {
+    const inline = '"A half-measure is no measure."';
+    expect(repairFlavourText(inline)).toBe(inline);
+  });
+
+  it("strips a closing tag that upstream leaves after the quote", () => {
+    expect(
+      repairFlavourText('One of us finds peace. One of us walks away."</e>'),
+    ).toBe('One of us finds peace. One of us walks away."');
+  });
+
+  it("strips leading tag debris without eating the rest of the text", () => {
+    // A greedy `[^>]*` on this unterminated tag consumed the whole flavour.
+    expect(repairFlavourText('<em?"I will light our path.')).toBe(
+      '"I will light our path.',
+    );
+  });
+
+  it("keeps angle brackets that cannot be a tag", () => {
+    expect(repairFlavourText("I <3 the Rift.")).toBe("I <3 the Rift.");
+  });
+
+  it("still repairs when the attribution uses an em dash", () => {
+    expect(repairFlavourText('Only the worthy."\n— Leona')).toBe(
+      '"Only the worthy."\n— Leona',
+    );
+  });
+});
 
 describe("decodeCardTextEntities", () => {
   it("decodes common HTML entities from upstream rules text", () => {

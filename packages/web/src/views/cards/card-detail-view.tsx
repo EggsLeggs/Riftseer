@@ -272,7 +272,9 @@ function DetailedCardBody({
 
             {card.text?.flavour?.trim() ? (
               <DetailRow label="Flavour" alignTop>
-                <p className="text-muted-foreground text-sm italic">
+                {/* Flavour carries the line break before its attribution
+                    ("…!\n- Vi"), which HTML would otherwise collapse. */}
+                <p className="text-muted-foreground text-sm italic whitespace-pre-line">
                   {card.text.flavour}
                 </p>
               </DetailRow>
@@ -428,7 +430,7 @@ function SimpleCardBody({
         ) : null}
 
         {card.text?.flavour?.trim() ? (
-          <p className="text-muted-foreground mt-6 max-w-prose text-sm italic">
+          <p className="text-muted-foreground mt-6 max-w-prose text-sm italic whitespace-pre-line">
             {card.text.flavour}
           </p>
         ) : null}

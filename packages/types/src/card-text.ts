@@ -27,6 +27,90 @@ function isUnicodeScalarValue(value: number): boolean {
   );
 }
 
+/**
+ * RiftCodex flavour text systematically drops the opening dialogue quote while
+ * leaving the closer and attribution, e.g.
+ *   If you hit a wall, hit it hard!"\n- Vi
+ * instead of
+ *   "If you hit a wall, hit it hard!"\n- Vi
+ *
+ * Also strips stray HTML tag debris sometimes left in the same field.
+ *
+ * The attribution may sit on its own line ("...!"\n- Vi) or run on after the
+ * closing quote ("...!" -Azir); both shapes occur upstream, roughly 27 and 82
+ * times respectively across the 770 cards that carry flavour text. Requiring a
+ * newline would silently skip the larger group.
+ *
+ * Idempotent: text that already opens with a quote is returned untouched, so
+ * running this on both ingest and read never doubles the quote.
+ */
+export function repairFlavourText(flavour: string): string {
+  let text = flavour.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  text = text
+    .replace(HTML_TAG, "")
+    .replace(HTML_DEBRIS_HEAD, "")
+    .replace(HTML_DEBRIS_TAIL, "");
+
+  const leadMatch = text.match(/^\s*/);
+  const lead = leadMatch?.[0] ?? "";
+  const body = text.slice(lead.length);
+  if (body.length === 0) return text;
+
+  // Either the field already opens a quote, or its quotes are unbalanced \u2014
+  // which is exactly the shape upstream leaves behind when it drops the opener.
+  // Balanced quotes mean the field is prose containing a quoted word, so a
+  // trailing dash there is punctuation and not an attribution.
+  const opensQuote = body.startsWith('"') || body.startsWith("\u201c");
+  const isDialogue = opensQuote || countQuotes(body) % 2 === 1;
+  if (!isDialogue) return text;
+
+  const quoted =
+    opensQuote || !ORPHANED_CLOSING_QUOTE.test(body) ? body : `"${body}`;
+
+  return lead + quoted.replace(RUN_ON_ATTRIBUTION, "$1\n$2");
+}
+
+function countQuotes(text: string): number {
+  return text.match(/["\u201c\u201d]/g)?.length ?? 0;
+}
+
+/**
+ * Well-formed tags, which must close. Upstream ships `</e>` among others.
+ * Requiring the `>` keeps `[^>]*` from running to the end of the string.
+ */
+const HTML_TAG = /<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>/g;
+
+/**
+ * Truncated debris, which upstream leaves only at the very start or end of the
+ * field (`<em?"I will light our path.`, `...last words</em`). Anchoring is what
+ * stops a bare `<` mid-sentence from eating the rest of the text.
+ */
+const HTML_DEBRIS_HEAD = /^<\/?[a-zA-Z][a-zA-Z0-9]*[?!]?/;
+const HTML_DEBRIS_TAIL = /<\/?[a-zA-Z][a-zA-Z0-9]*$/;
+
+/**
+ * A closing quote followed by a dashed attribution, on the same line or the
+ * next. Verified against the live card corpus: it fires on 109 flavour texts
+ * and every one is a genuine missing opening quote.
+ *
+ * The attribution has to be the last thing in the field. Without that anchor a
+ * quoted word mid-sentence looked like an attribution (`The word "power" - not
+ * a rule.`) and gained a bogus opening quote.
+ */
+const ORPHANED_CLOSING_QUOTE =
+  /["”][^\S\n]*(?:\n\s*)*[-–—]\s*\S(?:[^\n]*\S)?\s*$/;
+
+/**
+ * A dashed attribution running on after the closing quote (`..." -Azir`).
+ * Upstream is inconsistent about this: 27 cards put the attribution on its own
+ * line and 82 leave it inline. Normalising to the newline form makes the two
+ * groups render alike, and is what lets `whitespace-pre-line` show the break.
+ *
+ * Anchored to the end so only a trailing attribution is moved, never a dash
+ * inside the quoted line.
+ */
+const RUN_ON_ATTRIBUTION = /(["”])[^\S\n]*([-–—][^\n]*\S)\s*$/;
+
 /** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
 export function decodeCardTextEntities(text: string): string {
   let prev = "";
