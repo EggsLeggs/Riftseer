@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/command";
 import { cardsApi, cardsQueryKeys, CardApiError } from "./api";
 import { cardHref } from "./paths";
+import { cardImageUrl } from "@riftseer/types";
 
 function searchErrorInfo(err: unknown): { title: string; detail: string } {
   if (err instanceof CardApiError) {
@@ -167,9 +168,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
                   card.set?.set_code?.toUpperCase(),
                   card.collector_number,
                 ].filter(Boolean).join(" · ");
-                const imageUrl =
-                  card.media?.media_urls?.small ??
-                  card.media?.media_urls?.normal;
+                const imageUrl = cardImageUrl(card.media, "small");
                 return (
                   <CommandItem
                     key={card.id}

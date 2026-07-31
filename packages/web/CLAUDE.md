@@ -105,7 +105,16 @@ absolute URL. Never assemble card paths by hand.
 | `features/admin/card-id.ts` | `generateCardId()` — 24-char hex IDs in the RiftCodex ObjectId space, for manual cards |
 | `features/admin/dates.ts` | `toDateInputValue()` — coerces card/set dates for `<input type="date">` |
 | `features/admin/hooks/use-admin-mutations.ts` | TanStack Query mutations + toasts, wrapping the server actions |
-| `views/admin/` | Dashboard, card search, new-card form, card editor and its panels, set manager, format manager, audit log |
+| `views/admin/` | Dashboard, card search, new-card form, card editor and its panels, set manager, format manager, rulings manager, review queue, audit log |
+
+`/admin/review` is the TCGPlayer reconciliation queue: products ingest could not
+attach to a card, plus `collector_number` / `released_at` disagreements. Nothing
+applies itself — **confirm** writes a durable card override (for a product, its
+`tcgplayer_id`, so later ingests match it automatically) and **dismiss** is
+remembered so the next ingest does not resurface the entry. Only pending entries
+are actionable; the confirmed and dismissed tabs are read-only history. An
+unmatched product's card field is pre-filled with ingest's suggestion but stays
+editable, because the suggestion is only a same-set collector-number guess.
 
 `/admin/audit` reads `GET /api/v1/admin/audit-log`, the one admin endpoint that
 is not a mutation. Its `action` filter list is hard-coded from the RPC names in
@@ -121,6 +130,18 @@ is filled in on the editor page it redirects to.
 request so revoking `ADMIN_USER_IDS` takes effect immediately. `requireAdmin()`
 is a UI gate only; the API enforces the same allowlist on every mutation, so
 never treat a client-side check as the security boundary.
+
+`/admin/rulings` manages rulings independently of any one card. A ruling carries
+any number of **targets**: a single printing, a whole card, or a *rule* — a saved
+search query written in the same language as the site search bar (see
+`views/search-syntax-view.tsx`). Rule targets are re-evaluated after every
+ingest, so a rule like `t:unit kw:deathknell` picks up cards released after it
+was written; the editor shows a live match count from
+`POST /admin/rulings/preview` so a rule that matches nothing is obvious before
+saving. `targets` **replaces** the whole list on save, like the relationships
+endpoint. An entry that is `shared` (several targets, or any rule target) is
+shown read-only in the per-card panel and links here, because retargeting or
+deleting it there would silently change other cards.
 
 Format legalities and rulings are **not** part of the card patch — they are keyed
 on the card's oracle group rather than the printing, so their panels

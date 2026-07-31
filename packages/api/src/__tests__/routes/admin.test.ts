@@ -8,6 +8,12 @@ import {
   type AdminCardRulings,
   type AdminDataRepository,
   type AdminFormat,
+  type AdminReconciliationEntry,
+  type AdminReconciliationPage,
+  type AdminReconciliationQuery,
+  type AdminRulePreview,
+  type AdminRulingsPage,
+  type AdminRulingsQuery,
   type AdminRpcResult,
   type AdminSlugCard,
 } from "../../lib/admin-data";
@@ -161,7 +167,11 @@ class StubAdminRepository implements AdminDataRepository {
         text: "Applies to every printing.",
         dated: "2026-05-01",
         source: null,
-        card_id: null,
+        active: true,
+        scope: "oracle",
+        all_printings: true,
+        shared: false,
+        target_count: 1,
         created_at: "2026-05-01T00:00:00Z",
         updated_at: "2026-05-01T00:00:00Z",
       },
@@ -171,6 +181,75 @@ class StubAdminRepository implements AdminDataRepository {
   async listCardRulings(): Promise<AdminCardRulings | null> {
     return this.rulings;
   }
+
+  reconciliationQueries: AdminReconciliationQuery[] = [];
+  reconciliationPage: AdminReconciliationPage = {
+    entries: [],
+    total: 0,
+    counts: { pending: 0, confirmed: 0, dismissed: 0 },
+  };
+
+  async listReconciliation(
+    query: AdminReconciliationQuery,
+  ): Promise<AdminReconciliationPage> {
+    this.reconciliationQueries.push(query);
+    return this.reconciliationPage;
+  }
+
+  /** Null models an unknown entry id, so the route must 404 before any RPC. */
+  reconciliationEntry: AdminReconciliationEntry | null =
+    unmatchedProductEntry();
+
+  async getReconciliationEntry(): Promise<AdminReconciliationEntry | null> {
+    return this.reconciliationEntry;
+  }
+
+  rulingsQueries: AdminRulingsQuery[] = [];
+  rulingsPage: AdminRulingsPage = { rulings: [], total: 0 };
+
+  async listRulings(query: AdminRulingsQuery): Promise<AdminRulingsPage> {
+    this.rulingsQueries.push(query);
+    return this.rulingsPage;
+  }
+
+  /** Captures the AST the route parsed, so tests can assert on it directly. */
+  previewedAsts: unknown[] = [];
+  rulePreview: AdminRulePreview = { total: 0, sample: [] };
+
+  async previewRule(ast: unknown): Promise<AdminRulePreview> {
+    this.previewedAsts.push(ast);
+    return this.rulePreview;
+  }
+}
+
+const ENTRY_ID = "33333333-3333-4333-8333-333333333333";
+
+function unmatchedProductEntry(): AdminReconciliationEntry {
+  return {
+    id: ENTRY_ID,
+    kind: "unmatched_product",
+    fingerprint: "product:652952",
+    status: "pending",
+    tcgplayer_payload: {
+      product: {
+        product_id: 652952,
+        name: "Sett Brawler Alternate Art",
+        url: "https://www.tcgplayer.com/product/652952/test",
+        image_url: null,
+        collector_number: "164a",
+        group_id: 24344,
+        set_code: "OGN",
+      },
+      card_id: "card-1",
+      card_name: "Sett - Brawler",
+    },
+    proposed_card_id: "card-1",
+    note: null,
+    resolved_by: null,
+    resolved_at: null,
+    created_at: "2026-08-01T00:00:00Z",
+    last_seen_at: "2026-08-01T00:00:00Z",
+  };
 }
 
 class StubImageBindings implements AdminImageBindings {
@@ -301,7 +380,68 @@ describe("admin API", () => {
           p_actor: ADMIN_ID,
         },
       },
+      // An edit can move the card into or out of a rule-scoped ruling, so the
+      // patch is followed by a per-card rematch rather than waiting for ingest.
+      {
+        name: "refresh_ruling_matches_for_card",
+        args: { p_card_id: "card-1" },
+      },
     ]);
+  });
+
+  test("rematches rule-scoped rulings after every card mutation", async () => {
+    const refreshedBy = async (
+      path: string,
+      method: string,
+      body?: unknown,
+    ): Promise<string[]> => {
+      repository.calls = [];
+      await app.handle(jsonRequest(path, method, body));
+      return repository.calls
+        .filter((call) => call.name === "refresh_ruling_matches_for_card")
+        .map((call) => String(call.args.p_card_id));
+    };
+
+    expect(
+      await refreshedBy("/admin/cards/card-1", "PATCH", {
+        patch: { text: { plain: "[Deathknell]" } },
+      }),
+    ).toEqual(["card-1"]);
+    expect(
+      await refreshedBy("/admin/cards/card-1/move", "POST", {
+        set_code: "OGN",
+      }),
+    ).toEqual(["card-1"]);
+    expect(
+      await refreshedBy("/admin/cards/card-1/relationships", "PUT", {
+        entries: [],
+      }),
+    ).toEqual(["card-1"]);
+    // Deleting is a rematch too — the RPC drops the card's memberships.
+    expect(await refreshedBy("/admin/cards/card-1", "DELETE")).toEqual([
+      "card-1",
+    ]);
+  });
+
+  test("does not fail an edit when the rematch errors", async () => {
+    // The write has already committed by the time the rematch runs, so a
+    // failure there must not be reported as a failed edit.
+    const realCallRpc = repository.callRpc.bind(repository);
+    repository.callRpc = async (name, args) => {
+      if (name === "refresh_ruling_matches_for_card") {
+        throw new AdminRepositoryError("boom", "XX000");
+      }
+      return realCallRpc(name, args);
+    };
+
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1", "PATCH", {
+        patch: { text: { plain: "Admin text" } },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true });
   });
 
   test("creates a manual card with a generated stable slug", async () => {
@@ -643,6 +783,207 @@ describe("admin API", () => {
       expect(await response.json()).toEqual({
         error: "Admin operation failed",
         code: "ADMIN_OPERATION_FAILED",
+      });
+    });
+  });
+
+  describe("reconciliation queue", () => {
+    test("requires an admin token", async () => {
+      const missing = await app.handle(
+        new Request("http://localhost/api/v1/admin/reconciliation"),
+      );
+      expect(missing.status).toBe(401);
+
+      const nonAdmin = await app.handle(
+        jsonRequest(
+          `/admin/reconciliation/${ENTRY_ID}/dismiss`,
+          "POST",
+          {},
+          "user-token",
+        ),
+      );
+      expect(nonAdmin.status).toBe(403);
+      expect(repository.calls).toHaveLength(0);
+    });
+
+    test("defaults to pending entries and clamps the paging window", async () => {
+      await app.handle(jsonRequest("/admin/reconciliation", "GET"));
+      expect(repository.reconciliationQueries[0]).toEqual({
+        limit: 50,
+        offset: 0,
+        status: "pending",
+        kind: undefined,
+      });
+
+      await app.handle(
+        jsonRequest(
+          "/admin/reconciliation?status=dismissed&kind=field_diff&limit=5000&offset=10",
+          "GET",
+        ),
+      );
+      expect(repository.reconciliationQueries[1]).toEqual({
+        limit: 200,
+        offset: 10,
+        status: "dismissed",
+        kind: "field_diff",
+      });
+    });
+
+    test("returns entries with status counts for the review tabs", async () => {
+      const entry = unmatchedProductEntry();
+      repository.reconciliationPage = {
+        entries: [entry],
+        total: 1,
+        counts: { pending: 1, confirmed: 4, dismissed: 2 },
+      };
+
+      const response = await app.handle(
+        jsonRequest("/admin/reconciliation", "GET"),
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        entries: [entry],
+        total: 1,
+        counts: { pending: 1, confirmed: 4, dismissed: 2 },
+        limit: 50,
+        offset: 0,
+      });
+    });
+
+    test("confirming a product writes the durable tcgplayer link", async () => {
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {
+          note: "Same printing, different name upstream",
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        ok: true,
+        entry_id: ENTRY_ID,
+        status: "confirmed",
+        card_id: null,
+      });
+      expect(repository.calls).toEqual([
+        {
+          name: "admin_resolve_reconciliation_entry",
+          args: {
+            p_entry_id: ENTRY_ID,
+            p_action: "confirm",
+            p_card_id: null,
+            p_patch: {
+              external_ids: { tcgplayer_id: "652952" },
+              purchase_uris: {
+                tcgplayer: "https://www.tcgplayer.com/product/652952/test",
+              },
+            },
+            p_note: "Same printing, different name upstream",
+            p_actor: ADMIN_ID,
+          },
+        },
+      ]);
+    });
+
+    test("confirming a field diff patches only that field", async () => {
+      repository.reconciliationEntry = {
+        ...unmatchedProductEntry(),
+        kind: "field_diff",
+        fingerprint: "diff:released_at:card-1:2025-11-14",
+        tcgplayer_payload: {
+          ...unmatchedProductEntry().tcgplayer_payload,
+          field: "released_at",
+          current_value: "2025-10-31",
+          proposed_value: "2025-11-14",
+        },
+      };
+
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {
+          card_id: "  card-7  ",
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(repository.calls[0].args).toEqual(
+        expect.objectContaining({
+          p_action: "confirm",
+          // An explicit card_id overrides ingest's suggestion, trimmed.
+          p_card_id: "card-7",
+          p_patch: { released_at: "2025-11-14" },
+        }),
+      );
+    });
+
+    test("404s an unknown entry before calling the RPC", async () => {
+      repository.reconciliationEntry = null;
+
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {}),
+      );
+
+      expect(response.status).toBe(404);
+      expect(await response.json()).toEqual({
+        error: "Review entry not found",
+        code: "REVIEW_ENTRY_NOT_FOUND",
+      });
+      expect(repository.calls).toHaveLength(0);
+    });
+
+    test("rejects a confirmation with no card to link", async () => {
+      repository.nextResult = { ok: false, reason: "card_required" };
+
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {}),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "Choose a card to link this product to",
+        code: "CARD_REQUIRED",
+      });
+    });
+
+    test("reports an already-resolved entry as a conflict", async () => {
+      repository.nextResult = {
+        ok: false,
+        reason: "reconciliation_entry_resolved",
+      };
+
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/dismiss`, "POST", {}),
+      );
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "Review entry has already been resolved",
+        code: "REVIEW_ENTRY_RESOLVED",
+      });
+    });
+
+    test("dismissing never touches a card", async () => {
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/dismiss`, "POST", {
+          note: "Sealed product",
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        ok: true,
+        entry_id: ENTRY_ID,
+        status: "dismissed",
+        card_id: null,
+      });
+      expect(repository.calls[0]).toEqual({
+        name: "admin_resolve_reconciliation_entry",
+        args: {
+          p_entry_id: ENTRY_ID,
+          p_action: "dismiss",
+          p_card_id: null,
+          p_patch: {},
+          p_note: "Sealed product",
+          p_actor: ADMIN_ID,
+        },
       });
     });
   });
@@ -1035,6 +1376,197 @@ describe("admin API", () => {
         code: "RULING_NOT_FOUND",
       });
     });
+  });
+
+  // ── Rulings tab ─────────────────────────────────────────────────────────────
+
+  test("parses a rule query into an AST and stores it beside the source text", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/rulings", "POST", {
+        type: "ruling",
+        text: "Deathknell resolves before the unit leaves play.",
+        targets: [{ kind: "query", query: "t:unit kw:deathknell" }],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.calls).toHaveLength(1);
+    const call = repository.calls[0]!;
+    expect(call.name).toBe("admin_create_ruling");
+    expect(call.args.p_targets).toEqual([
+      {
+        kind: "query",
+        query: "t:unit kw:deathknell",
+        ast: {
+          op: "and",
+          children: [
+            { op: "filter", field: "type", value: "unit" },
+            { op: "filter", field: "keyword", value: "deathknell" },
+          ],
+        },
+      },
+    ]);
+  });
+
+  test("accepts printing and oracle targets on one ruling", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/rulings", "POST", {
+        type: "note",
+        text: "Errata applies to both printings.",
+        targets: [
+          { kind: "printing", card_id: "card-1" },
+          { kind: "printing", card_id: "card-2" },
+          { kind: "oracle", oracle_key: "sun disc" },
+        ],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.calls[0]!.args.p_targets).toEqual([
+      { kind: "printing", card_id: "card-1" },
+      { kind: "printing", card_id: "card-2" },
+      { kind: "oracle", oracle_key: "sun disc" },
+    ]);
+  });
+
+  test("rejects an unparseable rule naming the offending query, before any write", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/rulings", "POST", {
+        type: "ruling",
+        text: "Text",
+        targets: [{ kind: "query", query: "nope:bar" }],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error: string; code: string };
+    expect(body.code).toBe("RULING_RULE_INVALID");
+    expect(body.error).toContain("nope:bar");
+    expect(repository.calls).toHaveLength(0);
+  });
+
+  test("rejects a rule that selects nothing rather than attaching to every card", async () => {
+    // `++` is stripped as a meta-keyword before parsing, leaving an empty AST —
+    // which would otherwise render as `true` and match the whole catalogue.
+    const response = await app.handle(
+      jsonRequest("/admin/rulings", "POST", {
+        type: "ruling",
+        text: "Text",
+        targets: [{ kind: "query", query: '""' }],
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()) as { code: string }).toMatchObject({
+      code: "RULING_RULE_EMPTY",
+    });
+    expect(repository.calls).toHaveLength(0);
+  });
+
+  test("previews a rule without writing anything", async () => {
+    repository.rulePreview = {
+      total: 2,
+      sample: [
+        {
+          id: "card-1",
+          name: "Sun Disc",
+          set_code: "OGN",
+          collector_number: "21",
+          public_slug: "ogn/21/sun-disc",
+        },
+      ],
+    };
+
+    const response = await app.handle(
+      jsonRequest("/admin/rulings/preview", "POST", {
+        query: "might>=4 t:unit",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      query: "might>=4 t:unit",
+      total: 2,
+    });
+    expect(repository.previewedAsts).toEqual([
+      {
+        op: "and",
+        children: [
+          { op: "numeric", field: "might", cmp: "gte", value: 4 },
+          { op: "filter", field: "type", value: "unit" },
+        ],
+      },
+    ]);
+    // Preview must never mutate.
+    expect(repository.calls).toHaveLength(0);
+  });
+
+  test("patching targets replaces the whole list and re-parses each rule", async () => {
+    const response = await app.handle(
+      jsonRequest(
+        "/admin/rulings/99999999-9999-4999-8999-999999999999",
+        "PATCH",
+        {
+          patch: {
+            text: "Updated",
+            targets: [{ kind: "query", query: "d:fury" }],
+          },
+        },
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    const call = repository.calls[0]!;
+    expect(call.name).toBe("admin_patch_ruling");
+    expect(call.args.p_patch).toEqual({
+      text: "Updated",
+      targets: [
+        {
+          kind: "query",
+          query: "d:fury",
+          ast: { op: "filter", field: "domain", value: "fury" },
+        },
+      ],
+    });
+  });
+
+  test("omitting targets leaves targeting alone", async () => {
+    await app.handle(
+      jsonRequest(
+        "/admin/rulings/99999999-9999-4999-8999-999999999999",
+        "PATCH",
+        { patch: { active: false } },
+      ),
+    );
+
+    expect(repository.calls[0]!.args.p_patch).toEqual({ active: false });
+  });
+
+  test("reports the shared-ruling guard as a conflict", async () => {
+    repository.nextResult = { ok: false, reason: "ruling_is_shared" };
+    const response = await app.handle(
+      jsonRequest(
+        "/admin/cards/card-1/rulings/99999999-9999-4999-8999-999999999999",
+        "PATCH",
+        { patch: { apply_to_all_printings: false } },
+      ),
+    );
+
+    expect(response.status).toBe(409);
+    expect((await response.json()) as { code: string }).toMatchObject({
+      code: "RULING_IS_SHARED",
+    });
+  });
+
+  test("passes list filters through and does not default the kind filter", async () => {
+    await app.handle(jsonRequest("/admin/rulings?q=deathknell", "GET"));
+    expect(repository.rulingsQueries[0]).toMatchObject({
+      query: "deathknell",
+      kind: undefined,
+    });
+
+    await app.handle(jsonRequest("/admin/rulings?kind=query", "GET"));
+    expect(repository.rulingsQueries[1]).toMatchObject({ kind: "query" });
   });
 });
 

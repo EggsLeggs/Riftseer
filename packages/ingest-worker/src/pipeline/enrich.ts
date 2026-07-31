@@ -27,8 +27,10 @@ interface PriceSide {
   low: number | null;
 }
 
-interface EnrichedProduct {
+export interface EnrichedProduct {
   productId: number;
+  /** TCGPlayer's `cleanName`, kept verbatim for the reconciliation queue. */
+  name: string;
   normalizedName: string;
   collectorNumber: string | null;
   url: string;
@@ -105,7 +107,9 @@ function bestPrice(side: PriceSide): number | null {
   return side.market ?? side.mid ?? side.low;
 }
 
-function normalizeCollectorNumber(value: string | number | null | undefined): string | null {
+export function normalizeCollectorNumber(
+  value: string | number | null | undefined,
+): string | null {
   if (value === null || value === undefined) return null;
   const firstPart = String(value).split("/")[0]?.trim().toLowerCase();
   return firstPart || null;
@@ -121,7 +125,14 @@ function extractProductCollectorNumber(
   return normalizeCollectorNumber(numberField?.value);
 }
 
-function collectorCandidates(card: Card): string[] {
+/**
+ * Every collector number a card may legitimately carry on TCGPlayer: the plain
+ * number, the `a` suffix TCGPlayer uses for alternate art, the `*` suffix it
+ * uses for signatures, and the number embedded in the RiftCodex riftbound_id.
+ * Shared with the reconciler so a variant suffix is never reported as a
+ * collector-number disagreement.
+ */
+export function collectorCandidates(card: Card): string[] {
   const out = new Set<string>();
   const base = normalizeCollectorNumber(card.collector_number);
   if (base) {
@@ -169,6 +180,7 @@ export function buildProductMap(groupResults: TCGGroupResult[]): ProductMaps {
 
       const enriched: EnrichedProduct = {
         productId: product.productId,
+        name: product.cleanName.trim(),
         normalizedName: normalizeCardName(product.cleanName),
         collectorNumber: extractProductCollectorNumber(product),
         url: product.url,
@@ -360,4 +372,50 @@ export function enrichCards(
     byCollectorName: byCollectorNameCount,
     byName: byNameCount,
   };
+}
+
+/**
+ * Second pass for cards whose `tcgplayer_id` only appeared after the DB override
+ * overlay — the link an admin confirmed in the review queue.
+ *
+ * `enrichCards` runs on the raw RiftCodex result, before overrides are applied,
+ * so it cannot see that link and those cards would otherwise stay priceless
+ * forever. This deliberately touches only prices and the purchase URI: media and
+ * every other field are already final at this point in the pipeline, and an
+ * admin's image override must not be undone by a late enrichment pass.
+ */
+export function backfillLinkedPrices(cards: Card[], maps: ProductMaps): number {
+  let applied = 0;
+
+  for (const card of cards) {
+    if (card.prices?.tcgplayer?.normal != null) continue;
+
+    const tcgIdStr = card.external_ids?.tcgplayer_id;
+    if (!tcgIdStr) continue;
+    const productId = parseInt(tcgIdStr, 10);
+    if (!Number.isFinite(productId)) continue;
+
+    const product = maps.byId.get(productId);
+    if (!product) continue;
+
+    card.purchase_uris = {
+      ...card.purchase_uris,
+      tcgplayer: card.purchase_uris?.tcgplayer ?? product.url,
+    };
+    card.prices = {
+      ...card.prices,
+      tcgplayer: {
+        normal: bestPrice(product.normal),
+        foil: bestPrice(product.foil),
+        low_normal: product.normal.low,
+        low_foil: product.foil.low,
+      },
+    };
+    applied++;
+  }
+
+  if (applied > 0) {
+    logger.info("Backfilled prices for override-linked cards", { applied });
+  }
+  return applied;
 }

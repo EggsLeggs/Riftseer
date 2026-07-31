@@ -7,6 +7,7 @@
   "exports": {
     ".": "./index.ts",
     "./card-text": "./src/card-text.ts",
+    "./card-image": "./src/card-image.ts",
     "./keywords": "./src/keywords.ts",
     "./icons": "./src/icons.ts",
     "./oracle": "./src/oracle.ts",

@@ -5,18 +5,23 @@ import { toast } from "sonner";
 import { cardsQueryKeys } from "@/features/cards/api";
 import { setsQueryKeys } from "@/features/sets/api";
 import {
+  confirmReviewEntryAction,
   createCardAction,
   createCardRulingAction,
   createFormatAction,
+  createRulingAction,
   createSetAction,
   deleteCardAction,
   deleteCardRulingAction,
   deleteFormatAction,
+  deleteRulingAction,
   deleteSetAction,
+  dismissReviewEntryAction,
   moveCardAction,
   patchCardAction,
   patchCardRulingAction,
   patchFormatAction,
+  patchRulingAction,
   patchSetAction,
   regenerateSlugAction,
   reorderFormatsAction,
@@ -32,8 +37,11 @@ import type {
   AdminLegalityStatusInput,
   AdminRelationshipEntry,
   AdminResult,
+  AdminRuling,
+  AdminRulingCreateInput,
   AdminRulingInput,
   AdminRulingPatch,
+  AdminRulingRecordPatch,
   AdminSetDefinition,
   AdminSetPatch,
 } from "../types";
@@ -211,6 +219,41 @@ export function useFormatMutations() {
   };
 }
 
+/**
+ * Prefix key for every review-queue page. Resolving one entry invalidates the
+ * whole prefix, because the status counts on the other tabs move too.
+ */
+export const adminReviewQueryKey = ["admin", "reconciliation"] as const;
+
+export function useReviewMutations() {
+  const queryClient = useQueryClient();
+  const invalidateReview = () => {
+    void queryClient.invalidateQueries({ queryKey: adminReviewQueryKey });
+    // A confirmation writes a card override, so cached card reads are stale.
+    void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
+  };
+
+  return {
+    confirm: useToastMutation<
+      [entryId: string, cardId?: string, note?: string],
+      { card_id: string | null }
+    >(
+      confirmReviewEntryAction,
+      (data) =>
+        data.card_id
+          ? `Confirmed and saved to ${data.card_id}`
+          : "Entry confirmed",
+      invalidateReview,
+    ),
+
+    dismiss: useToastMutation<[entryId: string, note?: string], { entry_id: string }>(
+      dismissReviewEntryAction,
+      "Entry dismissed — it will not come back",
+      invalidateReview,
+    ),
+  };
+}
+
 export const adminCardLegalitiesQueryKey = (cardId: string) =>
   ["admin", "card-legalities", cardId] as const;
 
@@ -277,4 +320,59 @@ export function useCardRulingMutations(cardId: string) {
       { ruling_id: string }
     >(deleteCardRulingAction, "Entry deleted", invalidate),
   };
+}
+
+/** Prefix key for every rulings-tab page, so a filter change refetches. */
+export const adminRulingsQueryKey = ["admin", "rulings"] as const;
+
+export function useRulingMutations() {
+  const queryClient = useQueryClient();
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: adminRulingsQueryKey });
+    // A rule target can cover cards the editor never named, so drop the card
+    // caches wholesale rather than guessing which ones moved.
+    void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
+  };
+
+  return {
+    create: useToastMutation<
+      [input: AdminRulingCreateInput],
+      { ok: true; ruling: AdminRuling }
+    >(
+      createRulingAction,
+      (data) => rulingSavedMessage(data.ruling, "created"),
+      invalidate,
+    ),
+
+    patch: useToastMutation<
+      [rulingId: string, patch: AdminRulingRecordPatch],
+      { ok: true; ruling: AdminRuling }
+    >(
+      patchRulingAction,
+      (data) => rulingSavedMessage(data.ruling, "saved"),
+      invalidate,
+    ),
+
+    remove: useToastMutation<[rulingId: string], { ruling_id: string }>(
+      deleteRulingAction,
+      "Ruling deleted",
+      invalidate,
+    ),
+  };
+}
+
+/**
+ * Report what a rule actually caught. A rule that saves cleanly but matches
+ * nothing is the most likely mistake, and the count is the only signal of it.
+ */
+function rulingSavedMessage(
+  ruling: AdminRuling,
+  verb: "created" | "saved",
+): string {
+  const matched = ruling.targets
+    .filter((target) => target.kind === "query")
+    .reduce((sum, target) => sum + (target.match_count ?? 0), 0);
+  const hasRule = ruling.targets.some((target) => target.kind === "query");
+  if (!hasRule) return `Ruling ${verb}`;
+  return `Ruling ${verb} — ${matched} card${matched === 1 ? "" : "s"} matched`;
 }

@@ -82,8 +82,10 @@ export interface CardLegality {
 /**
  * An official ruling or an editorial note attached to a card.
  *
- * `card_id` absent means the entry applies to every printing (the common case);
- * set, it applies only to that printing.
+ * A ruling is written once and pointed at any number of targets — a single
+ * printing, a whole card (its oracle group), or a saved search query that keeps
+ * matching cards as new ones are released. `scope` reports which of those
+ * brought this entry onto the card being viewed.
  */
 export interface CardRuling {
   object: "card_ruling";
@@ -94,7 +96,16 @@ export interface CardRuling {
   dated?: string;
   /** Free-text provenance, e.g. a rules-team URL or document name. */
   source?: string;
-  card_id?: string;
+  /**
+   * How this entry reached the card:
+   * - `printing` — written for this exact printing
+   * - `oracle` — written for the card, shared by every printing
+   * - `rule` — matched by a query-scoped ruling (e.g. "every unit with
+   *   [Deathknell]"), so it applies until the card stops matching
+   *
+   * A ruling reachable by several targets reports the most specific one.
+   */
+  scope?: "printing" | "oracle" | "rule";
   created_at?: string;
   updated_at?: string;
 }
@@ -194,6 +205,13 @@ export interface Card {
    * this key so they are authored once and inherited by all printings.
    */
   oracle_key?: string;
+  /**
+   * `[Keyword]` tags carried by this printing's rules text, as base keys
+   * (`"deflect"`, not `"Deflect 3"`) — see `extractCardKeywords` in
+   * `./keywords.ts`. Derived at ingest and stored so `kw:` search filters and
+   * keyword-scoped ruling rules can be indexed rather than scanning text.
+   */
+  keywords?: string[];
   attributes?: CardAttributes;
   classification?: CardClassification;
   text?: CardText;

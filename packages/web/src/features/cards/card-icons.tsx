@@ -1,8 +1,14 @@
 "use client";
 
+import type * as React from "react";
+import Link from "next/link";
 import type { Card } from "@riftseer/types";
 
 import { cardIsGear, cardTypeIconKey, cardTypeLine } from "@/features/cards/format";
+import {
+  cardTypeLineSearchQuery,
+  searchHref,
+} from "@/features/cards/search-links";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
 import { cn } from "@/lib/utils";
 
@@ -130,24 +136,47 @@ const TYPE_ICON_KEYS = new Set([
 export function CardTypeLine({
   card,
   badge = false,
+  linked = false,
 }: {
   card: Card;
   /** Capsule + rhombus chrome (simple card detail). Plain icon+text otherwise. */
   badge?: boolean;
+  /**
+   * Link the whole line to the search matching it — a Signature Unit goes to
+   * `st:signature t:unit`, not to a single unusable filter. Opt-in because the
+   * browse table and grid render this inside their own click targets.
+   */
+  linked?: boolean;
 }) {
   const { accessibility } = useSitePreferences();
   const label = cardTypeLine(card);
   if (label === "—") return <span>—</span>;
 
+  const query = linked ? cardTypeLineSearchQuery(card) : null;
+  // Wrap whatever the chrome turned out to be, so the link never changes layout.
+  const withLink = (content: React.ReactNode) =>
+    query ? (
+      <Link
+        href={searchHref(query)}
+        aria-label={`Search for ${label} cards`}
+        title={`Search for ${label} cards`}
+        className="inline-flex rounded-sm transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+      >
+        {content}
+      </Link>
+    ) : (
+      content
+    );
+
   if (accessibility.preferTextOverSymbols) {
-    return <span className="font-medium">{label}</span>;
+    return withLink(<span className="font-medium">{label}</span>);
   }
 
   const iconKey = cardTypeIconKey(card);
   const showIcon = iconKey != null && TYPE_ICON_KEYS.has(iconKey);
 
   if (!badge) {
-    return (
+    return withLink(
       <span className="inline-flex flex-wrap items-center gap-1.5">
         {showIcon ? (
           <span
@@ -157,14 +186,14 @@ export function CardTypeLine({
           />
         ) : null}
         <span>{label}</span>
-      </span>
+      </span>,
     );
   }
 
-  return (
+  return withLink(
     <span
       className={cn("card-type-badge", !showIcon && "card-type-badge--plain")}
-      aria-label={label}
+      aria-label={query ? undefined : label}
     >
       {showIcon ? (
         <span className="card-type-badge-glyph" aria-hidden="true">
@@ -172,6 +201,6 @@ export function CardTypeLine({
         </span>
       ) : null}
       <span className="card-type-badge-label">{label}</span>
-    </span>
+    </span>,
   );
 }

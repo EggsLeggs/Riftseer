@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookOpen,
   Gavel,
+  Inbox,
   Layers,
   LayoutDashboard,
   Library,
@@ -16,6 +18,8 @@ const ADMIN_LINKS = [
   { href: "/admin/cards", label: "Cards", icon: Library },
   { href: "/admin/sets", label: "Sets", icon: Layers },
   { href: "/admin/formats", label: "Formats", icon: Gavel },
+  { href: "/admin/rulings", label: "Rulings", icon: BookOpen },
+  { href: "/admin/review", label: "Review", icon: Inbox },
   { href: "/admin/audit", label: "Audit log", icon: ScrollText },
 ] as const;
 

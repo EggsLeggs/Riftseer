@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  extractCardKeywords,
   isKeywordStackConnector,
   isKeywordTag,
   keywordAbsorbsTrailingCosts,
@@ -104,5 +105,42 @@ describe("styleForKeyword", () => {
     expect(styleForKeyword("Buff")).toEqual(DEFAULT_KEYWORD_STYLE);
     expect(styleForKeyword("Empower")).toEqual(DEFAULT_KEYWORD_STYLE);
     expect(styleForKeyword("Unique")).toEqual(DEFAULT_KEYWORD_STYLE);
+  });
+});
+
+describe("extractCardKeywords", () => {
+  it("returns base keys, deduplicated and sorted", () => {
+    expect(
+      extractCardKeywords("[Deflect 3] [Assault] [Deflect 1] [Accelerate]"),
+    ).toEqual(["accelerate", "assault", "deflect"]);
+  });
+
+  it("ignores arrow connectors and stack markers", () => {
+    expect(extractCardKeywords("[Deathknell][>] [>>] [Hunt]")).toEqual([
+      "deathknell",
+      "hunt",
+    ]);
+  });
+
+  it("ignores data junk that is not a keyword tag", () => {
+    expect(extractCardKeywords("[No Text]")).toEqual([]);
+    expect(extractCardKeywords("[3] [] [   ]")).toEqual([]);
+  });
+
+  it("keeps absorbed costs out of the key", () => {
+    expect(
+      extractCardKeywords("[Empower]:rb_energy_2::rb_rune_fury: draw a card"),
+    ).toEqual(["empower"]);
+  });
+
+  it("is stable across repeated calls (no shared regex lastIndex)", () => {
+    const text = "[Tank] [Shield]";
+    expect(extractCardKeywords(text)).toEqual(extractCardKeywords(text));
+  });
+
+  it("handles missing text", () => {
+    expect(extractCardKeywords(undefined)).toEqual([]);
+    expect(extractCardKeywords(null)).toEqual([]);
+    expect(extractCardKeywords("")).toEqual([]);
   });
 });

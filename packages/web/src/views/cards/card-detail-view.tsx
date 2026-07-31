@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CardDetail } from "@riftseer/types";
+import { cardImageDownloadUrl, cardImageUrl } from "@riftseer/types";
 import {
   DownloadIcon,
   ExternalLinkIcon,
@@ -100,11 +101,7 @@ export function CardDetailView({
   const domains = meaningfulCardDomains(card);
   const tags = card.classification?.tags ?? [];
   const rulesText = meaningfulRulesText(card.text?.plain) ?? null;
-  const imageUrl =
-    card.media?.media_urls?.large ??
-    card.media?.media_urls?.normal ??
-    card.media?.media_urls?.png ??
-    card.media?.media_urls?.small;
+  const imageUrl = cardImageUrl(card.media, "large");
 
   return (
     <div className="container space-y-6 py-8">
@@ -270,7 +267,7 @@ function DetailedCardBody({
 
             <DetailRow label="Type">
               <span className="inline-flex flex-wrap items-center gap-1.5">
-                <CardTypeLine card={card} badge />
+                <CardTypeLine card={card} badge linked />
               </span>
             </DetailRow>
 
@@ -282,13 +279,13 @@ function DetailedCardBody({
 
             {tags.length > 0 ? (
               <DetailRow label="Tags">
-                <CardTags tags={tags} />
+                <CardTags tags={tags} linked />
               </DetailRow>
             ) : null}
 
             {rulesText ? (
               <DetailRow label="Ability" alignTop>
-                <CardText text={rulesText} rich={card.text?.rich} />
+                <CardText text={rulesText} rich={card.text?.rich} linkKeywords />
               </DetailRow>
             ) : null}
 
@@ -430,7 +427,7 @@ function SimpleCardBody({
               preferText ? "gap-x-0" : "gap-x-2 gap-y-1"
             }`}
           >
-            <CardTypeLine card={card} badge />
+            <CardTypeLine card={card} badge linked />
             {tags.length > 0 ? (
               <>
                 {preferText ? (
@@ -438,7 +435,7 @@ function SimpleCardBody({
                     ·
                   </span>
                 ) : null}
-                <CardTags tags={tags} />
+                <CardTags tags={tags} linked />
               </>
             ) : null}
           </div>
@@ -453,6 +450,7 @@ function SimpleCardBody({
             text={rulesText}
             rich={card.text?.rich}
             className="text-foreground mt-6 max-w-prose text-[0.95rem] leading-relaxed"
+            linkKeywords
           />
         ) : null}
 
@@ -669,7 +667,7 @@ function ToolsPanel({
   imageUrl: string | undefined;
 }) {
   const { card } = detail;
-  const downloadUrl = card.media?.media_urls?.png ?? imageUrl;
+  const downloadUrl = cardImageDownloadUrl(card.media) ?? imageUrl;
 
   return (
     <section aria-label="Images and data">
