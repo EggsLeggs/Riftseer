@@ -98,6 +98,7 @@ absolute URL. Never assemble card paths by hand.
 |------|---------|
 | `lib/session.ts` | `requireAdmin()` gates a route subtree; `isAdminSession()` is the non-throwing check for conditional UI |
 | `features/auth/api.ts` | `getCurrentUser(token)` → `GET /auth/me`, wrapped in React `cache()` so one render costs one round-trip |
+| `features/admin/types.ts` | Request/response contracts derived from the Eden treaty `App` type — never hand-mirror the Elysia `t` schemas |
 | `features/admin/api.ts` | Bearer-token fetches for every admin endpoint. Resolves `AdminResult`, never throws |
 | `features/admin/actions.ts` | Server actions — read the session, call `api.ts`, `revalidatePath` the affected pages |
 | `features/admin/card-form.ts` | Editor value shape, Zod schema, `cardToEditorValues`, and `buildCardPatch` |

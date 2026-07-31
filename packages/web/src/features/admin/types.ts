@@ -1,194 +1,81 @@
 /**
  * Request/response shapes for `/api/v1/admin/*`.
  *
- * These mirror the Elysia `t` schemas in `packages/api/src/routes/admin.ts`.
- * Card patches use JSON merge-patch semantics: an omitted key is left alone,
- * and an explicit `null` clears the stored value.
+ * These are derived from the Elysia route definitions via the type-only `App`
+ * import and the Eden treaty client, so they cannot drift from the `t` schemas
+ * in `packages/api/src/routes/admin.ts` — a schema change surfaces here as a
+ * type error rather than a runtime surprise. `features/admin/api.ts` still
+ * fetches by hand because it needs `AdminResult` and a per-call timeout, but the
+ * contracts it speaks are the API's own.
+ *
+ * Card and set patches use JSON merge-patch semantics: an omitted key is left
+ * alone, and an explicit `null` clears the stored value.
  */
 
-export type Nullable<T> = T | null;
+import type { treaty } from "@elysiajs/eden";
+import type { App } from "@riftseer/api";
 
-export interface AdminExternalIds {
-  riftcodex_id?: Nullable<string>;
-  riftbound_id?: Nullable<string>;
-  tcgplayer_id?: Nullable<string>;
-}
+type AdminRoutes = ReturnType<typeof treaty<App>>["api"]["v1"]["admin"];
+type CardById = ReturnType<AdminRoutes["cards"]>;
+type SetByCode = ReturnType<AdminRoutes["sets"]>;
 
-export interface AdminAttributes {
-  energy?: Nullable<number>;
-  might?: Nullable<number>;
-  power?: Nullable<number>;
-}
+/** The request body an Eden treaty method accepts. */
+type Body<F extends (...args: never) => unknown> = Parameters<F>[0];
 
-export interface AdminClassification {
-  type?: Nullable<string>;
-  supertype?: Nullable<string>;
-  rarity?: Nullable<string>;
-  tags?: Nullable<string[]>;
-  domains?: Nullable<string[]>;
-}
+/** The 2xx payload an Eden treaty method resolves to. */
+type Ok<F extends (...args: never) => unknown> =
+  Awaited<ReturnType<F>> extends infer R
+    ? R extends { error: null; data: infer D }
+      ? D
+      : never
+    : never;
 
-export interface AdminText {
-  rich?: Nullable<string>;
-  plain?: Nullable<string>;
-  flavour?: Nullable<string>;
-}
+// ─── Cards ────────────────────────────────────────────────────────────────────
 
-export interface AdminCardMetadata {
-  finishes?: Nullable<string[]>;
-  signature?: Nullable<boolean>;
-  overnumbered?: Nullable<boolean>;
-  alternate_art?: Nullable<boolean>;
-}
+export type AdminCardPatch = Body<CardById["patch"]>["patch"];
 
-export interface AdminMedia {
-  orientation?: Nullable<string>;
-  accessibility_text?: Nullable<string>;
-}
+export type AdminCardDefinition = Body<AdminRoutes["cards"]["post"]>["definition"];
 
-export interface AdminPurchaseUris {
-  cardmarket?: Nullable<string>;
-  tcgplayer?: Nullable<string>;
-}
+export type AdminRelationshipEntry = Body<
+  CardById["relationships"]["put"]
+>["entries"][number];
 
-export interface AdminPriceEntry {
-  normal?: Nullable<number>;
-  foil?: Nullable<number>;
-  low_normal?: Nullable<number>;
-  low_foil?: Nullable<number>;
-}
+export type AdminRelationshipKind = AdminRelationshipEntry["kind"];
 
-export interface AdminPrices {
-  tcgplayer?: Nullable<AdminPriceEntry>;
-  cardmarket?: Nullable<AdminPriceEntry>;
-}
+// ─── Sets ─────────────────────────────────────────────────────────────────────
 
-/** Fields shared by `PATCH /cards/:id` and `POST /cards`. */
-export interface AdminCardFields {
-  released_at?: Nullable<string>;
-  collector_number?: Nullable<string>;
-  external_ids?: Nullable<AdminExternalIds>;
-  attributes?: Nullable<AdminAttributes>;
-  classification?: Nullable<AdminClassification>;
-  text?: Nullable<AdminText>;
-  artist?: Nullable<string>;
-  metadata?: Nullable<AdminCardMetadata>;
-  media?: Nullable<AdminMedia>;
-  purchase_uris?: Nullable<AdminPurchaseUris>;
-  prices?: Nullable<AdminPrices>;
-  is_token?: boolean;
-}
+export type AdminSetPatch = Body<SetByCode["patch"]>["patch"];
 
-export interface AdminCardPatch extends AdminCardFields {
-  name?: string;
-}
-
-export interface AdminSetReference {
-  set_code: string;
-  set_name: string;
-  set_uri?: string;
-  set_search_uri?: string;
-  published_on?: string;
-}
-
-export interface AdminCardDefinition extends AdminCardFields {
-  name: string;
-  set?: AdminSetReference;
-}
-
-export const ADMIN_RELATIONSHIP_KINDS = [
-  "all_parts",
-  "used_by",
-  "related_champions",
-  "related_legends",
-  "related_signatures",
-  "related_printings",
-] as const;
-
-export type AdminRelationshipKind = (typeof ADMIN_RELATIONSHIP_KINDS)[number];
-
-export interface AdminRelationshipEntry {
-  kind: AdminRelationshipKind;
-  related_card_id: string;
-  action: "add" | "remove";
-}
-
-export interface AdminSetFields {
-  set_uri?: Nullable<string>;
-  set_search_uri?: Nullable<string>;
-  published_on?: Nullable<string>;
-  is_promo?: boolean;
-  parent_set_code?: Nullable<string>;
-  external_ids?: Nullable<{
-    riftcodex_set_id?: Nullable<string>;
-    tcgplayer_group_id?: Nullable<number>;
-    cardmarket_id?: Nullable<string | string[]>;
-  }>;
-}
-
-export interface AdminSetPatch extends AdminSetFields {
-  set_name?: string;
-}
-
-export interface AdminSetDefinition extends AdminSetFields {
-  set_name: string;
-}
+export type AdminSetDefinition = Body<AdminRoutes["sets"]["post"]>["definition"];
 
 // ─── Audit log ────────────────────────────────────────────────────────────────
 
-export interface AdminAuditEntry {
-  id: number;
-  actor_id: string;
-  action: string;
-  target_type: string;
-  target_id: string | null;
-  /** The payload the mutation was called with, for tracing or hand-reverting. */
-  detail: Record<string, unknown>;
-  created_at: string;
-}
+export type AdminAuditPage = Ok<AdminRoutes["audit-log"]["get"]>;
 
-export interface AdminAuditPage {
-  entries: AdminAuditEntry[];
-  total: number;
-  limit: number;
-  offset: number;
-}
+export type AdminAuditEntry = AdminAuditPage["entries"][number];
 
-export interface AdminAuditFilters {
+type AdminAuditQuery = NonNullable<
+  NonNullable<Body<AdminRoutes["audit-log"]["get"]>>["query"]
+>;
+
+/**
+ * The audit-log filters as callers hold them. The wire query is all strings;
+ * `limit`/`offset` are numbers here and serialised in `api.ts`.
+ */
+export type AdminAuditFilters = Omit<AdminAuditQuery, "limit" | "offset"> & {
   limit?: number;
   offset?: number;
-  action?: string;
-  target_type?: string;
-  target_id?: string;
-  actor_id?: string;
-}
+};
 
 // ─── Responses ────────────────────────────────────────────────────────────────
 
-export interface AdminCardMutationResult {
-  ok: true;
-  card_id: string;
-}
+export type AdminCardMutationResult = Ok<CardById["patch"]>;
 
-export interface AdminSlugMutationResult {
-  ok: true;
-  card_id: string;
-  public_slug: string;
-}
+export type AdminSlugMutationResult = Ok<CardById["regenerate-slug"]["post"]>;
 
-export interface AdminSetMutationResult {
-  ok: true;
-  set_code: string;
-}
+export type AdminSetMutationResult = Ok<SetByCode["patch"]>;
 
-export interface AdminImageMutationResult {
-  ok: true;
-  card_id: string;
-  source_url: string;
-  source_hash: string;
-  /** False when the variant queue rejected the job — ingest still picks it up. */
-  queued: boolean;
-}
+export type AdminImageMutationResult = Ok<CardById["image"]["post"]>;
 
 /**
  * Every admin call resolves rather than throws, so views can render the API's

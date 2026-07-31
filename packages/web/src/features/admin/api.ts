@@ -86,6 +86,18 @@ async function request<T>({
     };
   }
 
+  // A 2xx with an empty or unparseable body would otherwise hand callers a
+  // `null` typed as `T`, and they dereference it straight away (e.g.
+  // `result.data.public_slug`). Fail as a result instead of a TypeError.
+  if (payload === null) {
+    return {
+      ok: false,
+      error: "The Riftseer API returned an unreadable response.",
+      code: "INVALID_RESPONSE",
+      status: res.status,
+    };
+  }
+
   return { ok: true, data: payload as T };
 }
 

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ExternalLink } from "lucide-react";
@@ -45,6 +46,7 @@ interface Props {
 }
 
 export function AdminCardEditorView({ card, setCodes }: Props) {
+  const router = useRouter();
   const initialValues = React.useMemo(() => cardToEditorValues(card), [card]);
   // The save diff is against what the form was last synced to, not the original
   // card, so a second save after a successful one sends only the new changes.
@@ -98,6 +100,10 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
     const saved: CardEditorValues = { ...values, note: "" };
     baseline.current = saved;
     reset(saved);
+    // `card` is server-rendered, so the header and the image/relationship/
+    // placement panels would keep showing pre-save values. The refreshed prop
+    // carries a new `updated_at`, which the `syncKey` effect above picks up.
+    router.refresh();
   });
 
   const busy = isSubmitting || patch.isPending;

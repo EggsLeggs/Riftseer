@@ -25,9 +25,20 @@ export function AdminCardImagePanel({ card }: { card: Card }) {
   const router = useRouter();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [file, setFile] = React.useState<File | null>(null);
-  const [altText, setAltText] = React.useState(
-    card.media?.accessibility_text ?? "",
-  );
+  const storedAlt = card.media?.accessibility_text ?? "";
+  const [altText, setAltText] = React.useState(storedAlt);
+
+  // `useState` only seeds on mount, and the editor renders this panel without a
+  // key, so navigating between cards or refreshing after a save would leave the
+  // previous card's alt text in the input. Resync only when the stored value
+  // actually changes, so unrelated re-renders keep an in-progress edit.
+  const syncKey = `${card.id}:${storedAlt}`;
+  const syncedTo = React.useRef(syncKey);
+  React.useEffect(() => {
+    if (syncedTo.current === syncKey) return;
+    syncedTo.current = syncKey;
+    setAltText(storedAlt);
+  }, [syncKey, storedAlt]);
 
   const { uploadImage } = useCardMutations();
 
