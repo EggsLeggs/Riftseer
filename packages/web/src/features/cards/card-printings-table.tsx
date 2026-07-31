@@ -9,7 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { formatEur, formatUsd } from "@/features/cards/format";
+import {
+  formatEur,
+  formatUsd,
+  tcgplayerUsdPrice,
+} from "@/features/cards/format";
 import { RarityIcon } from "@/features/cards/card-icons";
 import { cardHref } from "@/features/cards/paths";
 import { cn } from "@/lib/utils";
@@ -27,7 +31,7 @@ const NAME_COL = {
  * readers: name, set, collector number, rarity and price where available.
  */
 function rowAccessibleName(row: CardPrintingSummary): string {
-  const usd = row.prices?.tcgplayer?.normal;
+  const usd = tcgplayerUsdPrice(row.prices?.tcgplayer);
   return [
     row.name,
     row.set_name ?? row.set_code,
@@ -200,7 +204,7 @@ export function CardPrintingsTable({
               {showPrices ? (
                 <>
                   <TableCell className="w-[14%] text-right tabular-nums whitespace-nowrap">
-                    {formatUsd(row.prices?.tcgplayer?.normal)}
+                    {formatUsd(tcgplayerUsdPrice(row.prices?.tcgplayer))}
                   </TableCell>
                   <TableCell className="w-[14%] text-right tabular-nums whitespace-nowrap">
                     {formatEur(row.prices?.cardmarket?.normal)}

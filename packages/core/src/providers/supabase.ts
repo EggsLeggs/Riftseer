@@ -86,6 +86,7 @@ interface DBCardRow {
   related_signatures: RelatedCard[];
   related_printings: RelatedCard[];
   is_token: boolean;
+  source: "riftcodex" | "manual" | null;
   public_slug: string | null;
   updated_at: string;
   ingested_at: string;
@@ -133,6 +134,7 @@ function dbRowToCard(row: DBCardRow): Card {
     purchase_uris: row.purchase_uris,
     prices: row.prices,
     is_token: row.is_token,
+    source: row.source ?? "riftcodex",
     all_parts: row.all_parts ?? [],
     used_by: row.used_by ?? [],
     related_champions: row.related_champions ?? [],

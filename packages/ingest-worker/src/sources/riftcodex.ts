@@ -22,8 +22,8 @@ export interface RawSetInfo {
   set_id: string;
   name?: string;
   label: string;
-  tcgplayer_id?: number | null;
-  cardmarket_id?: string | null;
+  tcgplayer_id?: string | number | null;
+  cardmarket_id?: string | string[] | null;
   published_on?: string | null;
 }
 
@@ -108,15 +108,79 @@ interface PagedResponse {
 
 // ─── Raw → Card mapping ───────────────────────────────────────────────────────
 
+function normalizeDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+  return match?.[0];
+}
+
+/**
+ * RiftCodex currently marks tokens with classification.supertype = "Token".
+ * Keep structural fallbacks too: older token rows are dual-faced
+ * "<token> // Buff" printings, and token riftbound IDs may carry a segment like
+ * "sfd-t03".
+ */
+export function isTokenCard(raw: RawCard): boolean {
+  if (raw.classification?.supertype?.toLowerCase() === "token") return true;
+  if (raw.classification?.type?.toLowerCase() === "token") return true;
+  if (raw.name?.includes("//")) return true;
+  if (/(^|-)t\d+($|-)/i.test(raw.riftbound_id ?? "")) return true;
+  return false;
+}
+
+interface PrintedVariantSignals {
+  alternateArt: boolean;
+  overnumbered: boolean;
+  signature: boolean;
+}
+
+/**
+ * RiftCodex occasionally omits variant metadata on the older duplicate record.
+ * The printed id is more reliable: `042a` is alternate art, `305*` is a
+ * signature, and a collector above the printed set size is overnumbered.
+ */
+export function printedVariantSignals(riftboundId: string): PrintedVariantSignals {
+  const match = riftboundId.match(/^[^-]+-(\d+)([a*]?)-(\d+)$/i);
+  if (!match) {
+    return { alternateArt: false, overnumbered: false, signature: false };
+  }
+
+  const collector = Number(match[1]);
+  const marker = match[2].toLowerCase();
+  const setSize = Number(match[3]);
+  return {
+    alternateArt: marker === "a",
+    signature: marker === "*",
+    overnumbered:
+      Number.isFinite(collector) &&
+      Number.isFinite(setSize) &&
+      collector > setSize,
+  };
+}
+
 export function rawToCard(raw: RawCard): Card {
   const setCode = raw.set?.set_id?.toUpperCase();
+  const variantSignals = printedVariantSignals(raw.riftbound_id ?? "");
+  const cardType = raw.classification?.type;
+  // A Legend is a complete card type, not a Champion-supertype unit. A small
+  // number of RiftCodex rows (notably OGN Yasuo - Unforgiven) contain both.
+  const supertype =
+    cardType?.toLowerCase() === "legend"
+      ? undefined
+      : raw.classification?.supertype || undefined;
+  const sourceImageUrl =
+    raw.media?.image_url_large ||
+    raw.media?.image_url ||
+    raw.media?.image_url_png ||
+    raw.media?.image_url_small ||
+    undefined;
   return {
     object: "card",
     id: raw.id,
     name: raw.name,
     name_normalized: normalizeCardName(raw.metadata?.clean_name || raw.name),
     collector_number: String(raw.collector_number),
-    released_at: raw.released_at || undefined,
+    released_at: normalizeDate(raw.released_at),
     external_ids: {
       riftcodex_id: raw.id,
       riftbound_id: raw.riftbound_id || undefined,
@@ -144,8 +208,8 @@ export function rawToCard(raw: RawCard): Card {
       power: raw.attributes?.power ?? null,
     },
     classification: {
-      type: raw.classification?.type,
-      supertype: raw.classification?.supertype,
+      type: cardType,
+      supertype,
       rarity: raw.classification?.rarity,
       tags: raw.tags?.length ? raw.tags : undefined,
       domains: raw.classification?.domain?.length ? raw.classification.domain : undefined,
@@ -158,13 +222,17 @@ export function rawToCard(raw: RawCard): Card {
     artist: raw.media?.artist || undefined,
     metadata: {
       finishes: raw.metadata?.finishes,
-      alternate_art: raw.metadata?.alternate_art ?? false,
-      overnumbered: raw.metadata?.overnumbered ?? false,
-      signature: raw.metadata?.signature ?? false,
+      alternate_art:
+        (raw.metadata?.alternate_art ?? false) || variantSignals.alternateArt,
+      overnumbered:
+        (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
+      signature: (raw.metadata?.signature ?? false) || variantSignals.signature,
     },
     media: {
       orientation: raw.orientation || undefined,
       accessibility_text: raw.media?.accessibility_text || undefined,
+      source_url: sourceImageUrl,
+      source_provider: sourceImageUrl ? "riftcodex" : undefined,
       media_urls: raw.media?.image_url
         ? {
             small: raw.media.image_url_small,
@@ -174,10 +242,8 @@ export function rawToCard(raw: RawCard): Card {
           }
         : undefined,
     },
-    is_token:
-      raw.classification?.type?.toLowerCase() === "token" ||
-      raw.classification?.supertype?.toLowerCase() === "token" ||
-      false,
+    is_token: isTokenCard(raw),
+    source: "riftcodex",
     all_parts: [],
     used_by: [],
     related_champions: [],

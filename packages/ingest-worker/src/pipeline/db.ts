@@ -1,6 +1,9 @@
 /**
- * Atomic Supabase upsert via the ingest_card_data Postgres RPC.
- * All three tables (sets, artists, cards) are written in a single transaction.
+ * Supabase upsert via the ingest_card_data_v2 Postgres RPC.
+ *
+ * Card rows are sent in bounded, individually atomic batches. Stale-row pruning
+ * is a separate final call and therefore cannot run unless every upsert batch
+ * has completed successfully.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -51,6 +54,7 @@ interface RpcCardPayload {
   related_signatures: unknown[];
   related_printings: unknown[];
   is_token: boolean;
+  source: "riftcodex" | "manual";
   /**
    * Stable public URL path. Set on first ingest (or backfill) and never
    * overwritten by the RPC, so card URLs do not drift between runs.
@@ -58,13 +62,71 @@ interface RpcCardPayload {
   public_slug: string | null;
 }
 
-/** PostgREST rejects very large `in.(…)` filters — stay under URL/query limits. */
-const ID_IN_CHUNK_SIZE = 100;
+const DATABASE_PAGE_SIZE = 1000;
+/** Keep each RPC comfortably below Supabase's request/connection limits. */
+export const INGEST_RPC_CARD_BATCH_SIZE = 300;
+
+export interface IngestRpcPayload {
+  p_sets: RpcSetPayload[];
+  p_artists: RpcArtistPayload[];
+  p_cards: RpcCardPayload[];
+  p_valid_ids: string[];
+}
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
+}
+
+/**
+ * Upload all rows before sending the valid-id set that enables pruning.
+ *
+ * The RPC resolves set and artist foreign keys from the set/artist arrays passed
+ * to that invocation, so those small arrays intentionally accompany every card
+ * batch. If a batch fails, existing stale rows remain in place and the whole
+ * operation is safe to rerun.
+ */
+export async function runBatchedIngestRpc(
+  supabase: SupabaseClient,
+  payload: IngestRpcPayload,
+): Promise<void> {
+  const cardBatches = chunk(payload.p_cards, INGEST_RPC_CARD_BATCH_SIZE);
+
+  for (let index = 0; index < cardBatches.length; index++) {
+    const cards = cardBatches[index];
+    logger.info("Calling ingest_card_data_v2 upsert batch", {
+      batch: index + 1,
+      batches: cardBatches.length,
+      cards: cards.length,
+    });
+
+    const { error } = await supabase.rpc("ingest_card_data_v2", {
+      p_sets: payload.p_sets,
+      p_artists: payload.p_artists,
+      p_cards: cards,
+      // An empty valid-id list is the RPC's guard against pruning.
+      p_valid_ids: [],
+    });
+    if (error) {
+      throw new Error(
+        `ingest_card_data_v2 upsert batch ${index + 1}/${cardBatches.length} failed: ${error.message}`,
+      );
+    }
+  }
+
+  logger.info("Calling ingest_card_data_v2 final prune", {
+    validIds: payload.p_valid_ids.length,
+  });
+  const { error } = await supabase.rpc("ingest_card_data_v2", {
+    p_sets: payload.p_sets,
+    p_artists: payload.p_artists,
+    p_cards: [],
+    p_valid_ids: payload.p_valid_ids,
+  });
+  if (error) {
+    throw new Error(`ingest_card_data_v2 final prune failed: ${error.message}`);
+  }
 }
 
 /**
@@ -81,34 +143,28 @@ async function loadExistingSlugs(
 }> {
   const existingByCardId = new Map<string, string>();
   const allTakenSlugs = new Set<string>();
+  const wantedIds = new Set(ids);
 
-  // All slugs already in use, anywhere in the table — used to avoid collisions
-  // when assigning new slugs.  This is small (one row per card) so a single
-  // pass is fine.
-  const { data: allRows, error: allErr } = await supabase
-    .from("cards")
-    .select("public_slug")
-    .not("public_slug", "is", null);
-  if (allErr) throw new Error(`load all slugs failed: ${allErr.message}`);
-  for (const row of (allRows ?? []) as Array<{ public_slug: string | null }>) {
-    if (row.public_slug) allTakenSlugs.add(row.public_slug);
-  }
+  for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("cards")
+      .select("id, public_slug")
+      .order("id")
+      .range(from, from + DATABASE_PAGE_SIZE - 1);
+    if (error) throw new Error(`load existing slugs failed: ${error.message}`);
 
-  // Slug-by-id for the cards in this batch — drives "skip if already set"
-  if (ids.length > 0) {
-    for (const idChunk of chunk(ids, ID_IN_CHUNK_SIZE)) {
-      const { data: idRows, error: idErr } = await supabase
-        .from("cards")
-        .select("id, public_slug")
-        .in("id", idChunk);
-      if (idErr) throw new Error(`load batch slugs failed: ${idErr.message}`);
-      for (const row of (idRows ?? []) as Array<{
-        id: string;
-        public_slug: string | null;
-      }>) {
-        if (row.public_slug) existingByCardId.set(row.id, row.public_slug);
+    const rows = (data ?? []) as Array<{
+      id: string;
+      public_slug: string | null;
+    }>;
+    for (const row of rows) {
+      if (!row.public_slug) continue;
+      allTakenSlugs.add(row.public_slug);
+      if (wantedIds.has(row.id)) {
+        existingByCardId.set(row.id, row.public_slug);
       }
     }
+    if (rows.length < DATABASE_PAGE_SIZE) break;
   }
 
   return { existingByCardId, allTakenSlugs };
@@ -220,21 +276,26 @@ export async function ingestCardData(
     related_signatures: card.related_signatures,
     related_printings: card.related_printings,
     is_token: card.is_token,
+    source: card.source ?? "riftcodex",
     public_slug: slugByCardId.get(card.id) ?? null,
   }));
 
-  logger.info("Calling ingest_card_data RPC", {
+  const p_valid_ids = cards.map((card) => card.id);
+
+  logger.info("Starting batched ingest_card_data_v2 RPC", {
     sets: p_sets.length,
     artists: p_artists.length,
     cards: p_cards.length,
+    validIds: p_valid_ids.length,
+    cardBatchSize: INGEST_RPC_CARD_BATCH_SIZE,
   });
 
-  const { error } = await supabase.rpc("ingest_card_data", {
+  await runBatchedIngestRpc(supabase, {
     p_sets,
     p_artists,
     p_cards,
+    p_valid_ids,
   });
 
-  if (error) throw new Error(`ingest_card_data RPC failed: ${error.message}`);
-  logger.info("ingest_card_data RPC complete");
+  logger.info("Batched ingest_card_data_v2 RPC complete");
 }

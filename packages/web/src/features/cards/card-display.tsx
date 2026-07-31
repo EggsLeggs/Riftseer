@@ -34,6 +34,7 @@ import {
   formatUsd,
   meaningfulCardDomains,
   meaningfulRulesText,
+  tcgplayerUsdPrice,
 } from "@/features/cards/format";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,7 @@ export {
   formatUsd,
   meaningfulCardDomains,
   meaningfulRulesText,
+  tcgplayerUsdPrice,
 };
 
 const CARD_GRID_INVISIBLE_LABEL =
@@ -220,7 +222,7 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
                   ) : null}
                   <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
                     <span className="tabular-nums">
-                      USD {formatUsd(card.prices?.tcgplayer?.normal ?? undefined)}
+                      USD {formatUsd(tcgplayerUsdPrice(card.prices?.tcgplayer))}
                     </span>
                     <span className="tabular-nums">
                       EUR{" "}
@@ -345,7 +347,7 @@ export function CardTableResults({ cards }: { cards: Card[] }) {
       <TableBody>
         {cards.map((card) => {
           const rowHref = cardHref(card);
-          const usdText = formatUsd(card.prices?.tcgplayer?.normal ?? undefined);
+          const usdText = formatUsd(tcgplayerUsdPrice(card.prices?.tcgplayer));
           const eurText = formatEur(card.prices?.cardmarket?.normal ?? undefined);
           const usdMarketUrl = card.purchase_uris?.tcgplayer;
           const eurMarketUrl = card.purchase_uris?.cardmarket;

@@ -33,10 +33,15 @@ interface Card {
   purchase_uris?: CardPurchaseUris;
   prices?: CardPrices;
   is_token: boolean;
+  source?: "riftcodex" | "manual";  // Row provenance used by ingest/admin tooling
   all_parts: RelatedCard[];         // Tokens or meld parts produced by this card
   used_by: RelatedCard[];           // Cards that create or reference this card (populated on tokens)
   related_champions: RelatedCard[]; // Champions linked to this legend
   related_legends: RelatedCard[];   // Legends linked to this champion
+  related_signatures: RelatedCard[];
+  related_printings: RelatedCard[];
+  public_slug?: string;
+  riftseer_uri?: string;
   updated_at?: string;
   ingested_at?: string;
 }
@@ -96,9 +101,17 @@ interface CardSet {
 interface CardMedia {
   orientation?: string;       // "portrait" or "landscape"
   accessibility_text?: string;
-  media_urls?: CardMediaUrls; // { small, normal, large, png }
+  media_urls?: CardMediaUrls; // { small, normal, large, original, png }
+  source_url?: string;        // Best upstream image selected for this printing
+  source_hash?: string;       // SHA-256(source_url), used for idempotent hosting
+  source_provider?: "riftcodex" | "tcgplayer" | "admin";
 }
 ```
+
+After the image queue succeeds, `small`, `normal`, and `large` are WebP objects
+served from the configured R2 custom domain. `original` points to the unchanged
+source bytes. The URLs include a source-hash version query, so upstream image
+corrections bypass immutable browser and CDN caches.
 
 ### CardMetadata
 

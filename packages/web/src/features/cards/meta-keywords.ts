@@ -1,4 +1,5 @@
 import type { Card } from "@riftseer/types";
+import { tcgplayerUsdPrice } from "./format";
 
 export const ORDER_FIELDS = [
   "artist",
@@ -76,7 +77,7 @@ function cardValue(card: Card, field: OrderField): CardValue {
     case "might":     return card.attributes?.might ?? null;
     case "rarity":    return card.classification?.rarity ?? null;
     case "artist":    return card.artist ?? null;
-    case "usd":       return card.prices?.tcgplayer?.normal ?? null;
+    case "usd":       return tcgplayerUsdPrice(card.prices?.tcgplayer);
     case "eur":       return card.prices?.cardmarket?.normal ?? null;
     case "domain":    return card.classification?.domains?.[0] ?? null;
     case "set":       return card.set?.set_code ?? null;
