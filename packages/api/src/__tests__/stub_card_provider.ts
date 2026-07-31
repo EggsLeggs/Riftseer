@@ -2,12 +2,38 @@ import {
   parseCardSearchQuery,
   type Card,
   type CardDataProvider,
+  type CardLegality,
   type CardRequest,
+  type CardRuling,
   type CardSearchAst,
   type CardSearchOptions,
   type CardSearchResult,
+  type Format,
   type ResolvedCard,
 } from "@riftseer/core";
+
+export const STUB_FORMAT: Format = {
+  object: "format",
+  id: "eeeeeeee-0000-0000-0000-000000000001",
+  code: "standard",
+  name: "Standard",
+  sort_order: 0,
+  active: true,
+};
+
+/**
+ * The stub keeps a single ruling and a single banned format on STUB_CARD's
+ * oracle group, so route tests can assert the card-detail payload carries them
+ * through without standing up Postgres.
+ */
+export const STUB_RULING: CardRuling = {
+  object: "card_ruling",
+  id: "ffffffff-0000-0000-0000-000000000001",
+  type: "ruling",
+  text: "Sun Disc's ability resolves before the unit readies.",
+  dated: "2026-03-14",
+  source: "Rules team",
+};
 
 export const STUB_PRINTING_ID = "bf1bafdc-2739-469b-bde6-c24a868f4980";
 export const STUB_TOKEN_ID = "cccccccc-0000-0000-0000-000000000001";
@@ -250,6 +276,37 @@ export class StubProvider implements CardDataProvider {
     const start = opts.offset;
     const end = opts.offset + opts.limit;
     return { cards: STUB_CARDS.slice(start, end), total };
+  }
+
+  async getFormats(opts?: { includeInactive?: boolean }): Promise<Format[]> {
+    return opts?.includeInactive
+      ? [STUB_FORMAT, { ...STUB_FORMAT, id: "retired", code: "retired", name: "Retired", sort_order: 1, active: false }]
+      : [STUB_FORMAT];
+  }
+
+  async getCardLegalities(
+    _oracleKey: string,
+    cardId: string,
+  ): Promise<CardLegality[]> {
+    return [
+      {
+        object: "card_legality",
+        format_id: STUB_FORMAT.id,
+        format_code: STUB_FORMAT.code,
+        format_name: STUB_FORMAT.name,
+        // Only the base printing is banned, so tests can tell the printing
+        // override apart from the shared oracle status.
+        status: cardId === STUB_CARD.id ? "banned" : "legal",
+        scope: cardId === STUB_CARD.id ? "oracle" : "default",
+      },
+    ];
+  }
+
+  async getCardRulings(
+    _oracleKey: string,
+    cardId: string,
+  ): Promise<CardRuling[]> {
+    return cardId === STUB_CARD.id ? [STUB_RULING] : [];
   }
 
   getStats() {

@@ -9,7 +9,7 @@ export function PrivacyView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 30 July 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 31 July 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -90,8 +90,9 @@ export function PrivacyView() {
             <ListItem>
               <strong className="font-semibold">Admin edits.</strong> If your account has admin
               access, we may store your account user ID with card and set data edits, manual
-              records, relationship changes, image uploads, and deletion records so those changes
-              are attributable, reversible, and preserved across data imports.
+              records, relationship changes, image uploads, deletion records, format definitions,
+              card legality statuses, and rulings or notes, so those changes are attributable,
+              reversible, and preserved across data imports.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">PostHog (site analytics).</strong> We use{" "}

@@ -74,11 +74,6 @@ interface RawMetadata {
   finishes?: string[];
 }
 
-interface RawRulings {
-  rulings_id?: string;
-  rulings_uri?: string;
-}
-
 export interface RawCard {
   id: string;
   name: string;
@@ -95,7 +90,6 @@ export interface RawCard {
   orientation: string;
   metadata: RawMetadata;
   released_at?: string;
-  rulings?: RawRulings;
   [k: string]: unknown;
 }
 
@@ -196,13 +190,6 @@ export function rawToCard(raw: RawCard): Card {
           set_search_uri: raw.set?.set_search_uri,
         }
       : undefined,
-    rulings:
-      raw.rulings?.rulings_id || raw.rulings?.rulings_uri
-        ? {
-            rulings_id: raw.rulings?.rulings_id,
-            rulings_uri: raw.rulings?.rulings_uri,
-          }
-        : undefined,
     attributes: {
       energy: raw.attributes?.energy ?? null,
       might: raw.attributes?.might ?? null,

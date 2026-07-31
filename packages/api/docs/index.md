@@ -110,9 +110,10 @@ Route modules live in `packages/api/src/routes/`:
 | `meta.ts` | `/health`, `/meta` |
 | `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve` |
 | `sets.ts` | `/sets` |
+| `formats.ts` | `/formats` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
 | `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/me`, `/auth/reset-password` |
-| `admin.ts` | `/admin/cards/*`, `/admin/sets/*` |
+| `admin.ts` | `/admin/cards/*`, `/admin/sets/*`, `/admin/formats/*` |
 
 ---
 
@@ -150,6 +151,7 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `GET` | `/api/v1/cards/:id/text` | [Cards](./cards.md) |
 | `POST` | `/api/v1/cards/resolve` | [Cards](./cards.md) |
 | `GET` | `/api/v1/sets` | [Sets](./sets.md) |
+| `GET` | `/api/v1/formats` | [Formats](./formats.md) |
 | `GET` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
 | `POST` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
 | `POST` | `/api/v1/decks/u` | [Decks](./decks.md) |
@@ -167,6 +169,17 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `POST` | `/api/v1/admin/cards/:id/move` | [Admin](./admin.md) |
 | `PUT` | `/api/v1/admin/cards/:id/relationships` | [Admin](./admin.md) |
 | `POST` | `/api/v1/admin/cards/:id/image` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/cards/:id/legalities` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/cards/:id/legalities` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/cards/:id/rulings` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/cards/:id/rulings` | [Admin](./admin.md) |
+| `PATCH` | `/api/v1/admin/cards/:id/rulings/:rulingId` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/cards/:id/rulings/:rulingId` | [Admin](./admin.md) |
 | `POST` | `/api/v1/admin/sets` | [Admin](./admin.md) |
 | `PATCH` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |
 | `DELETE` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/formats` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/formats` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/formats/order` | [Admin](./admin.md) |
+| `PATCH` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |

@@ -9,6 +9,7 @@
     "./card-text": "./src/card-text.ts",
     "./keywords": "./src/keywords.ts",
     "./icons": "./src/icons.ts",
+    "./oracle": "./src/oracle.ts",
     "./parser": "./src/parser.ts",
     "./slug": "./src/slug.ts",
     "./social-links": "./src/social-links.ts",

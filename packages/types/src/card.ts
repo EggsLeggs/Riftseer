@@ -39,9 +39,64 @@ export interface CardSet {
   card_count?: number;
 }
 
-export interface CardRulings {
-  rulings_id?: string;
-  rulings_uri?: string;
+// ─── Rulings, legalities and formats ──────────────────────────────────────────
+
+/**
+ * A tournament / play format, e.g. `{ code: "standard", name: "Standard" }`.
+ * Formats are system-wide and admin-managed; `sort_order` fixes display order
+ * and `active` hides a retired format without deleting its legality rows.
+ */
+export interface Format {
+  object: "format";
+  id: string;
+  code: string;
+  name: string;
+  sort_order: number;
+  active: boolean;
+}
+
+/**
+ * Legality status for one card in one format. Absence of any stored row means
+ * `legal` — only non-legal statuses are persisted.
+ */
+export type CardLegalityStatus = "legal" | "not_legal" | "banned";
+
+/**
+ * A card's resolved legality in one format.
+ *
+ * Read precedence is printing override → oracle-level row → default `legal`.
+ * `scope` says which of those decided this entry, so an editor can show whether
+ * the status came from the shared card or from this specific printing.
+ */
+export interface CardLegality {
+  object: "card_legality";
+  format_id: string;
+  format_code: string;
+  format_name: string;
+  status: CardLegalityStatus;
+  /** Which layer decided `status`. */
+  scope: "printing" | "oracle" | "default";
+  updated_at?: string;
+}
+
+/**
+ * An official ruling or an editorial note attached to a card.
+ *
+ * `card_id` absent means the entry applies to every printing (the common case);
+ * set, it applies only to that printing.
+ */
+export interface CardRuling {
+  object: "card_ruling";
+  id: string;
+  type: "ruling" | "note";
+  text: string;
+  /** ISO date the ruling was issued, e.g. "2026-03-14". */
+  dated?: string;
+  /** Free-text provenance, e.g. a rules-team URL or document name. */
+  source?: string;
+  card_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface CardAttributes {
@@ -133,7 +188,12 @@ export interface Card {
   collector_number?: string;
   external_ids?: CardExternalIds;
   set?: CardSet;
-  rulings?: CardRulings;
+  /**
+   * Name-derived grouping key shared by every printing of this card — see
+   * `oracleKeyForName` in `./oracle.ts`. Rulings and format legalities hang off
+   * this key so they are authored once and inherited by all printings.
+   */
+  oracle_key?: string;
   attributes?: CardAttributes;
   classification?: CardClassification;
   text?: CardText;

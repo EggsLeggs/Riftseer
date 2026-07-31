@@ -18,6 +18,8 @@ import type { App } from "@riftseer/api";
 type AdminRoutes = ReturnType<typeof treaty<App>>["api"]["v1"]["admin"];
 type CardById = ReturnType<AdminRoutes["cards"]>;
 type SetByCode = ReturnType<AdminRoutes["sets"]>;
+type FormatByCode = ReturnType<AdminRoutes["formats"]>;
+type RulingById = ReturnType<CardById["rulings"]>;
 
 /** The request body an Eden treaty method accepts. */
 type Body<F extends (...args: never) => unknown> = Parameters<F>[0];
@@ -48,6 +50,42 @@ export type AdminSetPatch = Body<SetByCode["patch"]>["patch"];
 
 export type AdminSetDefinition = Body<AdminRoutes["sets"]["post"]>["definition"];
 
+// ─── Formats, legalities, rulings ─────────────────────────────────────────────
+
+export type AdminFormatListResult = Ok<AdminRoutes["formats"]["get"]>;
+
+export type AdminFormat = AdminFormatListResult["formats"][number];
+
+export type AdminFormatInput = Body<AdminRoutes["formats"]["post"]>;
+
+export type AdminFormatPatch = Body<FormatByCode["patch"]>["patch"];
+
+export type AdminCardLegalities = Ok<CardById["legalities"]["get"]>;
+
+export type AdminCardLegalityEntry = AdminCardLegalities["entries"][number];
+
+/** The statuses that can be stored. Absence of a row means legal. */
+export type AdminLegalityStatus = AdminCardLegalityEntry["effective_status"];
+
+/**
+ * What the legality route accepts. `default` is not a stored status — it clears
+ * the row — so it is deliberately absent from `AdminLegalityStatus` and display
+ * code cannot render it as a badge.
+ */
+export type AdminLegalityStatusInput = Body<
+  CardById["legalities"]["put"]
+>["status"];
+
+export type AdminCardRulings = Ok<CardById["rulings"]["get"]>;
+
+export type AdminCardRuling = AdminCardRulings["entries"][number];
+
+export type AdminRulingType = AdminCardRuling["type"];
+
+export type AdminRulingInput = Body<CardById["rulings"]["post"]>;
+
+export type AdminRulingPatch = Body<RulingById["patch"]>["patch"];
+
 // ─── Audit log ────────────────────────────────────────────────────────────────
 
 export type AdminAuditPage = Ok<AdminRoutes["audit-log"]["get"]>;
@@ -76,6 +114,16 @@ export type AdminSlugMutationResult = Ok<CardById["regenerate-slug"]["post"]>;
 export type AdminSetMutationResult = Ok<SetByCode["patch"]>;
 
 export type AdminImageMutationResult = Ok<CardById["image"]["post"]>;
+
+export type AdminFormatMutationResult = Ok<AdminRoutes["formats"]["post"]>;
+
+export type AdminFormatDeleteResult = Ok<FormatByCode["delete"]>;
+
+export type AdminReorderResult = Ok<AdminRoutes["formats"]["order"]["put"]>;
+
+export type AdminLegalityMutationResult = Ok<CardById["legalities"]["put"]>;
+
+export type AdminRulingMutationResult = Ok<CardById["rulings"]["post"]>;
 
 /**
  * Every admin call resolves rather than throws, so views can render the API's

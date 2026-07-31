@@ -614,6 +614,36 @@ describe("ingest helpers", () => {
     );
   });
 
+  test("applyDbOverrides regroups printings around a renamed card", () => {
+    // Automatic linking runs before the overlay, so a rename would otherwise
+    // leave `related_printings` grouped on the pre-rename name while the RPC
+    // stores an `oracle_key` derived from the new one.
+    const cards = [
+      card({ id: "a1", name: "Sun Disc", collector_number: "12" }),
+      card({ id: "a2", name: "Sun Disc", collector_number: "13" }),
+      card({ id: "b1", name: "Moon Disc", collector_number: "14" }),
+    ];
+    linkRelatedPrintings(cards);
+    expect(cards[0].related_printings.map((r) => r.id)).toEqual(["a2"]);
+
+    const finalCards = applyDbOverrides(cards, {
+      cardOverrides: [
+        {
+          card_id: "a2",
+          patch: { name: "Moon Disc", name_normalized: "moon disc" },
+        },
+      ],
+      manualCards: [],
+      relationshipOverrides: [],
+      deletedCardIds: new Set<string>(),
+    });
+
+    const byId = new Map(finalCards.map((finalCard) => [finalCard.id, finalCard]));
+    expect(byId.get("a1")?.related_printings).toEqual([]);
+    expect(byId.get("a2")?.related_printings.map((r) => r.id)).toEqual(["b1"]);
+    expect(byId.get("b1")?.related_printings.map((r) => r.id)).toEqual(["a2"]);
+  });
+
   test("applyDbSetOverrides applies durable patches, manual sets, and deletions", () => {
     const finalSets = applyDbSetOverrides(
       [

@@ -327,4 +327,101 @@ describe("buildCardDetail", () => {
     expect(detail.tokens).toEqual([]);
     expect(detail.champions).toEqual([]);
   });
+
+  // ─── Rulings and legalities ────────────────────────────────────────────────
+
+  it("looks rulings and legalities up by the card's oracle key", async () => {
+    const seen: string[] = [];
+    const card = makeCard({
+      id: "printing-1",
+      name: "Sun Disc (Signature)",
+      oracle_key: "sun disc",
+    });
+
+    const detail = await buildCardDetail(card, {
+      async getCardsByIds() {
+        return [];
+      },
+      async getCardRulings(oracleKey, cardId) {
+        seen.push(`rulings:${oracleKey}:${cardId}`);
+        return [
+          { object: "card_ruling", id: "r1", type: "ruling", text: "Resolves first." },
+        ];
+      },
+      async getCardLegalities(oracleKey, cardId) {
+        seen.push(`legalities:${oracleKey}:${cardId}`);
+        return [
+          {
+            object: "card_legality",
+            format_id: "f1",
+            format_code: "standard",
+            format_name: "Standard",
+            status: "banned",
+            scope: "oracle",
+          },
+        ];
+      },
+    });
+
+    expect(seen).toEqual([
+      "rulings:sun disc:printing-1",
+      "legalities:sun disc:printing-1",
+    ]);
+    expect(detail.rulings).toHaveLength(1);
+    expect(detail.legalities[0].status).toBe("banned");
+  });
+
+  it("derives the oracle key from the name when the column is unset", async () => {
+    const requested: string[] = [];
+    await buildCardDetail(
+      makeCard({ id: "card", name: "Recruit (271) // Buff" }),
+      {
+        async getCardsByIds() {
+          return [];
+        },
+        async getCardRulings(oracleKey) {
+          requested.push(oracleKey);
+          return [];
+        },
+      },
+    );
+
+    expect(requested).toEqual(["recruit"]);
+  });
+
+  it("degrades to empty rather than failing the whole card page", async () => {
+    const detail = await buildCardDetail(
+      makeCard({ id: "card", name: "Sun Disc" }),
+      {
+        async getCardsByIds() {
+          return [];
+        },
+        async getCardRulings() {
+          throw new Error('relation "card_rulings" does not exist');
+        },
+        async getCardLegalities() {
+          throw new Error('relation "formats" does not exist');
+        },
+      },
+    );
+
+    expect(detail.rulings).toEqual([]);
+    expect(detail.legalities).toEqual([]);
+    // The rest of the payload is unaffected.
+    expect(detail.printings).toHaveLength(1);
+  });
+
+  it("treats a provider without the methods as nothing stored", async () => {
+    const detail = await buildCardDetail(
+      makeCard({ id: "card", name: "Sun Disc" }),
+      {
+        async getCardsByIds() {
+          return [];
+        },
+      },
+    );
+
+    expect(detail.rulings).toEqual([]);
+    expect(detail.legalities).toEqual([]);
+  });
 });

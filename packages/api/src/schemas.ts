@@ -59,10 +59,12 @@ export const CardSchema = t.Object({
     published_on: t.Optional(t.String()),
     card_count: t.Optional(t.Number()),
   })),
-  rulings: t.Optional(t.Partial(t.Object({
-    rulings_id: t.String(),
-    rulings_uri: t.String(),
-  }))),
+  oracle_key: t.Optional(
+    t.String({
+      description:
+        "Name-derived key shared by every printing of this card. Rulings and format legalities are keyed on it.",
+    }),
+  ),
   attributes: t.Optional(t.Partial(t.Object({
     energy: t.Nullable(t.Number()),
     might: t.Nullable(t.Number()),
@@ -153,6 +155,53 @@ export const CardPrintingSummarySchema = t.Object({
   ),
 });
 
+export const LegalityStatusSchema = t.UnionEnum([
+  "legal",
+  "not_legal",
+  "banned",
+]);
+
+export const FormatSchema = t.Object({
+  object: t.Literal("format"),
+  id: t.String(),
+  code: t.String({ description: "Stable lowercase handle, e.g. 'standard'." }),
+  name: t.String(),
+  sort_order: t.Number({ description: "Display order, ascending." }),
+  active: t.Boolean({
+    description: "False for retired formats; they are omitted from public lists.",
+  }),
+});
+
+export const CardLegalitySchema = t.Object({
+  object: t.Literal("card_legality"),
+  format_id: t.String(),
+  format_code: t.String(),
+  format_name: t.String(),
+  status: LegalityStatusSchema,
+  scope: t.UnionEnum(["printing", "oracle", "default"], {
+    description:
+      "Which layer decided the status: this printing's override, the shared card-level row, or the default (legal).",
+  }),
+  updated_at: t.Optional(t.String()),
+});
+
+export const CardRulingSchema = t.Object({
+  object: t.Literal("card_ruling"),
+  id: t.String(),
+  type: t.UnionEnum(["ruling", "note"]),
+  text: t.String(),
+  dated: t.Optional(t.String({ description: "ISO date the ruling was issued." })),
+  source: t.Optional(t.String()),
+  card_id: t.Optional(
+    t.String({
+      description:
+        "Present only when the entry is scoped to this printing; absent means it applies to every printing.",
+    }),
+  ),
+  created_at: t.Optional(t.String()),
+  updated_at: t.Optional(t.String()),
+});
+
 export const CardDetailSchema = t.Object({
   object: t.Literal("card_detail"),
   card: CardSchema,
@@ -177,6 +226,14 @@ export const CardDetailSchema = t.Object({
       "Signature cards tied to this legend/champion by a shared character tag, one row per signature.",
   }),
   purchase: CardPurchaseUrisSchema,
+  rulings: t.Array(CardRulingSchema, {
+    description:
+      "Rulings and notes for this printing — everything shared across the card plus anything scoped to this printing, oldest first.",
+  }),
+  legalities: t.Array(CardLegalitySchema, {
+    description:
+      "One entry per active format, in format order, already resolved through printing override → card → default legal.",
+  }),
 });
 
 export const CardRequestSchema = t.Object({

@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Card, RelatedCard } from "@riftseer/types";
 import { logger, normalizeCardName } from "../utils.ts";
+import { linkRelatedPrintings } from "./link.ts";
 import type { IngestSet } from "./types.ts";
 
 type JsonObject = Record<string, unknown>;
@@ -279,6 +280,16 @@ export function applyDbOverrides(cards: Card[], state: DbOverrideState): Card[] 
     merged.source = current.source ?? "riftcodex";
     cardById.set(row.card_id, merged);
     patched++;
+  }
+
+  // Automatic printing links were built before this pass, from pre-override
+  // names. A patch that renames a card — or a manual card, which did not exist
+  // during linking — changes the oracle key that groups printings, and the RPC
+  // derives `oracle_key` from the final name. Rebuild the automatic links here
+  // so `related_printings` matches the key the card is actually stored under.
+  // Explicit relationship overrides are applied below and still win.
+  if (manual > 0 || patched > 0) {
+    linkRelatedPrintings(Array.from(cardById.values()));
   }
 
   const relationshipRows = [...state.relationshipOverrides].sort((a, b) => {

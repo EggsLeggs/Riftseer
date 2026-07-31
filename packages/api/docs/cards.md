@@ -34,6 +34,7 @@ Every card endpoint returns the same card shape. Key fields:
 | `collector_number` | string | e.g. `OGN-001` |
 | `set.set_code` | string | Short code, e.g. `OGN` |
 | `set.card_count` | number \| undefined | Total cards in this set |
+| `oracle_key` | string \| undefined | Name-derived key shared by every printing of this card. Rulings and format legalities are keyed on it, not on `id` |
 | `attributes` | object | `energy`, `might`, `power` |
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
@@ -100,6 +101,25 @@ Response:
 | `legends` | CardPrintingSummary[] | Legends sharing a tag with this champion, collapsed to one row per character |
 | `signatures` | CardPrintingSummary[] | Signature cards tied to this legend/champion by a shared character tag, collapsed to one row per signature |
 | `purchase` | object | Resolved `tcgplayer` / `cardmarket` links — the stored purchase URI when trusted, else the product page, else a name search |
+| `rulings` | CardRuling[] | Rulings and notes visible on this printing — the card-wide entries plus any scoped to this printing, oldest first |
+| `legalities` | CardLegality[] | One entry per active format, in format order, already resolved |
+
+`rulings` and `legalities` are keyed on the card's `oracle_key`, so they are
+shared by every printing unless an entry is scoped to one. Both are
+supplementary: if the lookup fails they come back empty and the rest of the
+payload is unaffected.
+
+Each `CardRuling` is `{ object, id, type, text, dated?, source?, card_id? }`,
+where `type` is `ruling` or `note` and `card_id` is present only on entries
+scoped to this printing.
+
+Each `CardLegality` is
+`{ object, format_id, format_code, format_name, status, scope, updated_at? }`.
+`status` is `legal`, `not_legal`, or `banned`; **absence of a stored status means
+legal**, so every active format appears here even when nothing is recorded.
+`scope` says which layer decided the status — `printing` (this printing's
+override), `oracle` (shared by the card), or `default` (nothing stored). Formats
+themselves are listed by [`GET /api/v1/formats`](./formats).
 
 Each `CardPrintingSummary` carries just enough to render a row and link to it:
 

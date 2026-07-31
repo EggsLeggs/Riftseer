@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ChevronRight, Layers, Library, ScrollText, ShieldCheck } from "lucide-react";
+import {
+  ChevronRight,
+  Gavel,
+  Layers,
+  Library,
+  ScrollText,
+  ShieldCheck,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AdminPageHeader } from "./admin-page-header";
@@ -30,6 +37,13 @@ const ADMIN_SECTIONS: AdminSection[] = [
     title: "Sets",
     description:
       "Create manual sets, correct names and release dates, and remove empty sets.",
+  },
+  {
+    href: "/admin/formats",
+    icon: Gavel,
+    title: "Formats",
+    description:
+      "Add, retire and reorder play formats. Per-card legalities are edited on the card itself.",
   },
   {
     href: "/admin/audit",
