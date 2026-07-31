@@ -27,6 +27,13 @@ describe("quoteSearchValue", () => {
     expect(quoteSearchValue("a(b)")).toBe('"a(b)"');
   });
 
+  test("quotes a comma so the value is not read as a list", () => {
+    // `kw:`, `tag:` and `d:` expand an unquoted comma list into an OR, so a
+    // clicked badge whose text contains a comma must stay one value.
+    expect(quoteSearchValue("Noxus, Fallen")).toBe('"Noxus, Fallen"');
+    expect(tagSearchQuery("a,b")).toBe('tag:"a,b"');
+  });
+
   test("escapes quotes and backslashes inside a quoted value", () => {
     expect(quoteSearchValue('say "hi"')).toBe('"say \\"hi\\""');
     expect(quoteSearchValue("back\\slash")).toBe('"back\\\\slash"');

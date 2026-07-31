@@ -16,12 +16,15 @@ import { keywordBaseKey } from "@riftseer/types/keywords";
  * Quote a filter value when a bare word would not survive the lexer.
  *
  * Bare words end at whitespace or a parenthesis, so anything containing those —
- * or a quote of its own — has to be quoted and escaped. Everything else is left
- * alone, which keeps the common case (`tag:poro`) readable in the URL bar.
+ * or a quote of its own — has to be quoted and escaped. A comma is quoted for a
+ * different reason: `kw:`, `tag:` and `d:` read an *unquoted* comma list as an
+ * OR, so `tag:a,b` would search two tags instead of the one that was clicked.
+ * Everything else is left alone, which keeps the common case (`tag:poro`)
+ * readable in the URL bar.
  */
 export function quoteSearchValue(value: string): string {
   const trimmed = value.trim();
-  if (!/[\s()"\\]/.test(trimmed)) return trimmed;
+  if (!/[\s(),"\\]/.test(trimmed)) return trimmed;
   return `"${trimmed.replace(/([\\"])/g, "\\$1")}"`;
 }
 
