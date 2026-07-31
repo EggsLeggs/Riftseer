@@ -40,6 +40,8 @@ export type AdminCardPatch = Body<CardById["patch"]>["patch"];
 
 export type AdminCardDefinition = Body<AdminRoutes["cards"]["post"]>["definition"];
 
+export type AdminCardRelationships = Ok<CardById["relationships"]["get"]>;
+
 export type AdminRelationshipEntry = Body<
   CardById["relationships"]["put"]
 >["entries"][number];
@@ -190,12 +192,26 @@ export type AdminReviewStatus = (typeof ADMIN_REVIEW_STATUSES)[number];
 export const ADMIN_REVIEW_KINDS = [
   "unmatched_product",
   "field_diff",
+  "missing_card",
 ] as const;
 
 export type AdminReviewKind = (typeof ADMIN_REVIEW_KINDS)[number];
 
+export const ADMIN_REVIEW_SOURCES = ["tcgplayer", "gallery"] as const;
+
+/** Which upstream raised the entry; decides which half of the payload is set. */
+export type AdminReviewSource = (typeof ADMIN_REVIEW_SOURCES)[number];
+
 /** The only fields ingest proposes; prices are never queued. */
-export type AdminReviewField = "collector_number" | "released_at";
+export type AdminReviewField =
+  | "collector_number"
+  | "released_at"
+  | "rarity"
+  | "type"
+  | "energy"
+  | "might"
+  | "power"
+  | "text";
 
 export interface AdminReviewProduct {
   product_id: number;
@@ -207,13 +223,38 @@ export interface AdminReviewProduct {
   set_code: string | null;
 }
 
+/** A printing the official gallery lists, as filed for review. */
+export interface AdminReviewGalleryCard {
+  riftbound_id: string;
+  name: string;
+  public_code: string | null;
+  set_code: string | null;
+  set_name?: string | null;
+  collector_number: string | null;
+  rarity: string | null;
+  type: string | null;
+  image_url: string | null;
+  energy?: number | null;
+  might?: number | null;
+  power?: number | null;
+  text?: string | null;
+  might_bonus?: number | null;
+  equipment?: string | null;
+  signature?: boolean;
+  special_collection?: boolean;
+  alternate_art?: boolean;
+  is_token?: boolean;
+}
+
 export interface AdminReviewEntry {
   id: string;
   kind: AdminReviewKind;
+  source: AdminReviewSource;
   fingerprint: string;
   status: AdminReviewStatus;
-  tcgplayer_payload: {
-    product: AdminReviewProduct;
+  payload: {
+    product?: AdminReviewProduct;
+    gallery?: AdminReviewGalleryCard;
     field?: AdminReviewField;
     current_value?: Nullable<string>;
     proposed_value?: Nullable<string>;
@@ -243,6 +284,7 @@ export interface AdminReviewFilters {
   offset?: number;
   status?: AdminReviewStatus;
   kind?: AdminReviewKind;
+  source?: AdminReviewSource;
 }
 
 export interface AdminReviewMutationResult {

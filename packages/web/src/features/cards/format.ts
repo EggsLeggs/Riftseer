@@ -74,6 +74,104 @@ export function meaningfulCardDomains(card: Card): string[] {
   );
 }
 
+/** Domain fills sampled from `public/icons/domains/rune_*.svg`. */
+const DOMAIN_BADGE_COLORS: Record<string, string> = {
+  fury: "#DF1620",
+  calm: "#488C38",
+  mind: "#0F6FA6",
+  body: "#E87600",
+  chaos: "#6A4094",
+  order: "#D2B400",
+};
+
+const TYPE_BADGE_GREY = "#c8c8c8";
+const TYPE_BADGE_GOLD = "#D6A93C";
+const TYPE_BADGE_BLACK = "#0a0a0a";
+const TYPE_BADGE_WHITE = "#ffffff";
+
+/** Rarity accent for the type-glyph inner ring + icon tint. */
+export function typeBadgeRarityColor(rarity: string | null | undefined): string {
+  const key = rarity?.trim().toLowerCase();
+  if (key === "common") return "#A25F15";
+  if (key === "uncommon") return "#999999";
+  return TYPE_BADGE_GOLD;
+}
+
+export interface TypeBadgeStyle {
+  /** Label fill. */
+  labelBg: string;
+  /** Label text. */
+  labelFg: string;
+  /** Glyph icon + inner ring (outer ring is the page background). */
+  rarityColor: string;
+  /** Rune labels get a white stroke (except the capsule-facing edge). */
+  variant: "rune" | "default";
+}
+
+/**
+ * Colours for the capsule + rhombus type chrome.
+ *
+ * Label: rune → black; battlefield / token → grey; legend / multi-domain → gold;
+ * single domain → that domain's colour; otherwise grey.
+ */
+export function typeBadgeStyle(card: Card): TypeBadgeStyle {
+  const typeKey = card.classification?.type?.trim().toLowerCase();
+  const specialKey = card.classification?.supertype?.trim().toLowerCase();
+  const rarityColor = typeBadgeRarityColor(card.classification?.rarity);
+  const domains = meaningfulCardDomains(card);
+  const isToken =
+    card.is_token === true || typeKey === "token" || specialKey === "token";
+
+  if (typeKey === "rune") {
+    return {
+      labelBg: TYPE_BADGE_BLACK,
+      labelFg: TYPE_BADGE_WHITE,
+      rarityColor,
+      variant: "rune",
+    };
+  }
+
+  if (typeKey === "battlefield" || isToken) {
+    return {
+      labelBg: TYPE_BADGE_GREY,
+      labelFg: TYPE_BADGE_BLACK,
+      // Always silver — ignore print rarity for these types.
+      rarityColor: TYPE_BADGE_GREY,
+      variant: "default",
+    };
+  }
+
+  if (typeKey === "legend" || domains.length > 1) {
+    return {
+      labelBg: TYPE_BADGE_GOLD,
+      labelFg: TYPE_BADGE_BLACK,
+      rarityColor,
+      variant: "default",
+    };
+  }
+
+  if (domains.length === 1) {
+    const domainKey = domains[0]!.toLowerCase();
+    const domainColor = DOMAIN_BADGE_COLORS[domainKey];
+    if (domainColor) {
+      return {
+        labelBg: domainColor,
+        // Order's yellow needs black text; other domains keep white.
+        labelFg: domainKey === "order" ? TYPE_BADGE_BLACK : TYPE_BADGE_WHITE,
+        rarityColor,
+        variant: "default",
+      };
+    }
+  }
+
+  return {
+    labelBg: TYPE_BADGE_GREY,
+    labelFg: TYPE_BADGE_BLACK,
+    rarityColor,
+    variant: "default",
+  };
+}
+
 /**
  * Upstream marks cards with no ability as `[NO TEXT]` (sometimes without
  * brackets). Treat that sentinel — and blank strings — as absent rules text.

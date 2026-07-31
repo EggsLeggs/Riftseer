@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Card, RelatedCard } from "@riftseer/types";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 import { logger, normalizeCardName } from "../utils.ts";
 import { linkRelatedPrintings } from "./link.ts";
 import type { IngestSet } from "./types.ts";
@@ -65,7 +66,10 @@ interface ManualCardRow {
 
 interface RelationshipOverrideRow {
   id: string;
-  card_id: string;
+  /** Printing-scoped when set; mutually exclusive with `oracle_key`. */
+  card_id: string | null;
+  /** Oracle-scoped when set; applies to every printing with this key. */
+  oracle_key: string | null;
   kind: string;
   related_card_id: string;
   action: string;
@@ -235,6 +239,70 @@ function setRelationshipList(
   card[kind] = next;
 }
 
+function sortRelationshipRows(
+  rows: RelationshipOverrideRow[],
+): RelationshipOverrideRow[] {
+  return [...rows].sort((a, b) => {
+    const byCreatedAt = a.created_at.localeCompare(b.created_at);
+    return byCreatedAt !== 0 ? byCreatedAt : a.id.localeCompare(b.id);
+  });
+}
+
+/**
+ * Apply one relationship override row to a single printing. Returns whether
+ * the live arrays changed. Skips self-links so an oracle add whose target is
+ * one printing in the group does not invent a loop on that printing.
+ */
+function applyRelationshipRowToCard(
+  card: Card,
+  row: RelationshipOverrideRow,
+  cardById: Map<string, Card>,
+): boolean {
+  if (!isRelationshipKind(row.kind)) {
+    logger.warn("Skipping invalid relationship override kind", {
+      id: row.id,
+      kind: row.kind,
+    });
+    return false;
+  }
+  if (row.related_card_id === card.id) return false;
+
+  const current = getRelationshipList(card, row.kind);
+  if (row.action === "remove") {
+    const next = current.filter((related) => related.id !== row.related_card_id);
+    if (next.length === current.length) return false;
+    setRelationshipList(card, row.kind, next);
+    return true;
+  }
+
+  if (row.action !== "add") {
+    logger.warn("Skipping invalid relationship override action", {
+      id: row.id,
+      action: row.action,
+    });
+    return false;
+  }
+
+  const related = cardById.get(row.related_card_id);
+  if (!related) {
+    logger.warn("Skipping relationship add for missing related card", {
+      id: row.id,
+      cardId: card.id,
+      relatedCardId: row.related_card_id,
+    });
+    return false;
+  }
+  if (current.some((existing) => existing.id === row.related_card_id)) {
+    return false;
+  }
+
+  setRelationshipList(card, row.kind, [
+    ...current,
+    toRelatedCard(related, row.kind),
+  ]);
+  return true;
+}
+
 export function applyDbOverrides(cards: Card[], state: DbOverrideState): Card[] {
   const cardById = new Map<string, Card>();
   const order: string[] = [];
@@ -292,60 +360,45 @@ export function applyDbOverrides(cards: Card[], state: DbOverrideState): Card[] 
     linkRelatedPrintings(Array.from(cardById.values()));
   }
 
-  const relationshipRows = [...state.relationshipOverrides].sort((a, b) => {
-    const byCreatedAt = a.created_at.localeCompare(b.created_at);
-    return byCreatedAt !== 0 ? byCreatedAt : a.id.localeCompare(b.id);
-  });
+  // Oracle-scoped first (every printing with that key, including future ones
+  // that join this run), then printing-scoped exceptions which win.
+  const cardsByOracleKey = new Map<string, Card[]>();
+  for (const card of cardById.values()) {
+    const key = oracleKeyForName(card.name);
+    const group = cardsByOracleKey.get(key);
+    if (group) group.push(card);
+    else cardsByOracleKey.set(key, [card]);
+  }
+
+  const oracleRows = sortRelationshipRows(
+    state.relationshipOverrides.filter(
+      (row) => row.oracle_key != null && row.card_id == null,
+    ),
+  );
+  const printingRows = sortRelationshipRows(
+    state.relationshipOverrides.filter(
+      (row) => row.card_id != null && row.oracle_key == null,
+    ),
+  );
 
   let relationshipEdits = 0;
-  for (const row of relationshipRows) {
-    if (!isRelationshipKind(row.kind)) {
-      logger.warn("Skipping invalid relationship override kind", {
-        id: row.id,
-        kind: row.kind,
-      });
-      continue;
+  for (const row of oracleRows) {
+    const group = cardsByOracleKey.get(row.oracle_key!);
+    if (!group) continue;
+    for (const card of group) {
+      if (applyRelationshipRowToCard(card, row, cardById)) {
+        relationshipEdits++;
+      }
     }
-    if (state.deletedCardIds.has(row.card_id)) continue;
+  }
 
-    const card = cardById.get(row.card_id);
+  for (const row of printingRows) {
+    if (state.deletedCardIds.has(row.card_id!)) continue;
+    const card = cardById.get(row.card_id!);
     if (!card) continue;
-
-    const current = getRelationshipList(card, row.kind);
-    if (row.action === "remove") {
-      setRelationshipList(
-        card,
-        row.kind,
-        current.filter((related) => related.id !== row.related_card_id),
-      );
+    if (applyRelationshipRowToCard(card, row, cardById)) {
       relationshipEdits++;
-      continue;
     }
-
-    if (row.action !== "add") {
-      logger.warn("Skipping invalid relationship override action", {
-        id: row.id,
-        action: row.action,
-      });
-      continue;
-    }
-
-    const related = cardById.get(row.related_card_id);
-    if (!related) {
-      logger.warn("Skipping relationship add for missing related card", {
-        id: row.id,
-        cardId: row.card_id,
-        relatedCardId: row.related_card_id,
-      });
-      continue;
-    }
-    if (current.some((existing) => existing.id === row.related_card_id)) continue;
-
-    setRelationshipList(card, row.kind, [
-      ...current,
-      toRelatedCard(related, row.kind),
-    ]);
-    relationshipEdits++;
   }
 
   const finalCards = order.flatMap((id) => {
@@ -538,7 +591,7 @@ export async function overlayDbOverrides(
     selectAllRows<RelationshipOverrideRow>(
       supabase,
       "card_relationship_overrides",
-      "id, card_id, kind, related_card_id, action, created_at",
+      "id, card_id, oracle_key, kind, related_card_id, action, created_at",
       "id",
     ),
     selectAllRows<{ card_id: string }>(

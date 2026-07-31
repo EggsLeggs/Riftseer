@@ -42,6 +42,13 @@
 	"env": {
 		"production": {
 			/**
+			 * Without this, `--env production` would deploy to `riftseer-web-production`
+			 * — a Worker that has never existed. riftseer.com is served by `riftseer-web`,
+			 * and the custom domain is attached in the dashboard, so the environment has
+			 * to name the Worker it is already running on.
+			 */
+			"name": "riftseer-web",
+			/**
 			 * Plain vars — available at runtime on the Worker (OpenNext maps them to process.env).
 			 * Must stay in sync with values passed at build time (GitHub Actions / local deploy).
 			 */

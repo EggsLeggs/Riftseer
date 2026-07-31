@@ -16,6 +16,7 @@ import {
 } from "@riftseer/types/slug";
 import type { IngestSet } from "./types.ts";
 import { logger } from "../utils.ts";
+import { callRpcWithRetry } from "./retry.ts";
 
 interface RpcSetPayload {
   set_code: string;
@@ -70,8 +71,15 @@ interface RpcCardPayload {
 }
 
 const DATABASE_PAGE_SIZE = 1000;
-/** Keep each RPC comfortably below Supabase's request/connection limits. */
-export const INGEST_RPC_CARD_BATCH_SIZE = 300;
+/**
+ * Keep each RPC comfortably below Supabase's request/connection limits.
+ *
+ * 300 cards (~700 KiB of JSON) drew repeated opaque `internal error` responses
+ * mid-run; 150 halves the work held open in one transaction and shortens the
+ * window a dropped connection can land in. Combined with the retry below, a
+ * batch failing is no longer fatal either way.
+ */
+export const INGEST_RPC_CARD_BATCH_SIZE = 150;
 
 export interface IngestRpcPayload {
   p_sets: RpcSetPayload[];
@@ -108,32 +116,34 @@ export async function runBatchedIngestRpc(
       cards: cards.length,
     });
 
-    const { error } = await supabase.rpc("ingest_card_data_v2", {
-      p_sets: payload.p_sets,
-      p_artists: payload.p_artists,
-      p_cards: cards,
-      // An empty valid-id list is the RPC's guard against pruning.
-      p_valid_ids: [],
-    });
-    if (error) {
-      throw new Error(
-        `ingest_card_data_v2 upsert batch ${index + 1}/${cardBatches.length} failed: ${error.message}`,
-      );
-    }
+    await callRpcWithRetry(
+      supabase,
+      "ingest_card_data_v2",
+      {
+        p_sets: payload.p_sets,
+        p_artists: payload.p_artists,
+        p_cards: cards,
+        // An empty valid-id list is the RPC's guard against pruning.
+        p_valid_ids: [],
+      },
+      `ingest_card_data_v2 upsert batch ${index + 1}/${cardBatches.length}`,
+    );
   }
 
   logger.info("Calling ingest_card_data_v2 final prune", {
     validIds: payload.p_valid_ids.length,
   });
-  const { error } = await supabase.rpc("ingest_card_data_v2", {
-    p_sets: payload.p_sets,
-    p_artists: payload.p_artists,
-    p_cards: [],
-    p_valid_ids: payload.p_valid_ids,
-  });
-  if (error) {
-    throw new Error(`ingest_card_data_v2 final prune failed: ${error.message}`);
-  }
+  await callRpcWithRetry(
+    supabase,
+    "ingest_card_data_v2",
+    {
+      p_sets: payload.p_sets,
+      p_artists: payload.p_artists,
+      p_cards: [],
+      p_valid_ids: payload.p_valid_ids,
+    },
+    "ingest_card_data_v2 final prune",
+  );
 }
 
 /**

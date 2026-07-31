@@ -9,6 +9,7 @@ import { cardImageUrl } from "@riftseer/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { suggestAltTextForCard } from "@/features/admin/alt-text";
 import { useCardMutations } from "@/features/admin/hooks/use-admin-mutations";
 import { AdminSection } from "./admin-form-field";
 
@@ -27,23 +28,26 @@ export function AdminCardImagePanel({ card }: { card: Card }) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const storedAlt = card.media?.accessibility_text ?? "";
-  const [altText, setAltText] = React.useState(storedAlt);
+  const suggestedAlt = React.useMemo(() => suggestAltTextForCard(card), [card]);
+  const [altText, setAltText] = React.useState(storedAlt || suggestedAlt);
 
   // `useState` only seeds on mount, and the editor renders this panel without a
   // key, so navigating between cards or refreshing after a save would leave the
   // previous card's alt text in the input. Resync only when the stored value
   // actually changes, so unrelated re-renders keep an in-progress edit.
-  const syncKey = `${card.id}:${storedAlt}`;
+  const syncKey = `${card.id}:${storedAlt}:${suggestedAlt}`;
   const syncedTo = React.useRef(syncKey);
   React.useEffect(() => {
     if (syncedTo.current === syncKey) return;
     syncedTo.current = syncKey;
-    setAltText(storedAlt);
-  }, [syncKey, storedAlt]);
+    setAltText(storedAlt || suggestedAlt);
+  }, [syncKey, storedAlt, suggestedAlt]);
 
   const { uploadImage } = useCardMutations();
 
   const preview = cardImageUrl(card.media, "small");
+  const canApplySuggestedAlt =
+    Boolean(suggestedAlt) && suggestedAlt !== altText.trim();
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -62,7 +66,7 @@ export function AdminCardImagePanel({ card }: { card: Card }) {
 
     const formData = new FormData();
     formData.append("file", file);
-    const trimmedAlt = altText.trim();
+    const trimmedAlt = (altText.trim() || suggestedAlt).trim();
     if (trimmedAlt) formData.append("accessibility_text", trimmedAlt);
 
     try {
@@ -121,8 +125,20 @@ export function AdminCardImagePanel({ card }: { card: Card }) {
               value={altText}
               onChange={(e) => setAltText(e.target.value)}
               maxLength={2000}
-              placeholder="Describe the art for screen readers"
+              placeholder={
+                suggestedAlt || "Describe the art for screen readers"
+              }
             />
+            {canApplySuggestedAlt && (
+              <button
+                type="button"
+                title={suggestedAlt}
+                className="text-muted-foreground hover:text-foreground self-start text-left text-xs underline-offset-4 hover:underline"
+                onClick={() => setAltText(suggestedAlt)}
+              >
+                Use suggested alt text
+              </button>
+            )}
           </div>
 
           <div>

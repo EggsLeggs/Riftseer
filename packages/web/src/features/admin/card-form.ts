@@ -25,6 +25,8 @@ export interface CardEditorValues {
     energy: string;
     might: string;
     power: string;
+    /** Might an [Equip] gear grants; blank for anything that is not equipment. */
+    might_bonus: string;
   };
   classification: {
     type: string;
@@ -37,12 +39,15 @@ export interface CardEditorValues {
     rich: string;
     plain: string;
     flavour: string;
+    /** The effect an [Equip] gear grants the unit it is attached to. */
+    equipment: string;
   };
   metadata: {
     finishes: string;
     signature: boolean;
     overnumbered: boolean;
     alternate_art: boolean;
+    special_collection: boolean;
   };
   media: {
     orientation: string;
@@ -132,6 +137,7 @@ export const cardEditorSchema = z.object({
     energy: integerString,
     might: integerString,
     power: integerString,
+    might_bonus: integerString,
   }),
   classification: z.object({
     type: z.string().max(120),
@@ -144,12 +150,14 @@ export const cardEditorSchema = z.object({
     rich: z.string().max(8000),
     plain: z.string().max(8000),
     flavour: z.string().max(8000),
+    equipment: z.string().max(8000),
   }),
   metadata: z.object({
     finishes: z.string().max(500),
     signature: z.boolean(),
     overnumbered: z.boolean(),
     alternate_art: z.boolean(),
+    special_collection: z.boolean(),
   }),
   media: z.object({
     orientation: blankOr(
@@ -219,6 +227,7 @@ export function cardToEditorValues(card: Card): CardEditorValues {
       energy: num(card.attributes?.energy),
       might: num(card.attributes?.might),
       power: num(card.attributes?.power),
+      might_bonus: num(card.attributes?.might_bonus),
     },
     classification: {
       type: str(card.classification?.type),
@@ -231,12 +240,14 @@ export function cardToEditorValues(card: Card): CardEditorValues {
       rich: str(card.text?.rich),
       plain: str(card.text?.plain),
       flavour: str(card.text?.flavour),
+      equipment: str(card.text?.equipment),
     },
     metadata: {
       finishes: list(card.metadata?.finishes),
       signature: card.metadata?.signature ?? false,
       overnumbered: card.metadata?.overnumbered ?? false,
       alternate_art: card.metadata?.alternate_art ?? false,
+      special_collection: card.metadata?.special_collection ?? false,
     },
     media: {
       orientation: str(card.media?.orientation),
@@ -340,6 +351,7 @@ export function buildCardPatch(
   diffNumber(attributes, "energy", values.attributes.energy, initial.attributes.energy);
   diffNumber(attributes, "might", values.attributes.might, initial.attributes.might);
   diffNumber(attributes, "power", values.attributes.power, initial.attributes.power);
+  diffNumber(attributes, "might_bonus", values.attributes.might_bonus, initial.attributes.might_bonus);
   attach(patch, "attributes", attributes);
 
   const classification: PatchTarget = {};
@@ -354,6 +366,7 @@ export function buildCardPatch(
   diffText(text, "rich", values.text.rich, initial.text.rich);
   diffText(text, "plain", values.text.plain, initial.text.plain);
   diffText(text, "flavour", values.text.flavour, initial.text.flavour);
+  diffText(text, "equipment", values.text.equipment, initial.text.equipment);
   attach(patch, "text", text);
 
   const metadata: PatchTarget = {};
@@ -361,6 +374,7 @@ export function buildCardPatch(
   diffBoolean(metadata, "signature", values.metadata.signature, initial.metadata.signature);
   diffBoolean(metadata, "overnumbered", values.metadata.overnumbered, initial.metadata.overnumbered);
   diffBoolean(metadata, "alternate_art", values.metadata.alternate_art, initial.metadata.alternate_art);
+  diffBoolean(metadata, "special_collection", values.metadata.special_collection, initial.metadata.special_collection);
   attach(patch, "metadata", metadata);
 
   const media: PatchTarget = {};

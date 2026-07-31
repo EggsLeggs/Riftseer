@@ -33,6 +33,8 @@ export interface EnrichedProduct {
   name: string;
   normalizedName: string;
   collectorNumber: string | null;
+  /** Printed rarity, for the reconciler. `None` upstream reads as absent. */
+  rarity: string | null;
   url: string;
   imageUrl: string | null;
   normal: PriceSide;
@@ -46,6 +48,8 @@ export interface ProductMaps {
   byId: Map<number, EnrichedProduct>;
   /** groupId → (collector number + normalized name → product) */
   byGroupCollectorName: Map<number, Map<string, EnrichedProduct>>;
+  /** groupId → (collector number → every product printing it) */
+  byGroupCollector: Map<number, Map<string, EnrichedProduct[]>>;
   /** groupId → (normalized name → product) */
   byGroupName: Map<number, Map<string, EnrichedProduct>>;
 }
@@ -115,14 +119,32 @@ export function normalizeCollectorNumber(
   return firstPart || null;
 }
 
+function extendedValue(
+  product: TCGGroupResult["products"][number],
+  field: string,
+): string | null {
+  const entry = product.extendedData?.find((candidate) => {
+    const key = candidate.name || candidate.displayName;
+    return key.toLowerCase() === field;
+  });
+  return entry?.value?.trim() || null;
+}
+
 function extractProductCollectorNumber(
   product: TCGGroupResult["products"][number],
 ): string | null {
-  const numberField = product.extendedData?.find((entry) => {
-    const key = entry.name || entry.displayName;
-    return key.toLowerCase() === "number";
-  });
-  return normalizeCollectorNumber(numberField?.value);
+  return normalizeCollectorNumber(extendedValue(product, "number"));
+}
+
+/**
+ * TCGPlayer writes the literal string `None` on products it has no rarity for;
+ * that is an absence, not a rarity, and must never be reported as a diff.
+ */
+function extractProductRarity(
+  product: TCGGroupResult["products"][number],
+): string | null {
+  const value = extendedValue(product, "rarity");
+  return !value || value.toLowerCase() === "none" ? null : value;
 }
 
 /**
@@ -131,20 +153,34 @@ function extractProductCollectorNumber(
  * uses for signatures, and the number embedded in the RiftCodex riftbound_id.
  * Shared with the reconciler so a variant suffix is never reported as a
  * collector-number disagreement.
+ *
+ * Prefixed numbers (`T03`, `SP3`, `R01`) also contribute their bare digits.
+ * TCGPlayer spells those tracks both ways across groups, and RiftCodex itself
+ * only ever knew the digits.
  */
 export function collectorCandidates(card: Card): string[] {
   const out = new Set<string>();
-  const base = normalizeCollectorNumber(card.collector_number);
-  if (base) {
-    out.add(base);
-    if (card.metadata?.alternate_art) out.add(`${base}a`);
-    if (card.metadata?.signature) out.add(`${base}*`);
-  }
 
+  // Most specific first. A variant printing and its base share a name in the
+  // Vendetta data, so trying the bare number first matched the alternate art
+  // against the base printing's product — and it never reached `113a`.
   const riftboundId = card.external_ids?.riftbound_id;
-  const [, printedNumber] = riftboundId?.match(/^[^-]+-([^-]+)-/i) ?? [];
+  const [, printedNumber] = riftboundId?.match(/^[^-]+-([^-]+)(?:-|$)/i) ?? [];
   const fromRiftboundId = normalizeCollectorNumber(printedNumber);
   if (fromRiftboundId) out.add(fromRiftboundId);
+
+  const base = normalizeCollectorNumber(card.collector_number);
+  if (base) {
+    if (card.metadata?.alternate_art) out.add(`${base}a`);
+    if (card.metadata?.signature) out.add(`${base}*`);
+    out.add(base);
+
+    const [, digits] = base.match(/^[a-z]+(\d+)$/) ?? [];
+    if (digits) {
+      out.add(digits);
+      out.add(String(Number(digits)));
+    }
+  }
 
   return [...out];
 }
@@ -162,6 +198,7 @@ function collectorNameKey(collectorNumber: string, normalizedName: string): stri
 export function buildProductMap(groupResults: TCGGroupResult[]): ProductMaps {
   const byId = new Map<number, EnrichedProduct>();
   const byGroupCollectorName = new Map<number, Map<string, EnrichedProduct>>();
+  const byGroupCollector = new Map<number, Map<string, EnrichedProduct[]>>();
   const byGroupName = new Map<number, Map<string, EnrichedProduct>>();
 
   for (const { groupId, products, prices } of groupResults) {
@@ -183,6 +220,7 @@ export function buildProductMap(groupResults: TCGGroupResult[]): ProductMaps {
         name: product.cleanName.trim(),
         normalizedName: normalizeCardName(product.cleanName),
         collectorNumber: extractProductCollectorNumber(product),
+        rarity: extractProductRarity(product),
         url: product.url,
         imageUrl: product.imageUrl?.trim() || null,
         normal: priceSide(normalById.get(product.productId)),
@@ -203,6 +241,15 @@ export function buildProductMap(groupResults: TCGGroupResult[]): ProductMaps {
         if (!collectorMap.has(key)) {
           collectorMap.set(key, enriched);
         }
+
+        let numberMap = byGroupCollector.get(groupId);
+        if (!numberMap) {
+          numberMap = new Map();
+          byGroupCollector.set(groupId, numberMap);
+        }
+        const existing = numberMap.get(enriched.collectorNumber);
+        if (existing) existing.push(enriched);
+        else numberMap.set(enriched.collectorNumber, [enriched]);
       }
 
       let nameMap = byGroupName.get(groupId);
@@ -222,11 +269,11 @@ export function buildProductMap(groupResults: TCGGroupResult[]): ProductMaps {
     groupsWithCollectors: byGroupCollectorName.size,
     groupsWithNames: byGroupName.size,
   });
-  return { byId, byGroupCollectorName, byGroupName };
+  return { byId, byGroupCollectorName, byGroupCollector, byGroupName };
 }
 
 /** How `enrichCards` found the product — see the numbered fallbacks there. */
-type ProductMatchSource = "id" | "collector-name" | "name";
+type ProductMatchSource = "id" | "collector-name" | "collector" | "name";
 
 function applyProduct(
   card: Card,
@@ -296,80 +343,205 @@ function applyProduct(
   }
 }
 
+/** How confident a match is. Lower wins when two cards want the same product. */
+const MATCH_RANK: Record<ProductMatchSource, number> = {
+  id: 0,
+  "collector-name": 1,
+  collector: 2,
+  name: 3,
+};
+
+/**
+ * True when the two names describe the same card, allowing for the variant
+ * wording each side appends: TCGPlayer writes "Ambessa The Wolf Alternate Art"
+ * where RiftCodex writes "Ambessa, The Wolf". Either may be the longer one —
+ * Origins-era RiftCodex names carry "(Alternate Art)" and TCGPlayer's do not.
+ */
+function namesAgreeAllowingVariantSuffix(a: string, b: string): boolean {
+  if (a === b) return true;
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+  return shorter.length > 0 && longer.startsWith(`${shorter} `);
+}
+
+/**
+ * How far a printing is from the plain one. TCGPlayer names its variants
+ * ("Sett Brawler Alternate Art"), so a product whose name matches ours plainly
+ * is describing our plain printing — when several printings contend for one
+ * product, the least variant of them is the one it means.
+ */
+function variantDistance(card: Card): number {
+  const m = card.metadata;
+  return (
+    (m?.alternate_art ? 1 : 0) +
+    (m?.signature ? 1 : 0) +
+    (m?.overnumbered ? 1 : 0)
+  );
+}
+
+/** The best match this card can find, or undefined. */
+function findProduct(
+  card: Card,
+  maps: ProductMaps,
+  groupId: number | undefined,
+): { product: EnrichedProduct; matchSource: ProductMatchSource } | undefined {
+  const tcgIdStr = card.external_ids?.tcgplayer_id;
+  if (tcgIdStr) {
+    const productId = parseInt(tcgIdStr, 10);
+    if (Number.isFinite(productId)) {
+      const product = maps.byId.get(productId);
+      if (product) return { product, matchSource: "id" };
+    }
+  }
+
+  if (groupId !== undefined) {
+    const collectorMap = maps.byGroupCollectorName.get(groupId);
+    const numberMap = maps.byGroupCollector.get(groupId);
+
+    // Both lookups run per candidate number, most specific first, so a match on
+    // the variant number (`113a`) always beats one on the bare number (`113`).
+    // Doing all the exact-name lookups first would hand the alternate art its
+    // base printing's product, since the two share a name in the Vendetta data.
+    for (const collectorNumber of collectorCandidates(card)) {
+      const exact = collectorMap?.get(
+        collectorNameKey(collectorNumber, card.name_normalized),
+      );
+      if (exact) return { product: exact, matchSource: "collector-name" };
+
+      // Number alone, guarded by the name. TCGPlayer distinguishes printings by
+      // a name suffix ("… Alternate Art") and by the `a` on the number, where
+      // Vendetta's RiftCodex names are identical — so the number is the only
+      // key both sides share. Only when unambiguous: two products on one number
+      // means the number cannot identify the printing by itself.
+      const candidates = (numberMap?.get(collectorNumber) ?? []).filter((p) =>
+        namesAgreeAllowingVariantSuffix(p.normalizedName, card.name_normalized),
+      );
+      if (candidates.length === 1) {
+        return { product: candidates[0]!, matchSource: "collector" };
+      }
+    }
+
+    const product = maps.byGroupName.get(groupId)?.get(card.name_normalized);
+    if (product) return { product, matchSource: "name" };
+  }
+
+  return undefined;
+}
+
 /**
  * Apply TCGPlayer prices and purchase URIs to cards.
  *   1. Match by card.external_ids.tcgplayer_id (RiftCodex's productId).
  *   2. Fall back to the card's set group + collector number + normalized name.
- *   3. Fall back to the card's set group + normalized name.
+ *   3. Fall back to the card's set group + collector number, when exactly one
+ *      product carries it and the names agree bar a variant suffix.
+ *   4. Fall back to the card's set group + normalized name.
+ *
+ * **A product is applied to at most one card.** TCGPlayer often lists a single
+ * product where we hold several printings — the base, its alternate art, its
+ * overnumbered and signature reprints — and the name-only fallback happily gave
+ * all of them the same product id. That is wrong twice over: it publishes the
+ * base printing's price on a printing that has none, and because the reconciler
+ * compares each card against its linked product, it files a permanent rarity
+ * disagreement against every variant (TCGPlayer describes the base, so it never
+ * agrees and the entry can never be resolved).
+ *
+ * Matches are therefore collected first and contention resolved per product:
+ * strongest match tier wins, then the least variant printing, then the lowest
+ * card id so a tie is stable across runs. A card that loses simply gets no
+ * TCGPlayer data, which is the truth — that printing is not listed.
  */
 export function enrichCards(
   cards: Card[],
   maps: ProductMaps,
   setGroupMap: Map<string, number>,
-): { enriched: number; byId: number; byCollectorName: number; byName: number } {
-  let byIdCount = 0;
-  let byCollectorNameCount = 0;
-  let byNameCount = 0;
+): {
+  enriched: number;
+  byId: number;
+  byCollectorName: number;
+  byCollector: number;
+  byName: number;
+} {
+  interface Claim {
+    card: Card;
+    matchSource: ProductMatchSource;
+  }
+  const claims = new Map<number, Claim[]>();
 
   for (const card of cards) {
-    let product: EnrichedProduct | undefined;
-    let matchSource: ProductMatchSource | undefined;
     const setCode = card.set?.set_code;
     const groupId = setCode ? setGroupMap.get(setCode) : undefined;
-
-    const tcgIdStr = card.external_ids?.tcgplayer_id;
-    if (tcgIdStr) {
-      const productId = parseInt(tcgIdStr, 10);
-      if (Number.isFinite(productId)) product = maps.byId.get(productId);
-      if (product) {
-        matchSource = "id";
-        byIdCount++;
-      }
-    }
-
-    if (!product) {
-      const collectorMap =
-        groupId !== undefined ? maps.byGroupCollectorName.get(groupId) : undefined;
-      for (const collectorNumber of collectorCandidates(card)) {
-        const match = collectorMap?.get(
-          collectorNameKey(collectorNumber, card.name_normalized),
-        );
-        if (match) {
-          product = match;
-          matchSource = "collector-name";
-          byCollectorNameCount++;
-          break;
-        }
-      }
-    }
-
-    if (!product) {
-      if (groupId !== undefined) {
-        const nameMap = maps.byGroupName.get(groupId);
-        const match = nameMap?.get(card.name_normalized);
-        if (match) {
-          product = match;
-          matchSource = "name";
-          byNameCount++;
-        }
-      }
-    }
-
-    if (product && matchSource) applyProduct(card, product, matchSource);
+    const match = findProduct(card, maps, groupId);
+    if (!match) continue;
+    const existing = claims.get(match.product.productId);
+    const claim: Claim = { card, matchSource: match.matchSource };
+    if (existing) existing.push(claim);
+    else claims.set(match.product.productId, [claim]);
   }
 
-  const enriched = byIdCount + byCollectorNameCount + byNameCount;
+  let byIdCount = 0;
+  let byCollectorNameCount = 0;
+  let byCollectorCount = 0;
+  let byNameCount = 0;
+  let contested = 0;
+
+  for (const [productId, contenders] of claims) {
+    const product = maps.byId.get(productId);
+    if (!product) continue;
+
+    const [winner] = [...contenders].sort((a, b) => {
+      const rank = MATCH_RANK[a.matchSource] - MATCH_RANK[b.matchSource];
+      if (rank !== 0) return rank;
+      const variant = variantDistance(a.card) - variantDistance(b.card);
+      if (variant !== 0) return variant;
+      return a.card.id.localeCompare(b.card.id);
+    });
+
+    if (contenders.length > 1) {
+      contested += contenders.length - 1;
+      for (const loser of contenders) {
+        if (loser === winner) continue;
+        // A loser that matched *by id* is carrying the contested id upstream.
+        // Leaving it there would keep the reconciler comparing that printing
+        // against a product describing another one, filing a disagreement no
+        // admin can ever resolve. One product, one card — including the id.
+        if (loser.card.external_ids?.tcgplayer_id === String(productId)) {
+          const { tcgplayer_id: _dropped, ...rest } = loser.card.external_ids;
+          loser.card.external_ids = rest;
+        }
+      }
+      logger.info("TCGPlayer product contested by several printings", {
+        productId,
+        productName: product.name,
+        winner: winner.card.id,
+        winnerName: winner.card.name,
+        skipped: contenders
+          .filter((c) => c !== winner)
+          .map((c) => `${c.card.id} (${c.matchSource})`),
+      });
+    }
+
+    if (winner.matchSource === "id") byIdCount++;
+    else if (winner.matchSource === "collector-name") byCollectorNameCount++;
+    else if (winner.matchSource === "collector") byCollectorCount++;
+    else byNameCount++;
+
+    applyProduct(winner.card, product, winner.matchSource);
+  }
+
+  const enriched =
+    byIdCount + byCollectorNameCount + byCollectorCount + byNameCount;
   logger.info("TCGPlayer enrichment applied", {
     enriched,
     matchedById: byIdCount,
     matchedByCollectorName: byCollectorNameCount,
     matchedByName: byNameCount,
+    contested,
     cards: cards.length,
   });
   return {
     enriched,
     byId: byIdCount,
     byCollectorName: byCollectorNameCount,
+    byCollector: byCollectorCount,
     byName: byNameCount,
   };
 }

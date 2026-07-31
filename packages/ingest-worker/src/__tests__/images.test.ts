@@ -6,6 +6,7 @@ import {
   buildImageObjectKeys,
   hasCompleteHostedMedia,
   hashImageSourceUrl,
+  hostedObjectKeyFromUrl,
   selectBestImageSource,
 } from "../images/model.ts";
 import {
@@ -104,6 +105,21 @@ describe("image hosting", () => {
     expect(
       hasCompleteHostedMedia({ media_urls: urls }, IMAGE_BASE_URL),
     ).toBe(true);
+  });
+
+  test("maps a CDN URL back to the R2 object key for admin uploads", () => {
+    expect(
+      hostedObjectKeyFromUrl(
+        "https://img.riftseer.com/cards/e92e0b54068a7e2dc6098647/uploads/abc123",
+        IMAGE_BASE_URL,
+      ),
+    ).toBe("cards/e92e0b54068a7e2dc6098647/uploads/abc123");
+    expect(
+      hostedObjectKeyFromUrl(
+        "https://cdn.riftcodex.com/card.png",
+        IMAGE_BASE_URL,
+      ),
+    ).toBeNull();
   });
 
   test("publishes only after every stable variant key has the current source", () => {

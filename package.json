@@ -10,7 +10,8 @@
   },
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait",
-    "dev:api": "cd packages/api && wrangler dev",
+    "dev:api": "cd packages/api && wrangler dev --persist-to ../../.wrangler/shared",
+    "dev:ingest": "cd packages/ingest-worker && wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
     "dev:frontend": "cd packages/frontend && bun run dev",
     "dev:raycast": "cd packages/raycast-extension && npm run dev",
     "build:frontend": "cd packages/frontend && bun run build",

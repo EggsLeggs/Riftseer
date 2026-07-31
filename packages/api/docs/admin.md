@@ -68,6 +68,7 @@ paging stable. The log is append-only and has no write endpoint.
 | `DELETE` | `/cards/:id` | Store `{ reason? }` deletion and remove the live row |
 | `POST` | `/cards/:id/regenerate-slug` | Regenerate with the shared stable-slug rules |
 | `POST` | `/cards/:id/move` | Move to `{ set_code }` |
+| `GET` | `/cards/:id/relationships` | Read oracle- and printing-scoped overrides |
 | `PUT` | `/cards/:id/relationships` | Replace relationship add/remove overrides |
 | `POST` | `/cards/:id/image` | Upload a multipart `file` and optional `accessibility_text` |
 
@@ -77,7 +78,12 @@ accessibility/orientation, purchase URIs, prices, and token state. Use the
 dedicated move, relationship, image, and regenerate-slug routes for those
 protected fields.
 
-Relationship entries have this shape:
+Relationship overrides are dual-scoped, like legalities. `GET` returns
+`oracle_entries` (shared by every printing of the card, including future ones)
+and `printing_entries` (exceptions for this printing only). Live relationship
+arrays stay on the card payload.
+
+`PUT` takes `{ entries, apply_to_all_printings? }`. Entries have this shape:
 
 ```json
 {
@@ -87,12 +93,21 @@ Relationship entries have this shape:
       "related_card_id": "card-id",
       "action": "add"
     }
-  ]
+  ],
+  "apply_to_all_printings": true
 }
 ```
 
+- **`apply_to_all_printings: true`** (the default) stores oracle-scoped rows and
+  clears every per-printing relationship exception in the oracle group, so the
+  list genuinely applies to all printings — including ones ingest adds later.
+- **`apply_to_all_printings: false`** replaces only this printing's exceptions;
+  oracle-scoped rows are left alone. At ingest, printing overrides win over
+  oracle ones.
+
 Valid kinds are `all_parts`, `used_by`, `related_champions`,
-`related_legends`, `related_signatures`, and `related_printings`.
+`related_legends`, `related_signatures`, and `related_printings`. The related
+target is always a concrete printing id.
 
 Image uploads accept JPEG, PNG, WebP, AVIF, or GIF up to 20 MB. The API writes a
 content-addressed source to the shared `riftseer-cards` R2 bucket, persists an
@@ -271,7 +286,7 @@ visible immediately rather than at the next card page load.
 storing anything, returning `{ query, total, sample }` — it backs the rule
 editor's live "matches N cards" readout, and never mutates.
 
-## TCGPlayer review queue
+## Ingest review queue
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -279,21 +294,37 @@ editor's live "matches N cards" readout, and never mutates.
 | `POST` | `/reconciliation/:id/confirm` | Apply the proposal as a durable card override |
 | `POST` | `/reconciliation/:id/dismiss` | Close the entry without touching a card |
 
-Ingest files two kinds of discrepancy instead of acting on them:
+Two sources observe us, and ingest files what neither can act on:
 
-- **`unmatched_product`** — a TCGPlayer product in a mapped group that no card
+- **`unmatched_product`** (TCGPlayer) — a product in a mapped group that no card
   claims. Obvious sealed products (boxes, sleeves, playmats) are filtered out.
-- **`field_diff`** — a linked product disagrees with us on `collector_number` or
-  `released_at`. Names are excluded (stylistic, and RiftCodex is authoritative)
-  and **prices are never queued** — they change every run and are applied
-  automatically.
+- **`missing_card`** (gallery) — Riot's official card gallery lists a printing
+  we hold no card for. RiftCodex stays authoritative for what exists, so an
+  admin creates the card and confirms against it, or dismisses. Nine exist
+  today: Unleashed's `T01`–`T08` tokens and Vendetta's Recruit (NX).
+- **`field_diff`** (either) — a value disagrees. TCGPlayer proposes
+  `collector_number`, `released_at` and `rarity`; the gallery adds `type`,
+  `energy`, `might`, `power` and `text`. Names are excluded from both — they are
+  stylistic on each side and RiftCodex is authoritative — and **prices are never
+  queued**, since they change every run and are applied automatically.
+  TCGPlayer is the *only* source that reports a Showcase printing as Showcase:
+  RiftCodex and the gallery both give it the base card's rarity, so a rarity
+  diff raised against an alternate-art, overnumbered or signature printing is
+  usually TCGPlayer being right.
+
+`source` says which upstream raised the entry and therefore which half of
+`payload` is populated: `product` for `tcgplayer`, `gallery` for `gallery`. The
+gallery covers the numbered sets only, so it never testifies about a promo
+printing. Confirming a `text` diff is not supported — the two sources hold the
+same rules in different markup, so the compared form is not the stored form.
 
 | Parameter | Type | Notes |
 | --- | --- | --- |
 | `limit` | string (optional) | Page size, default `50`, clamped to `[1, 200]` |
 | `offset` | string (optional) | 0-based offset, default `0` |
 | `status` | string (optional) | `pending` (default), `confirmed`, or `dismissed` |
-| `kind` | string (optional) | `unmatched_product` or `field_diff` |
+| `kind` | string (optional) | `unmatched_product`, `field_diff`, or `missing_card` |
+| `source` | string (optional) | `tcgplayer` or `gallery` |
 
 ```json
 {
@@ -301,9 +332,10 @@ Ingest files two kinds of discrepancy instead of acting on them:
     {
       "id": "…",
       "kind": "unmatched_product",
+      "source": "tcgplayer",
       "fingerprint": "product:652952",
       "status": "pending",
-      "tcgplayer_payload": {
+      "payload": {
         "product": {
           "product_id": 652952,
           "name": "Sett Brawler Alternate Art",
@@ -344,6 +376,9 @@ live immediately and stored in `card_overrides`:
   `purchase_uris.tcgplayer`. This is what makes the link persist: the next ingest
   overlays the override, matches the product by ID, and the entry does not
   return.
+- **`missing_card`** → `external_ids.riftbound_id` from the gallery payload, so
+  later ingests recognise the printing. The admin create form prefills the rest
+  from the same payload.
 - **`field_diff`** → the single proposed field.
 
 `POST …/dismiss` takes optional `{ note }` and never touches a card. Both are

@@ -76,6 +76,7 @@ export const CardSchema = t.Object({
     energy: t.Nullable(t.Number()),
     might: t.Nullable(t.Number()),
     power: t.Nullable(t.Number()),
+    might_bonus: t.Nullable(t.Number()),
   }))),
   classification: t.Optional(t.Partial(t.Object({
     type: t.String(),
@@ -88,6 +89,7 @@ export const CardSchema = t.Object({
     rich: t.String(),
     plain: t.String(),
     flavour: t.String(),
+    equipment: t.String(),
   }))),
   artist: t.Optional(t.String()),
   artist_id: t.Optional(t.String()),
@@ -96,6 +98,7 @@ export const CardSchema = t.Object({
     signature: t.Boolean(),
     overnumbered: t.Boolean(),
     alternate_art: t.Boolean(),
+    special_collection: t.Boolean(),
   }))),
   media: t.Optional(t.Partial(t.Object({
     orientation: t.String(),

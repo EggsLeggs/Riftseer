@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { adminApi } from "./api";
+import { detectImageContentType, extensionForImageType } from "./image-type";
 import type {
   AdminAuditFilters,
   AdminAuditPage,
@@ -10,6 +11,7 @@ import type {
   AdminCardLegalities,
   AdminCardMutationResult,
   AdminCardPatch,
+  AdminCardRelationships,
   AdminCardRulings,
   AdminFormatDeleteResult,
   AdminFormatInput,
@@ -72,7 +74,7 @@ export async function listAuditLogAction(
   return withToken((token) => adminApi.listAuditLog(token, filters));
 }
 
-// ─── TCGPlayer review queue ───────────────────────────────────────────────────
+// ─── Ingest review queue ──────────────────────────────────────────────────────
 
 export async function listReviewAction(
   filters: AdminReviewFilters = {},
@@ -170,15 +172,28 @@ export async function moveCardAction(
   return result;
 }
 
+export async function listCardRelationshipsAction(
+  cardId: string,
+): Promise<AdminResult<AdminCardRelationships>> {
+  return withToken((token) => adminApi.listCardRelationships(token, cardId));
+}
+
 export async function setRelationshipsAction(
   cardId: string,
   entries: AdminRelationshipEntry[],
+  applyToAllPrintings: boolean,
   publicSlug?: string,
 ): Promise<AdminResult<AdminCardMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.setRelationships(token, cardId, entries),
+    adminApi.setRelationships(token, cardId, entries, applyToAllPrintings),
   );
-  if (result.ok) revalidateCard(cardId, publicSlug);
+  if (result.ok) {
+    // Oracle-scoped overrides change every printing in the group; sibling
+    // slugs are not known here, so revalidate the whole card subtree.
+    if (applyToAllPrintings) revalidatePath("/card", "layout");
+    else revalidateCard(cardId, publicSlug);
+    revalidatePath("/admin/cards");
+  }
   return result;
 }
 
@@ -191,6 +206,99 @@ export async function uploadCardImageAction(
   );
   if (result.ok) revalidateCard(cardId);
   return result;
+}
+
+const MAX_IMPORT_BYTES = 20 * 1024 * 1024;
+const IMPORT_TIMEOUT_MS = 30_000;
+
+/**
+ * Fetch a remote image (e.g. the gallery art on a missing-card draft) and
+ * upload it through the normal admin image endpoint. Runs server-side so CDN
+ * CORS does not block the browser.
+ */
+export async function importCardImageFromUrlAction(
+  cardId: string,
+  imageUrl: string,
+  accessibilityText?: string,
+): Promise<AdminResult<AdminImageMutationResult>> {
+  const trimmed = imageUrl.trim();
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return {
+      ok: false,
+      error: "Image URL is not valid",
+      code: "INVALID_IMAGE_URL",
+    };
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return {
+      ok: false,
+      error: "Image URL must be http(s)",
+      code: "INVALID_IMAGE_URL",
+    };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(trimmed, {
+      signal: controller.signal,
+      headers: {
+        Accept: "image/*,*/*;q=0.8",
+        "User-Agent": "RiftseerAdmin/1.0 (+https://riftseer.com)",
+      },
+      redirect: "follow",
+    });
+  } catch {
+    return {
+      ok: false,
+      error: "Could not download the gallery image",
+      code: "IMAGE_FETCH_FAILED",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      error: `Gallery image download failed (${response.status})`,
+      code: "IMAGE_FETCH_FAILED",
+    };
+  }
+
+  const bytes = await response.arrayBuffer();
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_IMPORT_BYTES) {
+    return {
+      ok: false,
+      error: "Gallery image must be between 1 byte and 20 MB",
+      code: "INVALID_IMAGE_SIZE",
+    };
+  }
+
+  const contentType = detectImageContentType(bytes);
+  if (!contentType) {
+    return {
+      ok: false,
+      error: "Gallery image is not a supported type",
+      code: "INVALID_IMAGE_TYPE",
+    };
+  }
+
+  const formData = new FormData();
+  formData.append(
+    "file",
+    new File([bytes], `gallery.${extensionForImageType(contentType)}`, {
+      type: contentType,
+    }),
+  );
+  const alt = accessibilityText?.trim();
+  if (alt) formData.append("accessibility_text", alt);
+
+  return uploadCardImageAction(cardId, formData);
 }
 
 export async function createSetAction(

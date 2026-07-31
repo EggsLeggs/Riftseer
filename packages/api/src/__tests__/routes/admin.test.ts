@@ -5,6 +5,7 @@ import {
   type AdminAuditPage,
   type AdminAuditQuery,
   type AdminCardLegalities,
+  type AdminCardRelationships,
   type AdminCardRulings,
   type AdminDataRepository,
   type AdminFormat,
@@ -182,6 +183,23 @@ class StubAdminRepository implements AdminDataRepository {
     return this.rulings;
   }
 
+  relationships: AdminCardRelationships | null = {
+    card_id: "card-1",
+    oracle_key: "test card",
+    oracle_entries: [
+      {
+        kind: "related_legends",
+        related_card_id: "card-2",
+        action: "add",
+      },
+    ],
+    printing_entries: [],
+  };
+
+  async listCardRelationships(): Promise<AdminCardRelationships | null> {
+    return this.relationships;
+  }
+
   reconciliationQueries: AdminReconciliationQuery[] = [];
   reconciliationPage: AdminReconciliationPage = {
     entries: [],
@@ -228,9 +246,10 @@ function unmatchedProductEntry(): AdminReconciliationEntry {
   return {
     id: ENTRY_ID,
     kind: "unmatched_product",
+    source: "tcgplayer",
     fingerprint: "product:652952",
     status: "pending",
-    tcgplayer_payload: {
+    payload: {
       product: {
         product_id: 652952,
         name: "Sett Brawler Alternate Art",
@@ -567,6 +586,77 @@ describe("admin API", () => {
     expect(repository.calls).toHaveLength(0);
   });
 
+  test("lists layered relationship overrides", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1/relationships", "GET"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      card_id: "card-1",
+      oracle_key: "test card",
+      oracle_entries: [
+        {
+          kind: "related_legends",
+          related_card_id: "card-2",
+          action: "add",
+        },
+      ],
+      printing_entries: [],
+    });
+  });
+
+  test("returns 404 when listing relationships for an unknown card", async () => {
+    repository.relationships = null;
+    const response = await app.handle(
+      jsonRequest("/admin/cards/nope/relationships", "GET"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  test("defaults relationship PUT to every printing", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1/relationships", "PUT", {
+        entries: [
+          {
+            kind: "related_legends",
+            related_card_id: "card-2",
+            action: "add",
+          },
+        ],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.calls[0]).toEqual({
+      name: "admin_set_card_relationships",
+      args: {
+        p_card_id: "card-1",
+        p_entries: [
+          {
+            kind: "related_legends",
+            related_card_id: "card-2",
+            action: "add",
+          },
+        ],
+        p_all_printings: true,
+        p_actor: ADMIN_ID,
+      },
+    });
+  });
+
+  test("passes a printing-scoped relationship PUT through", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1/relationships", "PUT", {
+        entries: [],
+        apply_to_all_printings: false,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.calls[0]?.args.p_all_printings).toBe(false);
+  });
+
   test("maps a non-empty set deletion to a conflict", async () => {
     repository.nextResult = {
       ok: false,
@@ -889,8 +979,8 @@ describe("admin API", () => {
         ...unmatchedProductEntry(),
         kind: "field_diff",
         fingerprint: "diff:released_at:card-1:2025-11-14",
-        tcgplayer_payload: {
-          ...unmatchedProductEntry().tcgplayer_payload,
+        payload: {
+          ...unmatchedProductEntry().payload,
           field: "released_at",
           current_value: "2025-10-31",
           proposed_value: "2025-11-14",

@@ -11,6 +11,7 @@ import type { Card } from "@riftseer/types";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cardHref } from "@/features/cards/paths";
+import { cardTypeLine } from "@/features/cards/format";
 import {
   buildCardPatch,
   cardEditorSchema,
@@ -18,6 +19,7 @@ import {
   CARD_ORIENTATIONS,
   type CardEditorValues,
 } from "@/features/admin/card-form";
+import { suggestCardAltText } from "@/features/admin/alt-text";
 import { useCardMutations } from "@/features/admin/hooks/use-admin-mutations";
 import { AdminPageHeader } from "./admin-page-header";
 import {
@@ -58,6 +60,8 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CardEditorValues>({
     resolver: zodResolver(cardEditorSchema),
@@ -79,6 +83,50 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
   }, [syncKey, initialValues, reset]);
 
   const { patch } = useCardMutations();
+
+  const name = watch("name");
+  const collectorNumber = watch("collector_number");
+  const artist = watch("artist");
+  const cardType = watch("classification.type");
+  const cardSupertype = watch("classification.supertype");
+  const signature = watch("metadata.signature");
+  const alternateArt = watch("metadata.alternate_art");
+  const overnumbered = watch("metadata.overnumbered");
+  const specialCollection = watch("metadata.special_collection");
+  const accessibilityText = watch("media.accessibility_text");
+
+  const suggestedAlt = React.useMemo(
+    () =>
+      suggestCardAltText({
+        name,
+        typeLine: cardTypeLine({
+          classification: { type: cardType, supertype: cardSupertype },
+        } as Card),
+        collectorNumber,
+        setCode: card.set?.set_code ?? undefined,
+        artist,
+        signature,
+        alternateArt,
+        overnumbered,
+        specialCollection,
+      }),
+    [
+      name,
+      cardType,
+      cardSupertype,
+      collectorNumber,
+      artist,
+      signature,
+      alternateArt,
+      overnumbered,
+      specialCollection,
+      card.set?.set_code,
+    ],
+  );
+
+  const canApplySuggestedAlt =
+    Boolean(suggestedAlt) &&
+    suggestedAlt !== (accessibilityText ?? "").trim();
 
   const onSubmit = handleSubmit(async (values) => {
     const cardPatch = buildCardPatch(values, baseline.current);
@@ -196,6 +244,14 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
               error={errors.attributes?.might?.message}
               {...register("attributes.might")}
             />
+            <TextField
+              id="card-might-bonus"
+              label="Might bonus"
+              inputMode="numeric"
+              hint="Equipment only — Might granted to the equipped unit. 0 is a real value; leave blank if this is not equipment."
+              error={errors.attributes?.might_bonus?.message}
+              {...register("attributes.might_bonus")}
+            />
           </FieldGrid>
         </AdminSection>
 
@@ -264,6 +320,14 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
               {...register("text.plain")}
             />
             <TextAreaField
+              id="card-text-equipment"
+              label="Equipment effect"
+              rows={3}
+              hint="What the equipped unit gets, beside the Might bonus."
+              error={errors.text?.equipment?.message}
+              {...register("text.equipment")}
+            />
+            <TextAreaField
               id="card-text-flavour"
               label="Flavour text"
               rows={3}
@@ -292,13 +356,30 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
               error={errors.media?.orientation?.message}
               {...register("media.orientation")}
             />
-            <TextField
-              id="card-alt-text"
-              label="Image alt text"
-              hint="Describes the art for screen readers."
-              error={errors.media?.accessibility_text?.message}
-              {...register("media.accessibility_text")}
-            />
+            <div className="flex flex-col gap-1.5 sm:col-span-2 lg:col-span-1">
+              <TextField
+                id="card-alt-text"
+                label="Image alt text"
+                hint="Describes the art for screen readers."
+                error={errors.media?.accessibility_text?.message}
+                placeholder={suggestedAlt || "Describe the art for screen readers"}
+                {...register("media.accessibility_text")}
+              />
+              {canApplySuggestedAlt && (
+                <button
+                  type="button"
+                  title={suggestedAlt}
+                  className="text-muted-foreground hover:text-foreground self-start text-xs underline-offset-4 hover:underline"
+                  onClick={() =>
+                    setValue("media.accessibility_text", suggestedAlt, {
+                      shouldDirty: true,
+                    })
+                  }
+                >
+                  Use suggested alt text
+                </button>
+              )}
+            </div>
           </FieldGrid>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <CheckboxField
@@ -318,6 +399,12 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
               label="Overnumbered"
               hint="Collector number sits beyond the set's printed count."
               {...register("metadata.overnumbered")}
+            />
+            <CheckboxField
+              id="card-special-collection"
+              label="Special collection"
+              hint="Numbered on its own track, e.g. Vendetta's SP1–SP6."
+              {...register("metadata.special_collection")}
             />
           </div>
         </AdminSection>

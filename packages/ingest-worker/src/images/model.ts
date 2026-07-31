@@ -45,6 +45,35 @@ function isHostedUrl(value: string, baseUrl: string): boolean {
   }
 }
 
+/**
+ * R2 object key for a URL on our card-image CDN, or null when the URL is an
+ * upstream source. Admin uploads store the source under
+ * `cards/<id>/uploads/<hash>` in the same bucket the processor writes variants
+ * to — reading that key directly avoids fetching `img.riftseer.com` over HTTP,
+ * which 404s in local wrangler (local R2, production CDN hostname).
+ */
+export function hostedObjectKeyFromUrl(
+  sourceUrl: string,
+  baseUrl: string,
+): string | null {
+  try {
+    const parsed = new URL(sourceUrl);
+    const base = normalizeBaseUrl(baseUrl);
+    if (parsed.origin !== base.origin) return null;
+
+    const basePath = base.pathname.replace(/\/+$/, "");
+    let path = parsed.pathname;
+    if (basePath && path.startsWith(basePath)) {
+      path = path.slice(basePath.length);
+    }
+    path = path.replace(/^\/+/, "");
+    if (!path.startsWith("cards/")) return null;
+    return decodeURIComponent(path);
+  } catch {
+    return null;
+  }
+}
+
 function inferProvider(url: string): CardImageSourceProvider {
   try {
     return new URL(url).hostname.toLowerCase().includes("tcgplayer")

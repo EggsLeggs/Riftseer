@@ -46,6 +46,9 @@ import type {
   AdminSetPatch,
 } from "../types";
 
+export const adminCardRelationshipsQueryKey = (cardId: string) =>
+  ["admin", "card-relationships", cardId] as const;
+
 /**
  * Admin server actions resolve with `{ ok: false }` instead of throwing, so
  * `useMutation` would otherwise treat a rejected edit as a success. Rethrowing
@@ -130,9 +133,19 @@ export function useCardMutations() {
     >(moveCardAction, "Card moved", invalidateCards),
 
     setRelationships: useToastMutation<
-      [cardId: string, entries: AdminRelationshipEntry[], publicSlug?: string],
+      [
+        cardId: string,
+        entries: AdminRelationshipEntry[],
+        applyToAllPrintings: boolean,
+        publicSlug?: string,
+      ],
       { card_id: string }
-    >(setRelationshipsAction, "Relationships saved", invalidateCards),
+    >(setRelationshipsAction, "Relationships saved", () => {
+      invalidateCards();
+      void queryClient.invalidateQueries({
+        queryKey: ["admin", "card-relationships"],
+      });
+    }),
 
     uploadImage: useToastMutation<
       [cardId: string, formData: FormData],

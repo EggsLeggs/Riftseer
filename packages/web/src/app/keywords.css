@@ -38,6 +38,39 @@
   letter-spacing: 0.06em;
 }
 
+/* Classification tags — black rhombus, white label; outlined in dark mode.
+ * White underlay is a slightly larger parallelogram (same slant) so the stroke
+ * stays even. Avoid filter:drop-shadow rings — they can freeze the tab. */
+.card-tag {
+  --keyword-inset: 0.2em;
+
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  isolation: isolate;
+  font-size: 0.9em;
+}
+
+.card-keyword--tag {
+  --keyword-bg: #0a0a0a;
+  --keyword-fg: #fff;
+  font-size: 1em;
+}
+
+.dark .card-tag::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -1.5px;
+  background: #fff;
+  clip-path: polygon(
+    var(--keyword-inset) 0,
+    100% 0,
+    calc(100% - var(--keyword-inset)) 100%,
+    0 100%
+  );
+}
+
 /* Inline wrapper + zero-size copy text (keeps paste on one line). */
 .card-text-atom {
   display: inline;
@@ -131,10 +164,18 @@
 /*
  * Type line badge — vertical capsule (type glyph) joined to a rhombus-like
  * label that only slants on the right (left edge is flat against the capsule).
+ *
+ * CSS vars set by CardTypeLine:
+ *   --type-tag-bg       label fill
+ *   --type-tag-fg       label text
+ *   --type-rarity-color glyph icon + inner ring
+ * Glyph outer ring uses --background (page), not the label colour.
  */
 .card-type-badge {
   --type-inset: 0.2em;
   --type-tag-bg: #c8c8c8;
+  --type-tag-fg: #0a0a0a;
+  --type-rarity-color: #d6a93c;
 
   display: inline-flex;
   align-items: center;
@@ -156,21 +197,60 @@
   width: 1.7em;
   height: 2.2em;
   border-radius: 9999px;
-  border: 1.5px solid var(--type-tag-bg);
-  /* Halo matches page bg so the capsule reads as overlapping the tag. */
-  box-shadow: 0 0 0 2px var(--background);
-  background: #fff;
+  /* Inner ring = rarity; outer ring = page background (cuts through the label). */
+  border: 1.5px solid var(--type-rarity-color);
+  box-shadow: 0 0 0 1.5px var(--background);
+  background: #0a0a0a;
 }
 
-/* White type artwork → same silver as the tag. */
+/* White type artwork → rarity colour via mask. */
 .card-type-badge-glyph [class^="icon-"] {
   width: 0.95em;
   height: 0.95em;
-  filter: brightness(0) invert(78%) !important;
+  background-color: var(--type-rarity-color) !important;
+  background-image: none !important;
+  filter: none !important;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
 }
 
-.dark .card-type-badge-glyph {
-  background: #0a0a0a;
+.card-type-badge-glyph .icon-battlefield {
+  -webkit-mask-image: url("/icons/types/battlefield.png");
+  mask-image: url("/icons/types/battlefield.png");
+}
+
+.card-type-badge-glyph .icon-unit {
+  -webkit-mask-image: url("/icons/types/unit.png");
+  mask-image: url("/icons/types/unit.png");
+}
+
+.card-type-badge-glyph .icon-champion {
+  -webkit-mask-image: url("/icons/types/champion.png");
+  mask-image: url("/icons/types/champion.png");
+}
+
+.card-type-badge-glyph .icon-rune {
+  -webkit-mask-image: url("/icons/types/rune.png");
+  mask-image: url("/icons/types/rune.png");
+}
+
+.card-type-badge-glyph .icon-gear {
+  -webkit-mask-image: url("/icons/types/gear.png");
+  mask-image: url("/icons/types/gear.png");
+}
+
+.card-type-badge-glyph .icon-spell {
+  -webkit-mask-image: url("/icons/types/spell.png");
+  mask-image: url("/icons/types/spell.png");
+}
+
+.card-type-badge-glyph .icon-legend {
+  -webkit-mask-image: url("/icons/types/legend.png");
+  mask-image: url("/icons/types/legend.png");
 }
 
 .card-type-badge-label {
@@ -182,12 +262,13 @@
   margin-left: -0.7em;
   padding: 0.08em 0.55em 0.08em 1.2em;
   background: var(--type-tag-bg);
-  color: #0a0a0a;
+  color: var(--type-tag-fg);
   font-family: var(--font-beaufort), ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
   font-style: italic;
-  font-size: 0.85em;
-  line-height: 1.25;
+  /* Match .card-keyword / tag rhombus height. */
+  font-size: 0.9em;
+  line-height: 1.3;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -200,8 +281,66 @@
   );
 }
 
+/*
+ * Rune labels: white stroke on top / right / bottom only (left meets the
+ * capsule). Same underlay trick as .card-tag — padding+clip crops corners.
+ */
+.card-type-badge--rune .card-type-badge-label-shell {
+  position: relative;
+  z-index: 0;
+  display: inline-flex;
+  margin-left: -0.7em;
+  isolation: isolate;
+}
+
+.dark .card-type-badge--rune .card-type-badge-label-shell::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -1.5px;
+  right: -1.5px;
+  bottom: -1.5px;
+  left: 0;
+  background: #fff;
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    calc(100% - var(--type-inset)) 100%,
+    0 100%
+  );
+}
+
+.card-type-badge--rune .card-type-badge-label {
+  margin-left: 0;
+}
+
+.card-type-badge--rune.card-type-badge--plain .card-type-badge-label-shell {
+  margin-left: 0;
+}
+
+.dark .card-type-badge--rune.card-type-badge--plain .card-type-badge-label-shell::before {
+  /* Full parallelogram — white stroke all around when there's no capsule. */
+  inset: -1.5px;
+  clip-path: polygon(
+    var(--type-inset) 0,
+    100% 0,
+    calc(100% - var(--type-inset)) 100%,
+    0 100%
+  );
+}
+
+.card-type-badge--rune.card-type-badge--plain .card-type-badge-label {
+  padding-left: 0.5em;
+  clip-path: polygon(
+    var(--type-inset) 0,
+    100% 0,
+    calc(100% - var(--type-inset)) 100%,
+    0 100%
+  );
+}
+
 /* No type glyph — full parallelogram like classification tags. */
-.card-type-badge--plain .card-type-badge-label {
+.card-type-badge--plain:not(.card-type-badge--rune) .card-type-badge-label {
   margin-left: 0;
   padding-left: 0.5em;
   clip-path: polygon(

@@ -17,6 +17,12 @@ import type { Env } from "./env.ts";
 import { logger } from "./utils.ts";
 import { fetchAllSets, fetchAllPages } from "./sources/riftcodex.ts";
 import { fetchGroups, fetchAllGroupResults } from "./sources/tcgcsv.ts";
+import { fetchGalleryCards } from "./sources/riftbound-gallery.ts";
+import {
+  applyGalleryEquipment,
+  buildGalleryIndex,
+  type GalleryIndex,
+} from "./pipeline/gallery.ts";
 import { normalizeSets, normalizeCards } from "./pipeline/normalize.ts";
 import {
   backfillLinkedPrices,
@@ -26,6 +32,7 @@ import {
   type ProductMaps,
 } from "./pipeline/enrich.ts";
 import {
+  buildGalleryReconciliationEntries,
   buildReconciliationEntries,
   syncReconciliationQueue,
 } from "./pipeline/reconcile.ts";
@@ -44,6 +51,9 @@ import {
 } from "./images/catalog.ts";
 
 export type { Env } from "./env.ts";
+
+/** Riot's publishing CMS, which serves playriftbound.com's card gallery. */
+const DEFAULT_GALLERY_BASE_URL = "https://content.publishing.riotgames.com";
 
 function getTimeoutMs(env: Env): number {
   const parsed = parseInt(env.UPSTREAM_TIMEOUT_MS ?? "30000", 10);
@@ -116,6 +126,26 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       });
     }
 
+    // 3b. Official gallery: the equipment section RiftCodex has no field for,
+    // plus the index step 6 uses to spot cards we are missing. Non-fatal for
+    // the same reason TCGPlayer is — an outage upstream must not cost us the
+    // authoritative card data this run already fetched. Runs before the
+    // override overlay so an admin-written equipment effect still wins.
+    let galleryIndex: GalleryIndex | null = null;
+    try {
+      const galleryCards = await fetchGalleryCards({
+        baseUrl: env.RIFTBOUND_GALLERY_BASE_URL ?? DEFAULT_GALLERY_BASE_URL,
+        timeoutMs,
+      });
+      galleryIndex = buildGalleryIndex(galleryCards);
+      applyGalleryEquipment(cards, galleryIndex);
+    } catch (err) {
+      galleryIndex = null;
+      logger.warn("Official gallery unavailable — continuing without it", {
+        error: String(err),
+      });
+    }
+
     // 4. Link relationships
     linkTokens(cards);
     linkChampionsLegends(cards);
@@ -137,15 +167,24 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // links land too late for enrichment, so their prices are backfilled here.
     // The whole step is advisory — a failure must not cost us the ingest.
     let reviewEntriesCount = 0;
-    if (productMap) {
-      backfillLinkedPrices(finalCards, productMap);
+    if (productMap) backfillLinkedPrices(finalCards, productMap);
+
+    // Both observers fail independently, and the prune is queue-wide: it drops
+    // every pending row this run did not re-observe. Pruning on one source's
+    // findings would therefore delete the other's, so it runs only when both
+    // reported — the same reasoning that already gated it on TCGPlayer alone.
+    const observedBothSources = Boolean(productMap && galleryIndex);
+    if (productMap || galleryIndex) {
       try {
-        const entries = buildReconciliationEntries(
-          finalCards,
-          productMap,
-          setGroupMap,
-        );
-        await syncReconciliationQueue(supabase, entries, true);
+        const entries = [
+          ...(productMap
+            ? buildReconciliationEntries(finalCards, productMap, setGroupMap)
+            : []),
+          ...(galleryIndex
+            ? buildGalleryReconciliationEntries(finalCards, galleryIndex)
+            : []),
+        ];
+        await syncReconciliationQueue(supabase, entries, observedBothSources);
         reviewEntriesCount = entries.length;
       } catch (err) {
         logger.warn("Reconciliation queue sync failed — continuing", {

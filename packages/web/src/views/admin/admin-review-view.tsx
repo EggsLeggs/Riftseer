@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Check, ExternalLink, Loader2, RotateCw, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, Plus, RotateCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,9 +24,11 @@ import {
   adminReviewQueryKey,
   useReviewMutations,
 } from "@/features/admin/hooks/use-admin-mutations";
+import { stashReviewCreateDraft } from "@/features/admin/review-draft";
 import type {
   AdminReviewEntry,
   AdminReviewKind,
+  AdminReviewSource,
   AdminReviewPage,
   AdminReviewStatus,
 } from "@/features/admin/types";
@@ -42,11 +45,23 @@ const STATUS_TABS: Array<{ value: AdminReviewStatus; label: string }> = [
 const KIND_LABELS: Record<AdminReviewKind, string> = {
   unmatched_product: "Unmatched product",
   field_diff: "Field difference",
+  missing_card: "Missing card",
+};
+
+const SOURCE_LABELS: Record<AdminReviewSource, string> = {
+  tcgplayer: "TCGPlayer",
+  gallery: "Official gallery",
 };
 
 const FIELD_LABELS: Record<string, string> = {
   collector_number: "Collector number",
   released_at: "Release date",
+  rarity: "Rarity",
+  type: "Card type",
+  energy: "Energy",
+  might: "Might",
+  power: "Power",
+  text: "Rules text",
 };
 
 function formatTimestamp(value: string): string {
@@ -58,18 +73,20 @@ function formatTimestamp(value: string): string {
 export function AdminReviewView() {
   const [status, setStatus] = React.useState<AdminReviewStatus>("pending");
   const [kind, setKind] = React.useState<AdminReviewKind | "">("");
+  const [source, setSource] = React.useState<AdminReviewSource | "">("");
   const [page, setPage] = React.useState(0);
 
   const { confirm, dismiss } = useReviewMutations();
 
   const review = useQuery({
-    queryKey: [...adminReviewQueryKey, status, kind, page],
+    queryKey: [...adminReviewQueryKey, status, kind, source, page],
     queryFn: async (): Promise<AdminReviewPage> => {
       const result = await listReviewAction({
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
         status,
         kind: kind || undefined,
+        source: source || undefined,
       });
       // Server actions resolve rather than throw, so surface the API's message
       // instead of rendering an empty queue.
@@ -82,7 +99,7 @@ export function AdminReviewView() {
 
   React.useEffect(() => {
     setPage(0);
-  }, [status, kind]);
+  }, [status, kind, source]);
 
   const entries = review.data?.entries ?? [];
   const counts = review.data?.counts;
@@ -92,8 +109,8 @@ export function AdminReviewView() {
   return (
     <>
       <AdminPageHeader
-        title="TCGPlayer review"
-        description="Products ingest could not attach to a card, and fields where TCGPlayer disagrees with us. Nothing here is applied automatically — confirming writes a durable card override, dismissing is remembered so the next ingest stays quiet."
+        title="Ingest review"
+        description="What ingest could not reconcile: TCGPlayer products that match no card, printings the official gallery lists that we do not hold, and fields where either source disagrees with us. Nothing here is applied automatically — confirming writes a durable card override, dismissing is remembered so the next ingest stays quiet."
         crumbs={[{ label: "Admin", href: "/admin" }, { label: "Review" }]}
         actions={
           <Button
@@ -148,6 +165,21 @@ export function AdminReviewView() {
             <option value="">All types</option>
             <option value="unmatched_product">Unmatched products</option>
             <option value="field_diff">Field differences</option>
+            <option value="missing_card">Missing cards</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="review-source">Source</Label>
+          <select
+            id="review-source"
+            value={source}
+            onChange={(e) => setSource(e.target.value as AdminReviewSource | "")}
+            className={CARD_BROWSE_SELECT_CLASS}
+          >
+            <option value="">All sources</option>
+            <option value="tcgplayer">TCGPlayer</option>
+            <option value="gallery">Official gallery</option>
           </select>
         </div>
       </div>
@@ -166,7 +198,7 @@ export function AdminReviewView() {
       ) : entries.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           {status === "pending"
-            ? "Nothing to review — every TCGPlayer product matched a card."
+            ? "Nothing to review — every product matched a card and both sources agree with us."
             : `No ${status} entries.`}
         </p>
       ) : (
@@ -233,6 +265,8 @@ export function AdminReviewView() {
         Prices are never queued here — they change every run and are applied
         automatically. Confirming an unmatched product stores its TCGPlayer ID on
         the card, so later ingests match and price it without asking again.
+        Missing cards: use Create to open a prefilled form; confirming stamps the
+        gallery&apos;s Riftbound ID onto the card.
       </p>
     </>
   );
@@ -251,46 +285,89 @@ function ReviewRow({
   onConfirm: (cardId: string) => void;
   onDismiss: () => void;
 }) {
-  const { product, field, current_value, proposed_value, card_name } =
-    entry.tcgplayer_payload;
-  // Field diffs are anchored to a known card; only an unmatched product needs a
-  // target chosen, so its suggestion is pre-filled and stays editable.
+  const router = useRouter();
+  const { product, gallery, field, current_value, proposed_value, card_name } =
+    entry.payload;
+  // Field diffs are anchored to a known card; an unmatched product and a
+  // missing card both need a target chosen, so the suggestion (where there is
+  // one) is pre-filled and stays editable.
   const fixedCard = entry.kind === "field_diff";
   const [cardId, setCardId] = React.useState(entry.proposed_card_id ?? "");
 
   function confirmEntry() {
     const trimmed = cardId.trim();
     if (!fixedCard && !trimmed) {
-      toast.error("Enter the card ID this product belongs to");
+      toast.error(
+        entry.kind === "missing_card"
+          ? "Create the card first, then enter its ID"
+          : "Enter the card ID this product belongs to",
+      );
       return;
     }
     onConfirm(trimmed);
   }
 
+  function createMissingCard() {
+    if (!gallery) {
+      toast.error("This entry has no gallery payload to prefill from");
+      return;
+    }
+    stashReviewCreateDraft(entry);
+    router.push(
+      `/admin/cards/new?review=${encodeURIComponent(entry.id)}`,
+    );
+  }
+
   return (
     <TableRow>
       <TableCell>
-        <Badge variant={entry.kind === "field_diff" ? "secondary" : "outline"}>
-          {KIND_LABELS[entry.kind]}
-        </Badge>
+        <div className="flex flex-col items-start gap-1">
+          <Badge variant={entry.kind === "field_diff" ? "secondary" : "outline"}>
+            {KIND_LABELS[entry.kind]}
+          </Badge>
+          <span className="text-muted-foreground text-xs">
+            {SOURCE_LABELS[entry.source]}
+          </span>
+        </div>
       </TableCell>
 
       <TableCell className="max-w-96">
         <div className="flex flex-col gap-1">
-          <a
-            href={product.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline"
-          >
-            {product.name || `Product ${product.product_id}`}
-            <ExternalLink className="size-3" aria-hidden="true" />
-          </a>
-          <span className="text-muted-foreground text-xs">
-            {product.set_code ?? "unknown set"}
-            {product.collector_number ? ` · #${product.collector_number}` : ""}
-            {` · product ${product.product_id}`}
-          </span>
+          {product ? (
+            <>
+              <a
+                href={product.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-1 font-medium underline-offset-4 hover:underline"
+              >
+                {product.name || `Product ${product.product_id}`}
+                <ExternalLink className="size-3" aria-hidden="true" />
+              </a>
+              <span className="text-muted-foreground text-xs">
+                {product.set_code ?? "unknown set"}
+                {product.collector_number
+                  ? ` · #${product.collector_number}`
+                  : ""}
+                {` · product ${product.product_id}`}
+              </span>
+            </>
+          ) : null}
+
+          {gallery ? (
+            <>
+              <span className="font-medium">{gallery.name}</span>
+              <span className="text-muted-foreground text-xs">
+                {gallery.public_code ?? gallery.riftbound_id}
+                {gallery.type ? ` · ${gallery.type}` : ""}
+                {gallery.rarity ? ` · ${gallery.rarity}` : ""}
+                {gallery.collector_number
+                  ? ` · #${gallery.collector_number}`
+                  : ""}
+              </span>
+            </>
+          ) : null}
+
           {field && (
             <span className="text-xs">
               {FIELD_LABELS[field] ?? field}:{" "}
@@ -318,15 +395,28 @@ function ReviewRow({
         ) : (
           <div className="flex flex-col gap-1">
             <Input
-              aria-label="Card ID to link"
+              aria-label={
+                entry.kind === "missing_card"
+                  ? "Card ID to confirm against"
+                  : "Card ID to link"
+              }
               value={cardId}
               onChange={(e) => setCardId(e.target.value)}
-              placeholder="Card ID"
+              placeholder={
+                entry.kind === "missing_card"
+                  ? "Card ID (after create)"
+                  : "Card ID"
+              }
               className="font-mono text-xs"
             />
-            {card_name && (
+            {card_name && entry.kind !== "missing_card" && (
               <span className="text-muted-foreground text-xs">
                 Suggested: {card_name}
+              </span>
+            )}
+            {entry.kind === "missing_card" && (
+              <span className="text-muted-foreground text-xs">
+                Prefer Create — it prefills from the gallery.
               </span>
             )}
           </div>
@@ -340,6 +430,17 @@ function ReviewRow({
       {editable && (
         <TableCell>
           <div className="flex justify-end gap-1">
+            {entry.kind === "missing_card" && gallery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={pending}
+                onClick={createMissingCard}
+              >
+                <Plus aria-hidden="true" />
+                Create
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
