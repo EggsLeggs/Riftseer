@@ -60,10 +60,17 @@ function useToastMutation<TArgs extends unknown[], TData>(
   });
 }
 
+/**
+ * Every admin mutation writes an audit row, so the log is stale after any of
+ * them. Matches the key used by `admin-audit-log-view`.
+ */
+const ADMIN_AUDIT_LOG_KEY = ["admin", "audit-log"] as const;
+
 export function useCardMutations() {
   const queryClient = useQueryClient();
   const invalidateCards = () => {
     void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
+    void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_LOG_KEY });
   };
 
   return {
@@ -124,6 +131,7 @@ export function useSetMutations() {
   const queryClient = useQueryClient();
   const invalidateSets = () => {
     void queryClient.invalidateQueries({ queryKey: setsQueryKeys.all });
+    void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_LOG_KEY });
   };
 
   return {

@@ -38,6 +38,15 @@ export function FieldGrid({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Id of the hint/error paragraph for a field, so the control can point at it
+ * with `aria-describedby`. Derived from the field id to stay stable across
+ * renders and unique per field.
+ */
+export function fieldMessageId(id: string): string {
+  return `${id}-message`;
+}
+
 /** Label/hint/error chrome every field shares — the control itself is the child. */
 interface FieldChromeProps {
   id: string;
@@ -60,9 +69,13 @@ function FieldShell({
       <Label htmlFor={id}>{label}</Label>
       {children}
       {error ? (
-        <p className="text-destructive text-xs">{error}</p>
+        <p id={fieldMessageId(id)} className="text-destructive text-xs">
+          {error}
+        </p>
       ) : hint ? (
-        <p className="text-muted-foreground text-xs">{hint}</p>
+        <p id={fieldMessageId(id)} className="text-muted-foreground text-xs">
+          {hint}
+        </p>
       ) : null}
     </div>
   );
@@ -79,7 +92,12 @@ export function TextField({
   Omit<React.ComponentProps<typeof Input>, "id" | "className" | "children">) {
   return (
     <FieldShell id={id} label={label} hint={hint} error={error} className={className}>
-      <Input id={id} aria-invalid={!!error} {...inputProps} />
+      <Input
+        id={id}
+        aria-invalid={!!error}
+        aria-describedby={error || hint ? fieldMessageId(id) : undefined}
+        {...inputProps}
+      />
     </FieldShell>
   );
 }
@@ -95,7 +113,12 @@ export function TextAreaField({
   Omit<React.ComponentProps<typeof Textarea>, "id" | "className" | "children">) {
   return (
     <FieldShell id={id} label={label} hint={hint} error={error} className={className}>
-      <Textarea id={id} aria-invalid={!!error} {...textareaProps} />
+      <Textarea
+        id={id}
+        aria-invalid={!!error}
+        aria-describedby={error || hint ? fieldMessageId(id) : undefined}
+        {...textareaProps}
+      />
     </FieldShell>
   );
 }
@@ -117,6 +140,7 @@ export function SelectField({
       <select
         id={id}
         aria-invalid={!!error}
+        aria-describedby={error || hint ? fieldMessageId(id) : undefined}
         className={CARD_BROWSE_SELECT_CLASS}
         {...selectProps}
       >
@@ -150,12 +174,18 @@ export function CheckboxField({
         id={id}
         type="checkbox"
         className="accent-primary mt-0.5 size-4 shrink-0"
+        aria-describedby={hint ? fieldMessageId(id) : undefined}
         {...inputProps}
       />
       <span className="min-w-0">
         <span className="block text-sm font-medium">{label}</span>
         {hint && (
-          <span className="text-muted-foreground block text-xs">{hint}</span>
+          <span
+            id={fieldMessageId(id)}
+            className="text-muted-foreground block text-xs"
+          >
+            {hint}
+          </span>
         )}
       </span>
     </label>

@@ -220,6 +220,33 @@ export function createAdminDataRepository(
 }
 
 function parseAuditEntry(row: Record<string, unknown>): AdminAuditEntry {
+  // The defaults keep one bad row from breaking the whole page, but silently
+  // coercing an identifier to "" would hide a genuine schema or write bug, so
+  // the malformed fields are named in the log first.
+  const malformed = (
+    [
+      ["id", typeof row.id === "number" || Number.isFinite(Number(row.id))],
+      ["actor_id", typeof row.actor_id === "string"],
+      ["action", typeof row.action === "string"],
+      ["target_type", typeof row.target_type === "string"],
+      ["target_id", typeof row.target_id === "string" || row.target_id == null],
+      ["detail", isRecord(row.detail)],
+      ["created_at", typeof row.created_at === "string"],
+    ] as const
+  )
+    .filter(([, ok]) => !ok)
+    .map(([field]) => field);
+
+  if (malformed.length > 0) {
+    console.warn(
+      JSON.stringify({
+        message: "malformed admin audit row",
+        fields: malformed,
+        id: row.id ?? null,
+      }),
+    );
+  }
+
   return {
     id: typeof row.id === "number" ? row.id : Number(row.id ?? 0),
     actor_id: typeof row.actor_id === "string" ? row.actor_id : "",

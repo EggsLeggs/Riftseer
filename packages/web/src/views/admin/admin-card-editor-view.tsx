@@ -60,6 +60,20 @@ export function AdminCardEditorView({ card, setCodes }: Props) {
     defaultValues: initialValues,
   });
 
+  // `defaultValues` and the baseline ref are both mount-only, so a refreshed
+  // `card` prop would otherwise leave the form and the save diff pinned to the
+  // pre-refresh data. Keyed on identity plus updated_at so a resync happens
+  // when the record actually changes and unsaved edits survive a re-render
+  // that changed nothing.
+  const syncKey = `${card.id}:${card.updated_at ?? ""}`;
+  const syncedTo = React.useRef(syncKey);
+  React.useEffect(() => {
+    if (syncedTo.current === syncKey) return;
+    syncedTo.current = syncKey;
+    baseline.current = initialValues;
+    reset(initialValues);
+  }, [syncKey, initialValues, reset]);
+
   const { patch } = useCardMutations();
 
   const onSubmit = handleSubmit(async (values) => {

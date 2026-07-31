@@ -19,7 +19,8 @@ export default function AdminError({
     <div className="flex max-w-lg flex-col gap-4 py-16">
       <h1 className="text-xl font-semibold">Couldn&apos;t load this admin page</h1>
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Something went wrong. No changes were saved, so please try again.
+        Something went wrong. This boundary cannot tell whether an in-flight
+        edit was applied, so check the affected record before retrying.
       </p>
       <div className="flex items-center gap-2">
         <Button variant="outline" className="w-fit" onClick={() => reset()}>

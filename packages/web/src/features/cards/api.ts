@@ -294,6 +294,13 @@ export async function fetchCardExportText(url: string): Promise<string> {
 /** TanStack Query keys for card fetches. */
 export const cardsQueryKeys = {
   all: ["cards"] as const,
+  /**
+   * Admin relationship picker lookups. Lives here, under the `all` prefix, so
+   * card mutations invalidate it like every other card read — a key owned by
+   * the panel and prefixed with `admin` would never have matched.
+   */
+  relationshipSearch: (name: string) =>
+    ["cards", "relationship-search", name] as const,
   detail: (target: { id: string } | { slug: string[] }) =>
     [
       "cards",

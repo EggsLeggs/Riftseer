@@ -78,10 +78,12 @@ export const CARD_ORIENTATIONS = ["portrait", "landscape"] as const;
 const blankOr = (isValid: (value: string) => boolean, message: string) =>
   z.string().refine((value) => value === "" || isValid(value), message);
 
+// Restricted to http(s): these values become href targets on the card page, so
+// accepting any parseable URL would let `javascript:` through the editor.
 function isUrl(value: string): boolean {
   try {
-    new URL(value);
-    return true;
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
   } catch {
     return false;
   }
@@ -92,7 +94,7 @@ const dateString = blankOr(
   "Use YYYY-MM-DD",
 );
 
-const urlString = blankOr(isUrl, "Enter a valid URL");
+const urlString = blankOr(isUrl, "Enter a valid http(s) URL");
 
 const integerString = blankOr(
   (v) => /^-?\d+$/.test(v) && Number.isSafeInteger(Number(v)),

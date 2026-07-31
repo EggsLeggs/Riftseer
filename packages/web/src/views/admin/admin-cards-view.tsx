@@ -56,14 +56,15 @@ export function AdminCardsView() {
 
   const results = useQuery({
     queryKey: [
+      // `cardsQueryKeys.all` must lead: TanStack matches invalidation keys as a
+      // prefix from the start, so with it trailing, the mutation hooks'
+      // `invalidateQueries({ queryKey: cardsQueryKeys.all })` never matched and
+      // this list silently kept showing pre-edit data.
+      ...cardsQueryKeys.all,
       "admin",
-      "cards",
       trimmed,
       setCode,
       offset,
-      // The mutation hooks invalidate `cardsQueryKeys.all`, which this key
-      // shares a prefix with, so edits refresh the list without extra wiring.
-      ...cardsQueryKeys.all,
     ],
     queryFn: () =>
       trimmed

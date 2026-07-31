@@ -26,6 +26,18 @@ export function AdminCardPlacementPanel({ card, setCodes }: Props) {
 
   const canMove = targetSet !== "" && targetSet !== card.set?.set_code;
 
+  // `card` is server-rendered, so a successful mutation leaves the props stale
+  // until the route re-renders. Mirrors the delete path's navigation.
+  async function runAndRefresh(run: () => Promise<unknown>) {
+    try {
+      await run();
+    } catch {
+      // Already surfaced as a toast.
+      return;
+    }
+    router.refresh();
+  }
+
   async function handleDelete(reason: string) {
     try {
       await remove.mutateAsync([card.id, reason || undefined]);
@@ -62,7 +74,11 @@ export function AdminCardPlacementPanel({ card, setCodes }: Props) {
             type="button"
             variant="outline"
             disabled={!canMove || move.isPending}
-            onClick={() => move.mutate([card.id, targetSet, card.public_slug])}
+            onClick={() =>
+              void runAndRefresh(() =>
+                move.mutateAsync([card.id, targetSet, card.public_slug]),
+              )
+            }
           >
             <ArrowRightLeft aria-hidden="true" />
             {move.isPending ? "Moving…" : "Move card"}
@@ -81,7 +97,11 @@ export function AdminCardPlacementPanel({ card, setCodes }: Props) {
           type="button"
           variant="outline"
           disabled={regenerateSlug.isPending}
-          onClick={() => regenerateSlug.mutate([card.id, card.public_slug])}
+          onClick={() =>
+            void runAndRefresh(() =>
+              regenerateSlug.mutateAsync([card.id, card.public_slug]),
+            )
+          }
         >
           <RefreshCw aria-hidden="true" />
           {regenerateSlug.isPending ? "Regenerating…" : "Regenerate slug"}

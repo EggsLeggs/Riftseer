@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { Card } from "@riftseer/types";
@@ -21,6 +22,7 @@ const ACCEPTED_TYPES = [
 const MAX_BYTES = 20 * 1024 * 1024;
 
 export function AdminCardImagePanel({ card }: { card: Card }) {
+  const router = useRouter();
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [file, setFile] = React.useState<File | null>(null);
   const [altText, setAltText] = React.useState(
@@ -59,6 +61,9 @@ export function AdminCardImagePanel({ card }: { card: Card }) {
     }
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
+    // `card` is server-rendered: without this the preview and source_provider
+    // keep showing the pre-upload art.
+    router.refresh();
   }
 
   return (

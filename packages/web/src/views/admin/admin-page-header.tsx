@@ -18,7 +18,10 @@ export function AdminPageHeader({ title, description, crumbs = [], actions }: Pr
   return (
     <div className="mb-8">
       {crumbs.length > 0 && (
-        <nav className="text-muted-foreground mb-4 flex flex-wrap items-center gap-1.5 text-sm">
+        <nav
+          aria-label="Breadcrumb"
+          className="text-muted-foreground mb-4 flex flex-wrap items-center gap-1.5 text-sm"
+        >
           {crumbs.map((crumb, i) => (
             <span key={`${crumb.label}-${i}`} className="flex items-center gap-1.5">
               {i > 0 && <ChevronRight className="size-3.5" aria-hidden="true" />}
@@ -27,7 +30,10 @@ export function AdminPageHeader({ title, description, crumbs = [], actions }: Pr
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-foreground">{crumb.label}</span>
+                // Only the unlinked crumb is the current page.
+                <span className="text-foreground" aria-current="page">
+                  {crumb.label}
+                </span>
               )}
             </span>
           ))}
