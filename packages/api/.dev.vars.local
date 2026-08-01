@@ -4,4 +4,19 @@ SUPABASE_URL=http://localhost:54321
 SUPABASE_SERVICE_ROLE_KEY=local-service-role
 SUPABASE_ANON_KEY=local-anon
 SITE_ORIGIN=http://localhost:3000
+
+# Sign-in is Supabase Auth (GoTrue), a separate service this stack does not
+# run, so logging in locally returns "Only /rest/v1 is served by the local
+# stack" — the proxy refusing loudly rather than 404ing into confusion.
+#
+# To use the admin UI locally, point identity at a real project while card data
+# stays local. Uncomment and fill in:
+#
+#   SUPABASE_AUTH_URL=https://<project>.supabase.co
+#   SUPABASE_AUTH_ANON_KEY=<that project's anon key>
+#   ADMIN_USER_IDS=<your user id in that project>
+#
+# Only sign-in and token verification follow those. Every card read and write
+# still goes to the local database, so nothing you do locally can reach
+# production data.
 ADMIN_USER_IDS=
