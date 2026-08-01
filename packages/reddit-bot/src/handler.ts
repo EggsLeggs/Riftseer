@@ -7,12 +7,13 @@
  * of truth for card data, fuzzy matching, and caching.
  */
 
-import type { Card, CardRequest } from "@riftseer/types";
-import { cardImageUrl } from "@riftseer/types";
+import type { CardRequest, Oracle, Printing } from "@riftseer/types";
+import { printingImageUrl } from "@riftseer/types";
 
 interface ApiResolvedCard {
   request: { raw: string; name: string; set?: string; collector?: string };
-  card: Card | null;
+  oracle: Oracle | null;
+  printing: Printing | null;
   matchType: "exact" | "fuzzy" | "not-found";
   score?: number;
 }
@@ -38,7 +39,8 @@ export async function buildReply(
   const api = apiBaseUrl.replace(/\/$/, "");
   const site = siteBaseUrl.replace(/\/$/, "");
 
-  // Send the raw token strings so the API re-parses them (handles [[Name|SET-123]] format)
+  // Preserve the token contents so the API can choose a requested printing,
+  // including prefixed collector tracks such as VEN-SP3 and OGN-T03.
   const rawStrings = requests.map((r) => r.raw);
 
   let data: ApiResolveResponse;
@@ -64,12 +66,7 @@ export async function buildReply(
 
   const lines = data.results.map((r) => formatCard(r, site, api));
 
-  return [
-    ...lines,
-    "",
-    "---",
-    `*[info](${site}/docs/reddit-bot)*`,
-  ].join("\n");
+  return [...lines, "", "---", `*[info](${site}/docs/reddit-bot)*`].join("\n");
 }
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
@@ -87,15 +84,16 @@ function formatCard(
 ): string {
   const displayName = result.request.name;
 
-  if (!result.card) {
+  if (!result.oracle) {
     return `${esc(displayName)} — not found.`;
   }
 
-  const { id, name: cardName } = result.card;
-  const imageUrl = cardImageUrl(result.card.media, "normal");
-  // Prefer the API-provided absolute URL so we follow whatever public path
-  // shape the API decides on; fall back to /card/<id> for older API responses.
-  const siteUrl = result.card.riftseer_uri ?? `${siteBase}/card/${id}`;
+  const { id, name: cardName } = result.oracle;
+  const imageUrl = printingImageUrl(result.printing, "normal");
+  const siteUrl =
+    result.printing?.riftseer_uri ??
+    result.oracle.riftseer_uri ??
+    `${siteBase}/card/${result.printing?.id ?? id}`;
   const txtUrl = `${apiBase}/api/v1/cards/${id}/text`;
 
   const fuzzyNote =

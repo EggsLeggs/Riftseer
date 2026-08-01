@@ -3,8 +3,9 @@
  */
 import type { APIEmbed, APIEmbedField } from "discord-api-types/v10";
 import { renderTextForDiscord } from "@riftseer/core/icons";
-import { cardImageUrl } from "@riftseer/types";
-import type { Card, CardSet } from "./api.ts";
+import { printingImageUrl } from "@riftseer/types";
+import type { Oracle, Printing } from "@riftseer/types";
+import type { CardSet } from "./api.ts";
 
 // Domain → embed accent colour
 const DOMAIN_COLORS: Record<string, number> = {
@@ -29,33 +30,46 @@ function domainColor(domains?: string[]): number {
  * back to the legacy `/card/<id>` shape only when the API hasn't filled it
  * in yet (e.g. SITE_ORIGIN unset, or pre-backfill rows).
  */
-function cardSiteUrl(card: Card, siteBaseUrl: string): string {
-  if (card.riftseer_uri) return card.riftseer_uri;
-  return `${siteBaseUrl.replace(/\/+$/, "")}/card/${card.id}`;
+function cardSiteUrl(
+  oracle: Oracle,
+  printing: Printing | null | undefined,
+  siteBaseUrl: string,
+): string {
+  if (printing?.riftseer_uri) return printing.riftseer_uri;
+  if (oracle.riftseer_uri) return oracle.riftseer_uri;
+  return `${siteBaseUrl.replace(/\/+$/, "")}/card/${printing?.id ?? oracle.id}`;
+}
+
+function tcgplayerPrice(printing: Printing | null | undefined): string | null {
+  const price =
+    printing?.prices?.tcgplayer?.normal ?? printing?.prices?.tcgplayer?.foil;
+  return price == null ? null : `$${price.toFixed(2)}`;
 }
 
 /** Full card embed — image, stats, rules text, links. */
 export function buildCardEmbed(
-  card: Card,
+  oracle: Oracle,
+  printing: Printing | null | undefined,
   siteBaseUrl: string,
   emojiMap: Record<string, string> = {},
 ): APIEmbed {
   const fields: APIEmbedField[] = [];
 
-  const supertype = card.classification?.supertype;
-  const typeLine = card.classification?.type;
-  const domains = card.classification?.domains;
-  const tags = card.classification?.tags;
-  const rarity = card.classification?.rarity;
-  const energy = card.attributes?.energy;
-  const might = card.attributes?.might;
-  const power = card.attributes?.power;
-  const imageUrl = cardImageUrl(card.media, "normal");
-  const setCode = card.set?.set_code;
-  const collectorNumber = card.collector_number;
-  const plainText = card.text?.plain;
+  const supertype = oracle.supertype;
+  const typeLine = oracle.card_type;
+  const domains = oracle.domains;
+  const tags = oracle.tags;
+  const rarity = printing?.rarity;
+  const energy = oracle.energy;
+  const might = oracle.might;
+  const power = oracle.power;
+  const imageUrl = printingImageUrl(printing, "normal");
+  const setCode = printing?.set?.set_code;
+  const collectorNumber =
+    printing?.collector_label ?? printing?.collector_number;
+  const plainText = oracle.text?.plain;
 
-  const typeParts = [supertype, typeLine].filter(Boolean);
+  const typeParts = [typeLine, supertype].filter(Boolean);
   if (typeParts.length) {
     fields.push({ name: "Type", value: typeParts.join(" — "), inline: true });
   }
@@ -66,6 +80,11 @@ export function buildCardEmbed(
 
   if (rarity) {
     fields.push({ name: "Rarity", value: rarity, inline: true });
+  }
+
+  const price = tcgplayerPrice(printing);
+  if (price) {
+    fields.push({ name: "TCGPlayer", value: price, inline: true });
   }
 
   if (domains?.length) {
@@ -85,21 +104,21 @@ export function buildCardEmbed(
     fields.push({ name: "Tags", value: tags.join(", "), inline: true });
   }
 
-  if (card.artist) {
-    fields.push({ name: "Artist", value: card.artist, inline: false });
+  if (printing?.artist) {
+    fields.push({ name: "Artist", value: printing.artist, inline: false });
   }
 
   const description = plainText
     ? renderTextForDiscord(plainText, emojiMap)
     : undefined;
 
-  const footerText = [setCode, card.set?.set_name, collectorNumber]
+  const footerText = [setCode, printing?.set?.set_name, collectorNumber]
     .filter(Boolean)
     .join(" · ");
 
   return {
-    title: card.name,
-    url: cardSiteUrl(card, siteBaseUrl),
+    title: oracle.name,
+    url: cardSiteUrl(oracle, printing, siteBaseUrl),
     description,
     color: domainColor(domains),
     image: imageUrl ? { url: imageUrl } : undefined,
@@ -109,17 +128,23 @@ export function buildCardEmbed(
 }
 
 /** Compact card embed — image only, minimal fields. Mirrors Scryfall's [[!Name]] mode. */
-export function buildCardImageEmbed(card: Card, siteBaseUrl: string): APIEmbed {
-  const imageUrl = cardImageUrl(card.media, "large");
-  const domains = card.classification?.domains;
+export function buildCardImageEmbed(
+  oracle: Oracle,
+  printing: Printing | null | undefined,
+  siteBaseUrl: string,
+): APIEmbed {
+  const imageUrl = printingImageUrl(printing, "large");
   return {
-    title: card.name,
-    url: cardSiteUrl(card, siteBaseUrl),
-    color: domainColor(domains),
+    title: oracle.name,
+    url: cardSiteUrl(oracle, printing, siteBaseUrl),
+    color: domainColor(oracle.domains),
     image: imageUrl ? { url: imageUrl } : undefined,
     footer: {
       text:
-        [card.set?.set_code, card.collector_number]
+        [
+          printing?.set?.set_code,
+          printing?.collector_label ?? printing?.collector_number,
+        ]
           .filter(Boolean)
           .join(" · ") || "Riftseer",
     },
@@ -154,7 +179,9 @@ export function buildSetsEmbed(sets: CardSet[]): APIEmbed {
     sections.push(["__Main Sets__", ...mainSets.map(formatSetLine)].join("\n"));
   }
   if (promoSets.length > 0) {
-    sections.push(["__Promo & Special Sets__", ...promoSets.map(formatSetLine)].join("\n"));
+    sections.push(
+      ["__Promo & Special Sets__", ...promoSets.map(formatSetLine)].join("\n"),
+    );
   }
 
   const description = sections.join("\n\n");

@@ -10,14 +10,23 @@ export async function handleRandom(
   env: Env,
 ): Promise<void> {
   const client = createClient(env);
-  const { data, error } = await client.api.v1.cards.random.get();
+  const { data, error } = await client.api.v1.cards.random.get({
+    query: { include: "prices" },
+  });
 
   if (error || !data) {
-    await patchResponse(interaction, env, { content: "Couldn't fetch a random card. Try again!" });
+    await patchResponse(interaction, env, {
+      content: "Couldn't fetch a random card. Try again!",
+    });
     return;
   }
 
   const emojiMap = await getEmojiMap(env);
-  const embed = buildCardEmbed(data, env.SITE_BASE_URL, emojiMap);
+  const embed = buildCardEmbed(
+    data,
+    data.preferred_printing,
+    env.SITE_BASE_URL,
+    emojiMap,
+  );
   await patchResponse(interaction, env, { embeds: [embed] });
 }

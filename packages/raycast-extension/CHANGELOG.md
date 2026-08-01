@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-08-01
+
+### Fixed
+
+- Updated card search, random cards, details, and recent history for the oracle/printing API so rules and physical printing details display together correctly.
+
 ## [1.0.0] - 2026-05-10
 
 ### Added
