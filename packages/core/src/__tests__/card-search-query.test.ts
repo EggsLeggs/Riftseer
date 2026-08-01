@@ -191,3 +191,36 @@ describe("card search grammar", () => {
     expect(orAst(null, filterLeaf("type", "unit"))).toEqual(filterLeaf("type", "unit"));
   });
 });
+
+describe("malformed boolean input", () => {
+  // These used to parse "successfully" by discarding the dangling operator, so
+  // `t:unit or` became plain `t:unit`. In a search box that is merely sloppy.
+  // In a saved ruling rule it is a correctness bug: the stored AST is broader
+  // than what the admin wrote, and the ruling attaches to cards they never
+  // intended. Unbalanced parens already raised; these are consistent with that.
+  it.each([
+    ["trailing or", "t:unit or"],
+    ["leading or", "or t:unit"],
+    ["doubled or", "t:unit or or t:spell"],
+    ["lone minus", "-"],
+    ["trailing minus", "t:unit -"],
+  ])("rejects %s", (_label, query) => {
+    expect(() => parseCardSearchQuery(query)).toThrow(BadCardSearchQueryError);
+  });
+
+  it("still parses the valid forms those cases resemble", () => {
+    expect(parseCardSearchQuery("t:unit or t:spell").ast).toEqual(
+      orAst(filterLeaf("type", "unit"), filterLeaf("type", "spell")),
+    );
+    expect(parseCardSearchQuery("t:unit -t:spell").ast).toEqual(
+      andAst(filterLeaf("type", "unit"), notAst(filterLeaf("type", "spell"))),
+    );
+    // Double negation still collapses rather than raising.
+    expect(parseCardSearchQuery("--t:unit").ast).toEqual(filterLeaf("type", "unit"));
+  });
+
+  it("leaves an empty query as null rather than an error", () => {
+    expect(parseCardSearchQuery("").ast).toBeNull();
+    expect(parseCardSearchQuery("   ").ast).toBeNull();
+  });
+});

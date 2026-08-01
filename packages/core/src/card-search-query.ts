@@ -584,6 +584,21 @@ function parseTokens(tokens: Token[]): CardSearchAst | null {
     while (peek()?.kind === "or") {
       consume();
       const right = parseAnd();
+      // A dangling `or` used to be silently dropped, so `t:unit or` parsed as
+      // plain `t:unit`. Tolerable in a search box; not tolerable here, because
+      // this parser is also the ruling rule language — a rule stored as
+      // something broader than the admin typed attaches a ruling to cards they
+      // never intended. Unbalanced parens already raise; be consistent.
+      if (!right) {
+        throw new BadCardSearchQueryError(
+          "`or` needs an expression on both sides.",
+        );
+      }
+      if (!left) {
+        throw new BadCardSearchQueryError(
+          "`or` needs an expression on both sides.",
+        );
+      }
       left = orAst(left, right);
     }
     return left;
@@ -606,6 +621,11 @@ function parseTokens(tokens: Token[]): CardSearchAst | null {
       consume();
       // Recurse so `--x` parses as NOT(NOT(x)) and collapses via notAst.
       const child = parseUnary();
+      // Same reasoning as the dangling `or`: a trailing `-` that evaporates
+      // turns a negated rule into an unnegated one.
+      if (!child) {
+        throw new BadCardSearchQueryError("`-` needs something to negate.");
+      }
       return notAst(child);
     }
     return parseAtom();
