@@ -422,9 +422,11 @@ export async function importCardImageFromUrlAction(
   const formData = new FormData();
   formData.append(
     "file",
-    new File([bytes], `gallery.${extensionForImageType(contentType)}`, {
-      type: contentType,
-    }),
+    new File(
+      [Uint8Array.from(bytes)],
+      `gallery.${extensionForImageType(contentType)}`,
+      { type: contentType },
+    ),
   );
   const alt = accessibilityText?.trim();
   if (alt) formData.append("accessibility_text", alt);

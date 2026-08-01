@@ -153,6 +153,8 @@ export const app = new Elysia({
   normalize: "typebox",
 })
   .onBeforeHandle(async ({ path, set }) => {
+    // These routes do not read the card provider, so a catalogue warmup failure
+    // must not take down health, account, webhook, or admin traffic with them.
     if (
       path === "/api/v1/health" ||
       path === "/api/v1/users" ||

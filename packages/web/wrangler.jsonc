@@ -50,7 +50,7 @@
 			"name": "riftseer-web",
 			/**
 			 * Plain vars — available at runtime on the Worker (OpenNext maps them to process.env).
-			 * Must stay in sync with values passed at build time (GitHub Actions / local deploy).
+			 * Production deploy checks these against the build environment before compiling.
 			 */
 			"vars": {
 				"NEXT_PUBLIC_API_URL": "https://api.riftseer.com",

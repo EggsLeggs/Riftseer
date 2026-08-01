@@ -336,6 +336,8 @@ export class SupabaseCardProvider implements CardDataProvider {
     logger.info("Supabase provider warming up", { url: process.env.SUPABASE_URL });
     await this.refresh();
 
+    // Workers may recycle an isolate before this fires, so /meta can keep the
+    // cold-start snapshot for that isolate instead of receiving a later refresh.
     this.refreshTimer = setInterval(() => {
       this.refresh().catch((err) =>
         logger.error("Scheduled refresh failed", { error: String(err) }),
