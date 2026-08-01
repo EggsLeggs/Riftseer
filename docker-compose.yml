@@ -10,31 +10,13 @@
 #   bun run dev:api:local             API against this database
 #   bun run dev:ingest:local          ingest worker against this database
 #   bun run db:local:reset            drop and rebuild the schema from migrations
-#
-# `redis` is only needed by the API's optional rate limiting and binds 6379,
-# which commonly collides with another project's Redis. Start the database
-# services by name rather than `docker compose up -d` so a Redis collision
-# cannot stop the database coming up.
+
 #
 # Leaving the `*:local` scripts off uses `.dev.vars`, i.e. production. Swapping
 # is a different command, never an edited file, so neither can be left pointing
 # somewhere by accident.
 
 services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-      start_period: 5s
-
   postgres:
     image: postgres:17-alpine
     environment:
@@ -73,16 +55,32 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # A second PostgREST, because one instance serves exactly one database and
+  # the contract tests need the throwaway rather than the dev catalogue.
+  postgrest-test:
+    image: postgrest/postgrest:v12.2.3
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/riftseer_test
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: service_role
+      PGRST_DB_POOL: 4
+      PGRST_OPENAPI_MODE: ignore-privileges
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   supabase-proxy:
     image: nginx:1.27-alpine
     ports:
-      - "54321:8000"
+      - "54321:8000"   # dev catalogue
+      - "54322:8001"   # throwaway used by the contract tests
     volumes:
       - ./docker/supabase-proxy.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - postgrest
+      - postgrest-test
     restart: unless-stopped
 
 volumes:
-  redis_data:
   postgres_data:

@@ -21,7 +21,8 @@ Read package-local guidance before changing a package.
 ## Common commands
 
 ```bash
-bun dev                 # API + web
+bun dev                 # API + web, against PRODUCTION Supabase
+bun run dev:local       # API + web, against the local docker database
 bun dev:api             # API at http://localhost:8789
 bun dev:web             # Next.js development server
 
@@ -29,6 +30,7 @@ bun run db:local:up     # Postgres + PostgREST + a Supabase-shaped proxy on :543
 bun run db:local:reset  # drop the volume and rebuild from supabase/migrations
 bun run dev:api:local   # API against the local database instead of production
 bun run dev:ingest:local
+bun run test:db         # contract tests, against a throwaway database
 curl localhost:8787/    # reports which database the ingest worker would write to
 bun build:web
 bun test

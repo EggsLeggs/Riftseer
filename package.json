@@ -18,6 +18,7 @@
   },
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait",
+    "dev:local": "bun run dev:api:local & bun run dev:web & wait",
     "dev:api": "cd packages/api && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared",
     "dev:api:local": "cd packages/api && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared --env-file .dev.vars.local",
     "dev:ingest": "cd packages/ingest-worker && ./node_modules/.bin/wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
@@ -34,7 +35,8 @@
     "db:local:up": "docker compose up -d postgres postgrest supabase-proxy",
     "db:local:down": "docker compose stop postgres postgrest supabase-proxy",
     "db:local:reset": "docker compose rm -sfv postgres >/dev/null && docker volume rm -f riftseer_postgres_data >/dev/null && docker compose up -d postgres postgrest supabase-proxy && echo 'schema rebuilt from supabase/migrations'",
-    "db:local:psql": "docker compose exec postgres psql -U postgres -d riftseer"
+    "db:local:psql": "docker compose exec postgres psql -U postgres -d riftseer",
+    "test:db": "RIFTSEER_DATABASE_TESTS=1 RIFTSEER_DATABASE_URL=postgres://postgres:postgres@localhost:55432/riftseer_test RIFTSEER_POSTGREST_URL=http://localhost:54322/rest/v1 bun test packages/core/src/__tests__/database.integration.test.ts"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
