@@ -2080,11 +2080,16 @@ CREATE OR REPLACE FUNCTION admin_patch_printing(
 LANGUAGE plpgsql
 AS $$
 DECLARE
+  -- Lock names are COLUMN names, but admin__merge_locks matches them against
+  -- the keys of the incoming patch. Where the two differ — `set_code` writes
+  -- `set_id`, `artist` writes `artist_id` — the column name is injected below,
+  -- otherwise the edit lands and the next ingest quietly reverts it.
   v_allowed text[] := ARRAY[
     'collector_number', 'released_at', 'rarity', 'flavour_text', 'finishes',
     'is_signature', 'is_alternate_art', 'is_overnumbered',
-    'is_special_collection', 'artist_id', 'tcgplayer_id'
+    'is_special_collection', 'tcgplayer_id', 'tcgplayer_url', 'cardmarket_url'
   ];
+  v_locks     jsonb;
   v_set_id    uuid;
   v_artist_id uuid;
 BEGIN
@@ -2103,6 +2108,11 @@ BEGIN
   IF p_patch ? 'artist' THEN
     v_artist_id := admin__resolve_artist(p_patch->>'artist');
   END IF;
+
+  -- Restate the two renamed keys under their column names so the lock lands.
+  v_locks := p_patch
+    || CASE WHEN v_set_id IS NOT NULL THEN '{"set_id":true}'::jsonb ELSE '{}'::jsonb END
+    || CASE WHEN p_patch ? 'artist' THEN '{"artist_id":true}'::jsonb ELSE '{}'::jsonb END;
 
   UPDATE printings p SET
     set_id = coalesce(v_set_id, p.set_id),
@@ -2133,10 +2143,8 @@ BEGIN
                          THEN p_patch->>'tcgplayer_url' ELSE p.tcgplayer_url END,
     cardmarket_url = CASE WHEN p_patch ? 'cardmarket_url'
                           THEN p_patch->>'cardmarket_url' ELSE p.cardmarket_url END,
-    locked_fields = admin__merge_locks(
-      p.locked_fields,
-      p_patch || CASE WHEN v_set_id IS NOT NULL THEN '{"set_id":true}'::jsonb ELSE '{}'::jsonb END,
-      v_allowed || ARRAY['set_id'])
+    locked_fields = admin__merge_locks(p.locked_fields, v_locks,
+                                       v_allowed || ARRAY['set_id', 'artist_id'])
   WHERE p.id = p_printing_id;
 
   PERFORM admin__log(p_actor, 'printing.patch', 'printing', p_printing_id,
