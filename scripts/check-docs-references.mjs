@@ -16,7 +16,12 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  realpathSync,
+} from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -28,6 +33,8 @@ function git(...args) {
 }
 
 const guidanceFiles = git("ls-files", "*CLAUDE.md", "*AGENTS.md");
+const claudeFiles = git("ls-files", "*CLAUDE.md");
+const trackedAgentFiles = new Set(git("ls-files", "*AGENTS.md"));
 
 // One pass over tracked source; membership tests are then free.
 const sourceFiles = git(
@@ -55,6 +62,35 @@ const PATH_LIKE = /^[\w./@-]+\/[\w./@-]+\.(ts|tsx|sql|json|jsonc|md|mjs|yml)$/;
 const IDENTIFIER_LIKE = /^([A-Za-z_][\w]*)\(\)$/;
 
 const problems = [];
+
+// CLAUDE.md is the canonical guidance file, while AGENTS.md exposes the same
+// instructions to tools that discover that filename. Copies drift, so every
+// tracked CLAUDE.md must have a tracked sibling symlink resolving back to it.
+for (const file of claudeFiles) {
+  const claudePath = path.join(repoRoot, file);
+  const agentsFile = path.join(path.dirname(file), "AGENTS.md");
+  const agentsPath = path.join(repoRoot, agentsFile);
+
+  if (!trackedAgentFiles.has(agentsFile)) {
+    problems.push({ file, token: agentsFile, why: "AGENTS.md is not tracked" });
+    continue;
+  }
+  if (!existsSync(agentsPath)) {
+    problems.push({ file, token: agentsFile, why: "AGENTS.md is missing" });
+    continue;
+  }
+  if (!lstatSync(agentsPath).isSymbolicLink()) {
+    problems.push({ file, token: agentsFile, why: "AGENTS.md is not a symlink" });
+    continue;
+  }
+  if (realpathSync(agentsPath) !== realpathSync(claudePath)) {
+    problems.push({
+      file,
+      token: agentsFile,
+      why: "AGENTS.md does not resolve to its sibling CLAUDE.md",
+    });
+  }
+}
 
 for (const file of guidanceFiles) {
   const full = path.join(repoRoot, file);
@@ -98,5 +134,5 @@ if (problems.length > 0) {
 }
 
 console.log(
-  `No dangling references across ${guidanceFiles.length} guidance file(s).`,
+  `Guidance symlinks are valid and no references dangle across ${guidanceFiles.length} file(s).`,
 );

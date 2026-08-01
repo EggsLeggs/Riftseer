@@ -117,7 +117,7 @@ Image infrastructure uses R2 bucket `riftseer-cards`, queues `riftseer-card-imag
 - Prefer a structural fix to a documented warning. A line saying "keep X and Y in step" is a bug report against the code: hoist the shared thing instead.
 - Keep hard-won "why" — anything that encodes a bug already paid for. Move local "what" into a code comment next to the thing it describes, where it is seen at the moment it matters and updated in the same diff. Delete restatements of what the code says more accurately.
 - Adding a bullet to an invariants list should prompt the question *"which bullet does this replace?"*. The append-only habit is what turned this file's migration section into a changelog.
-- `AGENTS.md` is a symlink to this file. Do not copy it.
+- Every tracked `CLAUDE.md` has a sibling `AGENTS.md` symlink that resolves to it. `CLAUDE.md` is canonical; put shared guidance there and never maintain a second copy. The docs-reference check enforces the pairing.
 
 ## Legal pages
 

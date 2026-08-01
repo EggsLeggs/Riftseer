@@ -1,8 +1,12 @@
-@AGENTS.md
-
 # packages/web
 
 Next.js App Router site deployed to Cloudflare Workers through OpenNext.
+
+<!-- BEGIN:nextjs-agent-rules -->
+## Next.js version
+
+This version has breaking APIs, conventions and file structure that may differ from training data. Read the relevant guide in `node_modules/next/dist/docs/` before changing Next.js code, and heed its deprecation notices.
+<!-- END:nextjs-agent-rules -->
 
 ## Commands
 
