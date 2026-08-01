@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Check, ExternalLink, Loader2, Plus, RotateCw, X } from "lucide-react";
 import { toast } from "sonner";
+import { CONFIRMABLE_RECONCILIATION_FIELDS } from "@riftseer/types/reconciliation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,21 +66,11 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 /**
- * Fields `buildConfirmPatch` in the API can turn into a card patch. `text` is
- * deliberately absent there — the two sources hold different markup for the
- * same rules, so the compared form is not the form we would store — and
- * confirming one answers `REVIEW_FIELD_UNSUPPORTED`. Mirror that here so the
- * button says so instead of erroring.
+ * Fields `buildConfirmPatch` in the API can turn into a card patch, from the
+ * list both sides share. Confirming anything else answers
+ * `REVIEW_FIELD_UNSUPPORTED`, so Confirm is disabled rather than left to error.
  */
-const CONFIRMABLE_FIELDS = new Set([
-  "collector_number",
-  "released_at",
-  "rarity",
-  "type",
-  "energy",
-  "might",
-  "power",
-]);
+const CONFIRMABLE_FIELDS = new Set<string>(CONFIRMABLE_RECONCILIATION_FIELDS);
 
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);
@@ -315,6 +306,7 @@ function ReviewRow({
   // for confirming to write.
   const unconfirmable =
     entry.kind === "field_diff" && !CONFIRMABLE_FIELDS.has(field ?? "");
+  const unconfirmableId = `review-unconfirmable-${entry.id}`;
 
   function confirmEntry() {
     const trimmed = cardId.trim();
@@ -451,6 +443,7 @@ function ReviewRow({
 
       {editable && (
         <TableCell>
+          <div className="flex flex-col items-end gap-1">
           <div className="flex justify-end gap-1">
             {entry.kind === "missing_card" && gallery && (
               <Button
@@ -468,11 +461,10 @@ function ReviewRow({
               size="sm"
               disabled={pending || unconfirmable}
               onClick={confirmEntry}
-              title={
-                unconfirmable
-                  ? `${FIELD_LABELS[field ?? ""] ?? field} differences cannot be applied automatically — edit the card, then dismiss this entry.`
-                  : undefined
-              }
+              // A disabled button is not focusable, so a `title` tooltip is
+              // unreachable by keyboard and unreliable for screen readers —
+              // the reason is rendered below instead.
+              aria-describedby={unconfirmable ? unconfirmableId : undefined}
             >
               <Check aria-hidden="true" />
               Confirm
@@ -487,6 +479,16 @@ function ReviewRow({
               <X aria-hidden="true" />
               Dismiss
             </Button>
+          </div>
+            {unconfirmable && (
+              <p
+                id={unconfirmableId}
+                className="text-muted-foreground max-w-64 text-right text-xs"
+              >
+                {FIELD_LABELS[field ?? ""] ?? field} differences can&apos;t be
+                applied automatically — edit the card, then dismiss this entry.
+              </p>
+            )}
           </div>
         </TableCell>
       )}

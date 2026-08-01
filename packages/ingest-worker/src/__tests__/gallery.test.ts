@@ -302,21 +302,30 @@ describe("gallery reconciliation", () => {
 });
 
 describe("fetchGalleryCards", () => {
-  /** Serves `pages` pages of one card each, reporting `totalPages`. */
+  /**
+   * Answers every request with one card, reporting `totalPages` as the size of
+   * the gallery — so the fetcher stops (or doesn't) purely on that number.
+   * Records each requested URL.
+   */
   function stubFetch(totalPages: number) {
-    let calls = 0;
+    const urls: string[] = [];
     const real = globalThis.fetch;
-    globalThis.fetch = (async () => {
-      calls++;
+    globalThis.fetch = (async (input: string) => {
+      urls.push(String(input));
       return new Response(
         JSON.stringify({
-          data: [{ id: `card-${calls}`, name: `Card ${calls}` }],
+          data: [{ id: `card-${urls.length}`, name: `Card ${urls.length}` }],
           metadata: { totalPages },
         }),
         { status: 200, headers: { "content-type": "application/json" } },
       );
     }) as unknown as typeof globalThis.fetch;
-    return { restore: () => void (globalThis.fetch = real), pages: () => calls };
+    return {
+      restore: () => void (globalThis.fetch = real),
+      urls,
+      params: (key: string) =>
+        urls.map((url) => new URL(url).searchParams.get(key)),
+    };
   }
 
   const config = {
@@ -324,11 +333,15 @@ describe("fetchGalleryCards", () => {
     timeoutMs: 1000,
   };
 
-  test("stops once every reported page has been fetched", async () => {
+  test("pages by offset until every reported page has been fetched", async () => {
     const stub = stubFetch(2);
     try {
       await expect(fetchGalleryCards(config)).resolves.toHaveLength(2);
-      expect(stub.pages()).toBe(2);
+      expect(stub.urls).toHaveLength(2);
+      // `from` is an item offset, not a page number: page 2 starts one full
+      // page in. Read the size off the request so the page size can change.
+      const pageSize = stub.params("limit")[0];
+      expect(stub.params("from")).toEqual(["0", String(Number(pageSize))]);
     } finally {
       stub.restore();
     }

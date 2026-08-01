@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Elysia } from "elysia";
+import { CONFIRMABLE_RECONCILIATION_FIELDS } from "@riftseer/types/reconciliation";
 import {
   AdminRepositoryError,
   type AdminAuditPage,
@@ -1002,6 +1003,60 @@ describe("admin API", () => {
           p_patch: { released_at: "2025-11-14" },
         }),
       );
+    });
+
+    // The admin review page disables Confirm from this same list, so a field
+    // that is on it but has no case in `buildConfirmPatch` would leave the
+    // button enabled on a row the API then rejects.
+    test.each([...CONFIRMABLE_RECONCILIATION_FIELDS])(
+      "confirms a %s diff",
+      async (field) => {
+        repository.reconciliationEntry = {
+          ...unmatchedProductEntry(),
+          kind: "field_diff",
+          fingerprint: `diff:${field}:card-1:3`,
+          payload: {
+            ...unmatchedProductEntry().payload,
+            field,
+            current_value: "2",
+            proposed_value: "3",
+          },
+        };
+
+        const response = await app.handle(
+          jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {}),
+        );
+
+        expect(response.status).toBe(200);
+        expect(repository.calls[0].args).toEqual(
+          expect.objectContaining({ p_action: "confirm" }),
+        );
+      },
+    );
+
+    test("refuses a field the API has no patch for", async () => {
+      repository.reconciliationEntry = {
+        ...unmatchedProductEntry(),
+        kind: "field_diff",
+        fingerprint: "diff:text:card-1:Deal 2 damage",
+        payload: {
+          ...unmatchedProductEntry().payload,
+          field: "text",
+          current_value: "Deal 1 damage",
+          proposed_value: "Deal 2 damage",
+        },
+      };
+
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {}),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "This entry proposes a field the API cannot apply",
+        code: "REVIEW_FIELD_UNSUPPORTED",
+      });
+      expect(repository.calls).toHaveLength(0);
     });
 
     test("404s an unknown entry before calling the RPC", async () => {

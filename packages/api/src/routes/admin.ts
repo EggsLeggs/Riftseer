@@ -8,6 +8,7 @@ import {
 } from "@riftseer/types";
 import { authAdminClient } from "../lib/supabase";
 import { oracleKeyForName } from "@riftseer/types/oracle";
+import { isConfirmableReconciliationField } from "@riftseer/types/reconciliation";
 import {
   AdminRepositoryError,
   createAdminDataRepository,
@@ -927,6 +928,10 @@ function buildConfirmPatch(
     return { external_ids: { riftbound_id: riftboundId } };
   }
 
+  // The shared list the admin UI disables Confirm from, so the button and this
+  // switch cannot disagree about what is applicable.
+  if (!isConfirmableReconciliationField(payload.field)) return null;
+
   const value = payload.proposed_value ?? null;
   switch (payload.field) {
     case "collector_number":
@@ -946,8 +951,8 @@ function buildConfirmPatch(
       if (numeric !== null && !Number.isFinite(numeric)) return null;
       return { attributes: { [payload.field]: numeric } };
     }
-    // `text` is deliberately absent: the two sources hold different markup for
-    // the same rules, so the compared form is not the form we would store.
+    // Unreachable while every confirmable field has a case above; the contract
+    // test in `__tests__/routes/admin.test.ts` is what keeps that true.
     default:
       return null;
   }
