@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { CardPrintingSummary } from "@riftseer/types";
+import type { OracleRef, Printing } from "@riftseer/types";
 
 import {
   Table,
@@ -9,146 +9,49 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { RarityIcon } from "@/features/cards/card-icons";
 import {
   formatEur,
   formatUsd,
   tcgplayerUsdPrice,
 } from "@/features/cards/format";
-import { RarityIcon } from "@/features/cards/card-icons";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref, oracleHref } from "@/features/cards/paths";
 import { cn } from "@/lib/utils";
 
-/** Shared widths so stacked name-led tables keep Set / # columns aligned. */
-const NAME_COL = {
-  name: "w-[72%]",
-  set: "w-[16%]",
-  number: "w-[12%]",
-} as const;
-
-/**
- * Accessible name for a whole-row link — the visible cell only carries part of
- * the row (a name, or just a set), so compose the row's context for screen
- * readers: name, set, collector number, rarity and price where available.
- */
-function rowAccessibleName(row: CardPrintingSummary): string {
-  const usd = tcgplayerUsdPrice(row.prices?.tcgplayer);
+function printingAccessibleName(printing: Printing, oracleName: string): string {
+  const usd = tcgplayerUsdPrice(printing.prices?.tcgplayer);
   return [
-    row.name,
-    row.set_name ?? row.set_code,
-    row.collector_label ? `#${row.collector_label}` : undefined,
-    row.rarity,
+    oracleName,
+    printing.set?.set_name ?? printing.set?.set_code,
+    printing.collector_label ? `#${printing.collector_label}` : undefined,
+    printing.rarity,
     usd != null ? formatUsd(usd) : undefined,
-  ]
-    .filter(Boolean)
-    .join(", ");
+  ].filter(Boolean).join(", ");
 }
 
-/**
- * Table of related printings — used for other printings, tokens and
- * champions/legends. `label` is the first-column header (replaces a separate
- * section title): "Prints" when showing sets, or e.g. "Champions" when showing
- * names. Non-current rows use a stretched real link so the whole row is
- * clickable (middle-click / status-bar preview still work).
- */
 export function CardPrintingsTable({
   rows,
-  label,
-  showName = false,
-  showRarity = false,
+  oracleName,
+  currentPrintingId,
   showPrices = false,
-  caption,
 }: {
-  rows: CardPrintingSummary[];
-  /** First-column header — section title in place of "Name" / "Set". */
-  label: string;
-  /** Off for other printings of the same card, where every name is identical. */
-  showName?: boolean;
-  /** Only the Prints table shows rarity (printings differ by rarity/finish). */
-  showRarity?: boolean;
+  rows: Printing[];
+  oracleName: string;
+  currentPrintingId: string;
   showPrices?: boolean;
-  caption: string;
 }) {
-  // Name-led tables: Name | Set | # (shared fixed widths → columns align across tables).
-  // Prints table: Set | # | Rarity? | prices?
-  if (showName) {
-    return (
-      <Table className="table-fixed">
-        <caption className="sr-only">{caption}</caption>
-        <TableHeader className="[&_tr]:border-b-0">
-          <TableRow className="border-b-0 bg-foreground/8 hover:bg-foreground/8 dark:bg-muted/60 dark:hover:bg-muted/60">
-            <TableHead
-              className={cn(
-                NAME_COL.name,
-                "text-foreground/70 font-semibold tracking-wide uppercase dark:text-muted-foreground",
-              )}
-            >
-              {label}
-            </TableHead>
-            <TableHead
-              className={cn(NAME_COL.set, "text-muted-foreground")}
-            >
-              Set
-            </TableHead>
-            <TableHead
-              className={cn(NAME_COL.number, "text-muted-foreground")}
-            >
-              #
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row) => {
-            const href = row.is_current ? null : cardHref(row);
-            return (
-              <TableRow
-                key={row.id}
-                className={cn(
-                  "relative",
-                  row.is_current
-                    ? "bg-muted font-medium"
-                    : "hover:bg-muted/40",
-                )}
-              >
-                <TableCell
-                  className={cn(NAME_COL.name, "min-w-0 whitespace-normal")}
-                >
-                  <RowHitTarget href={href} label={rowAccessibleName(row)}>
-                    {row.name}
-                  </RowHitTarget>
-                </TableCell>
-                <TableCell
-                  className={cn(
-                    NAME_COL.set,
-                    "text-muted-foreground uppercase",
-                  )}
-                >
-                  {row.set_code ?? "—"}
-                </TableCell>
-                <TableCell className={cn(NAME_COL.number, "tabular-nums")}>
-                  {row.collector_label ?? "—"}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    );
-  }
-
   return (
     <Table className="table-fixed">
-      <caption className="sr-only">{caption}</caption>
+      <caption className="sr-only">All printings of {oracleName}</caption>
       <TableHeader className="[&_tr]:border-b-0">
         <TableRow className="border-b-0 bg-foreground/8 hover:bg-foreground/8 dark:bg-muted/60 dark:hover:bg-muted/60">
           <TableHead className="text-foreground/70 w-[40%] font-semibold tracking-wide uppercase dark:text-muted-foreground">
-            {label}
+            Prints
           </TableHead>
           <TableHead className="text-muted-foreground w-[12%]">#</TableHead>
-          {showRarity ? (
-            <TableHead className="text-muted-foreground w-[20%] max-w-0 overflow-hidden">
-              Rarity
-            </TableHead>
-          ) : null}
+          <TableHead className="text-muted-foreground w-[20%] max-w-0 overflow-hidden">
+            Rarity
+          </TableHead>
           {showPrices ? (
             <>
               <TableHead className="text-muted-foreground w-[14%] text-right whitespace-nowrap">
@@ -162,52 +65,49 @@ export function CardPrintingsTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row) => {
-          const href = row.is_current ? null : cardHref(row);
+        {rows.map((printing) => {
+          const isCurrent = printing.id === currentPrintingId;
           return (
             <TableRow
-              key={row.id}
+              key={printing.id}
               className={cn(
                 "relative",
-                row.is_current
-                  ? "bg-muted font-medium"
-                  : "hover:bg-muted/40",
+                isCurrent ? "bg-muted font-medium" : "hover:bg-muted/40",
               )}
             >
               <TableCell className="w-[40%] whitespace-normal">
-                <RowHitTarget href={href} label={rowAccessibleName(row)}>
-                  <span className="uppercase">{row.set_code ?? "—"}</span>
-                  {row.set_name ? (
+                <RowHitTarget
+                  href={isCurrent ? null : cardHref(printing)}
+                  label={printingAccessibleName(printing, oracleName)}
+                >
+                  <span className="uppercase">{printing.set?.set_code ?? "—"}</span>
+                  {printing.set?.set_name ? (
                     <span className="text-muted-foreground ml-1.5 hidden sm:inline">
-                      {row.set_name}
+                      {printing.set.set_name}
                     </span>
                   ) : null}
                 </RowHitTarget>
               </TableCell>
               <TableCell className="w-[12%] tabular-nums">
-                {row.collector_label ?? "—"}
+                {printing.collector_label ?? printing.collector_number ?? "—"}
               </TableCell>
-              {showRarity ? (
-                <TableCell className="text-muted-foreground w-[20%] max-w-0 overflow-hidden">
-                  {row.rarity ? (
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <RarityIcon rarity={row.rarity} />
-                      <span className="min-w-0 truncate" title={row.rarity}>
-                        {row.rarity}
-                      </span>
+              <TableCell className="text-muted-foreground w-[20%] max-w-0 overflow-hidden">
+                {printing.rarity ? (
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <RarityIcon rarity={printing.rarity} />
+                    <span className="min-w-0 truncate" title={printing.rarity}>
+                      {printing.rarity}
                     </span>
-                  ) : (
-                    "—"
-                  )}
-                </TableCell>
-              ) : null}
+                  </span>
+                ) : "—"}
+              </TableCell>
               {showPrices ? (
                 <>
                   <TableCell className="w-[14%] text-right tabular-nums whitespace-nowrap">
-                    {formatUsd(tcgplayerUsdPrice(row.prices?.tcgplayer))}
+                    {formatUsd(tcgplayerUsdPrice(printing.prices?.tcgplayer))}
                   </TableCell>
                   <TableCell className="w-[14%] text-right tabular-nums whitespace-nowrap">
-                    {formatEur(row.prices?.cardmarket?.normal)}
+                    {formatEur(printing.prices?.cardmarket?.normal)}
                   </TableCell>
                 </>
               ) : null}
@@ -219,17 +119,46 @@ export function CardPrintingsTable({
   );
 }
 
-/**
- * Visible cell content plus an `::after` that stretches to the row so the
- * entire row is the hit target. Link stays inside a `<td>` (valid HTML).
- */
+export function OracleReferencesTable({
+  rows,
+  label,
+  caption,
+}: {
+  rows: OracleRef[];
+  label: string;
+  caption: string;
+}) {
+  return (
+    <Table className="table-fixed">
+      <caption className="sr-only">{caption}</caption>
+      <TableHeader className="[&_tr]:border-b-0">
+        <TableRow className="border-b-0 bg-foreground/8 hover:bg-foreground/8 dark:bg-muted/60 dark:hover:bg-muted/60">
+          <TableHead className="text-foreground/70 font-semibold tracking-wide uppercase dark:text-muted-foreground">
+            {label}
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((oracle) => (
+          <TableRow key={oracle.id} className="relative hover:bg-muted/40">
+            <TableCell className="min-w-0 whitespace-normal">
+              <RowHitTarget href={oracleHref(oracle)} label={oracle.name}>
+                {oracle.name}
+              </RowHitTarget>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
+
 function RowHitTarget({
   href,
   label,
   children,
 }: {
   href: string | null;
-  /** Full-row accessible name — the visible content is only part of the row. */
   label?: string;
   children: React.ReactNode;
 }) {

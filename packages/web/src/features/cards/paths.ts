@@ -1,4 +1,4 @@
-import type { Card } from "@riftseer/types";
+import type { OracleRef, Printing } from "@riftseer/types";
 
 /**
  * Relative pathname for a persisted `public_slug`.
@@ -17,7 +17,12 @@ export function cardPathFromPublicSlug(publicSlug: string): string {
  * `public_slug` route and falling back to the legacy `/card/<id>` lookup
  * when no slug has been persisted yet.
  */
-export function cardHref(card: Pick<Card, "id" | "public_slug">): string {
-  if (card.public_slug) return cardPathFromPublicSlug(card.public_slug);
-  return `/card/${encodeURIComponent(card.id)}`;
+export function cardHref(printing: Pick<Printing, "id" | "public_slug">): string {
+  if (printing.public_slug) return cardPathFromPublicSlug(printing.public_slug);
+  return `/card/${encodeURIComponent(printing.id)}`;
+}
+
+/** Oracle refs use the single-segment slug route, not the legacy printing-id lookup. */
+export function oracleHref(oracle: Pick<OracleRef, "slug">): string {
+  return `/card/${encodeURIComponent(oracle.slug)}`;
 }

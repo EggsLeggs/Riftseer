@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import type { Card } from "@riftseer/types";
-import { cardImageUrl } from "@riftseer/types";
+import type { Oracle, Printing } from "@riftseer/types";
+import { printingImageUrl } from "@riftseer/types";
 
 import { cardTypeLine, meaningfulRulesText } from "@/features/cards/format";
 
@@ -13,27 +13,27 @@ const MAX_DESCRIPTION_LENGTH = 300;
  * Plain-text description for `<meta name="description">` and social cards:
  * domains, stats, type line, rules text, artist.
  */
-export function cardSeoDescription(card: Card): string {
+export function cardSeoDescription(oracle: Oracle, printing: Printing): string {
   const parts: string[] = [];
 
-  const domains = card.classification?.domains ?? [];
+  const domains = oracle.domains;
   if (domains.length > 0) parts.push(domains.join(", "));
 
   const stats: string[] = [];
-  if (card.attributes?.energy != null) stats.push(`${card.attributes.energy} Energy`);
-  if (card.attributes?.power != null) stats.push(`${card.attributes.power} Power`);
+  if (oracle.energy != null) stats.push(`${oracle.energy} Energy`);
+  if (oracle.power != null) stats.push(`${oracle.power} Power`);
   if (stats.length > 0) parts.push(stats.join(", "));
 
-  const typeLine = cardTypeLine(card);
+  const typeLine = cardTypeLine(oracle);
   if (typeLine !== "—") parts.push(typeLine);
 
-  const rules = (meaningfulRulesText(card.text?.plain) ?? "")
+  const rules = (meaningfulRulesText(oracle.text?.plain) ?? "")
     .replace(/:[a-z_]+:/gi, "")
     .replace(/\s+/g, " ")
     .trim();
   if (rules) parts.push(rules);
 
-  if (card.artist) parts.push(`Illustrated by ${card.artist}`);
+  if (printing.artist) parts.push(`Illustrated by ${printing.artist}`);
 
   parts.push("Riftbound TCG");
 
@@ -44,11 +44,11 @@ export function cardSeoDescription(card: Card): string {
 }
 
 /** `Sun Disc (OGN 21) — Riftseer` — set context helps disambiguate reprints in search results. */
-export function cardPageTitle(card: Card): string {
-  const setCode = card.set?.set_code;
-  const collector = card.collector_number;
+export function cardPageTitle(oracle: Oracle, printing: Printing): string {
+  const setCode = printing.set?.set_code;
+  const collector = printing.collector_number;
   const context = [setCode, collector].filter(Boolean).join(" ");
-  return context ? `${card.name} (${context}) — Riftseer` : `${card.name} — Riftseer`;
+  return context ? `${oracle.name} (${context}) — Riftseer` : `${oracle.name} — Riftseer`;
 }
 
 /**
@@ -56,13 +56,13 @@ export function cardPageTitle(card: Card): string {
  * `public_slug` route when one exists, so reprints don't compete for the same
  * canonical URL.
  */
-export function cardMetadata(card: Card, path: string): Metadata {
-  const title = cardPageTitle(card);
-  const description = cardSeoDescription(card);
+export function cardMetadata(oracle: Oracle, printing: Printing, path: string): Metadata {
+  const title = cardPageTitle(oracle, printing);
+  const description = cardSeoDescription(oracle, printing);
   const canonical = new URL(path, env.NEXT_PUBLIC_APP_URL).toString();
-  const image = cardImageUrl(card.media, "large");
+  const image = printingImageUrl(printing, "large");
   const images = image
-    ? [{ url: image, alt: card.media?.accessibility_text ?? card.name }]
+    ? [{ url: image, alt: printing.image_alt_text ?? oracle.name }]
     : undefined;
 
   return {

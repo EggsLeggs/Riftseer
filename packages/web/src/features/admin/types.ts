@@ -8,7 +8,7 @@
  * fetches by hand because it needs `AdminResult` and a per-call timeout, but the
  * contracts it speaks are the API's own.
  *
- * Card and set patches use JSON merge-patch semantics: an omitted key is left
+ * Oracle, printing and set patches use JSON merge-patch semantics: an omitted key is left
  * alone, and an explicit `null` clears the stored value.
  */
 
@@ -16,10 +16,11 @@ import type { treaty } from "@elysiajs/eden";
 import type { App } from "@riftseer/api";
 
 type AdminRoutes = ReturnType<typeof treaty<App>>["api"]["v1"]["admin"];
-type CardById = ReturnType<AdminRoutes["cards"]>;
+type OracleById = ReturnType<AdminRoutes["oracles"]>;
+type PrintingById = ReturnType<AdminRoutes["printings"]>;
 type SetByCode = ReturnType<AdminRoutes["sets"]>;
 type FormatByCode = ReturnType<AdminRoutes["formats"]>;
-type RulingById = ReturnType<CardById["rulings"]>;
+type RulingById = ReturnType<AdminRoutes["rulings"]>;
 
 export type Nullable<T> = T | null;
 
@@ -34,16 +35,20 @@ type Ok<F extends (...args: never) => unknown> =
       : never
     : never;
 
-// ─── Cards ────────────────────────────────────────────────────────────────────
+// ─── Oracles and printings ───────────────────────────────────────────────────
 
-export type AdminCardPatch = Body<CardById["patch"]>["patch"];
+export type AdminOraclePatch = Body<OracleById["patch"]>["patch"];
+export type AdminOracleDefinition = Body<AdminRoutes["oracles"]["post"]>["definition"];
+export type AdminPrintingPatch = Body<PrintingById["patch"]>["patch"];
+export type AdminPrintingDefinition = Body<AdminRoutes["printings"]["post"]>["definition"];
+export type AdminPrintingDelta = NonNullable<
+  NonNullable<Body<PrintingById["deltas"]["put"]>>["delta"]
+>;
 
-export type AdminCardDefinition = Body<AdminRoutes["cards"]["post"]>["definition"];
-
-export type AdminCardRelationships = Ok<CardById["relationships"]["get"]>;
+export type AdminOracleRelationships = Ok<OracleById["relationships"]["get"]>;
 
 export type AdminRelationshipEntry = Body<
-  CardById["relationships"]["put"]
+  OracleById["relationships"]["put"]
 >["entries"][number];
 
 export type AdminRelationshipKind = AdminRelationshipEntry["kind"];
@@ -64,12 +69,12 @@ export type AdminFormatInput = Body<AdminRoutes["formats"]["post"]>;
 
 export type AdminFormatPatch = Body<FormatByCode["patch"]>["patch"];
 
-export type AdminCardLegalities = Ok<CardById["legalities"]["get"]>;
+export type AdminPrintingLegalities = Ok<PrintingById["legalities"]["get"]>;
 
-export type AdminCardLegalityEntry = AdminCardLegalities["entries"][number];
+export type AdminPrintingLegalityEntry = AdminPrintingLegalities["entries"][number];
 
 /** The statuses that can be stored. Absence of a row means legal. */
-export type AdminLegalityStatus = AdminCardLegalityEntry["effective_status"];
+export type AdminLegalityStatus = AdminPrintingLegalityEntry["status"];
 
 /**
  * What the legality route accepts. `default` is not a stored status — it clears
@@ -77,18 +82,14 @@ export type AdminLegalityStatus = AdminCardLegalityEntry["effective_status"];
  * code cannot render it as a badge.
  */
 export type AdminLegalityStatusInput = Body<
-  CardById["legalities"]["put"]
+  PrintingById["legalities"]["put"]
 >["status"];
 
-export type AdminCardRulings = Ok<CardById["rulings"]["get"]>;
+export type AdminPrintingRulings = Ok<PrintingById["rulings"]["get"]>;
 
-export type AdminCardRuling = AdminCardRulings["entries"][number];
+export type AdminPrintingRuling = AdminPrintingRulings["entries"][number];
 
-export type AdminRulingType = AdminCardRuling["type"];
-
-export type AdminRulingInput = Body<CardById["rulings"]["post"]>;
-
-export type AdminRulingPatch = Body<RulingById["patch"]>["patch"];
+export type AdminRulingType = AdminPrintingRuling["type"];
 
 // ─── Rulings tab (`/admin/rulings`) ───────────────────────────────────────────
 
@@ -109,18 +110,16 @@ export type AdminRulingTargetKind =
 export interface AdminRulingTarget {
   id: string;
   kind: AdminRulingTargetKind;
-  oracle_key: string | null;
-  card_id: string | null;
-  card_name: string | null;
+  oracle_id: string | null;
+  printing_id: string | null;
   query: string | null;
-  ast: unknown;
   match_count: number | null;
 }
 
 /** Target input — the API derives the AST, so only the query text is sent. */
 export type AdminRulingTargetInput =
-  | { kind: "oracle"; oracle_key: string }
-  | { kind: "printing"; card_id: string }
+  | { kind: "oracle"; oracle_id: string }
+  | { kind: "printing"; printing_id: string }
   | { kind: "query"; query: string };
 
 export interface AdminRuling {
@@ -217,7 +216,8 @@ export const ADMIN_REVIEW_STATUSES = [
 export const ADMIN_REVIEW_KINDS = [
   "unmatched_product",
   "field_diff",
-  "missing_card",
+  "missing_printing",
+  "unmatched_oracle",
 ] as const satisfies readonly AdminReviewKind[];
 
 export const ADMIN_REVIEW_SOURCES = [
@@ -258,13 +258,15 @@ export type AdminAuditFilters = Omit<AdminAuditQuery, "limit" | "offset"> & {
 
 // ─── Responses ────────────────────────────────────────────────────────────────
 
-export type AdminCardMutationResult = Ok<CardById["patch"]>;
+export type AdminOracleMutationResult = Ok<OracleById["patch"]>;
 
-export type AdminSlugMutationResult = Ok<CardById["regenerate-slug"]["post"]>;
+export type AdminPrintingMutationResult = Ok<PrintingById["patch"]>;
+
+export type AdminSlugMutationResult = Ok<PrintingById["regenerate-slug"]["post"]>;
 
 export type AdminSetMutationResult = Ok<SetByCode["patch"]>;
 
-export type AdminImageMutationResult = Ok<CardById["image"]["post"]>;
+export type AdminImageMutationResult = Ok<PrintingById["image"]["post"]>;
 
 export type AdminFormatMutationResult = Ok<AdminRoutes["formats"]["post"]>;
 
@@ -272,9 +274,7 @@ export type AdminFormatDeleteResult = Ok<FormatByCode["delete"]>;
 
 export type AdminReorderResult = Ok<AdminRoutes["formats"]["order"]["put"]>;
 
-export type AdminLegalityMutationResult = Ok<CardById["legalities"]["put"]>;
-
-export type AdminRulingMutationResult = Ok<CardById["rulings"]["post"]>;
+export type AdminLegalityMutationResult = Ok<PrintingById["legalities"]["put"]>;
 
 /**
  * Every admin call resolves rather than throws, so views can render the API's

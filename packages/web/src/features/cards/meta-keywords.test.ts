@@ -1,17 +1,24 @@
 import { describe, expect, test } from "bun:test";
-import type { Card } from "@riftseer/types";
+import type { CardResult } from "./api";
 
 import { sortCards } from "./meta-keywords";
 
-function card(name: string, rarity?: string): Card {
+function card(name: string, rarity?: string): CardResult {
   return {
-    id: name,
-    name,
-    classification: rarity ? { rarity } : {},
-  } as Card;
+    oracle: {
+      object: "oracle", id: name, oracle_key: name, slug: name, name,
+      name_normalized: name, is_token: false, keywords: [], tags: [],
+      domains: [], meta_flags: [],
+    },
+    printing: {
+      object: "printing", id: name, oracle_id: name, public_slug: name,
+      rarity, finishes: [], signature: false, alternate_art: false,
+      overnumbered: false, special_collection: false,
+    },
+  };
 }
 
-const names = (cards: Card[]) => cards.map((c) => c.name);
+const names = (cards: CardResult[]) => cards.map((card) => card.oracle.name);
 
 describe("sortCards by rarity", () => {
   test("sorts by the printed ladder, not alphabetically", () => {

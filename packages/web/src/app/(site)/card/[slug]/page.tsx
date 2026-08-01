@@ -14,13 +14,22 @@ interface Props {
 
 // generateMetadata and the page run in the same request, so a cached lookup with
 // identical arguments costs one API call instead of two.
-const loadDetail = cache((id: string) => cardsApi.getDetail({ id }));
+const PRINTING_ID = /^[a-f0-9]{24}$/i;
+const loadDetail = cache((segment: string) =>
+  PRINTING_ID.test(segment)
+    ? cardsApi.getDetail({ printing: segment })
+    : cardsApi.getDetail({ slug: [segment] }),
+);
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const detail = slug ? await loadDetail(slug) : null;
   if (!detail) return { title: "Card not found — Riftseer" };
-  return cardMetadata(detail.card, cardHref(detail.card));
+  return cardMetadata(
+    detail.oracle,
+    detail.printing,
+    cardHref(detail.printing),
+  );
 }
 
 /**
@@ -35,8 +44,8 @@ export default async function CardByIdPage({ params }: Props) {
   const detail = await loadDetail(slug);
   if (!detail) notFound();
 
-  if (detail.card.public_slug) {
-    permanentRedirect(cardPathFromPublicSlug(detail.card.public_slug));
+  if (PRINTING_ID.test(slug) && detail.printing.public_slug) {
+    permanentRedirect(cardPathFromPublicSlug(detail.printing.public_slug));
   }
 
   return (

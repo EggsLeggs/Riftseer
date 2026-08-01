@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/command";
 import { cardsApi, cardsQueryKeys, CardApiError } from "./api";
 import { cardHref } from "./paths";
-import { cardImageUrl } from "@riftseer/types";
+import { printingImageUrl } from "@riftseer/types";
 
 function searchErrorInfo(err: unknown): { title: string; detail: string } {
   if (err instanceof CardApiError) {
@@ -162,17 +162,17 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
 
           {cards.length > 0 && (
             <CommandGroup heading="Cards">
-              {cards.map((card) => {
-                const href = cardHref(card);
+              {cards.map(({ oracle, printing }) => {
+                const href = cardHref(printing);
                 const setCode = [
-                  card.set?.set_code?.toUpperCase(),
-                  card.collector_number,
+                  printing.set?.set_code?.toUpperCase(),
+                  printing.collector_number,
                 ].filter(Boolean).join(" · ");
-                const imageUrl = cardImageUrl(card.media, "small");
+                const imageUrl = printingImageUrl(printing, "small");
                 return (
                   <CommandItem
-                    key={card.id}
-                    value={`${card.name} ${card.id}`}
+                    key={printing.id}
+                    value={`${oracle.name} ${printing.id}`}
                     onSelect={() => goToCard(href)}
                   >
                     {imageUrl && (
@@ -184,7 +184,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
                       />
                     )}
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <span className="truncate leading-none">{card.name}</span>
+                      <span className="truncate leading-none">{oracle.name}</span>
                       {setCode && (
                         <span className="text-xs leading-none text-muted-foreground">
                           {setCode}

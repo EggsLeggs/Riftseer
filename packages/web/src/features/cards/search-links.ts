@@ -9,7 +9,7 @@
  * Framework-free on purpose so server and client components can both import it.
  */
 
-import type { Card } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
 import { keywordBaseKey } from "@riftseer/types/keywords";
 
 /**
@@ -67,10 +67,10 @@ export function keywordSearchQuery(label: string): string {
  * Returns null when the card has no type line worth linking.
  */
 export function cardTypeLineSearchQuery(
-  card: Pick<Card, "classification">,
+  oracle: Pick<Oracle, "card_type" | "supertype" | "is_token">,
 ): string | null {
-  const type = card.classification?.type?.trim() || undefined;
-  const supertype = card.classification?.supertype?.trim() || undefined;
+  const type = oracle.card_type?.trim() || undefined;
+  const supertype = oracle.supertype?.trim() || undefined;
   const typeKey = type?.toLowerCase();
 
   // Legends drop their supertype from the label, so the query drops it too.
@@ -80,7 +80,7 @@ export function cardTypeLineSearchQuery(
   }
   // Labelled "Token Unit" but typed "Token": `is:token` is what the label means,
   // and it also catches tokens flagged by name or riftbound_id rather than type.
-  if (typeKey === "token") return "is:token";
+  if (typeKey === "token" || oracle.is_token) return "is:token";
   if (type) return `t:${quoteSearchValue(type)}`;
   if (supertype) return `st:${quoteSearchValue(supertype)}`;
   return null;

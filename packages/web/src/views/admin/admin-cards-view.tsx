@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Loader2, PencilLine, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
-import type { Card } from "@riftseer/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,11 +15,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
+import { cardsApi, cardsQueryKeys, type CardResult } from "@/features/cards/api";
 import { cardHref } from "@/features/cards/paths";
 import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
 import { setsApi, setsQueryKeys, type SetInfo } from "@/features/sets/api";
-import { useCardMutations } from "@/features/admin/hooks/use-admin-mutations";
+import { usePrintingMutations } from "@/features/admin/hooks/use-admin-mutations";
 import { AdminPageHeader } from "./admin-page-header";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -31,9 +30,9 @@ export function AdminCardsView() {
   const [query, setQuery] = React.useState("");
   const [setCode, setSetCode] = React.useState("");
   const [page, setPage] = React.useState(0);
-  const [pendingDelete, setPendingDelete] = React.useState<Card | null>(null);
+  const [pendingDelete, setPendingDelete] = React.useState<CardResult | null>(null);
 
-  const { remove, regenerateSlug } = useCardMutations();
+  const { remove, regenerateSlug } = usePrintingMutations();
 
   async function handleDelete(cardId: string, reason: string) {
     try {
@@ -174,40 +173,40 @@ export function AdminCardsView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {cards.map((card) => (
-                <TableRow key={card.id}>
+              {cards.map(({ oracle, printing }) => (
+                <TableRow key={printing.id}>
                   <TableCell className="font-medium">
                     <Link
-                      href={cardHref(card)}
+                      href={cardHref(printing)}
                       className="underline-offset-4 hover:underline"
                     >
-                      {card.name}
+                      {oracle.name}
                     </Link>
-                    {card.is_token && (
+                    {oracle.is_token && (
                       <span className="text-muted-foreground ml-1.5 text-xs">
                         token
                       </span>
                     )}
                   </TableCell>
                   <TableCell className="uppercase">
-                    {card.set?.set_code ?? "—"}
+                    {printing.set?.set_code ?? "—"}
                   </TableCell>
                   <TableCell className="tabular-nums">
-                    {card.collector_number ?? "—"}
+                    {printing.collector_number ?? "—"}
                   </TableCell>
                   <TableCell
                     className="text-muted-foreground max-w-56 truncate text-xs"
-                    title={card.public_slug}
+                    title={printing.public_slug}
                   >
-                    {card.public_slug ?? "none"}
+                    {printing.public_slug || "none"}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-xs">
-                    {card.source ?? "riftcodex"}
+                    {printing.source ?? "riftcodex"}
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/admin/cards/${encodeURIComponent(card.id)}/edit`}>
+                        <Link href={`/admin/cards/${encodeURIComponent(printing.id)}/edit`}>
                           <PencilLine aria-hidden="true" />
                           Edit
                         </Link>
@@ -217,7 +216,7 @@ export function AdminCardsView() {
                         size="sm"
                         disabled={regenerateSlug.isPending}
                         onClick={() =>
-                          regenerateSlug.mutate([card.id, card.public_slug])
+                          regenerateSlug.mutate([printing.id, printing.public_slug])
                         }
                         title="Regenerate the public slug"
                       >
@@ -227,7 +226,7 @@ export function AdminCardsView() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setPendingDelete(card)}
+                        onClick={() => setPendingDelete({ oracle, printing })}
                         title="Delete this card"
                       >
                         <Trash2 aria-hidden="true" />
@@ -271,14 +270,14 @@ export function AdminCardsView() {
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
         }}
-        title={`Delete ${pendingDelete?.name ?? "card"}?`}
-        description="This writes a durable deletion record, so the next ingest will not restore the card. Add a reason for the audit log."
-        confirmLabel="Delete card"
+        title={`Delete ${pendingDelete?.oracle.name ?? "printing"}?`}
+        description="This soft-deletes this physical printing. The oracle and sibling printings remain available."
+        confirmLabel="Delete printing"
         destructive
         reasonLabel="Reason (optional)"
         pending={remove.isPending}
         onConfirm={(reason) => {
-          if (pendingDelete) void handleDelete(pendingDelete.id, reason);
+          if (pendingDelete) void handleDelete(pendingDelete.printing.id, reason);
         }}
       />
     </>

@@ -6,32 +6,35 @@ import { cardsQueryKeys } from "@/features/cards/api";
 import { setsQueryKeys } from "@/features/sets/api";
 import {
   confirmReviewEntryAction,
-  createCardAction,
-  createCardRulingAction,
+  createOracleAction,
+  createPrintingAction,
   createFormatAction,
   createRulingAction,
   createSetAction,
-  deleteCardAction,
-  deleteCardRulingAction,
+  deleteOracleAction,
+  deletePrintingAction,
   deleteFormatAction,
   deleteRulingAction,
   deleteSetAction,
   dismissReviewEntryAction,
-  moveCardAction,
-  patchCardAction,
-  patchCardRulingAction,
+  patchOracleAction,
+  patchPrintingAction,
   patchFormatAction,
   patchRulingAction,
   patchSetAction,
   regenerateSlugAction,
   reorderFormatsAction,
   setCardLegalityAction,
+  setPrintingDeltaAction,
   setRelationshipsAction,
   uploadCardImageAction,
 } from "../actions";
 import type {
-  AdminCardDefinition,
-  AdminCardPatch,
+  AdminOracleDefinition,
+  AdminOraclePatch,
+  AdminPrintingDefinition,
+  AdminPrintingDelta,
+  AdminPrintingPatch,
   AdminFormatInput,
   AdminFormatPatch,
   AdminLegalityStatusInput,
@@ -39,8 +42,6 @@ import type {
   AdminResult,
   AdminRuling,
   AdminRulingCreateInput,
-  AdminRulingInput,
-  AdminRulingPatch,
   AdminRulingRecordPatch,
   AdminSetDefinition,
   AdminSetPatch,
@@ -96,7 +97,7 @@ function useToastMutation<TArgs extends unknown[], TData>(
  */
 const ADMIN_AUDIT_LOG_KEY = ["admin", "audit-log"] as const;
 
-export function useCardMutations() {
+export function useOracleMutations() {
   const queryClient = useQueryClient();
   const invalidateCards = () => {
     void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
@@ -105,47 +106,30 @@ export function useCardMutations() {
 
   return {
     create: useToastMutation<
-      [id: string, definition: AdminCardDefinition],
-      { card_id: string }
-    >(createCardAction, "Card created", invalidateCards),
+      [definition: AdminOracleDefinition],
+      { oracle_id: string }
+    >(createOracleAction, "Card created", invalidateCards),
 
     patch: useToastMutation<
       [
-        cardId: string,
-        patch: AdminCardPatch,
-        opts?: { note?: string; publicSlug?: string },
+        oracleId: string,
+        patch: AdminOraclePatch,
       ],
-      { card_id: string }
-    >(patchCardAction, "Card saved", invalidateCards),
+      { oracle_id: string }
+    >(patchOracleAction, "Oracle saved", invalidateCards),
 
-    remove: useToastMutation<[cardId: string, reason?: string], { card_id: string }>(
-      deleteCardAction,
+    remove: useToastMutation<[oracleId: string, reason?: string], { oracle_id: string }>(
+      deleteOracleAction,
       "Card deleted",
       invalidateCards,
     ),
 
-    regenerateSlug: useToastMutation<
-      [cardId: string, previousSlug?: string],
-      { public_slug: string }
-    >(
-      regenerateSlugAction,
-      (data) => `Slug regenerated: ${data.public_slug}`,
-      invalidateCards,
-    ),
-
-    move: useToastMutation<
-      [cardId: string, setCode: string, publicSlug?: string],
-      { card_id: string }
-    >(moveCardAction, "Card moved", invalidateCards),
-
     setRelationships: useToastMutation<
       [
-        cardId: string,
+        oracleId: string,
         entries: AdminRelationshipEntry[],
-        applyToAllPrintings: boolean,
-        publicSlug?: string,
       ],
-      { card_id: string }
+      { oracle_id: string }
     >(setRelationshipsAction, "Relationships saved", () => {
       invalidateCards();
       void queryClient.invalidateQueries({
@@ -153,6 +137,36 @@ export function useCardMutations() {
       });
     }),
 
+  };
+}
+
+export function usePrintingMutations() {
+  const queryClient = useQueryClient();
+  const invalidateCards = () => {
+    void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
+    void queryClient.invalidateQueries({ queryKey: ADMIN_AUDIT_LOG_KEY });
+  };
+  return {
+    create: useToastMutation<
+      [id: string, oracleId: string, setCode: string, definition: AdminPrintingDefinition],
+      { printing_id: string }
+    >(createPrintingAction, "Printing created", invalidateCards),
+    patch: useToastMutation<
+      [printingId: string, patch: AdminPrintingPatch, publicSlug?: string],
+      { printing_id: string }
+    >(patchPrintingAction, "Printing saved", invalidateCards),
+    remove: useToastMutation<
+      [printingId: string, reason?: string],
+      { printing_id: string }
+    >(deletePrintingAction, "Printing deleted", invalidateCards),
+    delta: useToastMutation<
+      [printingId: string, delta: AdminPrintingDelta | null, publicSlug?: string],
+      { printing_id: string }
+    >(setPrintingDeltaAction, "Printing delta saved", invalidateCards),
+    regenerateSlug: useToastMutation<
+      [printingId: string, previousSlug?: string],
+      { public_slug: string }
+    >(regenerateSlugAction, (data) => `Slug regenerated: ${data.public_slug}`, invalidateCards),
     uploadImage: useToastMutation<
       [cardId: string, formData: FormData],
       { queued: boolean }
@@ -254,13 +268,13 @@ export function useReviewMutations() {
 
   return {
     confirm: useToastMutation<
-      [entryId: string, cardId?: string, note?: string],
-      { card_id: string | null }
+      [entryId: string, printingId?: string, oracleId?: string, note?: string],
+      { printing_id: string | null; oracle_id: string | null }
     >(
       confirmReviewEntryAction,
       (data) =>
-        data.card_id
-          ? `Confirmed and saved to ${data.card_id}`
+        data.printing_id || data.oracle_id
+          ? `Confirmed and saved to ${data.printing_id ?? data.oracle_id}`
           : "Entry confirmed",
       invalidateReview,
     ),
@@ -306,38 +320,6 @@ export function useCardLegalityMutations(cardId: string) {
           : "Legality saved for this printing",
       invalidate,
     ),
-  };
-}
-
-export function useCardRulingMutations(cardId: string) {
-  const queryClient = useQueryClient();
-  const invalidate = () => {
-    void queryClient.invalidateQueries({
-      queryKey: adminCardRulingsQueryKey(cardId),
-    });
-    void queryClient.invalidateQueries({ queryKey: cardsQueryKeys.all });
-  };
-
-  return {
-    create: useToastMutation<
-      [cardId: string, input: AdminRulingInput, publicSlug?: string],
-      { ruling_id: string }
-    >(createCardRulingAction, "Entry added", invalidate),
-
-    patch: useToastMutation<
-      [
-        cardId: string,
-        rulingId: string,
-        patch: AdminRulingPatch,
-        publicSlug?: string,
-      ],
-      { ruling_id: string }
-    >(patchCardRulingAction, "Entry saved", invalidate),
-
-    remove: useToastMutation<
-      [cardId: string, rulingId: string, publicSlug?: string],
-      { ruling_id: string }
-    >(deleteCardRulingAction, "Entry deleted", invalidate),
   };
 }
 

@@ -1,4 +1,4 @@
-import type { Card } from "@riftseer/types";
+import type { CardResult } from "./api";
 import { tcgplayerUsdPrice } from "./format";
 
 export const ORDER_FIELDS = [
@@ -84,19 +84,20 @@ export function parseMetaKeywords(raw: string): MetaKeywords {
 
 type CardValue = string | number | null | undefined;
 
-function cardValue(card: Card, field: OrderField): CardValue {
+function cardValue(card: CardResult, field: OrderField): CardValue {
+  const { oracle, printing } = card;
   switch (field) {
-    case "energy":    return card.attributes?.energy ?? null;
-    case "power":     return card.attributes?.power ?? null;
-    case "might":     return card.attributes?.might ?? null;
-    case "rarity":    return rarityRank(card.classification?.rarity);
-    case "artist":    return card.artist ?? null;
-    case "usd":       return tcgplayerUsdPrice(card.prices?.tcgplayer);
-    case "eur":       return card.prices?.cardmarket?.normal ?? null;
-    case "domain":    return card.classification?.domains?.[0] ?? null;
-    case "set":       return card.set?.set_code ?? null;
+    case "energy":    return oracle.energy ?? null;
+    case "power":     return oracle.power ?? null;
+    case "might":     return oracle.might ?? null;
+    case "rarity":    return rarityRank(printing.rarity);
+    case "artist":    return printing.artist ?? null;
+    case "usd":       return tcgplayerUsdPrice(printing.prices?.tcgplayer);
+    case "eur":       return printing.prices?.cardmarket?.normal ?? null;
+    case "domain":    return oracle.domains[0] ?? null;
+    case "set":       return printing.set?.set_code ?? null;
     case "collector": {
-      const m = /^(\d+)/.exec(card.collector_number ?? "");
+      const m = /^(\d+)/.exec(printing.collector_number ?? "");
       return m ? parseInt(m[1], 10) : null;
     }
   }
@@ -104,10 +105,10 @@ function cardValue(card: Card, field: OrderField): CardValue {
 
 /** Sort a cards array by the given field and direction. Nulls always sort last. */
 export function sortCards(
-  cards: Card[],
+  cards: CardResult[],
   field: OrderField,
   direction: "asc" | "desc",
-): Card[] {
+): CardResult[] {
   const dir = direction === "asc" ? 1 : -1;
   return [...cards].sort((a, b) => {
     const av = cardValue(a, field);

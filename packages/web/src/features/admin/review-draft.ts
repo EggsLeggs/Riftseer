@@ -1,12 +1,8 @@
-import type {
-  AdminCardDefinition,
-  AdminReviewEntry,
-  AdminReviewGalleryCard,
-} from "./types";
+import type { AdminReviewEntry, AdminReviewGalleryCard } from "./types";
 
 /**
  * Stash for the create-from-review flow. The new-card form reads this after a
- * "Create card" click on a `missing_card` entry; sessionStorage keeps the
+ * "Create card" click on a `missing_printing` entry; sessionStorage keeps the
  * gallery text (which can be long) out of the URL.
  */
 const STORAGE_KEY = "riftseer:admin-review-create-draft";
@@ -104,77 +100,5 @@ export function galleryToPrefill(gallery: AdminReviewGalleryCard): GalleryPrefil
     text: gallery.text ?? "",
     equipment: gallery.equipment ?? "",
     imageUrl: gallery.image_url ?? null,
-  };
-}
-
-function optionalInt(value: string): number | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const n = Number(trimmed);
-  return Number.isSafeInteger(n) ? n : null;
-}
-
-/**
- * Build the create payload from the prefilled (and possibly edited) form.
- * Identity fields feed `public_slug`; the rest are suggestions the gallery
- * already stated, so the editor starts nearly complete.
- */
-export function buildDefinitionFromPrefill(
-  prefill: GalleryPrefill,
-  set: { setCode: string; setName: string } | null,
-): AdminCardDefinition {
-  const energy = optionalInt(prefill.energy);
-  const might = optionalInt(prefill.might);
-  const power = optionalInt(prefill.power);
-  const mightBonus = optionalInt(prefill.mightBonus);
-  const rarity = prefill.rarity.trim();
-  const type = prefill.type.trim();
-  const text = prefill.text.trim();
-  const equipment = prefill.equipment.trim();
-  const riftboundId = prefill.riftboundId.trim();
-
-  return {
-    name: prefill.name.trim(),
-    is_token: prefill.isToken,
-    collector_number: prefill.collectorNumber.trim() || null,
-    metadata: {
-      signature: prefill.signature,
-      alternate_art: prefill.alternateArt,
-      special_collection: prefill.specialCollection,
-    },
-    ...(set
-      ? {
-          set: {
-            set_code: set.setCode,
-            set_name: set.setName,
-          },
-        }
-      : {}),
-    ...(riftboundId
-      ? { external_ids: { riftbound_id: riftboundId } }
-      : {}),
-    ...((energy !== null ||
-      might !== null ||
-      power !== null ||
-      mightBonus !== null) && {
-      attributes: {
-        ...(energy !== null ? { energy } : {}),
-        ...(might !== null ? { might } : {}),
-        ...(power !== null ? { power } : {}),
-        ...(mightBonus !== null ? { might_bonus: mightBonus } : {}),
-      },
-    }),
-    ...((rarity || type) && {
-      classification: {
-        ...(rarity ? { rarity } : {}),
-        ...(type ? { type } : {}),
-      },
-    }),
-    ...((text || equipment) && {
-      text: {
-        ...(text ? { rich: text, plain: text } : {}),
-        ...(equipment ? { equipment } : {}),
-      },
-    }),
   };
 }

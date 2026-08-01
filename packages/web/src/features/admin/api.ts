@@ -3,12 +3,16 @@ import { env } from "@/lib/env";
 import type {
   AdminAuditFilters,
   AdminAuditPage,
-  AdminCardDefinition,
-  AdminCardLegalities,
-  AdminCardMutationResult,
-  AdminCardPatch,
-  AdminCardRelationships,
-  AdminCardRulings,
+  AdminOracleDefinition,
+  AdminOracleMutationResult,
+  AdminOraclePatch,
+  AdminOracleRelationships,
+  AdminPrintingDefinition,
+  AdminPrintingDelta,
+  AdminPrintingLegalities,
+  AdminPrintingMutationResult,
+  AdminPrintingPatch,
+  AdminPrintingRulings,
   AdminFormatDeleteResult,
   AdminFormatInput,
   AdminFormatListResult,
@@ -25,9 +29,6 @@ import type {
   AdminReviewPage,
   AdminRuling,
   AdminRulingCreateInput,
-  AdminRulingInput,
-  AdminRulingMutationResult,
-  AdminRulingPatch,
   AdminRulingRecordPatch,
   AdminRulingsPage,
   AdminRulingsQuery,
@@ -124,8 +125,12 @@ async function request<T>({
   return { ok: true, data: payload as T };
 }
 
-function cardPath(cardId: string, suffix = ""): string {
-  return `/cards/${encodeURIComponent(cardId)}${suffix}`;
+function oraclePath(oracleId: string, suffix = ""): string {
+  return `/oracles/${encodeURIComponent(oracleId)}${suffix}`;
+}
+
+function printingPath(printingId: string, suffix = ""): string {
+  return `/printings/${encodeURIComponent(printingId)}${suffix}`;
 }
 
 function setPath(setCode: string): string {
@@ -182,7 +187,8 @@ export const adminApi = {
   confirmReviewEntry(
     accessToken: string,
     entryId: string,
-    cardId?: string,
+    printingId?: string,
+    oracleId?: string,
     note?: string,
   ): Promise<AdminResult<AdminReviewMutationResult>> {
     return request({
@@ -190,7 +196,8 @@ export const adminApi = {
       path: `/reconciliation/${encodeURIComponent(entryId)}/confirm`,
       accessToken,
       body: {
-        ...(cardId ? { card_id: cardId } : {}),
+        ...(printingId ? { printing_id: printingId } : {}),
+        ...(oracleId ? { oracle_id: oracleId } : {}),
         ...(note ? { note } : {}),
       },
     });
@@ -210,113 +217,124 @@ export const adminApi = {
     });
   },
 
-  /** Create a manual card; the id is admin-chosen and must not already exist. */
-  createCard(
+  createOracle(
     accessToken: string,
-    id: string,
-    definition: AdminCardDefinition,
-  ): Promise<AdminResult<AdminCardMutationResult>> {
+    definition: AdminOracleDefinition,
+  ): Promise<AdminResult<AdminOracleMutationResult>> {
     return request({
       method: "POST",
-      path: "/cards",
+      path: "/oracles",
       accessToken,
-      body: { id, definition },
+      body: { definition },
     });
   },
 
-  /** Apply a JSON merge patch. Only send keys the admin actually changed. */
-  patchCard(
+  patchOracle(
     accessToken: string,
-    cardId: string,
-    patch: AdminCardPatch,
-    note?: string,
-  ): Promise<AdminResult<AdminCardMutationResult>> {
+    oracleId: string,
+    patch: AdminOraclePatch,
+  ): Promise<AdminResult<AdminOracleMutationResult>> {
     return request({
       method: "PATCH",
-      path: cardPath(cardId),
+      path: oraclePath(oracleId),
       accessToken,
-      body: note ? { patch, note } : { patch },
+      body: { patch },
     });
   },
 
-  deleteCard(
+  deleteOracle(
     accessToken: string,
-    cardId: string,
+    oracleId: string,
     reason?: string,
-  ): Promise<AdminResult<AdminCardMutationResult>> {
+  ): Promise<AdminResult<AdminOracleMutationResult>> {
     return request({
       method: "DELETE",
-      path: cardPath(cardId),
+      path: oraclePath(oracleId),
       accessToken,
       body: reason ? { reason } : {},
     });
   },
 
+  createPrinting(
+    accessToken: string,
+    id: string,
+    oracleId: string,
+    setCode: string,
+    definition: AdminPrintingDefinition,
+  ): Promise<AdminResult<AdminPrintingMutationResult>> {
+    return request({ method: "POST", path: "/printings", accessToken, body: {
+      id, oracle_id: oracleId, set_code: setCode, definition,
+    } });
+  },
+
+  patchPrinting(
+    accessToken: string,
+    printingId: string,
+    patch: AdminPrintingPatch,
+  ): Promise<AdminResult<AdminPrintingMutationResult>> {
+    return request({ method: "PATCH", path: printingPath(printingId), accessToken, body: { patch } });
+  },
+
+  deletePrinting(
+    accessToken: string,
+    printingId: string,
+    reason?: string,
+  ): Promise<AdminResult<AdminPrintingMutationResult>> {
+    return request({ method: "DELETE", path: printingPath(printingId), accessToken, body: reason ? { reason } : {} });
+  },
+
+  setPrintingDelta(
+    accessToken: string,
+    printingId: string,
+    delta: AdminPrintingDelta | null,
+  ): Promise<AdminResult<AdminPrintingMutationResult>> {
+    return request({ method: "PUT", path: printingPath(printingId, "/deltas"), accessToken, body: { delta } });
+  },
+
   regenerateSlug(
     accessToken: string,
-    cardId: string,
+    printingId: string,
   ): Promise<AdminResult<AdminSlugMutationResult>> {
     return request({
       method: "POST",
-      path: cardPath(cardId, "/regenerate-slug"),
+      path: printingPath(printingId, "/regenerate-slug"),
       accessToken,
     });
   },
 
-  moveCard(
+  listOracleRelationships(
     accessToken: string,
-    cardId: string,
-    setCode: string,
-  ): Promise<AdminResult<AdminCardMutationResult>> {
-    return request({
-      method: "POST",
-      path: cardPath(cardId, "/move"),
-      accessToken,
-      body: { set_code: setCode },
-    });
-  },
-
-  listCardRelationships(
-    accessToken: string,
-    cardId: string,
-  ): Promise<AdminResult<AdminCardRelationships>> {
+    oracleId: string,
+  ): Promise<AdminResult<AdminOracleRelationships>> {
     return request({
       method: "GET",
-      path: cardPath(cardId, "/relationships"),
+      path: oraclePath(oracleId, "/relationships"),
       accessToken,
     });
   },
 
-  /**
-   * Replaces one scope's override list. With `applyToAllPrintings` (default
-   * true) entries are oracle-scoped and per-printing exceptions in the group
-   * are cleared; otherwise only this printing's exceptions are replaced.
-   */
+  /** Relationships are oracle properties, so this replaces the whole edge list. */
   setRelationships(
     accessToken: string,
-    cardId: string,
+    oracleId: string,
     entries: AdminRelationshipEntry[],
-    applyToAllPrintings = true,
-  ): Promise<AdminResult<AdminCardMutationResult>> {
+  ): Promise<AdminResult<AdminOracleMutationResult>> {
     return request({
       method: "PUT",
-      path: cardPath(cardId, "/relationships"),
+      path: oraclePath(oracleId, "/relationships"),
       accessToken,
-      body: {
-        entries,
-        apply_to_all_printings: applyToAllPrintings,
-      },
+      body: { entries },
     });
   },
 
   uploadCardImage(
     accessToken: string,
-    cardId: string,
+    printingId: string,
     formData: FormData,
   ): Promise<AdminResult<AdminImageMutationResult>> {
     return request({
       method: "POST",
-      path: cardPath(cardId, "/image"),
+      path: printingPath(printingId, "/image"),
       accessToken,
       formData,
       timeoutMs: UPLOAD_TIMEOUT_MS,
@@ -423,19 +441,19 @@ export const adminApi = {
 
   // ── Legalities and rulings ──────────────────────────────────────────────────
 
-  listCardLegalities(
+  listPrintingLegalities(
     accessToken: string,
     cardId: string,
-  ): Promise<AdminResult<AdminCardLegalities>> {
+  ): Promise<AdminResult<AdminPrintingLegalities>> {
     return request({
       method: "GET",
-      path: cardPath(cardId, "/legalities"),
+      path: printingPath(cardId, "/legalities"),
       accessToken,
     });
   },
 
   /**
-   * `applyToAllPrintings` writes the card-level status and clears every
+   * `applyToAllPrintings` writes the oracle-level status and clears every
    * per-printing override for that format; without it only this printing moves.
    * Pass `"default"` to clear the stored status back to legal.
    */
@@ -448,7 +466,7 @@ export const adminApi = {
   ): Promise<AdminResult<AdminLegalityMutationResult>> {
     return request({
       method: "PUT",
-      path: cardPath(cardId, "/legalities"),
+      path: printingPath(cardId, "/legalities"),
       accessToken,
       body: {
         format_code: formatCode,
@@ -458,55 +476,17 @@ export const adminApi = {
     });
   },
 
-  listCardRulings(
+  listPrintingRulings(
     accessToken: string,
     cardId: string,
-  ): Promise<AdminResult<AdminCardRulings>> {
+  ): Promise<AdminResult<AdminPrintingRulings>> {
     return request({
       method: "GET",
-      path: cardPath(cardId, "/rulings"),
+      path: printingPath(cardId, "/rulings"),
       accessToken,
     });
   },
 
-  createCardRuling(
-    accessToken: string,
-    cardId: string,
-    input: AdminRulingInput,
-  ): Promise<AdminResult<AdminRulingMutationResult>> {
-    return request({
-      method: "POST",
-      path: cardPath(cardId, "/rulings"),
-      accessToken,
-      body: input,
-    });
-  },
-
-  patchCardRuling(
-    accessToken: string,
-    cardId: string,
-    rulingId: string,
-    patch: AdminRulingPatch,
-  ): Promise<AdminResult<AdminRulingMutationResult>> {
-    return request({
-      method: "PATCH",
-      path: cardPath(cardId, `/rulings/${encodeURIComponent(rulingId)}`),
-      accessToken,
-      body: { patch },
-    });
-  },
-
-  deleteCardRuling(
-    accessToken: string,
-    cardId: string,
-    rulingId: string,
-  ): Promise<AdminResult<AdminRulingMutationResult>> {
-    return request({
-      method: "DELETE",
-      path: cardPath(cardId, `/rulings/${encodeURIComponent(rulingId)}`),
-      accessToken,
-    });
-  },
   // ── Rulings tab ─────────────────────────────────────────────────────────────
 
   listRulings(

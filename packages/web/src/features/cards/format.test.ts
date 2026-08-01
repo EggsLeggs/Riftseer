@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { Card } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
 
 import {
   tcgplayerUsdPrice,
@@ -28,16 +28,22 @@ function card(partial: {
   rarity?: string;
   domains?: string[];
   is_token?: boolean;
-}): Card {
+}): Oracle {
   return {
+    object: "oracle",
+    id: "oracle-id",
+    oracle_key: "card",
+    slug: "card",
+    name: "Card",
+    name_normalized: "card",
     is_token: partial.is_token ?? false,
-    classification: {
-      type: partial.type,
-      supertype: partial.supertype,
-      rarity: partial.rarity,
-      domains: partial.domains,
-    },
-  } as Card;
+    card_type: partial.type,
+    supertype: partial.supertype,
+    domains: partial.domains ?? [],
+    tags: [],
+    keywords: [],
+    meta_flags: [],
+  };
 }
 
 describe("typeBadgeRarityColor", () => {
@@ -52,7 +58,7 @@ describe("typeBadgeRarityColor", () => {
 
 describe("typeBadgeStyle", () => {
   test("runes are black with white text regardless of domain", () => {
-    expect(typeBadgeStyle(card({ type: "Rune", domains: ["Fury"], rarity: "Common" }))).toEqual({
+    expect(typeBadgeStyle(card({ type: "Rune", domains: ["Fury"] }), "Common")).toEqual({
       labelBg: "#0a0a0a",
       labelFg: "#ffffff",
       rarityColor: "#A25F15",
@@ -61,7 +67,7 @@ describe("typeBadgeStyle", () => {
   });
 
   test("battlefields and tokens stay grey", () => {
-    expect(typeBadgeStyle(card({ type: "Battlefield", rarity: "Uncommon" }))).toEqual({
+    expect(typeBadgeStyle(card({ type: "Battlefield" }), "Uncommon")).toEqual({
       labelBg: "#c8c8c8",
       labelFg: "#0a0a0a",
       rarityColor: "#c8c8c8",
@@ -74,8 +80,8 @@ describe("typeBadgeStyle", () => {
           type: "Unit",
           supertype: "Token",
           is_token: true,
-          rarity: "Common",
         }),
+        "Common",
       ),
     ).toEqual({
       labelBg: "#c8c8c8",

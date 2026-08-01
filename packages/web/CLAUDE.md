@@ -45,23 +45,23 @@ Both routes live under one **`[slug]`** dynamic segment (Next.js forbids sibling
 `[id]` and `[set]` folders — same depth must share one param name). Both render
 `views/cards/card-detail-view.tsx`:
 
-- **`app/card/[slug]/page.tsx`** — `/card/<printing-id>` legacy URLs. Fetches by id,
+- **`app/card/[slug]/page.tsx`** — `/card/<printing-id>` legacy URLs. Fetches by printing id,
   then `permanentRedirect`s to the canonical slug path when `public_slug` is set.
 - **`app/card/[slug]/[collector]/[[...slugTail]]/page.tsx`** — canonical slug paths:
   `/card/<set>/<collector>/<name>` or `/card/<set>/<collector>/signature/<name>`.
   Joins the segments into a `public_slug`. `/card/<set>/<collector>` with no name
   returns 404.
 
-Both call **`cardsApi.getDetail()`** → `GET /api/v1/cards/detail?id=…|slug=…`, which
-returns the whole page in one round-trip: the card plus its printings, tokens,
-champions/legends and resolved marketplace links. **All sorting, deduplication and
-URL building happens in the API** (`buildCardDetail` in `@riftseer/core`) — do not
-add derived card logic to the view. The fetch is wrapped in React `cache()` so
+Both call **`cardsApi.getDetail()`** →
+`GET /api/v1/cards/detail?printing=…|oracle=…|slug=…`, which returns an
+`OracleDetail`: the rules object, selected physical printing, all printings,
+oracle relationships, legalities, rulings and resolved marketplace links.
+The fetch is wrapped in React `cache()` so
 `generateMetadata` and the page share one request.
 
 `features/cards/api.ts` uses `AbortSignal.timeout` (12s) and `cache: "no-store"` so requests fail fast instead of hanging; error boundaries show user-facing copy, never stack traces or dev jargon.
 
-Build URLs with `cardHref()` from `features/cards/paths.ts` for same-origin links
+Build URLs with `cardHref(printing)` from `features/cards/paths.ts` for same-origin links
 (dev, preview and production all differ), and `card.riftseer_uri` when you need an
 absolute URL. Never assemble card paths by hand.
 
@@ -101,7 +101,7 @@ absolute URL. Never assemble card paths by hand.
 | `features/admin/types.ts` | Request/response contracts derived from the Eden treaty `App` type — never hand-mirror the Elysia `t` schemas |
 | `features/admin/api.ts` | Bearer-token fetches for every admin endpoint. Resolves `AdminResult`, never throws |
 | `features/admin/actions.ts` | Server actions — read the session, call `api.ts`, `revalidatePath` the affected pages |
-| `features/admin/review-draft.ts` | Prefill for create-from-review (`missing_card` → `/admin/cards/new`) |
+| `features/admin/review-draft.ts` | Prefill for create-from-review (`missing_printing` → `/admin/cards/new`) |
 | `features/admin/card-id.ts` | `generateCardId()` — 24-char hex IDs in the RiftCodex ObjectId space, for manual cards |
 | `features/admin/dates.ts` | `toDateInputValue()` — coerces card/set dates for `<input type="date">` |
 | `features/admin/hooks/use-admin-mutations.ts` | TanStack Query mutations + toasts, wrapping the server actions |
@@ -114,7 +114,7 @@ from either. `source` on each entry says which one raised it and therefore
 whether the payload carries a `product` or a `gallery` card. Nothing applies
 itself — **confirm** writes a durable card override (for a product, its
 `tcgplayer_id`, so later ingests match it automatically) and **dismiss** is
-remembered so the next ingest does not resurface the entry. A `missing_card`
+remembered so the next ingest does not resurface the entry. A `missing_printing`
 entry has nothing to patch on its own: use **Create** on the row to open
 `/admin/cards/new` prefilled from the gallery payload (name, set, collector,
 stats, text, flags, and art). Saving creates the card, uploads the gallery
@@ -142,10 +142,9 @@ is not a mutation. Its `action` filter list is hard-coded from the RPC names in
 `supabase/migrations/20260810000000_oracle_printing_baseline.sql`; add to it
 whenever an admin RPC is added, or the new action silently filters to nothing.
 
-Creating a manual card is a two-step flow: `/admin/cards/new` posts only the
-fields that feed `public_slug` (name, set, collector number, signature,
-alternate art), because the API pins the slug at creation time; everything else
-is filled in on the editor page it redirects to.
+Creating a manual card is a two-step API flow: `/admin/cards/new` creates the
+oracle and then its first printing. The printing id, set, collector number and
+variant flags are supplied before creation because the API pins `public_slug`.
 
 `is_admin` is **not** in the session cookie — it comes from `/auth/me` on every
 request so revoking `ADMIN_USER_IDS` takes effect immediately. `requireAdmin()`
@@ -153,7 +152,7 @@ is a UI gate only; the API enforces the same allowlist on every mutation, so
 never treat a client-side check as the security boundary.
 
 `/admin/rulings` manages rulings independently of any one card. A ruling carries
-any number of **targets**: a single printing, a whole card, or a *rule* — a saved
+any number of **targets**: a single printing, a whole oracle, or a *rule* — a saved
 search query written in the same language as the site search bar (see
 `views/search-syntax-view.tsx`). Rule targets are re-evaluated after every
 ingest, so a rule like `t:unit kw:deathknell` picks up cards released after it
@@ -164,29 +163,22 @@ endpoint. An entry that is `shared` (several targets, or any rule target) is
 shown read-only in the per-card panel and links here, because retargeting or
 deleting it there would silently change other cards.
 
-Format legalities and rulings are **not** part of the card patch — they are keyed
-on the card's oracle group rather than the printing, so their panels
-(`admin-card-legalities-panel.tsx`, `admin-card-rulings-panel.tsx`) save on their
-own. Each has an "applies to every printing" toggle: on, the change is shared by
-all printings of the card; off, it affects only the printing being edited. For
-legality, a card with nothing stored is **legal**, so the `default` option
-deletes the row rather than storing a status. `/admin/formats` manages the
-formats themselves — deleting one cascades away its stored statuses, so retiring
-it (`active: false`) is usually what you want.
+Legalities are edited separately because they retain printing-versus-oracle
+scope. The toggle writes an oracle status and clears printing exceptions, or
+writes only the selected printing. No stored row means **legal**, so `default`
+clears the row. Rulings are managed centrally because one ruling can target
+several printings, oracles, or saved rules.
 
-Relationship overrides (`admin-card-relationships-panel.tsx`) use the same
-apply-to-every-printing toggle. On, entries are stored by `oracle_key` so future
-printings inherit them and per-printing exceptions in the group are cleared; off,
-only this printing's exceptions are replaced. `GET /cards/:id/relationships`
-loads both layers so the editor can round-trip; `PUT` **replaces** the active
-scope's list (default `apply_to_all_printings: true`).
+Relationships are oracle-to-oracle edges in exactly three stored kinds:
+`makes_token`, `character`, and `signature`. The editor replaces the oracle's
+whole edge list; there is no printing scope.
 
-Card edits use **JSON merge-patch** semantics: an omitted key is left alone and
-an explicit `null` clears the value. `buildCardPatch` diffs the form against the
-values it was seeded with and sends only changed leaves — never post a whole
-form, or you will overwrite fields another admin just changed. Nested groups
-(`attributes`, `classification`, …) are deep-merged by the RPC, so a partial
-group is safe.
+Oracle and printing edits use **JSON merge-patch** semantics: an omitted key is
+left alone and an explicit `null` clears it. `buildOraclePatch` and
+`buildPrintingPatch` diff each form against its initial values so an editor does
+not overwrite fields another admin changed. Genuine rules differences on one
+printing belong in its delta panel, where the oracle value stays beside every
+override/removal control.
 
 ### Consent (c15t)
 
