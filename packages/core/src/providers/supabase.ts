@@ -141,7 +141,10 @@ interface PrintingRow {
     card_count: number | null;
   } | null;
   artists?: { name: string } | null;
-  printing_deltas?: { printing_id: string }[] | null;
+  // A to-ONE embed, not an array: printing_deltas is keyed on printing_id, so
+  // PostgREST returns the row itself or null. Treating it as an array made
+  // `differs_from_oracle` silently always false.
+  printing_deltas?: { printing_id: string } | null;
 }
 
 // ─── Mappers ──────────────────────────────────────────────────────────────────
@@ -265,7 +268,7 @@ function printingRowToPrinting(row: PrintingRow): Printing {
       cardmarket_id: row.cardmarket_id ?? undefined,
     },
     public_slug: row.public_slug,
-    differs_from_oracle: (row.printing_deltas?.length ?? 0) > 0,
+    differs_from_oracle: row.printing_deltas != null,
     source: row.source ?? "riftcodex",
     updated_at: row.updated_at ?? undefined,
     ingested_at: row.ingested_at ?? undefined,
