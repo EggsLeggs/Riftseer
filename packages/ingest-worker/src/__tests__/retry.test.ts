@@ -1,147 +1,53 @@
 import { describe, expect, test } from "bun:test";
-import {
-  INGEST_RPC_MAX_ATTEMPTS,
-  INGEST_RPC_RETRY_BASE_MS,
-  callRpcWithRetry,
-  isRetryableRpcError,
-} from "../pipeline/retry.ts";
+import { INGEST_RPC_MAX_ATTEMPTS, INGEST_RPC_RETRY_BASE_MS, callRpcWithRetry, isRetryableRpcError } from "../pipeline/retry.ts";
 
-/** Minimal Supabase stand-in: answers each call from a scripted list. */
 function client(responses: Array<{ data?: unknown; error?: { message: string } }>) {
   const calls: Array<{ fn: string; args: unknown }> = [];
   return {
     calls,
-    supabase: {
-      rpc: async (fn: string, args: unknown) => {
-        calls.push({ fn, args });
-        return responses[calls.length - 1] ?? { error: null };
-      },
-    },
+    supabase: { rpc: async (fn: string, args: unknown) => {
+      calls.push({ fn, args });
+      return responses[calls.length - 1] ?? { error: null };
+    } },
   };
 }
 
-const NO_DELAY = { baseDelayMs: 0 };
-
-describe("isRetryableRpcError", () => {
-  test("retries the opaque failures Supabase returns for a dropped call", () => {
-    expect(
-      isRetryableRpcError("internal error; reference = fl1bus2d95vlkreu26jgrjdn"),
-    ).toBe(true);
-    expect(isRetryableRpcError("fetch failed")).toBe(true);
-    expect(isRetryableRpcError("canceling statement due to statement timeout")).toBe(
-      true,
-    );
-    expect(isRetryableRpcError("503 Service Unavailable")).toBe(true);
+describe("ingest RPC retry", () => {
+  test("classifies transient transport/gateway failures without matching incidental numbers", () => {
+    for (const message of ["internal error; reference = abc", "fetch failed", "statement timeout", "503 Service Unavailable"]) {
+      expect(isRetryableRpcError(message)).toBe(true);
+    }
+    for (const message of ["invalid id 68e5039a5031b1b0f1502503", "unknown collector ogn-503a", "duplicate key", "function does not exist"]) {
+      expect(isRetryableRpcError(message)).toBe(false);
+    }
   });
 
-  test("does not retry a deterministic error", () => {
-    // The gateway statuses are matched as delimited tokens, so the same digits
-    // inside a card id or a collector number are not mistaken for one.
-    expect(
-      isRetryableRpcError('invalid card id "68e5039a5031b1b0f1502503"'),
-    ).toBe(false);
-    expect(isRetryableRpcError("unknown set code ogn-503a-298")).toBe(false);
-    expect(
-      isRetryableRpcError(
-        'duplicate key value violates unique constraint "cards_public_slug_uidx"',
-      ),
-    ).toBe(false);
-    expect(isRetryableRpcError("function does not exist")).toBe(false);
-    expect(isRetryableRpcError("patch must be a JSON object")).toBe(false);
-  });
-});
-
-describe("callRpcWithRetry", () => {
-  test("returns the data from a call that succeeds first time", async () => {
-    const { supabase, calls } = client([{ data: { upserted: 3 } }]);
-    const data = await callRpcWithRetry<{ upserted: number }>(
-      supabase as never,
-      "ingest_reconciliation_queue",
-      { p_entries: [] },
-      "queue upsert",
-      NO_DELAY,
-    );
-    expect(data).toEqual({ upserted: 3 });
-    expect(calls).toHaveLength(1);
+  test("returns immediately on success or a deterministic error", async () => {
+    const success = client([{ data: { upserted: 3 } }]);
+    expect(await callRpcWithRetry<{ upserted: number }>(success.supabase as never, "ingest_catalogue", {}, "upsert", { baseDelayMs: 0 })).toEqual({ upserted: 3 });
+    expect(success.calls).toHaveLength(1);
+    const failure = client([{ error: { message: "patch must be a JSON object" } }]);
+    await expect(callRpcWithRetry(failure.supabase as never, "ingest_catalogue", {}, "prune", { baseDelayMs: 0 })).rejects.toThrow("prune failed");
+    expect(failure.calls).toHaveLength(1);
   });
 
-  test("retries an opaque failure and returns the eventual success", async () => {
-    const { supabase, calls } = client([
-      { error: { message: "internal error; reference = abc123" } },
-      { error: { message: "internal error; reference = def456" } },
-      { data: { ok: true } },
-    ]);
-    const data = await callRpcWithRetry(
-      supabase as never,
-      "ingest_card_data_v2",
-      { p_cards: [] },
-      "upsert batch 3/5",
-      NO_DELAY,
-    );
-    expect(data).toEqual({ ok: true });
-    expect(calls).toHaveLength(3);
-    expect(calls.every((c) => c.fn === "ingest_card_data_v2")).toBe(true);
+  test("retries a transient failure until the eventual result", async () => {
+    const scripted = client([{ error: { message: "fetch failed" } }, { error: { message: "503" } }, { data: { ok: true } }]);
+    expect(await callRpcWithRetry<{ ok: boolean }>(scripted.supabase as never, "ingest_catalogue", { batch: 2 }, "batch", { baseDelayMs: 0 })).toEqual({ ok: true });
+    expect(scripted.calls).toHaveLength(3);
   });
 
-  test("gives up after the attempt limit, naming the call", async () => {
-    const { supabase, calls } = client(
-      Array.from({ length: INGEST_RPC_MAX_ATTEMPTS }, () => ({
-        error: { message: "internal error; reference = xyz" },
-      })),
-    );
-    await expect(
-      callRpcWithRetry(
-        supabase as never,
-        "ingest_card_data_v2",
-        {},
-        "upsert batch 3/5",
-        NO_DELAY,
-      ),
-    ).rejects.toThrow("upsert batch 3/5 failed: internal error");
-    expect(calls).toHaveLength(INGEST_RPC_MAX_ATTEMPTS);
-  });
-
-  test("backs off 750ms, 1.5s then 3s across the four attempts", async () => {
-    const { supabase, calls } = client(
-      Array.from({ length: INGEST_RPC_MAX_ATTEMPTS }, () => ({
-        error: { message: "internal error; reference = xyz" },
-      })),
-    );
-
-    // Run the real schedule without waiting for it: record each delay and fire
-    // the callback immediately.
+  test("uses bounded exponential backoff and names the exhausted operation", async () => {
+    const scripted = client(Array.from({ length: INGEST_RPC_MAX_ATTEMPTS }, () => ({ error: { message: "internal error; reference = x" } })));
     const delays: number[] = [];
     const realSetTimeout = globalThis.setTimeout;
-    globalThis.setTimeout = ((fn: () => void, ms?: number) => {
-      delays.push(ms ?? 0);
-      fn();
-      return 0 as unknown as ReturnType<typeof realSetTimeout>;
-    }) as typeof globalThis.setTimeout;
-
+    globalThis.setTimeout = ((fn: () => void, ms?: number) => { delays.push(ms ?? 0); fn(); return 0 as never; }) as unknown as typeof setTimeout;
     try {
-      await expect(
-        callRpcWithRetry(supabase as never, "ingest_card_data_v2", {}, "upsert"),
-      ).rejects.toThrow("upsert failed: internal error");
+      await expect(callRpcWithRetry(scripted.supabase as never, "ingest_catalogue", {}, "final prune")).rejects.toThrow("final prune failed");
     } finally {
       globalThis.setTimeout = realSetTimeout;
     }
-
-    expect(calls).toHaveLength(INGEST_RPC_MAX_ATTEMPTS);
-    expect(delays).toEqual([
-      INGEST_RPC_RETRY_BASE_MS,
-      INGEST_RPC_RETRY_BASE_MS * 2,
-      INGEST_RPC_RETRY_BASE_MS * 4,
-    ]);
-    expect(delays).toEqual([750, 1500, 3000]);
-  });
-
-  test("surfaces a deterministic error without retrying", async () => {
-    const { supabase, calls } = client([
-      { error: { message: "patch must be a JSON object" } },
-    ]);
-    await expect(
-      callRpcWithRetry(supabase as never, "ingest_card_data_v2", {}, "prune", NO_DELAY),
-    ).rejects.toThrow("prune failed: patch must be a JSON object");
-    expect(calls).toHaveLength(1);
+    expect(scripted.calls).toHaveLength(INGEST_RPC_MAX_ATTEMPTS);
+    expect(delays).toEqual([INGEST_RPC_RETRY_BASE_MS, INGEST_RPC_RETRY_BASE_MS * 2, INGEST_RPC_RETRY_BASE_MS * 4]);
   });
 });

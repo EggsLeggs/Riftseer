@@ -1,374 +1,121 @@
 import { describe, expect, test } from "bun:test";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Card, CardMedia } from "@riftseer/types";
-import {
-  buildHostedMediaUrls,
-  buildImageObjectKeys,
-  hasCompleteHostedMedia,
-  hashImageSourceUrl,
-  hostedObjectKeyFromUrl,
-  selectBestImageSource,
-} from "../images/model.ts";
 import {
   enqueueCardImageCatalogJob,
   enqueueCardImageJobs,
-  prepareCardImageJobs,
+  preparePrintingImageJobs,
 } from "../images/catalog.ts";
+import { hashImageSourceUrl, selectBestImageSource } from "../images/model.ts";
+import { hasCompleteCurrentVariantSet } from "../images/processor.ts";
 import {
   CARD_IMAGE_JOB_VERSION,
   isCardImageJob,
   isCardImageVariantJob,
   type CardImageJob,
 } from "../images/types.ts";
-import { hasCompleteCurrentVariantSet } from "../images/processor.ts";
+import type { DurablePrinting } from "../pipeline/durable.ts";
+import { printing } from "./fixtures.ts";
 
-const IMAGE_BASE_URL = "https://img.riftseer.com";
-
-function card(id: string, media: CardMedia): Card {
+const BASE = "https://img.riftseer.com";
+const HASH = "a".repeat(64);
+function durable(overrides: Partial<DurablePrinting> = {}): DurablePrinting {
   return {
-    object: "card",
-    id,
-    name: `Card ${id}`,
-    name_normalized: `card ${id}`,
-    media,
-    is_token: false,
-    source: "riftcodex",
-    all_parts: [],
-    used_by: [],
-    related_champions: [],
-    related_legends: [],
-    related_signatures: [],
-    related_printings: [],
+    id: "p",
+    tcgplayer_id: null,
+    image_source_url: "https://upstream.example/card.png",
+    image_source_hash: HASH,
+    image_source_provider: "riftcodex",
+    image_hosted_at: "2026-08-01T00:00:00Z",
+    locked_fields: [],
+    ...overrides,
   };
 }
 
-function supabaseWithMedia(
-  rows: Array<{ id: string; media: CardMedia }>,
-  onQueriedIds?: (ids: string[]) => void,
-): SupabaseClient {
-  return {
-    from: () => ({
-      select: () => ({
-        in: async (_column: string, ids: string[]) => {
-          onQueriedIds?.(ids);
-          return {
-            data: rows.filter((row) => ids.includes(row.id)),
-            error: null,
-          };
-        },
-      }),
-    }),
-  } as unknown as SupabaseClient;
-}
+describe("image pipeline contracts", () => {
+  test("selects an upstream source but never re-hosts our own CDN", () => {
+    expect(selectBestImageSource(printing("p", { image_source_url: "https://tcgplayer.example/card.png" }), BASE)).toEqual({ url: "https://tcgplayer.example/card.png", provider: "tcgplayer" });
+    expect(selectBestImageSource(printing("p", { image_source_url: `${BASE}/cards/p/normal.webp` }), BASE)).toBeNull();
+  });
 
-describe("image hosting", () => {
-  test("selects the explicit high-quality upstream source", () => {
-    const selected = selectBestImageSource(
-      card("one", {
-        source_url: "https://cdn.riftcodex.com/card-large.png",
-        source_provider: "riftcodex",
-        media_urls: {
-          small: "https://cdn.riftcodex.com/card-small.png",
-          normal: "https://cdn.riftcodex.com/card-normal.png",
-        },
-      }),
-      IMAGE_BASE_URL,
-    );
+  test("hashes the source URL deterministically", async () => {
+    const first = await hashImageSourceUrl("https://upstream.example/card.png");
+    expect(first).toMatch(/^[a-f0-9]{64}$/);
+    expect(await hashImageSourceUrl("https://upstream.example/card.png")).toBe(first);
+    expect(await hashImageSourceUrl("https://upstream.example/other.png")).not.toBe(first);
+  });
 
-    expect(selected).toEqual({
-      url: "https://cdn.riftcodex.com/card-large.png",
-      provider: "riftcodex",
+  test("source_hash guard makes an already-hosted source idempotent", async () => {
+    const incoming = printing("p", {
+      image_source_url: "https://upstream.example/card.png",
+      image_source_provider: "riftcodex",
     });
-  });
-
-  test("builds versioned public URLs over stable R2 object keys", async () => {
-    const sourceHash = await hashImageSourceUrl(
-      "https://cdn.riftcodex.com/card.png",
-    );
-    const keys = buildImageObjectKeys("67f4064886be8495f7165dd7");
-    const urls = buildHostedMediaUrls(
-      IMAGE_BASE_URL,
-      "67f4064886be8495f7165dd7",
-      sourceHash,
-    );
-
-    expect(sourceHash).toMatch(/^[a-f0-9]{64}$/);
-    expect(keys).toEqual({
-      small: "cards/67f4064886be8495f7165dd7/small.webp",
-      normal: "cards/67f4064886be8495f7165dd7/normal.webp",
-      large: "cards/67f4064886be8495f7165dd7/large.webp",
-      original: "cards/67f4064886be8495f7165dd7/original",
-    });
-    expect(urls.normal).toBe(
-      `${IMAGE_BASE_URL}/${keys.normal}?v=${sourceHash.slice(0, 16)}`,
-    );
-    expect(
-      hasCompleteHostedMedia({ media_urls: urls }, IMAGE_BASE_URL),
-    ).toBe(true);
-  });
-
-  test("maps a CDN URL back to the R2 object key for admin uploads", () => {
-    expect(
-      hostedObjectKeyFromUrl(
-        "https://img.riftseer.com/cards/e92e0b54068a7e2dc6098647/uploads/abc123",
-        IMAGE_BASE_URL,
-      ),
-    ).toBe("cards/e92e0b54068a7e2dc6098647/uploads/abc123");
-    expect(
-      hostedObjectKeyFromUrl(
-        "https://cdn.riftcodex.com/card.png",
-        IMAGE_BASE_URL,
-      ),
-    ).toBeNull();
-  });
-
-  test("publishes only after every stable variant key has the current source", () => {
-    const currentHash = "a".repeat(64);
-    const staleHash = "b".repeat(64);
-    const current = {
-      customMetadata: { sourceHash: currentHash },
-    };
-
-    expect(
-      hasCompleteCurrentVariantSet([current, current, current], currentHash),
-    ).toBe(true);
-    expect(
-      hasCompleteCurrentVariantSet(
-        [
-          current,
-          { customMetadata: { sourceHash: staleHash } },
-          current,
-        ],
-        currentHash,
-      ),
-    ).toBe(false);
-    expect(
-      hasCompleteCurrentVariantSet([current, current, null], currentHash),
-    ).toBe(false);
-  });
-
-  test("preserves hosted URLs when the source hash is unchanged", async () => {
-    const sourceUrl = "https://cdn.riftcodex.com/card.png";
-    const sourceHash = await hashImageSourceUrl(sourceUrl);
-    const hostedUrls = buildHostedMediaUrls(
-      IMAGE_BASE_URL,
-      "unchanged",
-      sourceHash,
-    );
-    const incoming = card("unchanged", {
-      source_url: sourceUrl,
-      source_provider: "riftcodex",
-      media_urls: { normal: sourceUrl },
-    });
-    const supabase = supabaseWithMedia([
-      {
-        id: "unchanged",
-        media: {
-          source_url: sourceUrl,
-          source_hash: sourceHash,
-          source_provider: "riftcodex",
-          orientation: "portrait",
-          media_urls: hostedUrls,
-        },
-      },
-    ]);
-
-    const prepared = await prepareCardImageJobs(
-      supabase,
+    const sourceHash = await hashImageSourceUrl(incoming.image_source_url!);
+    const result = await preparePrintingImageJobs(
       [incoming],
-      IMAGE_BASE_URL,
+      new Map([["p", durable({ image_source_hash: sourceHash })]]),
+      BASE,
     );
-
-    expect(prepared.jobs).toHaveLength(0);
-    expect(prepared.reused).toBe(1);
-    expect(incoming.media?.media_urls).toEqual(hostedUrls);
-    expect(incoming.media?.source_hash).toBe(sourceHash);
+    expect(result).toMatchObject({ jobs: [], reused: 1, adminPreserved: 0 });
+    expect(incoming.image_source_hash).toBe(sourceHash);
   });
 
-  test("queues a new job when an upstream URL changes", async () => {
-    const incoming = card("changed", {
-      source_url: "https://cdn.riftcodex.com/new.png",
-      source_provider: "riftcodex",
-      media_urls: { normal: "https://cdn.riftcodex.com/new.png" },
+  test("a changed source hash queues a new printing job", async () => {
+    const incoming = printing("p", {
+      image_source_url: "https://upstream.example/new.png",
+      image_source_provider: "riftcodex",
     });
-    const supabase = supabaseWithMedia([
-      {
-        id: "changed",
-        media: {
-          source_url: "https://cdn.riftcodex.com/old.png",
-          source_hash: await hashImageSourceUrl(
-            "https://cdn.riftcodex.com/old.png",
-          ),
-          media_urls: buildHostedMediaUrls(
-            IMAGE_BASE_URL,
-            "changed",
-            await hashImageSourceUrl(
-              "https://cdn.riftcodex.com/old.png",
-            ),
-          ),
-        },
-      },
-    ]);
-
-    const prepared = await prepareCardImageJobs(
-      supabase,
-      [incoming],
-      IMAGE_BASE_URL,
-    );
-
-    expect(prepared.jobs).toHaveLength(1);
-    expect(prepared.jobs[0]?.cardId).toBe("changed");
-    expect(prepared.jobs[0]?.sourceUrl).toEndWith("/new.png");
-    expect(incoming.media?.source_hash).toBe(
-      prepared.jobs[0]?.sourceHash,
-    );
-    expect(isCardImageJob(prepared.jobs[0])).toBe(true);
+    const result = await preparePrintingImageJobs([incoming], new Map([["p", durable()]]), BASE);
+    expect(result.jobs).toHaveLength(1);
+    expect(result.jobs[0]).toMatchObject({ version: 2, printingId: "p", sourceUrl: "https://upstream.example/new.png" });
+    expect(result.jobs[0]?.sourceHash).not.toBe(HASH);
   });
 
-  test("reads only the cards in the batch, not the whole catalogue", async () => {
-    const queried: string[][] = [];
-    const supabase = supabaseWithMedia(
-      [
-        { id: "wanted", media: { source_url: "https://cdn.x/wanted.png" } },
-        { id: "other", media: { source_url: "https://cdn.x/other.png" } },
-      ],
-      (ids) => queried.push(ids),
-    );
-
-    await prepareCardImageJobs(
-      supabase,
-      [card("wanted", { source_url: "https://cdn.x/wanted.png" })],
-      IMAGE_BASE_URL,
-    );
-
-    expect(queried).toEqual([["wanted"]]);
-  });
-
-  test("keeps an admin image when the upstream source is not admin", async () => {
-    const adminUrl = "https://cdn.admin/curated.png";
-    const adminHash = await hashImageSourceUrl(adminUrl);
-    const adminMedia: CardMedia = {
-      source_url: adminUrl,
-      source_hash: adminHash,
-      source_provider: "admin",
-      media_urls: buildHostedMediaUrls(IMAGE_BASE_URL, "curated", adminHash),
-    };
-    const incoming = card("curated", {
-      source_url: "https://cdn.riftcodex.com/upstream.png",
-      source_provider: "riftcodex",
+  test("an image lock preserves the admin source and requeues it only while unhosted", async () => {
+    const incoming = printing("p", { image_source_url: "https://upstream.example/new.png" });
+    const previous = durable({
+      image_source_url: `${BASE}/cards/p/uploads/${HASH}`,
+      image_source_provider: "admin",
+      image_hosted_at: null,
+      locked_fields: ["image"],
     });
-    const supabase = supabaseWithMedia([{ id: "curated", media: adminMedia }]);
-
-    const prepared = await prepareCardImageJobs(
-      supabase,
-      [incoming],
-      IMAGE_BASE_URL,
-    );
-
-    // The upsert must not launder the admin image into an upstream one — the
-    // queue consumer's admin guard reads the row this ingest is about to write.
-    expect(prepared.adminPreserved).toBe(1);
-    expect(prepared.jobs).toHaveLength(0);
-    expect(incoming.media).toEqual(adminMedia);
+    const result = await preparePrintingImageJobs([incoming], new Map([["p", previous]]), BASE);
+    expect(result).toMatchObject({ adminPreserved: 1 });
+    expect(incoming.image_source_provider).toBe("admin");
+    expect(result.jobs[0]).toMatchObject({ printingId: "p", sourceProvider: "admin", sourceHash: HASH });
   });
 
-  test("re-queues an admin image that is not hosted yet", async () => {
-    const adminUrl = "https://cdn.admin/pending.png";
-    const adminHash = await hashImageSourceUrl(adminUrl);
-    const incoming = card("pending", {
-      source_url: "https://cdn.riftcodex.com/upstream.png",
-      source_provider: "riftcodex",
-    });
-    const supabase = supabaseWithMedia([
-      {
-        id: "pending",
-        media: {
-          source_url: adminUrl,
-          source_hash: adminHash,
-          source_provider: "admin",
-        },
-      },
-    ]);
-
-    const prepared = await prepareCardImageJobs(
-      supabase,
-      [incoming],
-      IMAGE_BASE_URL,
-    );
-
-    expect(prepared.adminPreserved).toBe(1);
-    expect(prepared.jobs).toEqual([
-      {
-        version: CARD_IMAGE_JOB_VERSION,
-        cardId: "pending",
-        sourceUrl: adminUrl,
-        sourceHash: adminHash,
-        sourceProvider: "admin",
-      },
-    ]);
+  test("publishes only when every variant object carries the current source hash", () => {
+    const current = { customMetadata: { sourceHash: HASH } };
+    expect(hasCompleteCurrentVariantSet([current, current, current], HASH)).toBe(true);
+    expect(hasCompleteCurrentVariantSet([current, { customMetadata: { sourceHash: "b".repeat(64) } }, current], HASH)).toBe(false);
+    expect(hasCompleteCurrentVariantSet([current, current, null], HASH)).toBe(false);
   });
 
-  test("sends queue jobs in Cloudflare's 100-message batches", async () => {
-    const batchSizes: number[] = [];
+  test("batches queue writes at Cloudflare's 100-message limit and starts discovery once", async () => {
+    const batches: unknown[][] = [];
+    const sent: unknown[] = [];
     const queue = {
-      sendBatch: async (messages: Iterable<{ body: unknown }>) => {
-        batchSizes.push(Array.from(messages).length);
-        return {
-          metadata: {
-            metrics: {
-              backlogCount: 0,
-              backlogBytes: 0,
-            },
-          },
-        };
-      },
+      sendBatch: async (batch: unknown[]) => { batches.push(batch); },
+      send: async (job: unknown) => { sent.push(job); },
     } as unknown as Queue;
-    const jobs: CardImageJob[] = Array.from({ length: 205 }, (_, index) => ({
+    const jobs: CardImageJob[] = Array.from({ length: 201 }, (_, index) => ({
       version: CARD_IMAGE_JOB_VERSION,
-      cardId: String(index),
-      sourceUrl: `https://cdn.riftcodex.com/${index}.png`,
-      sourceHash: index.toString(16).padStart(64, "0"),
+      printingId: `p${index}`,
+      sourceUrl: `https://example.com/${index}.png`,
+      sourceHash: HASH,
       sourceProvider: "riftcodex",
     }));
-
     await enqueueCardImageJobs(queue, jobs);
-
-    expect(batchSizes).toEqual([100, 100, 5]);
-  });
-
-  test("starts image discovery with one catalog queue message", async () => {
-    const messages: unknown[] = [];
-    const queue = {
-      send: async (body: unknown) => {
-        messages.push(body);
-      },
-    } as unknown as Queue;
-
     await enqueueCardImageCatalogJob(queue);
-
-    expect(messages).toEqual([{ version: 1, type: "catalog" }]);
+    expect(batches.map((batch) => batch.length)).toEqual([100, 100, 1]);
+    expect(sent).toEqual([{ version: 2, type: "catalog" }]);
   });
 
-  test("validates split-step image variant jobs", () => {
-    expect(
-      isCardImageVariantJob({
-        version: 1,
-        type: "variant",
-        cardId: "card-1",
-        sourceHash: "a".repeat(64),
-        variant: "normal",
-        orientation: "portrait",
-      }),
-    ).toBe(true);
-    expect(
-      isCardImageVariantJob({
-        version: 1,
-        type: "variant",
-        cardId: "card-1",
-        sourceHash: "a".repeat(64),
-        variant: "original",
-        orientation: "portrait",
-      }),
-    ).toBe(false);
+  test("rejects stale v1 jobs and validates v2 source and variant jobs", () => {
+    const source = { version: 2, printingId: "p", sourceUrl: "https://example.com/p.png", sourceHash: HASH, sourceProvider: "riftcodex" };
+    const variant = { version: 2, type: "variant", printingId: "p", sourceHash: HASH, variant: "normal", orientation: "portrait" };
+    expect(isCardImageJob(source)).toBe(true);
+    expect(isCardImageJob({ ...source, version: 1 })).toBe(false);
+    expect(isCardImageVariantJob(variant)).toBe(true);
+    expect(isCardImageVariantJob({ ...variant, sourceHash: "bad" })).toBe(false);
   });
 });

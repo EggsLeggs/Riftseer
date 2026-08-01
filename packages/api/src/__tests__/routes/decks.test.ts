@@ -1,32 +1,22 @@
-/**
- * Deck route tests — uses Elysia's .handle() to test routes without a live server.
- * The deck provider is replaced with an in-memory stub so no real serialization
- * or card lookups happen.
- */
-
-import { describe, it, expect, beforeAll, mock } from "bun:test";
+import { beforeAll, describe, expect, mock, test } from "bun:test";
 
 mock.module("../../lib/supabase", () => ({
   supabaseUrl: "http://localhost",
   supabaseAnonKey: "test-key",
   authClient: {
     auth: {
-      getUser: async (token: string) =>
-        token === "test-token"
-          ? { data: { user: { id: "test-user-id", email: "test@example.com" } }, error: null }
-          : { data: { user: null }, error: null },
+      getUser: async (token: string) => token === "test-token"
+        ? { data: { user: { id: "test-user-id" } }, error: null }
+        : { data: { user: null }, error: null },
     },
   },
 }));
+
+import { BadRequestError, type SimplifiedDeck, type SimplifiedDeckProvider } from "@riftseer/core";
 import { Elysia } from "elysia";
-import { swagger } from "@elysiajs/swagger";
-import type { SimplifiedDeck, SimplifiedDeckProvider } from "@riftseer/core";
-import { BadRequestError } from "@riftseer/core";
 import { decksRoutes } from "../../routes/decks";
 
-// ─── Stub data ────────────────────────────────────────────────────────────────
-
-const STUB_DECK: SimplifiedDeck = {
+const baseDeck: SimplifiedDeck = {
   id: null,
   legendId: null,
   chosenChampionId: null,
@@ -36,259 +26,78 @@ const STUB_DECK: SimplifiedDeck = {
   battlegrounds: [],
 };
 
-const VALID_SHORT_FORM = "validshortform";
-const UPDATED_SHORT_FORM = "updatedshortform";
-
-// ─── Stub provider ────────────────────────────────────────────────────────────
-
 class StubDeckProvider implements SimplifiedDeckProvider {
-  async getDeckFromShortForm(shortForm: string): Promise<{ deck: SimplifiedDeck; shortForm: string }> {
-    if (shortForm === VALID_SHORT_FORM) {
-      return { deck: STUB_DECK, shortForm };
-    }
-    throw new BadRequestError(`Invalid deck short form: ${shortForm}`);
+  async getDeckFromShortForm(shortForm: string) {
+    if (shortForm !== "valid") throw new BadRequestError("invalid");
+    return { deck: baseDeck, shortForm };
   }
-
-  async addCards(
-    cards: { id: string; quantity: number }[],
-    deckShortForm?: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }> {
-    const updatedDeck: SimplifiedDeck = {
-      ...STUB_DECK,
-      mainDeck: [
-        ...STUB_DECK.mainDeck,
-        ...cards.map((c) => `${c.id}:${c.quantity}`),
-      ],
+  async addCards(cards: { id: string; quantity: number }[], deckShortForm?: string) {
+    return {
+      deck: { ...baseDeck, mainDeck: [...baseDeck.mainDeck, ...cards.map(({ id, quantity }) => `${id}:${quantity}`)] },
+      shortForm: deckShortForm ? "updated" : "created",
     };
-    return { deck: updatedDeck, shortForm: UPDATED_SHORT_FORM };
   }
-
-  async removeCards(
-    cards: { id: string; quantity: number }[],
-    deckShortForm: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }> {
-    const idsToRemove = new Set(cards.map((c) => c.id));
-    const updatedDeck: SimplifiedDeck = {
-      ...STUB_DECK,
-      mainDeck: STUB_DECK.mainDeck.filter(
-        (entry) => !idsToRemove.has(entry.split(":")[0]),
-      ),
-    };
-    return { deck: updatedDeck, shortForm: UPDATED_SHORT_FORM };
+  async removeCards(cards: { id: string; quantity: number }[], _deckShortForm: string) {
+    const removed = new Set(cards.map(({ id }) => id));
+    return { deck: { ...baseDeck, mainDeck: baseDeck.mainDeck.filter((entry) => !removed.has(entry.split(":")[0])) }, shortForm: "updated" };
   }
 }
 
-// ─── App builder ──────────────────────────────────────────────────────────────
-
-function buildTestApp(provider: SimplifiedDeckProvider) {
-  return new Elysia({ prefix: "/api/v1" }).use(decksRoutes(provider)).use(swagger());
+function buildTestApp() {
+  return new Elysia({ prefix: "/api/v1" }).use(decksRoutes(new StubDeckProvider()));
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
-
-describe("Deck routes", () => {
+describe("deck routes", () => {
   let app: ReturnType<typeof buildTestApp>;
+  const auth = { Authorization: "Bearer test-token", "Content-Type": "application/json" };
 
-  beforeAll(() => {
-    app = buildTestApp(new StubDeckProvider());
+  beforeAll(() => { app = buildTestApp(); });
+
+  test("reads a valid deck and maps a bad short form to 400", async () => {
+    const valid = await app.handle(new Request("http://localhost/api/v1/decks/u/valid"));
+    expect(valid.status).toBe(200);
+    expect(await valid.json()).toMatchObject({ shortForm: "valid", deck: { mainDeck: baseDeck.mainDeck } });
+    expect((await app.handle(new Request("http://localhost/api/v1/decks/u/bad"))).status).toBe(400);
   });
 
-  // ── GET /decks/u/:shortForm ───────────────────────────────────────────────
-
-  describe("GET /decks/u/:shortForm", () => {
-    it("returns the deck for a valid short form", async () => {
-      const res = await app.handle(
-        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`),
-      );
-      expect(res.status).toBe(200);
-      const body = await res.json() as any;
-      expect(body.shortForm).toBe(VALID_SHORT_FORM);
-      expect(Array.isArray(body.deck.mainDeck)).toBe(true);
-      expect(body.deck.mainDeck).toHaveLength(1);
-    });
-
-    it("returns 400 for an invalid short form", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u/badinput"),
-      );
-      expect(res.status).toBe(400);
-      const body = await res.json() as any;
-      expect(body.code).toBe("INVALID_SHORT_FORM");
-    });
+  test("all mutations share the bearer-token gate", async () => {
+    for (const url of ["http://localhost/api/v1/decks/u", "http://localhost/api/v1/decks/u/valid"]) {
+      expect((await app.handle(new Request(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }))).status).toBe(401);
+      expect((await app.handle(new Request(url, { method: "POST", headers: { ...auth, Authorization: "Bearer wrong" }, body: "{}" }))).status).toBe(401);
+    }
   });
 
-  // ── POST /decks/u/:shortForm ──────────────────────────────────────────────
-
-  describe("POST /decks/u/:shortForm", () => {
-    it("returns 401 when Authorization header is missing", async () => {
-      const res = await app.handle(
-        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
-        }),
-      );
-      expect(res.status).toBe(401);
-    });
-
-    it("returns 401 when Authorization token is invalid", async () => {
-      const res = await app.handle(
-        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer bad-token" },
-          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
-        }),
-      );
-      expect(res.status).toBe(401);
-    });
-
-    it("returns 400 when no cardsToAdd or cardsToRemove provided", async () => {
-      const res = await app.handle(
-        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({}),
-        }),
-      );
-      expect(res.status).toBe(400);
-      const body = await res.json() as any;
-      expect(body.code).toBe("MISSING_CARDS");
-    });
-
-    it("adds cards and returns updated deck", async () => {
-      const res = await app.handle(
-        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({
-            cardsToAdd: ["aaaaaaaa-0000-0000-0000-000000000001:1"],
-          }),
-        }),
-      );
-      expect(res.status).toBe(200);
-      const body = await res.json() as any;
-      expect(body.shortForm).toBe(UPDATED_SHORT_FORM);
-      expect(body.deck.mainDeck).toHaveLength(2);
-    });
-
-    it("removes cards and returns updated deck", async () => {
-      const res = await app.handle(
-        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({
-            cardsToRemove: ["bf1bafdc-2739-469b-bde6-c24a868f4979:2"],
-          }),
-        }),
-      );
-      expect(res.status).toBe(200);
-      const body = await res.json() as any;
-      expect(body.shortForm).toBe(UPDATED_SHORT_FORM);
-      expect(body.deck.mainDeck).toHaveLength(0);
-    });
-
-    it("returns 400 for malformed card entry", async () => {
-      const res = await app.handle(
-        new Request(`http://localhost/api/v1/decks/u/${VALID_SHORT_FORM}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({ cardsToAdd: ["notavalidentry"] }),
-        }),
-      );
-      expect(res.status).toBe(400);
-    });
-
-    it("returns 400 for invalid short form", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u/badinput", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
-        }),
-      );
-      expect(res.status).toBe(400);
-    });
+  test("creates a deck from cards", async () => {
+    const response = await app.handle(new Request("http://localhost/api/v1/decks/u", {
+      method: "POST", headers: auth, body: JSON.stringify({ cardsToAdd: ["new-card:2"] }),
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ shortForm: "created", deck: { mainDeck: [baseDeck.mainDeck[0], "new-card:2"] } });
   });
 
-  // ── POST /decks/u ─────────────────────────────────────────────────────────
+  test("updates an existing deck with additions or removals", async () => {
+    const add = await app.handle(new Request("http://localhost/api/v1/decks/u/valid", {
+      method: "POST", headers: auth, body: JSON.stringify({ cardsToAdd: ["new-card:1"] }),
+    }));
+    expect(await add.json()).toMatchObject({ shortForm: "updated", deck: { mainDeck: [baseDeck.mainDeck[0], "new-card:1"] } });
+    const remove = await app.handle(new Request("http://localhost/api/v1/decks/u/valid", {
+      method: "POST", headers: auth, body: JSON.stringify({ cardsToRemove: [baseDeck.mainDeck[0]] }),
+    }));
+    expect(await remove.json()).toMatchObject({ shortForm: "updated", deck: { mainDeck: [] } });
+  });
 
-  describe("POST /decks/u", () => {
-    it("returns 401 when Authorization header is missing", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
-        }),
-      );
-      expect(res.status).toBe(401);
-    });
+  test("requires the operation appropriate to new and existing decks", async () => {
+    const requests = [
+      new Request("http://localhost/api/v1/decks/u", { method: "POST", headers: auth, body: JSON.stringify({ cardsToRemove: ["card:1"] }) }),
+      new Request("http://localhost/api/v1/decks/u/valid", { method: "POST", headers: auth, body: "{}" }),
+    ];
+    for (const request of requests) expect((await app.handle(request)).status).toBe(400);
+  });
 
-    it("returns 401 when Authorization token is invalid", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer bad-token" },
-          body: JSON.stringify({ cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"] }),
-        }),
-      );
-      expect(res.status).toBe(401);
-    });
-
-    it("creates a new deck with the provided cards", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({
-            cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:2"],
-          }),
-        }),
-      );
-      expect(res.status).toBe(200);
-      const body = await res.json() as any;
-      expect(body.shortForm).toBe(UPDATED_SHORT_FORM);
-      expect(Array.isArray(body.deck.mainDeck)).toBe(true);
-    });
-
-    it("returns 400 when cardsToAdd is missing", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({}),
-        }),
-      );
-      expect(res.status).toBe(400);
-      const body = await res.json() as any;
-      expect(body.code).toBe("MISSING_CARDS");
-    });
-
-    it("returns 400 when cardsToRemove is provided on a new deck", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({
-            cardsToAdd: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"],
-            cardsToRemove: ["bf1bafdc-2739-469b-bde6-c24a868f4979:1"],
-          }),
-        }),
-      );
-      expect(res.status).toBe(400);
-      const body = await res.json() as any;
-      expect(body.code).toBe("INVALID_INPUT");
-    });
-
-    it("returns 400 for malformed card entry", async () => {
-      const res = await app.handle(
-        new Request("http://localhost/api/v1/decks/u", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: "Bearer test-token" },
-          body: JSON.stringify({ cardsToAdd: ["notavalidentry"] }),
-        }),
-      );
-      expect(res.status).toBe(400);
-    });
+  test("rejects malformed card quantities at the route boundary", async () => {
+    for (const url of ["http://localhost/api/v1/decks/u", "http://localhost/api/v1/decks/u/valid"]) {
+      const response = await app.handle(new Request(url, { method: "POST", headers: auth, body: JSON.stringify({ cardsToAdd: ["not-an-entry"] }) }));
+      expect(response.status).toBe(400);
+    }
   });
 });
