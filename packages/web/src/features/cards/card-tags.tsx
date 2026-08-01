@@ -47,7 +47,7 @@ export function CardTags({
       {tags.map((tag) => {
         const badge = (
           <span className="card-tag">
-            <span className="card-keyword card-keyword--tag !mx-0">
+            <span className="card-keyword card-keyword--tag mx-0!">
               <span className="card-keyword-label">{tag}</span>
             </span>
           </span>

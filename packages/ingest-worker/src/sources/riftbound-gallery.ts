@@ -191,6 +191,15 @@ export async function fetchGalleryCards(
 
     const totalPages = body.metadata?.totalPages ?? 1;
     if (items.length === 0 || page + 1 >= totalPages) break;
+
+    // A truncated gallery is worse than no gallery: every unfetched printing
+    // would read as equipment-less and its review entries would be pruned as
+    // "no longer reported". Fail so the caller skips the whole step instead.
+    if (page + 1 >= MAX_PAGES) {
+      throw new Error(
+        `gallery pagination exceeded ${MAX_PAGES} pages (totalPages=${totalPages})`,
+      );
+    }
   }
 
   logger.info("Fetched official gallery cards", { count: all.length });

@@ -54,6 +54,7 @@
 .card-keyword--tag {
   --keyword-bg: #0a0a0a;
   --keyword-fg: #fff;
+
   font-size: 1em;
 }
 

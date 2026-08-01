@@ -1,5 +1,5 @@
 import type { Card } from "@riftseer/types";
-import { cardTypeLine } from "@/features/cards/format";
+import { EMPTY_VALUE, cardTypeLine } from "@/features/cards/format";
 
 /**
  * Fields the alt-text suggestion reads. Kept as a plain shape so the editor can
@@ -31,7 +31,7 @@ export function suggestCardAltText(source: AltTextSource): string {
   const parts: string[] = [name];
 
   const typeLine = (source.typeLine ?? source.type)?.trim();
-  if (typeLine && typeLine !== "—") {
+  if (typeLine && typeLine !== EMPTY_VALUE) {
     parts.push(typeLine);
   }
 

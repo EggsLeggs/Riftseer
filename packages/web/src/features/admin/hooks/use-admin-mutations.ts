@@ -46,8 +46,14 @@ import type {
   AdminSetPatch,
 } from "../types";
 
+/**
+ * Prefix, not a full key: an oracle-scoped save changes every printing in the
+ * group, so invalidation is whole-prefix rather than per card.
+ */
+export const ADMIN_CARD_RELATIONSHIPS_KEY = ["admin", "card-relationships"] as const;
+
 export const adminCardRelationshipsQueryKey = (cardId: string) =>
-  ["admin", "card-relationships", cardId] as const;
+  [...ADMIN_CARD_RELATIONSHIPS_KEY, cardId] as const;
 
 /**
  * Admin server actions resolve with `{ ok: false }` instead of throwing, so
@@ -143,7 +149,7 @@ export function useCardMutations() {
     >(setRelationshipsAction, "Relationships saved", () => {
       invalidateCards();
       void queryClient.invalidateQueries({
-        queryKey: ["admin", "card-relationships"],
+        queryKey: ADMIN_CARD_RELATIONSHIPS_KEY,
       });
     }),
 

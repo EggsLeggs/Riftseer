@@ -876,11 +876,15 @@ function parseReconciliationEntry(
         ? row.status
         : "pending",
     payload: {
-      // Only the half its source populates: a gallery entry has no TCGPlayer
-      // product, and synthesising an empty one would render as a broken link.
-      ...(source === "tcgplayer"
+      // Only the half its source populates, and only when the row actually
+      // carries it: a gallery entry has no TCGPlayer product, and synthesising
+      // an empty one would render as a broken link.
+      ...(source === "tcgplayer" && isRecord(payload.product)
         ? { product: parseReconciliationProduct(payload.product) }
-        : { gallery: parseReconciliationGalleryCard(payload.gallery) }),
+        : {}),
+      ...(source === "gallery" && isRecord(payload.gallery)
+        ? { gallery: parseReconciliationGalleryCard(payload.gallery) }
+        : {}),
       ...(field ? { field } : {}),
       current_value:
         typeof payload.current_value === "string" ? payload.current_value : null,

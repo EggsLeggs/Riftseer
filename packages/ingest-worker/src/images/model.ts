@@ -68,7 +68,10 @@ export function hostedObjectKeyFromUrl(
     }
     path = path.replace(/^\/+/, "");
     if (!path.startsWith("cards/")) return null;
-    return decodeURIComponent(path);
+    // Re-check after decoding: a percent-encoded path can decode to a key
+    // outside the prefix, and the decoded form is what R2 is asked for.
+    const key = decodeURIComponent(path);
+    return key.startsWith("cards/") ? key : null;
   } catch {
     return null;
   }

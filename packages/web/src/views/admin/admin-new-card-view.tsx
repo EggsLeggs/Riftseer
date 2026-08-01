@@ -72,6 +72,10 @@ export function AdminNewCardView() {
   const [prefill, setPrefill] = React.useState<GalleryPrefill>(EMPTY_PREFILL);
   const [fromReview, setFromReview] = React.useState(false);
   const [uploadArt, setUploadArt] = React.useState(true);
+  // Spans the whole create → import art → confirm sequence. The mutation flags
+  // alone go idle during the awaited image import, which would re-enable the
+  // submit button mid-flow and let a second create start.
+  const [submitting, setSubmitting] = React.useState(false);
 
   React.useEffect(() => {
     const draft = readReviewCreateDraft(reviewEntryId);
@@ -127,6 +131,15 @@ export function AdminNewCardView() {
         : null,
     );
 
+    setSubmitting(true);
+    try {
+      await runCreate(id, definition);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function runCreate(id: string, definition: AdminCardDefinition) {
     try {
       await create.mutateAsync([id, definition]);
     } catch {
@@ -170,7 +183,7 @@ export function AdminNewCardView() {
     router.push(`/admin/cards/${encodeURIComponent(id)}/edit`);
   }
 
-  const pending = create.isPending || confirm.isPending;
+  const pending = submitting || create.isPending || confirm.isPending;
   const hasSuggestions =
     fromReview &&
     Boolean(

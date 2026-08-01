@@ -34,9 +34,9 @@ export function isRetryableRpcError(message: string): boolean {
     text.includes("timeout") ||
     text.includes("timed out") ||
     text.includes("connection") ||
-    text.includes("502") ||
-    text.includes("503") ||
-    text.includes("504")
+    // Delimited, so a gateway status is retried but the same digits inside a
+    // card id or a quoted payload excerpt are not.
+    /(?<![\w.])(?:502|503|504)(?![\w.])/.test(text)
   );
 }
 

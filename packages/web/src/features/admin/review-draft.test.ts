@@ -83,6 +83,30 @@ describe("galleryToPrefill", () => {
       image_url: null,
     });
     expect(signature.signature).toBe(true);
+
+    const special = galleryToPrefill({
+      riftbound_id: "ven-sp3-006",
+      name: "Collected",
+      public_code: "VEN-SP3",
+      set_code: "VEN",
+      collector_number: "SP3",
+      rarity: null,
+      type: null,
+      image_url: null,
+    });
+    expect(special.specialCollection).toBe(true);
+
+    const alternate = galleryToPrefill({
+      riftbound_id: "unl-116a-219",
+      name: "Alternate",
+      public_code: "UNL-116a",
+      set_code: "UNL",
+      collector_number: "116a",
+      rarity: null,
+      type: null,
+      image_url: null,
+    });
+    expect(alternate.alternateArt).toBe(true);
   });
 });
 

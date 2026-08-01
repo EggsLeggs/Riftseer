@@ -20,7 +20,12 @@ export function stashReviewCreateDraft(entry: AdminReviewEntry): void {
   const gallery = entry.payload.gallery;
   if (!gallery || typeof window === "undefined") return;
   const draft: ReviewCreateDraft = { entryId: entry.id, gallery };
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // Quota exhausted, or storage blocked by the browser. The prefill is a
+    // convenience — navigating to an empty create form still works.
+  }
 }
 
 export function readReviewCreateDraft(

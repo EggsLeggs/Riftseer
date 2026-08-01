@@ -132,7 +132,10 @@ disabled on those rows; `CONFIRMABLE_FIELDS` in `admin-review-view.tsx` mirrors
 `isAdminSession()` itself rather than leaning on the API's allowlist: it
 performs an outbound `fetch()` before the API is ever called, so an ungated
 action would let anyone point this Worker at arbitrary URLs. Any future action
-with a side effect of its own needs the same treatment.
+with a side effect of its own needs the same treatment. Beyond the auth gate the
+fetch is confined to https on Riot's asset CDNs (`IMPORT_HOST_ALLOWLIST`),
+follows redirects by hand so every hop is re-checked against that list, and
+streams the body under the 20 MB cap instead of buffering whatever arrives.
 
 `/admin/audit` reads `GET /api/v1/admin/audit-log`, the one admin endpoint that
 is not a mutation. Its `action` filter list is hard-coded from the RPC names in

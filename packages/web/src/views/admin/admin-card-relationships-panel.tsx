@@ -181,9 +181,22 @@ export function AdminCardRelationshipsPanel({ card }: { card: Card }) {
       </div>
 
       {overrides.isError ? (
-        <p className="text-destructive mb-4 text-sm">
-          Couldn&apos;t load relationship overrides. Please try again.
-        </p>
+        // The query does not retry, and saving stays disabled until the drafts
+        // are seeded, so without this the panel is stuck until a page reload.
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <p className="text-destructive text-sm">
+            Couldn&apos;t load relationship overrides. Please try again.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void overrides.refetch()}
+            disabled={overrides.isFetching}
+          >
+            {overrides.isFetching ? "Retrying…" : "Retry"}
+          </Button>
+        </div>
       ) : overrides.isPending || seededFor !== card.id ? (
         <p className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />

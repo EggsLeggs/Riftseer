@@ -533,6 +533,7 @@ export function enrichCards(
     enriched,
     matchedById: byIdCount,
     matchedByCollectorName: byCollectorNameCount,
+    matchedByCollector: byCollectorCount,
     matchedByName: byNameCount,
     contested,
     cards: cards.length,

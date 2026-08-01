@@ -2,8 +2,10 @@
  * Magic-byte sniff matching the API's `detectAdminImageType`, so a File we
  * build from a remote fetch carries a `type` the upload endpoint will accept.
  */
-export function detectImageContentType(bytes: ArrayBuffer): string | null {
-  const value = new Uint8Array(bytes);
+export function detectImageContentType(
+  bytes: ArrayBuffer | Uint8Array,
+): string | null {
+  const value = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
   if (
     value.length >= 8 &&
     value[0] === 0x89 &&

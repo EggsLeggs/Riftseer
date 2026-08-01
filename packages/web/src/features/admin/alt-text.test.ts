@@ -36,17 +36,21 @@ describe("suggestCardAltText", () => {
     ).toBe("Sett, Brawler · Champion Unit · OGN #164. Art by Kudos Productions");
   });
 
-  test("mentions alternate art and signature printings", () => {
+  test("mentions every variant flag, in the order they are listed", () => {
     expect(
       suggestCardAltText({
         name: "Ahri",
         type: "Unit",
         signature: true,
         alternateArt: true,
+        overnumbered: true,
+        specialCollection: true,
         setCode: "OGN",
         collectorNumber: "305",
       }),
-    ).toBe("Ahri · Unit · signature, alternate art · OGN #305");
+    ).toBe(
+      "Ahri · Unit · signature, alternate art, overnumbered, special collection · OGN #305",
+    );
   });
 
   test("returns empty when the card has no name", () => {

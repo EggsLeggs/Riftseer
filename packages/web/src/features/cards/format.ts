@@ -1,6 +1,13 @@
 import type { Card, CardPriceEntry } from "@riftseer/types";
 
 /**
+ * What these formatters render when there is nothing to show. Exported so code
+ * that filters the placeholder back out (alt text, for one) does not re-spell
+ * the character.
+ */
+export const EMPTY_VALUE = "—";
+
+/**
  * TCGPlayer may expose a card only under the Foil subtype. Prefer the regular
  * printing when both exist, but do not hide a valid foil-only USD price.
  */
@@ -11,12 +18,12 @@ export function tcgplayerUsdPrice(
 }
 
 export function formatUsd(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || Number.isNaN(n)) return EMPTY_VALUE;
   return `$${n.toFixed(2)}`;
 }
 
 export function formatEur(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+  if (n == null || Number.isNaN(n)) return EMPTY_VALUE;
   return `€${n.toFixed(2)}`;
 }
 
@@ -34,7 +41,7 @@ export function cardTypeLine(card: Card): string {
   if (typeKey === "legend") return type!;
   if (type && special) return `${special} ${type}`;
   if (typeKey === "token") return "Token Unit";
-  return type ?? special ?? "—";
+  return type ?? special ?? EMPTY_VALUE;
 }
 
 /**

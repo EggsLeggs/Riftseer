@@ -6,6 +6,7 @@ import {
 } from "../pipeline/gallery.ts";
 import { buildGalleryReconciliationEntries } from "../pipeline/reconcile.ts";
 import {
+  fetchGalleryCards,
   galleryEquipment,
   normalizeGalleryId,
   type RawGalleryCard,
@@ -297,5 +298,52 @@ describe("gallery reconciliation", () => {
     });
 
     expect(buildGalleryReconciliationEntries([poppy], index)).toEqual([]);
+  });
+});
+
+describe("fetchGalleryCards", () => {
+  /** Serves `pages` pages of one card each, reporting `totalPages`. */
+  function stubFetch(totalPages: number) {
+    let calls = 0;
+    const real = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      calls++;
+      return new Response(
+        JSON.stringify({
+          data: [{ id: `card-${calls}`, name: `Card ${calls}` }],
+          metadata: { totalPages },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }) as unknown as typeof globalThis.fetch;
+    return { restore: () => void (globalThis.fetch = real), pages: () => calls };
+  }
+
+  const config = {
+    baseUrl: "https://content.publishing.riotgames.com",
+    timeoutMs: 1000,
+  };
+
+  test("stops once every reported page has been fetched", async () => {
+    const stub = stubFetch(2);
+    try {
+      await expect(fetchGalleryCards(config)).resolves.toHaveLength(2);
+      expect(stub.pages()).toBe(2);
+    } finally {
+      stub.restore();
+    }
+  });
+
+  // A truncated gallery would read as a complete one: equipment would go
+  // missing and pending review entries would be pruned as no longer reported.
+  test("throws rather than return a partial gallery at the page cap", async () => {
+    const stub = stubFetch(1000);
+    try {
+      await expect(fetchGalleryCards(config)).rejects.toThrow(
+        "gallery pagination exceeded",
+      );
+    } finally {
+      stub.restore();
+    }
   });
 });
