@@ -16,7 +16,7 @@
     "dev:web": "cd packages/web && bun run --env-file ../../.env dev",
     "build:web": "cd packages/web && bun run build",
     "preview:web": "cd packages/web && bun run --env-file ../../.env preview",
-    "test": "bun test packages/types/src/__tests__ packages/core/src/__tests__ packages/api/src/__tests__ packages/ingest-worker/src/__tests__",
+    "test": "bun test packages/types/src/__tests__ packages/core/src/__tests__ packages/api/src/__tests__ packages/ingest-worker/src/__tests__ packages/web/src packages/discord-bot/src",
     "test:core": "bun test packages/core/src/__tests__",
     "test:api": "bun test packages/api/src/__tests__",
     "typecheck": "./node_modules/.bin/tsc --noEmit -p packages/types/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/core/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/api/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/api/tsconfig.test.json && ./node_modules/.bin/tsc --noEmit -p packages/ingest-worker/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/ingest-worker/tsconfig.test.json",

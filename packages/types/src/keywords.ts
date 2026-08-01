@@ -140,9 +140,9 @@ export function styleForKeyword(label: string): KeywordStyle {
  * every run. Connectors (`[>]`, `[>>]`) and data junk are filtered by
  * {@link isKeywordTag}.
  *
- * This is the sole TypeScript derivation. A SQL mirror
- * (`card_keywords_from_text()`) exists only to backfill the column for cards
- * ingested before it existed — keep the two in step.
+ * This is the sole TypeScript derivation outside the database. The write-time
+ * SQL trigger uses `card_keywords_from_text()`; shared conformance cases execute
+ * both implementations against the same awkward inputs.
  */
 export function extractCardKeywords(
   text: string | null | undefined,

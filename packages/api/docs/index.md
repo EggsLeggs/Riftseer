@@ -22,15 +22,16 @@ also require the token's user UUID to be listed in `ADMIN_USER_IDS`.
 
 ## Request format
 
-All requests use standard HTTP. Query parameters are plain strings. Endpoints that accept a request body — `POST /api/v1/cards/resolve`, the deck endpoints, and the auth endpoints (`POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/forgot-password`, `POST /api/v1/auth/reset-password`) — accept `Content-Type: application/json`.
-
-No special headers are required beyond `Content-Type: application/json` on POST requests with a body. Protected routes additionally require `Authorization: Bearer <access_token>`.
+Requests with JSON bodies use `Content-Type: application/json`. Admin image
+uploads use `multipart/form-data`. Protected routes additionally require
+`Authorization: Bearer <access_token>`.
 
 ---
 
 ## Response format
 
-All successful responses return JSON. List responses use a consistent envelope:
+Successful resource responses return JSON. Collection endpoints wrap their
+results with count or pagination metadata, for example:
 
 ```json
 {
@@ -39,18 +40,20 @@ All successful responses return JSON. List responses use a consistent envelope:
 }
 ```
 
-Single-resource responses return the object directly (no envelope):
+Single-resource responses return the object directly:
 
 ```json
 {
-  "object": "card",
+  "object": "oracle",
   "id": "...",
   "name": "Sun Disc",
   ...
 }
 ```
 
-All card objects carry `"object": "card"` and related card references carry `"object": "related_card"`.
+Rules objects carry `"object": "oracle"`, physical editions carry
+`"object": "printing"`, and relationship references carry
+`"object": "oracle_ref"`.
 
 ---
 
@@ -108,22 +111,22 @@ Route modules live in `packages/api/src/routes/`:
 | Module | Routes |
 | --- | --- |
 | `meta.ts` | `/health`, `/meta` |
-| `cards.ts` | `/cards`, `/cards/random`, `/cards/:id`, `/cards/:id/text`, `/cards/resolve` |
+| `cards.ts` | `/cards`, `/cards/random`, `/cards/detail`, `/cards/:id`, `/cards/:id/text`, `/cards/by-slug/*`, `/cards/resolve`, `/printings/:id` |
 | `sets.ts` | `/sets` |
 | `formats.ts` | `/formats` |
 | `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
 | `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/me`, `/auth/reset-password` |
-| `admin.ts` | `/admin/cards/*`, `/admin/sets/*`, `/admin/formats/*` |
+| `admin.ts` | `/admin/oracles/*`, `/admin/printings/*`, `/admin/sets/*`, `/admin/formats/*`, `/admin/rulings/*`, `/admin/reconciliation/*` |
 
 ---
 
 ## Provider pattern
 
 Public card reads go through the `CardDataProvider` interface from `@riftseer/core`.
-The active implementation is `SupabaseCardProvider`, selected at startup via the
-`CARD_PROVIDER` env var. Admin mutations use the service-role-backed admin
-repository so each RPC can persist an override, update the live row, and append an
-audit event atomically.
+The active implementation is `SupabaseCardProvider`, selected through the
+`CARD_PROVIDER` binding. Admin mutations use a service-role-backed repository so
+each RPC can update the live row, lock the changed fields, and append an audit
+event atomically.
 
 This means the API has no opinion on where data comes from — swapping the provider requires no changes to route code.
 
@@ -135,7 +138,8 @@ This means the API has no opinion on where data comes from — swapping the prov
 2. Annotate it with Elysia schema types (`.query()`, `.body()`, `.response()`) and a `detail` block (used for Eden Treaty types and static spec generation)
 3. Write a test in `src/__tests__/routes/`
 4. Update the relevant doc page in `packages/api/docs/`
-5. If the endpoint stores or exposes new personal data, update `PrivacyPage.tsx`
+5. If the endpoint stores or exposes new personal data, review
+   `packages/web/src/views/privacy-view.tsx`
 
 ---
 
@@ -147,9 +151,12 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `GET` | `/api/v1/meta` | [Meta](./meta.md) |
 | `GET` | `/api/v1/cards` | [Search](./search.md) |
 | `GET` | `/api/v1/cards/random` | [Cards](./cards.md) |
+| `GET` | `/api/v1/cards/detail` | [Cards](./cards.md) |
 | `GET` | `/api/v1/cards/:id` | [Cards](./cards.md) |
 | `GET` | `/api/v1/cards/:id/text` | [Cards](./cards.md) |
+| `GET` | `/api/v1/cards/by-slug/*` | [Cards](./cards.md) |
 | `POST` | `/api/v1/cards/resolve` | [Cards](./cards.md) |
+| `GET` | `/api/v1/printings/:id` | [Cards](./cards.md) |
 | `GET` | `/api/v1/sets` | [Sets](./sets.md) |
 | `GET` | `/api/v1/formats` | [Formats](./formats.md) |
 | `GET` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
@@ -162,19 +169,27 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `POST` | `/api/v1/auth/forgot-password` | [Auth](./auth.md) |
 | `GET` | `/api/v1/auth/me` | [Auth](./auth.md) |
 | `POST` | `/api/v1/auth/reset-password` | [Auth](./auth.md) |
-| `POST` | `/api/v1/admin/cards` | [Admin](./admin.md) |
-| `PATCH` | `/api/v1/admin/cards/:id` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/cards/:id` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/cards/:id/regenerate-slug` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/cards/:id/move` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/cards/:id/relationships` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/cards/:id/image` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/cards/:id/legalities` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/cards/:id/legalities` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/cards/:id/rulings` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/cards/:id/rulings` | [Admin](./admin.md) |
-| `PATCH` | `/api/v1/admin/cards/:id/rulings/:rulingId` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/cards/:id/rulings/:rulingId` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/audit-log` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/reconciliation` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/reconciliation/:id/confirm` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/reconciliation/:id/dismiss` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/oracles` | [Admin](./admin.md) |
+| `PATCH` | `/api/v1/admin/oracles/:id` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/oracles/:id` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/oracles/:id/restore` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/oracles/:id/relationships` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/oracles/:id/relationships` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/printings` | [Admin](./admin.md) |
+| `PATCH` | `/api/v1/admin/printings/:id` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/printings/:id` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/printings/:id/restore` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/printings/:id/regenerate-slug` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/printings/:id/deltas` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/printings/:id/deltas` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/printings/:id/image` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/printings/:id/legalities` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/printings/:id/legalities` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/printings/:id/rulings` | [Admin](./admin.md) |
 | `POST` | `/api/v1/admin/sets` | [Admin](./admin.md) |
 | `PATCH` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |
 | `DELETE` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |
@@ -183,3 +198,8 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `PUT` | `/api/v1/admin/formats/order` | [Admin](./admin.md) |
 | `PATCH` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
 | `DELETE` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
+| `GET` | `/api/v1/admin/rulings` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/rulings/preview` | [Admin](./admin.md) |
+| `POST` | `/api/v1/admin/rulings` | [Admin](./admin.md) |
+| `PATCH` | `/api/v1/admin/rulings/:rulingId` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/rulings/:rulingId` | [Admin](./admin.md) |

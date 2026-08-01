@@ -360,11 +360,9 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         );
       },
       {
-        params: t.Object({
-          "*": t.String({
-            description: "Wildcard slug path — oracle or printing.",
-          }),
-        }),
+        // The path already gives Elysia a string `"*"` param. Re-declaring it
+        // as a TypeBox object makes exact-mirror codegen emit invalid property
+        // access for that non-identifier key and print a diagnostic.
         query: t.Object({
           include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
         }),

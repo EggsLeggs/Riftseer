@@ -11,6 +11,29 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: riftseer
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d riftseer"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgrest:
+        image: postgrest/postgrest:v14.16
+        env:
+          PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/riftseer
+          PGRST_DB_SCHEMA: public
+          PGRST_DB_ANON_ROLE: service_role
+        ports:
+          - 3001:3000
+
     steps:
       - uses: actions/checkout@v4
 
@@ -21,7 +44,16 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Load database test schema and fixture
+        env:
+          RIFTSEER_DATABASE_URL: postgres://postgres:postgres@localhost:55433/riftseer
+        run: bun scripts/database-tests/database.mjs setup
+
       - name: Run tests
+        env:
+          RIFTSEER_DATABASE_TESTS: "1"
+          RIFTSEER_DATABASE_URL: postgres://postgres:postgres@localhost:55433/riftseer
+          RIFTSEER_POSTGREST_URL: http://localhost:3001
         run: bun run test
 
       - name: Typecheck

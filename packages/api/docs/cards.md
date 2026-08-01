@@ -20,7 +20,7 @@ A search or random-card response is normally oracle-shaped and embeds the editio
 | `GET`  | `/api/v1/cards`           | Search or browse oracles and printings — see [Search](./search.md). |
 | `GET`  | `/api/v1/cards/random`    | Random oracle with its preferred printing.                          |
 | `GET`  | `/api/v1/cards/detail`    | Complete oracle page payload, viewed through one printing.          |
-| `GET`  | `/api/v1/cards/:id`       | Oracle by UUID.                                                     |
+| `GET`  | `/api/v1/cards/:id`       | Oracle by UUID, lookup key, or single-segment slug.                 |
 | `GET`  | `/api/v1/cards/:id/text`  | Plain-text oracle summary.                                          |
 | `GET`  | `/api/v1/cards/by-slug/*` | Oracle by oracle slug or printing slug.                             |
 | `POST` | `/api/v1/cards/resolve`   | Batch-resolve names to oracle-plus-printing pairs.                  |
@@ -177,7 +177,8 @@ The endpoint returns 400 unless exactly one lookup parameter is supplied, 404 wh
 
 ## GET /api/v1/cards/:id
 
-Fetches one oracle by its UUID. This endpoint does not accept a printing ID.
+Fetches one oracle by UUID, `oracle_key`, or single-segment oracle slug. This
+endpoint does not accept a printing ID.
 
 | Parameter | Type              | Notes                                                  |
 | --------- | ----------------- | ------------------------------------------------------ |
@@ -185,9 +186,10 @@ Fetches one oracle by its UUID. This endpoint does not accept a printing ID.
 
 ```http
 GET /api/v1/cards/3d8f2da9-9d2b-4a2c-a34d-6f08b54c9571
+GET /api/v1/cards/sun-disc
 ```
 
-Returns 404 when the oracle UUID does not exist.
+Returns 404 when no oracle matches the supplied handle.
 
 ---
 

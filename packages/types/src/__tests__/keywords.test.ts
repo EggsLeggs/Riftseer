@@ -10,6 +10,7 @@ import {
   KEYWORD_TAG_REGEX,
   takeKeywordBadgeCosts,
 } from "../keywords.ts";
+import { KEYWORD_CONFORMANCE_CASES } from "./keyword-conformance-cases.ts";
 
 describe("keywordBaseKey", () => {
   it("lowercases and strips a trailing numeric rank", () => {
@@ -109,28 +110,11 @@ describe("styleForKeyword", () => {
 });
 
 describe("extractCardKeywords", () => {
-  it("returns base keys, deduplicated and sorted", () => {
-    expect(
-      extractCardKeywords("[Deflect 3] [Assault] [Deflect 1] [Accelerate]"),
-    ).toEqual(["accelerate", "assault", "deflect"]);
-  });
-
-  it("ignores arrow connectors and stack markers", () => {
-    expect(extractCardKeywords("[Deathknell][>] [>>] [Hunt]")).toEqual([
-      "deathknell",
-      "hunt",
-    ]);
-  });
-
-  it("ignores data junk that is not a keyword tag", () => {
-    expect(extractCardKeywords("[No Text]")).toEqual([]);
-    expect(extractCardKeywords("[3] [] [   ]")).toEqual([]);
-  });
-
-  it("keeps absorbed costs out of the key", () => {
-    expect(
-      extractCardKeywords("[Empower]:rb_energy_2::rb_rune_fury: draw a card"),
-    ).toEqual(["empower"]);
+  it("matches the shared TypeScript/Postgres conformance cases", () => {
+    expect(KEYWORD_CONFORMANCE_CASES.length).toBeGreaterThan(5);
+    for (const { input, expected } of KEYWORD_CONFORMANCE_CASES) {
+      expect(extractCardKeywords(input)).toEqual(expected);
+    }
   });
 
   it("is stable across repeated calls (no shared regex lastIndex)", () => {

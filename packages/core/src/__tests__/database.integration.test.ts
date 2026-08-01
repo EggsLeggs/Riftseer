@@ -1,10 +1,16 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
+import path from "node:path";
 import { SupabaseCardProvider } from "../providers/supabase.ts";
 
 const RUN_DATABASE_TESTS = process.env.RIFTSEER_DATABASE_TESTS === "1";
 const integration = RUN_DATABASE_TESTS ? describe : describe.skip;
-const RESEED = "/tmp/rsq/reseed.sh";
-const PSQL = "/opt/homebrew/opt/postgresql@17/bin/psql";
+const DATABASE_SCRIPT = path.resolve(
+  import.meta.dirname,
+  "../../../../scripts/database-tests/database.mjs",
+);
+const POSTGREST_URL = new URL(
+  process.env.RIFTSEER_POSTGREST_URL ?? "http://localhost:3001",
+);
 const ACTOR = "00000000-0000-0000-0000-0000000000aa";
 const VAYNE_OGN = "aaa000000000000000000001";
 const VAYNE_VEN = "aaa000000000000000000002";
@@ -12,7 +18,7 @@ const VAYNE_PRM = "aaa000000000000000000003";
 
 async function command(argv: string[]): Promise<string> {
   const process = Bun.spawn(argv, {
-    env: { ...globalThis.process.env, PGPASSWORD: "postgres" },
+    env: globalThis.process.env,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -26,7 +32,7 @@ async function command(argv: string[]): Promise<string> {
 }
 
 async function reseed(): Promise<void> {
-  await command(["bash", RESEED]);
+  await command([process.execPath, DATABASE_SCRIPT, "reseed"]);
 }
 
 async function waitForPostgrest(): Promise<void> {
@@ -41,16 +47,7 @@ async function waitForPostgrest(): Promise<void> {
 }
 
 async function sql(statement: string): Promise<string> {
-  return command([
-    PSQL,
-    "-h", "localhost",
-    "-p", "55433",
-    "-U", "postgres",
-    "-d", "riftseer",
-    "-qAt",
-    "-v", "ON_ERROR_STOP=1",
-    "-c", statement,
-  ]);
+  return command([process.execPath, DATABASE_SCRIPT, "query", statement]);
 }
 
 async function sqlJson<T>(statement: string): Promise<T> {
@@ -66,9 +63,9 @@ integration("oracle/printing database contracts", () => {
       port: 54321,
       async fetch(request) {
         const url = new URL(request.url);
-        url.protocol = "http:";
-        url.host = "localhost:3001";
-        url.pathname = url.pathname.replace(/^\/rest\/v1/, "");
+        url.protocol = POSTGREST_URL.protocol;
+        url.host = POSTGREST_URL.host;
+        url.pathname = `${POSTGREST_URL.pathname.replace(/\/$/, "")}${url.pathname.replace(/^\/rest\/v1/, "")}`;
         const headers = new Headers(request.headers);
         headers.delete("host");
         headers.delete("apikey");
