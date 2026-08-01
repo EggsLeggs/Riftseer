@@ -13,7 +13,7 @@ Because it has no runtime dependencies it can safely be imported from anywhere �
 |------|---------|
 | `src/card.ts` | Canonical `Card`, all sub-interfaces, `CardRequest`, `ResolvedCard`, `CardSearchOptions`, `SimplifiedDeck` |
 | `src/card-detail.ts` | `CardDetail` and `CardPrintingSummary` — the aggregate payload behind `GET /api/v1/cards/detail` |
-| `src/card-image.ts` | `cardImageUrl()` / `cardImageDownloadUrl()` — pick CDN size variants (`small` 200 / `normal` 400 / `large` 1000) when media is on `img.riftseer.com`; unmigrated upstream art keeps the legacy URL chain |
+| `src/card-image.ts` | The single derivation of hosted card-art URLs, shared by the ingest worker that writes the R2 objects and the API that hands out the links. Hosted URLs are computed from the printing id, never stored: `printingImageUrls()` builds the set, `printingImageObjectKeys()` the R2 keys, `printingImageUrl()` picks a size for display. The `?v=<hash>` suffix lets a corrected image bypass immutable caches without changing the object key |
 | `src/card-text.ts` | `normalizeCardTextLayout()` — paragraph splitting for rules text, shared by every renderer |
 | `src/keywords.ts` | `[Keyword]` badge helpers — `KEYWORD_STYLES`, `styleForKeyword()`, `isKeywordTag()` — plus `extractCardKeywords()`, the searchable base-key list mirrored by `card_keywords_from_text()` in SQL |
 | `src/oracle.ts` | `oracleKeyForName()` — the base-name key that groups printings for rulings and legalities |

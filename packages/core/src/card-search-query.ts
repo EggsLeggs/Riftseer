@@ -29,11 +29,11 @@
  * `d:fury,order` is `(d:fury or d:order)` — quote the value to opt out.
  *
  * The AST is the contract between the HTTP layer (which parses) and the
- * provider (which executes). Free-text leaves go through Postgres FTS;
- * exact-name leaves use the `name_normalized` index; every other leaf is
- * whitelisted and rendered to SQL by `card_search_ast_to_sql` in Postgres. See
- * `requiresRpc` for the routing gate that decides between PostgREST direct
- * paths and the RPC.
+ * provider (which executes). There is exactly ONE execution path: every leaf is
+ * whitelisted and rendered to SQL by `card_search_ast_to_sql`, which runs
+ * against the `resolved_printings` projection. The flat card model needed three
+ * paths and a routing gate to choose between them; a single flat relation with
+ * the delta layer already applied does not.
  *
  * The same parser backs **ruling rules**: an admin-authored query string is
  * parsed here, stored as its AST, and re-evaluated by the same RPC to decide
@@ -769,61 +769,6 @@ export function parseCardSearchQuery(raw: string): ParsedCardSearch {
   const ast = parseTokens(tokens);
   if (ast) validateCardSearchAst(ast);
   return { ast };
-}
-
-// ─── Routing helpers (used by the Supabase provider) ────────────────────────
-
-/** True when the AST is a single `exact_name` leaf — eligible for the fast normalized-name lookup. */
-export function isExactNameOnly(
-  ast: CardSearchAst,
-): ast is { op: "exact_name"; value: string } {
-  return ast.op === "exact_name";
-}
-
-/** True when the AST is a single `text` leaf — eligible for the existing exact-then-FTS legacy path. */
-export function isLegacyTextOnly(
-  ast: CardSearchAst,
-): ast is { op: "text"; value: string } {
-  return ast.op === "text";
-}
-
-/**
- * Leaf ops with no PostgREST equivalent — array containment against a computed
- * column, a domain-count comparison and a three-layer legality resolution all
- * need real SQL, so any AST mentioning one goes to the RPC.
- */
-function isRpcOnlyLeaf(ast: CardSearchAst): boolean {
-  return ast.op === "numeric" || ast.op === "legality" || ast.op === "flag";
-}
-
-/**
- * True when the AST cannot be expressed with simple PostgREST filters and must
- * be evaluated by the RPC: any OR, any RPC-only leaf, any nested AND/OR/NOT
- * inside a NOT, or any non-leaf-or-NOT-leaf child of an AND.
- */
-export function requiresRpc(ast: CardSearchAst): boolean {
-  if (isRpcOnlyLeaf(ast)) return true;
-  switch (ast.op) {
-    case "or":
-      return true;
-    case "not": {
-      const c = ast.child;
-      return c.op === "and" || c.op === "or" || c.op === "not" || isRpcOnlyLeaf(c);
-    }
-    case "and":
-      for (const c of ast.children) {
-        if (c.op === "and" || c.op === "or") return true;
-        if (isRpcOnlyLeaf(c)) return true;
-        if (c.op === "not") {
-          const gc = c.child;
-          if (gc.op === "and" || gc.op === "or" || gc.op === "not") return true;
-          if (isRpcOnlyLeaf(gc)) return true;
-        }
-      }
-      return false;
-    default:
-      return false;
-  }
 }
 
 /**

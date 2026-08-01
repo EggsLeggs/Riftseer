@@ -62,12 +62,9 @@ export {
   exactNameLeaf,
   filterLeaf,
   findTextLeafValue,
-  isExactNameOnly,
-  isLegacyTextOnly,
   notAst,
   orAst,
   parseCardSearchQuery,
-  requiresRpc,
   textLeaf,
   validateCardSearchAst,
 } from "./card-search-query.ts";

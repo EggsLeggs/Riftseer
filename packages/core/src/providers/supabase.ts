@@ -19,6 +19,7 @@ import { printingImageUrls } from "@riftseer/types/card-image";
 import { repairFlavourText } from "@riftseer/types/card-text";
 import { oracleKeyForName } from "@riftseer/types/oracle";
 import {
+  exactNameLeaf,
   findTextLeafValue,
   parseCardSearchQuery,
   type CardSearchAst,
@@ -273,6 +274,29 @@ function printingRowToPrinting(row: PrintingRow): Printing {
     updated_at: row.updated_at ?? undefined,
     ingested_at: row.ingested_at ?? undefined,
   };
+}
+
+/**
+ * Rewrite every free-text leaf as an exact-name match.
+ *
+ * `fuzzy: false` means "exact name only". A `text` leaf renders to a prefix
+ * tsquery, which is the fuzzy behaviour the caller is opting out of, so the
+ * only honest way to honour the flag is to change the leaf. A name that
+ * normalises to nothing can match nothing, so the leaf is dropped and the
+ * surrounding AND/OR still holds.
+ */
+function exactNameOnly(ast: CardSearchAst): CardSearchAst {
+  switch (ast.op) {
+    case "text":
+      return exactNameLeaf(ast.value) ?? { op: "exact_name", value: "" };
+    case "and":
+    case "or":
+      return { ...ast, children: ast.children.map(exactNameOnly) };
+    case "not":
+      return { op: "not", child: exactNameOnly(ast.child) };
+    default:
+      return ast;
+  }
 }
 
 /** Release order: set publication, then collector number, then id. */
@@ -559,7 +583,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     const offset = Math.max(opts.offset ?? 0, 0);
 
     const { data, error } = await this.db.rpc("search_printing_ids", {
-      p_ast: ast,
+      p_ast: opts.fuzzy === false ? exactNameOnly(ast) : ast,
       p_set: opts.set ?? null,
       p_collector: opts.collector != null ? String(opts.collector) : null,
       // Over-fetch so TypeScript re-ranking has something to reorder before

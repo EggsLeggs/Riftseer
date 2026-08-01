@@ -30,6 +30,9 @@ const MAX_SEARCH_OFFSET = 10_000;
 /** Hard cap on per-set fetches to prevent oversized reads. */
 const MAX_SET_BROWSE_LIMIT = 2_000;
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Rewrites purchase_uris.tcgplayer to an Impact.com affiliate deep link.
  * Set TCGPLAYER_AFFILIATE_ID to your Impact publisher ID to enable.
@@ -272,7 +275,13 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
     .get(
       "/cards/:id",
       async ({ params, query, set }) => {
-        const oracle = await cardProvider.getOracleById(params.id);
+        // Accept whichever oracle handle the caller has. A uuid is the id; a
+        // bare word is far more likely to be an oracle_key or slug, and making
+        // a caller know which of the three they hold is a footgun for no gain.
+        const oracle = UUID_RE.test(params.id)
+          ? await cardProvider.getOracleById(params.id)
+          : ((await cardProvider.getOracleByKey(params.id)) ??
+            (await cardProvider.getOracleBySlug(params.id)));
         if (!oracle) {
           set.status = 404;
           return { error: "Card not found", code: "NOT_FOUND" };
@@ -280,7 +289,9 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         return oracleOut(oracle, query.include);
       },
       {
-        params: t.Object({ id: t.String({ description: "Oracle UUID" }) }),
+        params: t.Object({
+          id: t.String({ description: "Oracle UUID, oracle_key or slug" }),
+        }),
         query: t.Object({
           include: t.Optional(t.String({ description: "Extra fields to include, e.g. `prices`" })),
         }),
@@ -649,8 +660,13 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
           return { error: "Too many requests: maximum is 20", code: "TOO_MANY_REQUESTS" };
         }
         const requests = body.requests.map((r: string) => {
-          const parsed = parseCardRequests(`[[${r}]]`);
-          return parsed[0] ?? { raw: r, name: r };
+          // Callers send the token *contents* (`Brush`, `Vayne|VEN-SP3`), which
+          // we wrap so one parser handles every entry point. A caller that
+          // sends the brackets too would otherwise produce `[[[[Brush]]]]`,
+          // which parses to the literal `[[Brush` — so strip them first.
+          const inner = r.trim().replace(/^\[\[|\]\]$/g, "");
+          const parsed = parseCardRequests(`[[${inner}]]`);
+          return parsed[0] ?? { raw: r, name: inner };
         });
 
         const results = await Promise.all(
