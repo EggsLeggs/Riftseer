@@ -4,9 +4,10 @@ import type * as React from "react";
 import Link from "next/link";
 import type { Card } from "@riftseer/types";
 
-import { cardIsGear, cardTypeIconKey, cardTypeLine } from "@/features/cards/format";
+import { cardIsGear, cardTypeIconKey, cardTypeLine, typeBadgeStyle } from "@/features/cards/format";
 import {
   cardTypeLineSearchQuery,
+  domainSearchQuery,
   searchHref,
 } from "@/features/cards/search-links";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
@@ -64,12 +65,24 @@ export function PowerStat({ power }: { power: number }) {
   );
 }
 
-export function MightStat({ might }: { might: number }) {
+/**
+ * `signed` renders an equipment's Might *bonus* (`+2`, and `+0` where the card
+ * prints one), which reads as a modifier rather than a stat.
+ */
+export function MightStat({
+  might,
+  signed = false,
+}: {
+  might: number;
+  signed?: boolean;
+}) {
   return (
     <span className="inline-flex items-center gap-1">
       <span className="icon-might" aria-hidden="true" />
-      <span className="tabular-nums">{might}</span>
-      <span className="sr-only">might</span>
+      <span className="tabular-nums">
+        {signed && might >= 0 ? `+${might}` : might}
+      </span>
+      <span className="sr-only">{signed ? "might bonus" : "might"}</span>
     </span>
   );
 }
@@ -88,9 +101,12 @@ export function RarityIcon({ rarity }: { rarity: string }) {
 export function DomainRunes({
   domains,
   className,
+  linked = false,
 }: {
   domains: string[];
   className?: string;
+  /** Link each domain to a `d:` search. Card detail only. */
+  linked?: boolean;
 }) {
   if (domains.length === 0) return null;
 
@@ -101,8 +117,8 @@ export function DomainRunes({
       {domains.map((domain) => {
         const key = domain.toLowerCase();
         const hasGlyph = DOMAINS_WITH_GLYPHS.has(key);
-        return (
-          <span key={domain} className="inline-flex items-center gap-1.5">
+        const content = (
+          <>
             {hasGlyph ? (
               <span
                 className={`icon-rune-${key}-glyph`}
@@ -111,7 +127,27 @@ export function DomainRunes({
               />
             ) : null}
             <span>{domain}</span>
-          </span>
+          </>
+        );
+
+        if (!linked) {
+          return (
+            <span key={domain} className="inline-flex items-center gap-1.5">
+              {content}
+            </span>
+          );
+        }
+
+        return (
+          <Link
+            key={domain}
+            href={searchHref(domainSearchQuery(domain))}
+            aria-label={`Search for ${domain} cards`}
+            title={`Search for ${domain} cards`}
+            className="inline-flex items-center gap-1.5 rounded-sm transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
+            {content}
+          </Link>
         );
       })}
     </span>
@@ -174,6 +210,7 @@ export function CardTypeLine({
 
   const iconKey = cardTypeIconKey(card);
   const showIcon = iconKey != null && TYPE_ICON_KEYS.has(iconKey);
+  const style = typeBadgeStyle(card);
 
   if (!badge) {
     return withLink(
@@ -192,7 +229,18 @@ export function CardTypeLine({
 
   return withLink(
     <span
-      className={cn("card-type-badge", !showIcon && "card-type-badge--plain")}
+      className={cn(
+        "card-type-badge",
+        !showIcon && "card-type-badge--plain",
+        style.variant === "rune" && "card-type-badge--rune",
+      )}
+      style={
+        {
+          "--type-tag-bg": style.labelBg,
+          "--type-tag-fg": style.labelFg,
+          "--type-rarity-color": style.rarityColor,
+        } as React.CSSProperties
+      }
       aria-label={query ? undefined : label}
     >
       {showIcon ? (
@@ -200,7 +248,13 @@ export function CardTypeLine({
           <span className={`icon-${iconKey}`} />
         </span>
       ) : null}
-      <span className="card-type-badge-label">{label}</span>
+      {style.variant === "rune" ? (
+        <span className="card-type-badge-label-shell">
+          <span className="card-type-badge-label">{label}</span>
+        </span>
+      ) : (
+        <span className="card-type-badge-label">{label}</span>
+      )}
     </span>,
   );
 }

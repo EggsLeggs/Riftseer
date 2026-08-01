@@ -16,6 +16,7 @@
 	},
 	"vars": {
 		"RIFTCODEX_BASE_URL": "https://api.riftcodex.com",
+		"RIFTBOUND_GALLERY_BASE_URL": "https://content.publishing.riotgames.com",
 		"UPSTREAM_TIMEOUT_MS": "30000",
 		"CARD_IMAGE_BASE_URL": "https://img.riftseer.com"
 	},

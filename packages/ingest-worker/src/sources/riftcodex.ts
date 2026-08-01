@@ -123,33 +123,101 @@ export function isTokenCard(raw: RawCard): boolean {
   return false;
 }
 
+/**
+ * The collector segment of a `riftbound_id`, split into its printed parts.
+ *
+ * Ids are `<set>-<collector>` or `<set>-<collector>-<setSize>`, and the
+ * collector may carry a leading letter group naming a numbering track:
+ *
+ *   ogn-271-298  → { prefix: "",   digits: "271", marker: ""  }
+ *   ogn-042a-298 → { prefix: "",   digits: "042", marker: "a" }
+ *   ogn-305*-298 → { prefix: "",   digits: "305", marker: "*" }
+ *   sfd-t03      → { prefix: "t",  digits: "03",  marker: ""  }  (token)
+ *   ven-r01      → { prefix: "r",  digits: "01",  marker: ""  }  (rune)
+ *   ven-sp3-006  → { prefix: "sp", digits: "3",   marker: ""  }  (special collection)
+ */
+interface PrintedIdParts {
+  prefix: string;
+  digits: string;
+  marker: string;
+  setSize: number | null;
+}
+
+function parsePrintedId(riftboundId: string): PrintedIdParts | null {
+  const segments = riftboundId.split("-");
+  const collector = segments[1];
+  if (!collector) return null;
+
+  const match = collector.match(/^([a-z]*)(\d+)([a*]?)$/i);
+  if (!match) return null;
+
+  const setSize = segments.length > 2 ? Number(segments[2]) : Number.NaN;
+  return {
+    prefix: match[1]!.toLowerCase(),
+    digits: match[2]!,
+    marker: match[3]!.toLowerCase(),
+    setSize: Number.isFinite(setSize) ? setSize : null,
+  };
+}
+
+/**
+ * The collector number as printed on the card.
+ *
+ * RiftCodex types `collector_number` as an integer, which silently drops the
+ * letter prefix that several numbering tracks use — the Gold token prints
+ * `T03`, Ahri, Inquisitive prints `SP3/006` and the basic runes print `R01`,
+ * yet all three arrive as a bare `3`/`1`. The `riftbound_id` keeps the prefix,
+ * and the digits there are printed verbatim (`T03` is padded, `SP3` is not),
+ * so it is the more faithful source whenever a prefix is present.
+ *
+ * Numbers without a prefix are left to RiftCodex: the id zero-pads them
+ * (`ogn-042a-298`) where the card and every existing slug do not.
+ */
+export function printedCollectorNumber(
+  riftboundId: string | null | undefined,
+  collectorNumber: number | string | null | undefined,
+): string {
+  const parts = riftboundId ? parsePrintedId(riftboundId) : null;
+  if (parts?.prefix) return `${parts.prefix.toUpperCase()}${parts.digits}`;
+  return String(collectorNumber ?? "");
+}
+
 interface PrintedVariantSignals {
   alternateArt: boolean;
   overnumbered: boolean;
   signature: boolean;
+  specialCollection: boolean;
 }
 
 /**
  * RiftCodex occasionally omits variant metadata on the older duplicate record.
  * The printed id is more reliable: `042a` is alternate art, `305*` is a
- * signature, and a collector above the printed set size is overnumbered.
+ * signature, `sp3` belongs to a special collection, and a collector above the
+ * printed set size is overnumbered.
  */
 export function printedVariantSignals(riftboundId: string): PrintedVariantSignals {
-  const match = riftboundId.match(/^[^-]+-(\d+)([a*]?)-(\d+)$/i);
-  if (!match) {
-    return { alternateArt: false, overnumbered: false, signature: false };
+  const parts = parsePrintedId(riftboundId);
+  if (!parts) {
+    return {
+      alternateArt: false,
+      overnumbered: false,
+      signature: false,
+      specialCollection: false,
+    };
   }
 
-  const collector = Number(match[1]);
-  const marker = match[2].toLowerCase();
-  const setSize = Number(match[3]);
+  const collector = Number(parts.digits);
   return {
-    alternateArt: marker === "a",
-    signature: marker === "*",
+    alternateArt: parts.marker === "a",
+    signature: parts.marker === "*",
+    specialCollection: parts.prefix === "sp",
+    // Only meaningful on the main numbering track — a special-collection or
+    // token number is counted against its own much smaller run.
     overnumbered:
+      parts.prefix === "" &&
+      parts.setSize !== null &&
       Number.isFinite(collector) &&
-      Number.isFinite(setSize) &&
-      collector > setSize,
+      collector > parts.setSize,
   };
 }
 
@@ -174,7 +242,10 @@ export function rawToCard(raw: RawCard): Card {
     id: raw.id,
     name: raw.name,
     name_normalized: normalizeCardName(raw.metadata?.clean_name || raw.name),
-    collector_number: String(raw.collector_number),
+    collector_number: printedCollectorNumber(
+      raw.riftbound_id,
+      raw.collector_number,
+    ),
     released_at: normalizeDate(raw.released_at),
     external_ids: {
       riftcodex_id: raw.id,
@@ -217,6 +288,7 @@ export function rawToCard(raw: RawCard): Card {
       overnumbered:
         (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
       signature: (raw.metadata?.signature ?? false) || variantSignals.signature,
+      special_collection: variantSignals.specialCollection,
     },
     media: {
       orientation: raw.orientation || undefined,

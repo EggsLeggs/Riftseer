@@ -45,6 +45,10 @@ export function linkTokens(cards: Card[]): void {
     return;
   }
 
+  // Keyed by token *name*, not printing id. "Which cards make this token" is a
+  // fact about the token, but a reference in rules text resolves to exactly one
+  // printing — so accumulating by id left Recruit (273) with the whole list and
+  // its siblings 271/272 with nothing.
   const usedByAccum = new Map<string, RelatedCard[]>();
 
   for (const card of cards) {
@@ -59,17 +63,18 @@ export function linkTokens(cards: Card[]): void {
       // Try the full phrase first, then progressively shorter suffixes so a real
       // token name like "Sprite" or "Gold" still resolves.
       const words = match[1].trim().split(/\s+/);
+      let tokenKey: string | undefined;
       let tokenCandidates: Card[] | undefined;
       for (let start = 0; start < words.length; start++) {
-        const candidate = tokenByNorm.get(
-          normalizeCardName(words.slice(start).join(" ")),
-        );
+        const key = normalizeCardName(words.slice(start).join(" "));
+        const candidate = tokenByNorm.get(key);
         if (candidate?.length) {
+          tokenKey = key;
           tokenCandidates = candidate;
           break;
         }
       }
-      if (!tokenCandidates?.length) continue;
+      if (!tokenKey || !tokenCandidates?.length) continue;
 
       const token =
         tokenCandidates.find((t) => t.set?.set_code === card.set?.set_code) ??
@@ -85,8 +90,8 @@ export function linkTokens(cards: Card[]): void {
         uri: `/api/v1/cards/${token.id}`,
       });
 
-      if (!usedByAccum.has(token.id)) usedByAccum.set(token.id, []);
-      usedByAccum.get(token.id)!.push({
+      if (!usedByAccum.has(tokenKey)) usedByAccum.set(tokenKey, []);
+      usedByAccum.get(tokenKey)!.push({
         object: "related_card",
         id: card.id,
         name: card.name,
@@ -96,16 +101,53 @@ export function linkTokens(cards: Card[]): void {
     }
   }
 
+  // Idempotent, like `linkRelatedPrintings`: every printing of a token is
+  // rewritten from this run's references, including back to `[]`.
   for (const card of cards) {
     if (!card.is_token) continue;
-    const refs = usedByAccum.get(card.id);
-    if (refs) card.used_by = refs;
+    // Copied per printing so a later relationship override edits one token's
+    // list rather than every sibling's.
+    card.used_by = [...(usedByAccum.get(baseTokenName(card.name)) ?? [])];
   }
 
   logger.info("Token linking complete", {
     tokens: tokenByNorm.size,
     linkedTokens: usedByAccum.size,
   });
+}
+
+/**
+ * The character half of a champion/legend name, before the epithet — "Poppy"
+ * from "Poppy - Paragon", "Kennen" from "Kennen, Keeper of Balance". The two
+ * separators are both in use: `-` in Origins through Unleashed, `,` in Vendetta.
+ */
+function characterPart(name: string): string {
+  const withoutVariant = name.replace(/\s*\([^)]*\)\s*$/, "").trim();
+  return withoutVariant.split(/\s+-\s+|,\s+/, 1)[0] ?? withoutVariant;
+}
+
+/**
+ * The tags that name the card's character, rather than its region or species.
+ *
+ * A champion carries all three kinds — Poppy - Paragon is tagged `Yordle`,
+ * `Demacia` and `Poppy` — and matching on any of them cross-links every
+ * character that shares a region or species. Only the character tag is written
+ * into the name, so intersecting the tags with the name's character half picks
+ * it out: `Poppy` matches, `Yordle` and `Demacia` do not.
+ *
+ * Matching the *character half* rather than the whole name matters — "Nidalee -
+ * Cat Form" and "Lillia - Fae Fawn" would otherwise claim the `Cat` and `Fae`
+ * species tags out of their epithets.
+ */
+function characterTags(card: Card): string[] {
+  const tags = card.classification?.tags ?? [];
+  const haystack = ` ${normalizeCardName(characterPart(card.name))} `;
+  const matched = tags.filter((tag) =>
+    haystack.includes(` ${normalizeCardName(tag)} `),
+  );
+  // No tag in the name is not a shape we have seen; fall back to the old
+  // behaviour rather than silently dropping the card's links.
+  return matched.length > 0 ? matched : tags;
 }
 
 export function linkChampionsLegends(cards: Card[]): void {
@@ -119,12 +161,14 @@ export function linkChampionsLegends(cards: Card[]): void {
     if (!tags?.length) continue;
 
     if (type === "legend") {
+      // Indexed on every tag: a legend's own spurious species tag is harmless
+      // here, because the lookup key is always the champion's character tag.
       for (const tag of tags) {
         if (!legendsByTag.has(tag)) legendsByTag.set(tag, []);
         legendsByTag.get(tag)!.push(card);
       }
     } else if (supertype === "champion") {
-      for (const tag of tags) {
+      for (const tag of characterTags(card)) {
         if (!championsByTag.has(tag)) championsByTag.set(tag, []);
         championsByTag.get(tag)!.push(card);
       }
@@ -158,7 +202,7 @@ export function linkChampionsLegends(cards: Card[]): void {
       }
     } else if (supertype === "champion") {
       const seen = new Set<string>();
-      for (const tag of tags) {
+      for (const tag of characterTags(card)) {
         for (const legend of legendsByTag.get(tag) ?? []) {
           if (seen.has(legend.id)) continue;
           seen.add(legend.id);

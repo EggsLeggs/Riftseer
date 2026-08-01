@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { Elysia } from "elysia";
+import { CONFIRMABLE_RECONCILIATION_FIELDS } from "@riftseer/types/reconciliation";
 import {
   AdminRepositoryError,
   type AdminAuditPage,
   type AdminAuditQuery,
   type AdminCardLegalities,
+  type AdminCardRelationships,
   type AdminCardRulings,
   type AdminDataRepository,
   type AdminFormat,
@@ -182,6 +184,23 @@ class StubAdminRepository implements AdminDataRepository {
     return this.rulings;
   }
 
+  relationships: AdminCardRelationships | null = {
+    card_id: "card-1",
+    oracle_key: "test card",
+    oracle_entries: [
+      {
+        kind: "related_legends",
+        related_card_id: "card-2",
+        action: "add",
+      },
+    ],
+    printing_entries: [],
+  };
+
+  async listCardRelationships(): Promise<AdminCardRelationships | null> {
+    return this.relationships;
+  }
+
   reconciliationQueries: AdminReconciliationQuery[] = [];
   reconciliationPage: AdminReconciliationPage = {
     entries: [],
@@ -228,9 +247,10 @@ function unmatchedProductEntry(): AdminReconciliationEntry {
   return {
     id: ENTRY_ID,
     kind: "unmatched_product",
+    source: "tcgplayer",
     fingerprint: "product:652952",
     status: "pending",
-    tcgplayer_payload: {
+    payload: {
       product: {
         product_id: 652952,
         name: "Sett Brawler Alternate Art",
@@ -567,6 +587,77 @@ describe("admin API", () => {
     expect(repository.calls).toHaveLength(0);
   });
 
+  test("lists layered relationship overrides", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1/relationships", "GET"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      card_id: "card-1",
+      oracle_key: "test card",
+      oracle_entries: [
+        {
+          kind: "related_legends",
+          related_card_id: "card-2",
+          action: "add",
+        },
+      ],
+      printing_entries: [],
+    });
+  });
+
+  test("returns 404 when listing relationships for an unknown card", async () => {
+    repository.relationships = null;
+    const response = await app.handle(
+      jsonRequest("/admin/cards/nope/relationships", "GET"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  test("defaults relationship PUT to every printing", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1/relationships", "PUT", {
+        entries: [
+          {
+            kind: "related_legends",
+            related_card_id: "card-2",
+            action: "add",
+          },
+        ],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.calls[0]).toEqual({
+      name: "admin_set_card_relationships",
+      args: {
+        p_card_id: "card-1",
+        p_entries: [
+          {
+            kind: "related_legends",
+            related_card_id: "card-2",
+            action: "add",
+          },
+        ],
+        p_all_printings: true,
+        p_actor: ADMIN_ID,
+      },
+    });
+  });
+
+  test("passes a printing-scoped relationship PUT through", async () => {
+    const response = await app.handle(
+      jsonRequest("/admin/cards/card-1/relationships", "PUT", {
+        entries: [],
+        apply_to_all_printings: false,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.calls[0]?.args.p_all_printings).toBe(false);
+  });
+
   test("maps a non-empty set deletion to a conflict", async () => {
     repository.nextResult = {
       ok: false,
@@ -889,8 +980,8 @@ describe("admin API", () => {
         ...unmatchedProductEntry(),
         kind: "field_diff",
         fingerprint: "diff:released_at:card-1:2025-11-14",
-        tcgplayer_payload: {
-          ...unmatchedProductEntry().tcgplayer_payload,
+        payload: {
+          ...unmatchedProductEntry().payload,
           field: "released_at",
           current_value: "2025-10-31",
           proposed_value: "2025-11-14",
@@ -912,6 +1003,60 @@ describe("admin API", () => {
           p_patch: { released_at: "2025-11-14" },
         }),
       );
+    });
+
+    // The admin review page disables Confirm from this same list, so a field
+    // that is on it but has no case in `buildConfirmPatch` would leave the
+    // button enabled on a row the API then rejects.
+    test.each([...CONFIRMABLE_RECONCILIATION_FIELDS])(
+      "confirms a %s diff",
+      async (field) => {
+        repository.reconciliationEntry = {
+          ...unmatchedProductEntry(),
+          kind: "field_diff",
+          fingerprint: `diff:${field}:card-1:3`,
+          payload: {
+            ...unmatchedProductEntry().payload,
+            field,
+            current_value: "2",
+            proposed_value: "3",
+          },
+        };
+
+        const response = await app.handle(
+          jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {}),
+        );
+
+        expect(response.status).toBe(200);
+        expect(repository.calls[0].args).toEqual(
+          expect.objectContaining({ p_action: "confirm" }),
+        );
+      },
+    );
+
+    test("refuses a field the API has no patch for", async () => {
+      repository.reconciliationEntry = {
+        ...unmatchedProductEntry(),
+        kind: "field_diff",
+        fingerprint: "diff:text:card-1:Deal 2 damage",
+        payload: {
+          ...unmatchedProductEntry().payload,
+          field: "text",
+          current_value: "Deal 1 damage",
+          proposed_value: "Deal 2 damage",
+        },
+      };
+
+      const response = await app.handle(
+        jsonRequest(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {}),
+      );
+
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error: "This entry proposes a field the API cannot apply",
+        code: "REVIEW_FIELD_UNSUPPORTED",
+      });
+      expect(repository.calls).toHaveLength(0);
     });
 
     test("404s an unknown entry before calling the RPC", async () => {

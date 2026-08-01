@@ -256,6 +256,7 @@ function DetailMetaChips({ card }: { card: Card }) {
   if (card.metadata?.alternate_art) chips.push("Alt art");
   if (card.metadata?.signature) chips.push("Signature");
   if (card.metadata?.overnumbered) chips.push("Overnumbered");
+  if (card.metadata?.special_collection) chips.push("Special collection");
   if (isReprintPrinting(card)) chips.push("Reprint");
 
   if (chips.length === 0) return null;

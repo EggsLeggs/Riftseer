@@ -57,6 +57,10 @@ import {
 } from "@/features/cards/format";
 import { cardHref } from "@/features/cards/paths";
 import { reportCardIssueUrl } from "@/features/cards/report-issue";
+import {
+  artistSearchQuery,
+  searchHref,
+} from "@/features/cards/search-links";
 import { ShareButton } from "@/features/cards/share-button";
 import {
   CARD_DETAIL_VIEW_OPTIONS,
@@ -273,7 +277,7 @@ function DetailedCardBody({
 
             {domains.length > 0 ? (
               <DetailRow label="Domain">
-                <DomainRunes domains={domains} />
+                <DomainRunes domains={domains} linked />
               </DetailRow>
             ) : null}
 
@@ -286,6 +290,20 @@ function DetailedCardBody({
             {rulesText ? (
               <DetailRow label="Ability" alignTop>
                 <CardText text={rulesText} rich={card.text?.rich} linkKeywords />
+              </DetailRow>
+            ) : null}
+
+            {/* An [Equip] gear's second text box: what the equipped unit gets.
+                A bonus of +0 with no effect is still printed on the card, so
+                the row keys off `might_bonus` being present, not truthy. */}
+            {card.attributes?.might_bonus != null ? (
+              <DetailRow label="Equipped" alignTop>
+                <div className="space-y-1.5">
+                  <MightStat might={card.attributes.might_bonus} signed />
+                  {card.text?.equipment?.trim() ? (
+                    <CardText text={card.text.equipment} linkKeywords />
+                  ) : null}
+                </div>
               </DetailRow>
             ) : null}
 
@@ -307,10 +325,15 @@ function DetailedCardBody({
 
             <DetailRow label="Artist">
               {card.artist ? (
-                <span className="inline-flex items-center gap-1">
+                <Link
+                  href={searchHref(artistSearchQuery(card.artist))}
+                  className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
+                  aria-label={`Search for cards illustrated by ${card.artist}`}
+                  title={`Search for cards illustrated by ${card.artist}`}
+                >
                   <span className="icon-artist" aria-hidden="true" />
                   {card.artist}
-                </span>
+                </Link>
               ) : (
                 "—"
               )}
@@ -440,7 +463,7 @@ function SimpleCardBody({
             ) : null}
           </div>
           {domains.length > 0 ? (
-            <DomainRunes domains={domains} className="shrink-0" />
+            <DomainRunes domains={domains} className="shrink-0" linked />
           ) : null}
         </div>
 
@@ -452,6 +475,24 @@ function SimpleCardBody({
             className="text-foreground mt-6 max-w-prose text-[0.95rem] leading-relaxed"
             linkKeywords
           />
+        ) : null}
+
+        {/* The [Equip] gear's second text box, set apart the way the card
+            prints it — below the gear's own rules, above the flavour. */}
+        {card.attributes?.might_bonus != null ? (
+          <div className="border-border/60 mt-6 max-w-prose border-l-2 pl-4">
+            <h2 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wider uppercase">
+              Equipped unit
+            </h2>
+            <MightStat might={card.attributes.might_bonus} signed />
+            {card.text?.equipment?.trim() ? (
+              <CardText
+                text={card.text.equipment}
+                className="text-foreground mt-1.5 text-[0.95rem] leading-relaxed"
+                linkKeywords
+              />
+            ) : null}
+          </div>
         ) : null}
 
         {/* Might sits where P/T would on an MTG card */}

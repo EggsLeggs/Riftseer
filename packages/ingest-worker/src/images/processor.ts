@@ -7,6 +7,7 @@ import {
   buildHostedMediaUrls,
   buildImageObjectKeys,
   hasCompleteHostedMedia,
+  hostedObjectKeyFromUrl,
   IMAGE_VARIANTS,
 } from "./model.ts";
 import {
@@ -158,6 +159,68 @@ async function downloadImage(
   }
 }
 
+/**
+ * `IMAGES.input` / `IMAGES.info` require a stream with a known length.
+ * R2 bodies (and anything piped through `TransformStream`) do not advertise
+ * one, so buffer into a Blob whose `.stream()` does.
+ */
+function blobStream(
+  bytes: Uint8Array,
+  type?: string,
+): ReadableStream<Uint8Array> {
+  return new Blob([bytes], type ? { type } : undefined).stream();
+}
+
+/**
+ * Load the bytes the image job should transform.
+ *
+ * Hosted admin uploads live in the same R2 bucket under
+ * `cards/<id>/uploads/…`. Pull those through the binding — never HTTP — so
+ * local wrangler (local R2 + production CDN hostname) and production both
+ * resolve the object that was just written.
+ */
+async function loadImageSource(
+  env: Env,
+  sourceUrl: string,
+  timeoutMs: number,
+): Promise<DownloadedImage> {
+  const key = hostedObjectKeyFromUrl(sourceUrl, env.CARD_IMAGE_BASE_URL);
+  if (!key) {
+    return downloadImage(sourceUrl, timeoutMs);
+  }
+
+  const object = await env.CARD_IMAGES.get(key);
+  if (!object?.body) {
+    throw new PermanentImageError("image source returned 404");
+  }
+  if (
+    typeof object.size === "number" &&
+    object.size > MAX_SOURCE_BYTES
+  ) {
+    throw new PermanentImageError(
+      `image source exceeds ${MAX_SOURCE_BYTES} bytes`,
+    );
+  }
+
+  const bytes = new Uint8Array(await object.arrayBuffer());
+  if (bytes.byteLength === 0) {
+    throw new PermanentImageError("image source returned 404");
+  }
+  if (bytes.byteLength > MAX_SOURCE_BYTES) {
+    throw new PermanentImageError(
+      `image source exceeds ${MAX_SOURCE_BYTES} bytes`,
+    );
+  }
+
+  const contentType = object.httpMetadata?.contentType?.split(";")[0];
+  const imageType = contentType?.startsWith("image/") ? contentType : undefined;
+  return {
+    body: blobStream(bytes, imageType),
+    contentType: imageType,
+    oversized: () => false,
+  };
+}
+
 async function writeVariant(
   env: Env,
   source: ReadableStream<Uint8Array>,
@@ -166,7 +229,8 @@ async function writeVariant(
   quality: number,
   metadata: Record<string, string>,
 ): Promise<void> {
-  const transformed = await env.IMAGES.input(source)
+  const bytes = new Uint8Array(await new Response(source).arrayBuffer());
+  const transformed = await env.IMAGES.input(blobStream(bytes))
     .transform({ width, fit: "scale-down" })
     .output({ format: "image/webp", quality, anim: false });
   const response = transformed.response();
@@ -216,35 +280,36 @@ async function processCardImageJob(
   const timeoutMs = Number.parseInt(env.UPSTREAM_TIMEOUT_MS, 10);
   const timeout =
     Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30000;
-  const source = await downloadImage(job.sourceUrl, timeout);
-  const [originalBody, infoBody] = source.body.tee();
+  const source = await loadImageSource(env, job.sourceUrl, timeout);
+  // Buffer before tee: Blob/R2 streams lose their declared length across
+  // TransformStream / tee, and IMAGES.info requires a known-length body.
+  const bytes = new Uint8Array(await new Response(source.body).arrayBuffer());
+  if (source.oversized() || bytes.byteLength > MAX_SOURCE_BYTES) {
+    throw new PermanentImageError(
+      `image source exceeds ${MAX_SOURCE_BYTES} bytes`,
+    );
+  }
   const keys = buildImageObjectKeys(job.cardId);
   const objectMetadata = {
     cardId: job.cardId,
     sourceHash: job.sourceHash,
     sourceProvider: job.sourceProvider,
   };
+  const contentType = source.contentType ?? "application/octet-stream";
 
   let info: ImageInfoResponse;
   try {
     [info] = await Promise.all([
-      env.IMAGES.info(infoBody),
-      env.CARD_IMAGES.put(keys.original, originalBody, {
+      env.IMAGES.info(blobStream(bytes, contentType)),
+      env.CARD_IMAGES.put(keys.original, blobStream(bytes, contentType), {
         httpMetadata: {
-          contentType: source.contentType ?? "application/octet-stream",
+          contentType,
           cacheControl: CACHE_CONTROL,
         },
         customMetadata: { ...objectMetadata, variant: "original" },
       }),
     ]);
   } catch (error) {
-    // The stream error surfaces through whichever consumer read it first; the
-    // flag is what identifies the cause unambiguously.
-    if (source.oversized()) {
-      throw new PermanentImageError(
-        `image source exceeds ${MAX_SOURCE_BYTES} bytes`,
-      );
-    }
     if (isImagesInputError(error)) {
       throw new PermanentImageError("image source is not a supported image");
     }

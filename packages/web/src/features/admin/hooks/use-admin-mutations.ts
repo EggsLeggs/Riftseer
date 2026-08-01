@@ -47,6 +47,15 @@ import type {
 } from "../types";
 
 /**
+ * Prefix, not a full key: an oracle-scoped save changes every printing in the
+ * group, so invalidation is whole-prefix rather than per card.
+ */
+export const ADMIN_CARD_RELATIONSHIPS_KEY = ["admin", "card-relationships"] as const;
+
+export const adminCardRelationshipsQueryKey = (cardId: string) =>
+  [...ADMIN_CARD_RELATIONSHIPS_KEY, cardId] as const;
+
+/**
  * Admin server actions resolve with `{ ok: false }` instead of throwing, so
  * `useMutation` would otherwise treat a rejected edit as a success. Rethrowing
  * here puts failures on `mutation.error` and keeps `onSuccess` honest.
@@ -130,9 +139,19 @@ export function useCardMutations() {
     >(moveCardAction, "Card moved", invalidateCards),
 
     setRelationships: useToastMutation<
-      [cardId: string, entries: AdminRelationshipEntry[], publicSlug?: string],
+      [
+        cardId: string,
+        entries: AdminRelationshipEntry[],
+        applyToAllPrintings: boolean,
+        publicSlug?: string,
+      ],
       { card_id: string }
-    >(setRelationshipsAction, "Relationships saved", invalidateCards),
+    >(setRelationshipsAction, "Relationships saved", () => {
+      invalidateCards();
+      void queryClient.invalidateQueries({
+        queryKey: ADMIN_CARD_RELATIONSHIPS_KEY,
+      });
+    }),
 
     uploadImage: useToastMutation<
       [cardId: string, formData: FormData],

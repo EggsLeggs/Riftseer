@@ -4,7 +4,8 @@
   "private": true,
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --persist-to ../../.wrangler/shared",
+    "dev:remote": "wrangler dev --remote --port 8789",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "bun test src/__tests__",

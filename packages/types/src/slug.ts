@@ -48,7 +48,9 @@ export function slugifyCardName(name: string): string {
 export function buildPublicSlugSegments(card: Card): string[] {
   const setCode = card.set?.set_code?.toLowerCase() ?? "";
 
-  let collector = card.collector_number ?? "";
+  // Lowercased so prefixed tracks (`T03`, `SP3`, `R01`) give the same
+  // all-lowercase path shape as every other slug segment.
+  let collector = card.collector_number?.toLowerCase() ?? "";
   if (card.metadata?.alternate_art && collector && /\d$/.test(collector)) {
     collector = `${collector}a`;
   }

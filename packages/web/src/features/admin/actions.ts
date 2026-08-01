@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getSession } from "@/lib/session";
+import { getSession, isAdminSession } from "@/lib/session";
 import { adminApi } from "./api";
+import { detectImageContentType, extensionForImageType } from "./image-type";
 import type {
   AdminAuditFilters,
   AdminAuditPage,
@@ -10,6 +11,7 @@ import type {
   AdminCardLegalities,
   AdminCardMutationResult,
   AdminCardPatch,
+  AdminCardRelationships,
   AdminCardRulings,
   AdminFormatDeleteResult,
   AdminFormatInput,
@@ -72,7 +74,7 @@ export async function listAuditLogAction(
   return withToken((token) => adminApi.listAuditLog(token, filters));
 }
 
-// ─── TCGPlayer review queue ───────────────────────────────────────────────────
+// ─── Ingest review queue ──────────────────────────────────────────────────────
 
 export async function listReviewAction(
   filters: AdminReviewFilters = {},
@@ -170,15 +172,28 @@ export async function moveCardAction(
   return result;
 }
 
+export async function listCardRelationshipsAction(
+  cardId: string,
+): Promise<AdminResult<AdminCardRelationships>> {
+  return withToken((token) => adminApi.listCardRelationships(token, cardId));
+}
+
 export async function setRelationshipsAction(
   cardId: string,
   entries: AdminRelationshipEntry[],
+  applyToAllPrintings: boolean,
   publicSlug?: string,
 ): Promise<AdminResult<AdminCardMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.setRelationships(token, cardId, entries),
+    adminApi.setRelationships(token, cardId, entries, applyToAllPrintings),
   );
-  if (result.ok) revalidateCard(cardId, publicSlug);
+  if (result.ok) {
+    // Oracle-scoped overrides change every printing in the group; sibling
+    // slugs are not known here, so revalidate the whole card subtree.
+    if (applyToAllPrintings) revalidatePath("/card", "layout");
+    else revalidateCard(cardId, publicSlug);
+    revalidatePath("/admin/cards");
+  }
   return result;
 }
 
@@ -191,6 +206,202 @@ export async function uploadCardImageAction(
   );
   if (result.ok) revalidateCard(cardId);
   return result;
+}
+
+const MAX_IMPORT_BYTES = 20 * 1024 * 1024;
+const IMPORT_TIMEOUT_MS = 30_000;
+/** Redirect hops followed, each re-validated against the host allowlist. */
+const MAX_IMPORT_REDIRECTS = 3;
+
+/**
+ * Hosts this action may fetch from. The only caller imports the card art on a
+ * gallery `missing_card` payload, which Riot's CMS serves from its Sanity CDN
+ * (`cmsassets.rgpub.io`); `assetcdn.rgpub.io` carries the same assets. Keeping
+ * it to a list means a poisoned payload cannot turn this Worker into a probe
+ * for arbitrary internal addresses.
+ */
+const IMPORT_HOST_ALLOWLIST = new Set([
+  "cmsassets.rgpub.io",
+  "assetcdn.rgpub.io",
+]);
+
+const INVALID_IMPORT_URL = {
+  ok: false as const,
+  error: "Image URL is not an allowed source",
+  code: "INVALID_IMAGE_URL",
+};
+
+/** An https URL on an allowlisted host, or null. */
+function allowedImportUrl(value: string): URL | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return null;
+  }
+  // HTTPS only. Every source we import from serves it, and allowing plain HTTP
+  // would widen what this action can be pointed at for no gain.
+  if (parsed.protocol !== "https:") return null;
+  if (!IMPORT_HOST_ALLOWLIST.has(parsed.hostname.toLowerCase())) return null;
+  return parsed;
+}
+
+/**
+ * Read at most `limit` bytes, aborting a body that runs over rather than
+ * buffering it whole — `Content-Length` is upstream's claim, not a guarantee.
+ * Returns null when the source is empty or oversized.
+ */
+async function readCappedBody(
+  response: Response,
+  limit: number,
+): Promise<Uint8Array | null> {
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > limit) return null;
+
+  const reader = response.body?.getReader();
+  if (!reader) return null;
+
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > limit) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (total === 0) return null;
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+/**
+ * Fetch a remote image (e.g. the gallery art on a missing-card draft) and
+ * upload it through the normal admin image endpoint. Runs server-side so CDN
+ * CORS does not block the browser.
+ *
+ * Unlike every other action here, the API's allowlist is *not* enough on its
+ * own: the outbound fetch is a side effect this Worker performs before the API
+ * is ever called, so an ungated action would let anyone use it to probe
+ * arbitrary URLs. `isAdminSession()` gates the request itself; the API still
+ * enforces the allowlist on the upload that follows.
+ */
+export async function importCardImageFromUrlAction(
+  cardId: string,
+  imageUrl: string,
+  accessibilityText?: string,
+): Promise<AdminResult<AdminImageMutationResult>> {
+  const session = await getSession();
+  if (!session) return NOT_SIGNED_IN;
+  if (!(await isAdminSession())) {
+    return {
+      ok: false,
+      error: "Admin access is required",
+      code: "ADMIN_REQUIRED",
+    };
+  }
+
+  let target = allowedImportUrl(imageUrl.trim());
+  if (!target) return INVALID_IMPORT_URL;
+
+  const controller = new AbortController();
+  // Covers the body read as well as the request: an oversized body is refused
+  // by the cap, a merely endless one by this.
+  const timeout = setTimeout(() => controller.abort(), IMPORT_TIMEOUT_MS);
+  let response: Response;
+  let bytes: Uint8Array | null;
+  try {
+    // Redirects are followed by hand so every hop is checked against the
+    // allowlist — `redirect: "follow"` would let the first response send the
+    // fetch anywhere.
+    for (let hop = 0; ; hop++) {
+      response = await fetch(target.toString(), {
+        signal: controller.signal,
+        headers: {
+          Accept: "image/*,*/*;q=0.8",
+          "User-Agent": "RiftseerAdmin/1.0 (+https://riftseer.com)",
+        },
+        redirect: "manual",
+      });
+
+      const location =
+        response.status >= 300 && response.status < 400
+          ? response.headers.get("location")
+          : null;
+      if (!location) break;
+
+      if (hop >= MAX_IMPORT_REDIRECTS) {
+        return {
+          ok: false,
+          error: "Gallery image redirected too many times",
+          code: "IMAGE_FETCH_FAILED",
+        };
+      }
+      const next = allowedImportUrl(new URL(location, target).toString());
+      if (!next) return INVALID_IMPORT_URL;
+      target = next;
+    }
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: `Gallery image download failed (${response.status})`,
+        code: "IMAGE_FETCH_FAILED",
+      };
+    }
+
+    bytes = await readCappedBody(response, MAX_IMPORT_BYTES);
+  } catch {
+    return {
+      ok: false,
+      error: "Could not download the gallery image",
+      code: "IMAGE_FETCH_FAILED",
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+
+  if (!bytes) {
+    return {
+      ok: false,
+      error: "Gallery image must be between 1 byte and 20 MB",
+      code: "INVALID_IMAGE_SIZE",
+    };
+  }
+
+  const contentType = detectImageContentType(bytes);
+  if (!contentType) {
+    return {
+      ok: false,
+      error: "Gallery image is not a supported type",
+      code: "INVALID_IMAGE_TYPE",
+    };
+  }
+
+  const formData = new FormData();
+  formData.append(
+    "file",
+    new File([bytes], `gallery.${extensionForImageType(contentType)}`, {
+      type: contentType,
+    }),
+  );
+  const alt = accessibilityText?.trim();
+  if (alt) formData.append("accessibility_text", alt);
+
+  return uploadCardImageAction(cardId, formData);
 }
 
 export async function createSetAction(

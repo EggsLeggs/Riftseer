@@ -188,6 +188,7 @@ export function SearchSyntaxView() {
             <ListItem><Code>is:signature</Code> (or <Code>is:sig</Code>): a signature printing</ListItem>
             <ListItem><Code>is:alternate</Code> (or <Code>is:alt</Code>): alternate art</ListItem>
             <ListItem><Code>is:overnumbered</Code>: collector number beyond the set&apos;s base count</ListItem>
+            <ListItem><Code>is:special</Code> (or <Code>is:showcase</Code>): a special-collection printing, numbered on its own track such as <Code>SP3</Code></ListItem>
             <ListItem><Code>is:foil</Code>: available in a foil finish</ListItem>
             <ListItem><Code>is:manual</Code>: added by an editor rather than ingested</ListItem>
           </UnorderedList>
@@ -260,7 +261,7 @@ export function SearchSyntaxView() {
             <ListItem><Code>energy</Code>: card energy cost</ListItem>
             <ListItem><Code>power</Code>: card power value</ListItem>
             <ListItem><Code>might</Code>: card might value</ListItem>
-            <ListItem><Code>rarity</Code>: print rarity</ListItem>
+            <ListItem><Code>rarity</Code>: print rarity, in printed order — common, uncommon, rare, epic, showcase</ListItem>
             <ListItem><Code>artist</Code>: illustrator name</ListItem>
             <ListItem><Code>usd</Code>: TCGPlayer USD price</ListItem>
             <ListItem><Code>eur</Code>: Cardmarket EUR price</ListItem>

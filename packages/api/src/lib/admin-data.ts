@@ -113,14 +113,56 @@ export interface AdminCardRulings {
   entries: AdminCardRuling[];
 }
 
+export type AdminRelationshipKind =
+  | "all_parts"
+  | "used_by"
+  | "related_champions"
+  | "related_legends"
+  | "related_signatures"
+  | "related_printings";
+
+export type AdminRelationshipAction = "add" | "remove";
+
+/** One durable relationship override entry (oracle- or printing-scoped). */
+export interface AdminRelationshipEntry {
+  kind: AdminRelationshipKind;
+  related_card_id: string;
+  action: AdminRelationshipAction;
+}
+
+/**
+ * Layered relationship overrides for the editor. Live arrays live on the card
+ * payload; this is only the durable add/remove rows that survive ingest.
+ */
+export interface AdminCardRelationships {
+  card_id: string;
+  oracle_key: string;
+  oracle_entries: AdminRelationshipEntry[];
+  printing_entries: AdminRelationshipEntry[];
+}
+
 // ─── Reconciliation queue ─────────────────────────────────────────────────────
 
-export type AdminReconciliationKind = "unmatched_product" | "field_diff";
+export type AdminReconciliationKind =
+  | "unmatched_product"
+  | "field_diff"
+  | "missing_card";
+
+/** Which upstream raised the entry. Decides which half of the payload is set. */
+export type AdminReconciliationSource = "tcgplayer" | "gallery";
 
 export type AdminReconciliationStatus = "pending" | "confirmed" | "dismissed";
 
 /** Only the fields ingest is allowed to propose; see `pipeline/reconcile.ts`. */
-export type AdminReconciliationField = "collector_number" | "released_at";
+export type AdminReconciliationField =
+  | "collector_number"
+  | "released_at"
+  | "rarity"
+  | "type"
+  | "energy"
+  | "might"
+  | "power"
+  | "text";
 
 export interface AdminReconciliationProduct {
   product_id: number;
@@ -132,8 +174,34 @@ export interface AdminReconciliationProduct {
   set_code: string | null;
 }
 
+/** A printing the official gallery lists, as filed for review. */
+export interface AdminReconciliationGalleryCard {
+  riftbound_id: string;
+  name: string;
+  public_code: string | null;
+  set_code: string | null;
+  set_name: string | null;
+  collector_number: string | null;
+  rarity: string | null;
+  type: string | null;
+  image_url: string | null;
+  energy: number | null;
+  might: number | null;
+  power: number | null;
+  text: string | null;
+  might_bonus: number | null;
+  equipment: string | null;
+  signature: boolean;
+  special_collection: boolean;
+  alternate_art: boolean;
+  is_token: boolean;
+}
+
 export interface AdminReconciliationPayload {
-  product: AdminReconciliationProduct;
+  /** Set on every `source: "tcgplayer"` entry. */
+  product?: AdminReconciliationProduct;
+  /** Set on every `source: "gallery"` entry. */
+  gallery?: AdminReconciliationGalleryCard;
   field?: AdminReconciliationField;
   current_value?: string | null;
   proposed_value?: string | null;
@@ -144,9 +212,10 @@ export interface AdminReconciliationPayload {
 export interface AdminReconciliationEntry {
   id: string;
   kind: AdminReconciliationKind;
+  source: AdminReconciliationSource;
   fingerprint: string;
   status: AdminReconciliationStatus;
-  tcgplayer_payload: AdminReconciliationPayload;
+  payload: AdminReconciliationPayload;
   /** Ingest's suggestion, or the card an admin confirmed the entry against. */
   proposed_card_id: string | null;
   note: string | null;
@@ -161,6 +230,7 @@ export interface AdminReconciliationQuery {
   offset: number;
   status?: AdminReconciliationStatus;
   kind?: AdminReconciliationKind;
+  source?: AdminReconciliationSource;
 }
 
 export interface AdminReconciliationPage {
@@ -254,6 +324,9 @@ export interface AdminDataRepository {
    */
   listCardLegalities(cardId: string): Promise<AdminCardLegalities | null>;
   listCardRulings(cardId: string): Promise<AdminCardRulings | null>;
+  listCardRelationships(
+    cardId: string,
+  ): Promise<AdminCardRelationships | null>;
   listReconciliation(
     query: AdminReconciliationQuery,
   ): Promise<AdminReconciliationPage>;
@@ -547,16 +620,44 @@ export function createAdminDataRepository(
       };
     },
 
+    async listCardRelationships(cardId) {
+      const { data, error } = await client.rpc("admin_list_card_relationships", {
+        p_card_id: cardId,
+      });
+      if (error) {
+        throw new AdminRepositoryError(error.message, error.code);
+      }
+      if (!data) return null;
+
+      const payload = data as {
+        card_id?: string;
+        oracle_key?: string;
+        oracle_entries?: Array<Record<string, unknown>>;
+        printing_entries?: Array<Record<string, unknown>>;
+      };
+      return {
+        card_id: String(payload.card_id ?? cardId),
+        oracle_key: String(payload.oracle_key ?? ""),
+        oracle_entries: (payload.oracle_entries ?? [])
+          .map(parseRelationshipEntry)
+          .filter((entry): entry is AdminRelationshipEntry => entry !== null),
+        printing_entries: (payload.printing_entries ?? [])
+          .map(parseRelationshipEntry)
+          .filter((entry): entry is AdminRelationshipEntry => entry !== null),
+      };
+    },
+
     async listReconciliation(query) {
       let request = client
         .from("reconciliation_queue")
         .select(
-          "id, kind, fingerprint, status, tcgplayer_payload, proposed_card_id, note, resolved_by, resolved_at, created_at, last_seen_at",
+          "id, kind, source, fingerprint, status, payload, proposed_card_id, note, resolved_by, resolved_at, created_at, last_seen_at",
           { count: "exact" },
         );
 
       if (query.status) request = request.eq("status", query.status);
       if (query.kind) request = request.eq("kind", query.kind);
+      if (query.source) request = request.eq("source", query.source);
 
       const [page, ...statusCounts] = await Promise.all([
         request
@@ -595,7 +696,7 @@ export function createAdminDataRepository(
       const { data, error } = await client
         .from("reconciliation_queue")
         .select(
-          "id, kind, fingerprint, status, tcgplayer_payload, proposed_card_id, note, resolved_by, resolved_at, created_at, last_seen_at",
+          "id, kind, source, fingerprint, status, payload, proposed_card_id, note, resolved_by, resolved_at, created_at, last_seen_at",
         )
         .eq("id", entryId)
         .maybeSingle();
@@ -707,25 +808,83 @@ function parseReconciliationProduct(
   };
 }
 
+const RECONCILIATION_FIELDS = new Set<string>([
+  "collector_number",
+  "released_at",
+  "rarity",
+  "type",
+  "energy",
+  "might",
+  "power",
+  "text",
+]);
+
+function parseReconciliationGalleryCard(
+  value: unknown,
+): AdminReconciliationGalleryCard {
+  const row = isRecord(value) ? value : {};
+  const str = (key: string): string | null =>
+    typeof row[key] === "string" ? (row[key] as string) : null;
+  const num = (key: string): number | null =>
+    typeof row[key] === "number" && Number.isFinite(row[key] as number)
+      ? (row[key] as number)
+      : null;
+  const bool = (key: string): boolean => row[key] === true;
+  return {
+    riftbound_id: str("riftbound_id") ?? "",
+    name: str("name") ?? "",
+    public_code: str("public_code"),
+    set_code: str("set_code"),
+    set_name: str("set_name"),
+    collector_number: str("collector_number"),
+    rarity: str("rarity"),
+    type: str("type"),
+    image_url: str("image_url"),
+    energy: num("energy"),
+    might: num("might"),
+    power: num("power"),
+    text: str("text"),
+    might_bonus: num("might_bonus"),
+    equipment: str("equipment"),
+    signature: bool("signature"),
+    special_collection: bool("special_collection"),
+    alternate_art: bool("alternate_art"),
+    is_token: bool("is_token"),
+  };
+}
+
 function parseReconciliationEntry(
   row: Record<string, unknown>,
 ): AdminReconciliationEntry {
-  const payload = isRecord(row.tcgplayer_payload) ? row.tcgplayer_payload : {};
+  const payload = isRecord(row.payload) ? row.payload : {};
   const field =
-    payload.field === "collector_number" || payload.field === "released_at"
-      ? payload.field
+    typeof payload.field === "string" && RECONCILIATION_FIELDS.has(payload.field)
+      ? (payload.field as AdminReconciliationField)
       : undefined;
+  const source = row.source === "gallery" ? "gallery" : "tcgplayer";
 
   return {
     id: String(row.id ?? ""),
-    kind: row.kind === "field_diff" ? "field_diff" : "unmatched_product",
+    kind:
+      row.kind === "field_diff" || row.kind === "missing_card"
+        ? row.kind
+        : "unmatched_product",
+    source,
     fingerprint: typeof row.fingerprint === "string" ? row.fingerprint : "",
     status:
       row.status === "confirmed" || row.status === "dismissed"
         ? row.status
         : "pending",
-    tcgplayer_payload: {
-      product: parseReconciliationProduct(payload.product),
+    payload: {
+      // Only the half its source populates, and only when the row actually
+      // carries it: a gallery entry has no TCGPlayer product, and synthesising
+      // an empty one would render as a broken link.
+      ...(source === "tcgplayer" && isRecord(payload.product)
+        ? { product: parseReconciliationProduct(payload.product) }
+        : {}),
+      ...(source === "gallery" && isRecord(payload.gallery)
+        ? { gallery: parseReconciliationGalleryCard(payload.gallery) }
+        : {}),
       ...(field ? { field } : {}),
       current_value:
         typeof payload.current_value === "string" ? payload.current_value : null,
@@ -809,6 +968,35 @@ function parseCardRuling(row: Record<string, unknown>): AdminCardRuling {
       typeof row.target_count === "number" ? row.target_count : 1,
     created_at: typeof row.created_at === "string" ? row.created_at : null,
     updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
+  };
+}
+
+const RELATIONSHIP_KINDS = new Set<AdminRelationshipKind>([
+  "all_parts",
+  "used_by",
+  "related_champions",
+  "related_legends",
+  "related_signatures",
+  "related_printings",
+]);
+
+function parseRelationshipEntry(
+  row: Record<string, unknown>,
+): AdminRelationshipEntry | null {
+  if (
+    typeof row.kind !== "string" ||
+    !RELATIONSHIP_KINDS.has(row.kind as AdminRelationshipKind)
+  ) {
+    return null;
+  }
+  if (typeof row.related_card_id !== "string" || !row.related_card_id) {
+    return null;
+  }
+  if (row.action !== "add" && row.action !== "remove") return null;
+  return {
+    kind: row.kind as AdminRelationshipKind,
+    related_card_id: row.related_card_id,
+    action: row.action,
   };
 }
 

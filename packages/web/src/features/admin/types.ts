@@ -40,6 +40,8 @@ export type AdminCardPatch = Body<CardById["patch"]>["patch"];
 
 export type AdminCardDefinition = Body<AdminRoutes["cards"]["post"]>["definition"];
 
+export type AdminCardRelationships = Ok<CardById["relationships"]["get"]>;
+
 export type AdminRelationshipEntry = Body<
   CardById["relationships"]["put"]
 >["entries"][number];
@@ -177,80 +179,63 @@ export interface AdminRulePreview {
   sample: AdminRulePreviewCard[];
 }
 
-// ─── TCGPlayer review queue ───────────────────────────────────────────────────
+// ─── Review queue (TCGPlayer + official gallery) ──────────────────────────────
 
+export type AdminReviewPage = Ok<AdminRoutes["reconciliation"]["get"]>;
+
+export type AdminReviewEntry = AdminReviewPage["entries"][number];
+
+export type AdminReviewStatus = AdminReviewEntry["status"];
+
+export type AdminReviewKind = AdminReviewEntry["kind"];
+
+/** Which upstream raised the entry; decides which half of the payload is set. */
+export type AdminReviewSource = AdminReviewEntry["source"];
+
+/** The only fields ingest proposes; prices are never queued. */
+export type AdminReviewField = NonNullable<
+  AdminReviewEntry["payload"]["field"]
+>;
+
+export type AdminReviewProduct = NonNullable<
+  AdminReviewEntry["payload"]["product"]
+>;
+
+/** A printing the official gallery lists, as filed for review. */
+export type AdminReviewGalleryCard = NonNullable<
+  AdminReviewEntry["payload"]["gallery"]
+>;
+
+// Runtime lists for the filter selects. `satisfies` ties each to the derived
+// union, so a value the API drops (or gains) fails to compile here.
 export const ADMIN_REVIEW_STATUSES = [
   "pending",
   "confirmed",
   "dismissed",
-] as const;
-
-export type AdminReviewStatus = (typeof ADMIN_REVIEW_STATUSES)[number];
+] as const satisfies readonly AdminReviewStatus[];
 
 export const ADMIN_REVIEW_KINDS = [
   "unmatched_product",
   "field_diff",
-] as const;
+  "missing_card",
+] as const satisfies readonly AdminReviewKind[];
 
-export type AdminReviewKind = (typeof ADMIN_REVIEW_KINDS)[number];
-
-/** The only fields ingest proposes; prices are never queued. */
-export type AdminReviewField = "collector_number" | "released_at";
-
-export interface AdminReviewProduct {
-  product_id: number;
-  name: string;
-  url: string;
-  image_url: string | null;
-  collector_number: string | null;
-  group_id: number;
-  set_code: string | null;
-}
-
-export interface AdminReviewEntry {
-  id: string;
-  kind: AdminReviewKind;
-  fingerprint: string;
-  status: AdminReviewStatus;
-  tcgplayer_payload: {
-    product: AdminReviewProduct;
-    field?: AdminReviewField;
-    current_value?: Nullable<string>;
-    proposed_value?: Nullable<string>;
-    card_id?: string;
-    card_name?: string;
-  };
-  /** Ingest's suggestion, or the card the entry was confirmed against. */
-  proposed_card_id: Nullable<string>;
-  note: Nullable<string>;
-  resolved_by: Nullable<string>;
-  resolved_at: Nullable<string>;
-  created_at: string;
-  last_seen_at: string;
-}
-
-export interface AdminReviewPage {
-  entries: AdminReviewEntry[];
-  total: number;
-  /** Totals per status regardless of the current filter, for the tabs. */
-  counts: Record<AdminReviewStatus, number>;
-  limit: number;
-  offset: number;
-}
+export const ADMIN_REVIEW_SOURCES = [
+  "tcgplayer",
+  "gallery",
+] as const satisfies readonly AdminReviewSource[];
 
 export interface AdminReviewFilters {
   limit?: number;
   offset?: number;
   status?: AdminReviewStatus;
   kind?: AdminReviewKind;
+  source?: AdminReviewSource;
 }
 
-export interface AdminReviewMutationResult {
-  ok: true;
-  entry_id: string;
-  status: "confirmed" | "dismissed";
-  card_id: Nullable<string>;
-}
+export type AdminReviewMutationResult = Ok<
+  ReturnType<AdminRoutes["reconciliation"]>["confirm"]["post"]
+>;
 
 // ─── Audit log ────────────────────────────────────────────────────────────────
 

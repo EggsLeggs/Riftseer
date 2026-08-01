@@ -45,7 +45,7 @@ The `name` (or `q`) parameter is parsed into an AST and combined with any explic
 | Produces filter | `produces:gem` | Substring match on any `all_parts` entry name. |
 | Numeric compare | `might>=4`, `energy!=0`, `d>=2` | `energy` / `might` / `power`, plus `d` for domain count. |
 | Legality | `f:standard`, `banned:standard`, `notlegal:standard` | Status in one format, resolved through all three layers. |
-| Flags | `is:token`, `is:signature`, `-is:alt` | Printing properties. |
+| Flags | `is:token`, `is:signature`, `-is:alt` | Printing properties. Values: `token`, `signature`, `alternate`, `overnumbered`, `special`, `foil`, `manual`. |
 | Exact name | `!Sun`, `!"Sun Disc"` | Match a single normalized card name. |
 | Negation | `-t:gear`, `-(t:gear or t:spell)` | Exclude matching cards. |
 | Boolean OR | `t:gear or t:spell` | Union of matches (lowercase `or` keyword). |
@@ -55,6 +55,8 @@ The `name` (or `q`) parameter is parsed into an AST and combined with any explic
 Implicit AND binds tighter than `or`. So `t:a or t:b t:c` parses as `t:a OR (t:b AND t:c)` — use parentheses when in doubt.
 
 Field aliases: `a`/`artist`, `t`/`type`, `st`/`supertype`, `r`/`rarity`, `tag`/`tags`, `kw`/`keyword`/`keywords`, `d`/`domain`/`domains`, `s`/`set`, `produces`/`makes`, `e`/`energy`/`cost`, `m`/`might`, `p`/`power`, `f`/`format`/`legal`, `banned`, `notlegal`/`illegal`, `is`.
+
+Flag aliases: `sig` → `signature`, `alt`/`alternate_art` → `alternate`, `special_collection`/`showcase` → `special`.
 
 Notes on the less obvious rules:
 

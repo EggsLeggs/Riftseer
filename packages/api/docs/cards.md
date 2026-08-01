@@ -36,10 +36,12 @@ Every card endpoint returns the same card shape. Key fields:
 | `set.card_count` | number \| undefined | Total cards in this set |
 | `oracle_key` | string \| undefined | Name-derived key shared by every printing of this card. Rulings and format legalities are keyed on it, not on `id` |
 | `keywords` | string[] \| undefined | `[Keyword]` tags in this printing's rules text, as base keys (`deflect`, not `Deflect 3`). Kept in sync by a DB trigger; searchable with `kw:` |
-| `attributes` | object | `energy`, `might`, `power` |
+| `attributes` | object | `energy`, `might`, `power`, plus `might_bonus` on `[Equip]` gear |
+| `attributes.might_bonus` | number \| null \| undefined | Might an `[Equip]` gear grants the unit it is attached to. Present only on equipment, where `0` is a real printed value — absent means "not equipment", not "grants nothing". Sourced from Riot's official card gallery and shared by every printing of the card |
 | `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
 | `text.plain` | string | Rules text, punctuation intact |
 | `text.rich` | string | Rules text with inline symbol tokens |
+| `text.equipment` | string \| undefined | The effect an `[Equip]` gear grants the equipped unit, in the same vocabulary as `text.plain`. Absent when `might_bonus` is the whole effect |
 | `media` | object \| undefined | Hosted image URLs (`small`, `normal`, `large`, `original`), detected orientation, upstream `source_url`, `source_hash`, and source provider. Hosted URLs use the R2 custom domain after queue processing. |
 | `prices` | object \| undefined | Opt-in — omitted by default; see [Prices](#prices) section |
 | `purchase_uris` | object | Marketplace purchase URLs (`tcgplayer`, `cardmarket`) when available |

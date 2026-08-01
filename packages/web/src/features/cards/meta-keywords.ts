@@ -32,6 +32,20 @@ export interface MetaKeywords {
 const ORDER_FIELD_SET = new Set<string>(ORDER_FIELDS);
 
 /**
+ * The printed rarity ladder. `order:rarity` has to sort by this, not
+ * alphabetically — "Epic" before "Rare" before "Uncommon" is meaningless to a
+ * reader. Anything outside the ladder (`Promo`, or a value a later set
+ * introduces) sorts after it, keeping its incoming order.
+ */
+const RARITY_ORDER = ["common", "uncommon", "rare", "epic", "showcase"];
+
+function rarityRank(rarity: string | null | undefined): number | null {
+  if (!rarity) return null;
+  const index = RARITY_ORDER.indexOf(rarity.trim().toLowerCase());
+  return index === -1 ? RARITY_ORDER.length : index;
+}
+
+/**
  * Strip meta-keywords (`set:`, `order:`, `direction:`, `unique:prints`, `++`)
  * from a raw query string and return them plus the cleaned query text.
  */
@@ -75,7 +89,7 @@ function cardValue(card: Card, field: OrderField): CardValue {
     case "energy":    return card.attributes?.energy ?? null;
     case "power":     return card.attributes?.power ?? null;
     case "might":     return card.attributes?.might ?? null;
-    case "rarity":    return card.classification?.rarity ?? null;
+    case "rarity":    return rarityRank(card.classification?.rarity);
     case "artist":    return card.artist ?? null;
     case "usd":       return tcgplayerUsdPrice(card.prices?.tcgplayer);
     case "eur":       return card.prices?.cardmarket?.normal ?? null;

@@ -8,6 +8,7 @@ import {
 } from "@riftseer/types";
 import { authAdminClient } from "../lib/supabase";
 import { oracleKeyForName } from "@riftseer/types/oracle";
+import { isConfirmableReconciliationField } from "@riftseer/types/reconciliation";
 import {
   AdminRepositoryError,
   createAdminDataRepository,
@@ -50,6 +51,7 @@ const AdminAttributesSchema = t.Partial(
     energy: NullableNumberSchema,
     might: NullableNumberSchema,
     power: NullableNumberSchema,
+    might_bonus: NullableNumberSchema,
   }),
 );
 
@@ -68,6 +70,7 @@ const AdminTextSchema = t.Partial(
     rich: NullableStringSchema,
     plain: NullableStringSchema,
     flavour: NullableStringSchema,
+    equipment: NullableStringSchema,
   }),
 );
 
@@ -77,6 +80,7 @@ const AdminMetadataSchema = t.Partial(
     signature: t.Nullable(t.Boolean()),
     overnumbered: t.Nullable(t.Boolean()),
     alternate_art: t.Nullable(t.Boolean()),
+    special_collection: t.Nullable(t.Boolean()),
   }),
 );
 
@@ -174,6 +178,23 @@ const RelationshipKindSchema = t.UnionEnum([
 ]);
 
 const RelationshipActionSchema = t.UnionEnum(["add", "remove"]);
+
+const AdminRelationshipEntrySchema = t.Object({
+  kind: RelationshipKindSchema,
+  related_card_id: t.String({
+    minLength: 1,
+    maxLength: 128,
+    pattern: NON_BLANK_PATTERN,
+  }),
+  action: RelationshipActionSchema,
+});
+
+const AdminCardRelationshipsResponseSchema = t.Object({
+  card_id: t.String(),
+  oracle_key: t.String(),
+  oracle_entries: t.Array(AdminRelationshipEntrySchema),
+  printing_entries: t.Array(AdminRelationshipEntrySchema),
+});
 
 const AdminSetFields = {
   set_uri: t.Optional(NullableStringSchema),
@@ -518,7 +539,10 @@ function buildRulingTargets(
 const ReconciliationKindSchema = t.UnionEnum([
   "unmatched_product",
   "field_diff",
+  "missing_card",
 ]);
+
+const ReconciliationSourceSchema = t.UnionEnum(["tcgplayer", "gallery"]);
 
 const ReconciliationStatusSchema = t.UnionEnum([
   "pending",
@@ -529,6 +553,12 @@ const ReconciliationStatusSchema = t.UnionEnum([
 const ReconciliationFieldSchema = t.UnionEnum([
   "collector_number",
   "released_at",
+  "rarity",
+  "type",
+  "energy",
+  "might",
+  "power",
+  "text",
 ]);
 
 /**
@@ -546,6 +576,12 @@ const ReconciliationStatusQuerySchema = t.Union([
 const ReconciliationKindQuerySchema = t.Union([
   t.Literal("unmatched_product"),
   t.Literal("field_diff"),
+  t.Literal("missing_card"),
+]);
+
+const ReconciliationSourceQuerySchema = t.Union([
+  t.Literal("tcgplayer"),
+  t.Literal("gallery"),
 ]);
 
 const ReconciliationProductSchema = t.Object({
@@ -558,13 +594,37 @@ const ReconciliationProductSchema = t.Object({
   set_code: NullableStringSchema,
 });
 
+const ReconciliationGalleryCardSchema = t.Object({
+  riftbound_id: t.String(),
+  name: t.String(),
+  public_code: NullableStringSchema,
+  set_code: NullableStringSchema,
+  set_name: t.Optional(NullableStringSchema),
+  collector_number: NullableStringSchema,
+  rarity: NullableStringSchema,
+  type: NullableStringSchema,
+  image_url: NullableStringSchema,
+  energy: t.Optional(NullableNumberSchema),
+  might: t.Optional(NullableNumberSchema),
+  power: t.Optional(NullableNumberSchema),
+  text: t.Optional(NullableStringSchema),
+  might_bonus: t.Optional(NullableNumberSchema),
+  equipment: t.Optional(NullableStringSchema),
+  signature: t.Optional(t.Boolean()),
+  special_collection: t.Optional(t.Boolean()),
+  alternate_art: t.Optional(t.Boolean()),
+  is_token: t.Optional(t.Boolean()),
+});
+
 const ReconciliationEntrySchema = t.Object({
   id: t.String(),
   kind: ReconciliationKindSchema,
+  source: ReconciliationSourceSchema,
   fingerprint: t.String(),
   status: ReconciliationStatusSchema,
-  tcgplayer_payload: t.Object({
-    product: ReconciliationProductSchema,
+  payload: t.Object({
+    product: t.Optional(ReconciliationProductSchema),
+    gallery: t.Optional(ReconciliationGalleryCardSchema),
     field: t.Optional(ReconciliationFieldSchema),
     current_value: t.Optional(NullableStringSchema),
     proposed_value: t.Optional(NullableStringSchema),
@@ -849,14 +909,28 @@ function toSlugCard(card: AdminSlugCard): Card {
 function buildConfirmPatch(
   entry: AdminReconciliationEntry,
 ): Record<string, unknown> | null {
-  const payload = entry.tcgplayer_payload;
+  const payload = entry.payload;
 
   if (entry.kind === "unmatched_product") {
+    if (!payload.product) return null;
     return {
       external_ids: { tcgplayer_id: String(payload.product.product_id) },
       purchase_uris: { tcgplayer: payload.product.url },
     };
   }
+
+  // A gallery card we hold no printing for. Confirming records the gap as
+  // handled and stamps the gallery's riftbound_id onto the new card so later
+  // ingests recognise it — creating alone is not enough if the admin forgot.
+  if (entry.kind === "missing_card") {
+    const riftboundId = payload.gallery?.riftbound_id?.trim();
+    if (!riftboundId) return {};
+    return { external_ids: { riftbound_id: riftboundId } };
+  }
+
+  // The shared list the admin UI disables Confirm from, so the button and this
+  // switch cannot disagree about what is applicable.
+  if (!isConfirmableReconciliationField(payload.field)) return null;
 
   const value = payload.proposed_value ?? null;
   switch (payload.field) {
@@ -864,6 +938,21 @@ function buildConfirmPatch(
       return { collector_number: value };
     case "released_at":
       return { released_at: value };
+    case "rarity":
+      return { classification: { rarity: value } };
+    case "type":
+      return { classification: { type: value } };
+    // Stats are numbers on the card but text in the payload, and a value that
+    // does not parse must not become a NaN or a null on a real printing.
+    case "energy":
+    case "might":
+    case "power": {
+      const numeric = value === null ? null : Number(value);
+      if (numeric !== null && !Number.isFinite(numeric)) return null;
+      return { attributes: { [payload.field]: numeric } };
+    }
+    // Unreachable while every confirmable field has a case above; the contract
+    // test in `__tests__/routes/admin.test.ts` is what keeps that true.
     default:
       return null;
   }
@@ -1115,6 +1204,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
             // work to do, not on a history of everything ever dismissed.
             status: query.status ?? "pending",
             kind: query.kind,
+            source: query.source,
           }),
         );
         if ("error" in result) {
@@ -1135,6 +1225,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           offset: t.Optional(t.String()),
           status: t.Optional(ReconciliationStatusQuerySchema),
           kind: t.Optional(ReconciliationKindQuerySchema),
+          source: t.Optional(ReconciliationSourceQuerySchema),
         }),
         response: {
           200: ReconciliationListResponseSchema,
@@ -1144,7 +1235,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           tags: ["Admin"],
           summary: "List review-queue entries",
           description:
-            "TCGPlayer products ingest could not attach to a card, plus field disagreements. Defaults to pending entries, newest first.",
+            "What ingest could not reconcile: TCGPlayer products that match no card, printings the official gallery lists that we do not hold, and field disagreements from either source. Defaults to pending entries, newest first.",
         },
       },
     )
@@ -1623,6 +1714,42 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         },
       },
     )
+    .get(
+      "/cards/:id/relationships",
+      async ({ params, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const result = await safely("card.relationships.list", () =>
+          repository.listCardRelationships(params.id),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        if (!result.data) {
+          return status(404, {
+            error: "Card not found",
+            code: "CARD_NOT_FOUND",
+          });
+        }
+        return result.data;
+      },
+      {
+        response: {
+          200: AdminCardRelationshipsResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Read a card's relationship overrides",
+          description:
+            "Returns oracle-scoped and printing-scoped durable overrides separately. Live relationship arrays are on the card payload.",
+        },
+      },
+    )
     .put(
       "/cards/:id/relationships",
       async ({ params, body, adminUser, status }) => {
@@ -1655,12 +1782,17 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           identities.add(identity);
         }
 
+        // Default true: relationships usually describe the card, not one
+        // printing — same default as rulings.
+        const applyToAll = body.apply_to_all_printings ?? true;
+
         const rpcResult = await safely(
           "card.relationships",
           () =>
             repository.callRpc("admin_set_card_relationships", {
               p_card_id: params.id,
               p_entries: entries,
+              p_all_printings: applyToAll,
               p_actor: adminUser.id,
             }),
         );
@@ -1674,18 +1806,8 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
       },
       {
         body: t.Object({
-          entries: t.Array(
-            t.Object({
-              kind: RelationshipKindSchema,
-              related_card_id: t.String({
-                minLength: 1,
-                maxLength: 128,
-                pattern: NON_BLANK_PATTERN,
-              }),
-              action: RelationshipActionSchema,
-            }),
-            { maxItems: 500 },
-          ),
+          entries: t.Array(AdminRelationshipEntrySchema, { maxItems: 500 }),
+          apply_to_all_printings: t.Optional(t.Boolean()),
         }),
         response: {
           200: CardMutationResponseSchema,
@@ -1695,7 +1817,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           tags: ["Admin"],
           summary: "Replace relationship overrides",
           description:
-            "Replaces a card's add/remove relationship overrides and reconciles the live arrays.",
+            "Replaces oracle- or printing-scoped relationship overrides and reconciles the live arrays. With apply_to_all_printings (default true), entries are stored by oracle_key so future printings inherit them, and per-printing exceptions in the group are cleared.",
         },
       },
     )

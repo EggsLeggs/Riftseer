@@ -22,7 +22,7 @@
  *   - numeric        `energy` `might` `power` `d` (domain count) with a comparator
  *   - legality       `f:` / `legal:` / `banned:` / `notlegal:` + a format code
  *   - flags          `is:token` `is:signature` `is:alternate` `is:overnumbered`
- *                    `is:manual` `is:foil`
+ *                    `is:special` `is:manual` `is:foil`
  *
  * `d` is disambiguated by its operator: `d:fury` filters domains, `d>=2` counts
  * them. Comma-separated values on `kw` / `d` / `tag` expand to OR, so
@@ -82,6 +82,7 @@ export type CardSearchFlag =
   | "signature"
   | "alternate"
   | "overnumbered"
+  | "special"
   | "manual"
   | "foil";
 
@@ -199,6 +200,9 @@ const FLAG_VALUES: Record<string, CardSearchFlag> = {
   alt: "alternate",
   alternate_art: "alternate",
   overnumbered: "overnumbered",
+  special: "special",
+  special_collection: "special",
+  showcase: "special",
   manual: "manual",
   foil: "foil",
 };

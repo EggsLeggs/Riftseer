@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test";
 
 import {
   cardTypeLineSearchQuery,
+  domainSearchQuery,
   keywordSearchQuery,
   quoteSearchValue,
   searchHref,
+  artistSearchQuery,
   tagSearchQuery,
 } from "./search-links";
 
@@ -48,6 +50,22 @@ describe("tagSearchQuery", () => {
   test("uses the tag-only field, not the broad t:", () => {
     expect(tagSearchQuery("Poro")).toBe("tag:Poro");
     expect(tagSearchQuery("Freljord Beast")).toBe('tag:"Freljord Beast"');
+  });
+});
+
+describe("artistSearchQuery", () => {
+  test("uses the artist field and quotes multi-word names", () => {
+    expect(artistSearchQuery("Kudos")).toBe("a:Kudos");
+    expect(artistSearchQuery("Kudos Productions")).toBe(
+      'a:"Kudos Productions"',
+    );
+  });
+});
+
+describe("domainSearchQuery", () => {
+  test("uses the domain field", () => {
+    expect(domainSearchQuery("Body")).toBe("d:Body");
+    expect(domainSearchQuery("Fury")).toBe("d:Fury");
   });
 });
 

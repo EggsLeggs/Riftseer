@@ -117,6 +117,12 @@ export interface CardAttributes {
   might?: number | null;
   /** Power stat (unit's attack-side). */
   power?: number | null;
+  /**
+   * Might an `[Equip]` Gear grants the unit it is attached to. Present only on
+   * equipment, where `0` is a real printed value — absent means "not
+   * equipment", not "grants nothing".
+   */
+  might_bonus?: number | null;
 }
 
 export interface CardClassification {
@@ -139,6 +145,12 @@ export interface CardText {
   plain?: string;
   /** Flavour / lore text if available. */
   flavour?: string;
+  /**
+   * The effect an `[Equip]` Gear grants the unit it is attached to, in the same
+   * vocabulary as `plain`. Sits alongside `attributes.might_bonus`; an
+   * equipment whose bonus is its whole effect has the bonus and no text here.
+   */
+  equipment?: string;
 }
 
 export interface CardMetadata {
@@ -147,6 +159,12 @@ export interface CardMetadata {
   signature?: boolean;
   overnumbered?: boolean;
   alternate_art?: boolean;
+  /**
+   * Printed on a numbered track separate from the main set, e.g. Vendetta's
+   * `SP1`–`SP6` showcase champions. Like `overnumbered` and `alternate_art`,
+   * this describes the printing rather than the card.
+   */
+  special_collection?: boolean;
 }
 
 export interface CardMediaUrls {

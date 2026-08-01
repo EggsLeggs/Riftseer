@@ -10,16 +10,34 @@ import {
 describe("repairFlavourText", () => {
   it("restores a missing opening dialogue quote before attribution", () => {
     expect(repairFlavourText('If you hit a wall, hit it hard!"\r\n \r\n- Vi')).toBe(
-      '"If you hit a wall, hit it hard!"\n \n- Vi',
+      '"If you hit a wall, hit it hard!"\n- Vi',
     );
     expect(repairFlavourText('Art shall blossom from your fear."\n - Jhin')).toBe(
-      '"Art shall blossom from your fear."\n - Jhin',
+      '"Art shall blossom from your fear."\n- Jhin',
     );
   });
 
   it("is idempotent when the opening quote is already present", () => {
-    const ok = '"Peace within, peace without."\n\n- Master Yi';
+    const ok = '"Peace within, peace without."\n- Master Yi';
     expect(repairFlavourText(ok)).toBe(ok);
+  });
+
+  // Moonfall prints `"Night approaches!"` with `—Diana` on the very next line;
+  // upstream pads that break with a blank line holding a single space.
+  it("tidies padding around a break but keeps the break itself", () => {
+    expect(repairFlavourText('Night approaches!"\r\n \r\n- Diana')).toBe(
+      '"Night approaches!"\n- Diana',
+    );
+    expect(repairFlavourText('"Already fine."\n\n\n- Someone')).toBe(
+      '"Already fine."\n- Someone',
+    );
+    // Padding on either side of a single break goes too.
+    expect(repairFlavourText('"Trailing space." \n- Vi')).toBe(
+      '"Trailing space."\n- Vi',
+    );
+    expect(repairFlavourText('"Indented attribution."\n   - Vi')).toBe(
+      '"Indented attribution."\n- Vi',
+    );
   });
 
   it("leaves unquoted flavour unchanged", () => {
@@ -36,24 +54,31 @@ describe("repairFlavourText", () => {
   it("strips stray HTML debris from upstream flavour", () => {
     expect(
       repairFlavourText('Hey, where is everyone?" \r\n- Common last words</em'),
-    ).toBe('"Hey, where is everyone?" \n- Common last words');
+    ).toBe('"Hey, where is everyone?"\n- Common last words');
   });
 
-  // The attribution runs on after the closing quote far more often than it
-  // starts a new line (82 vs 27 of the 109 affected cards), so this shape
-  // matters more than the newline one above.
-  it("restores the quote and breaks a run-on attribution onto its own line", () => {
+  // The printed cards disagree about whether the attribution starts a line —
+  // Glasc Mixologist runs it on, Lacerate breaks before it — and upstream
+  // flattens both to the same shape, so the break is never invented.
+  it("restores the quote but leaves a run-on attribution inline", () => {
     expect(
       repairFlavourText('Those who follow me follow destiny!" - Azir'),
-    ).toBe('"Those who follow me follow destiny!"\n- Azir');
+    ).toBe('"Those who follow me follow destiny!" - Azir');
     expect(repairFlavourText(`We're gonna be rich!" -Common Last Words`)).toBe(
-      `"We're gonna be rich!"\n-Common Last Words`,
+      `"We're gonna be rich!" -Common Last Words`,
+    );
+    expect(
+      repairFlavourText(
+        'The difference between medicine and poison is the dosage."- Renata Glasc',
+      ),
+    ).toBe(
+      '"The difference between medicine and poison is the dosage."- Renata Glasc',
     );
   });
 
   it("leaves an attribution that already has its own line where it is", () => {
-    const spaced = '"If you hit a wall, hit it hard!"\n \n- Vi';
-    expect(repairFlavourText(spaced)).toBe(spaced);
+    const own = '"If you hit a wall, hit it hard!"\n- Vi';
+    expect(repairFlavourText(own)).toBe(own);
   });
 
   it("does not break on a dash inside the quoted line", () => {
@@ -64,14 +89,68 @@ describe("repairFlavourText", () => {
   it("strips a closing tag that upstream leaves after the quote", () => {
     expect(
       repairFlavourText('One of us finds peace. One of us walks away."</e>'),
-    ).toBe('One of us finds peace. One of us walks away."');
+    ).toBe('"One of us finds peace. One of us walks away."');
   });
 
   it("strips leading tag debris without eating the rest of the text", () => {
     // A greedy `[^>]*` on this unterminated tag consumed the whole flavour.
     expect(repairFlavourText('<em?"I will light our path.')).toBe(
-      '"I will light our path.',
+      '"I will light our path."',
     );
+  });
+
+  // Upstream drops quotes at either edge, and only about half the affected
+  // cards carry a "— Vi" attribution to key off. These six do not.
+  it("restores an opening quote with no attribution to key off", () => {
+    expect(
+      repairFlavourText(
+        `Ready" and "fire" are easy. Aiming, now that's the hard part.`,
+      ),
+    ).toBe(`"Ready" and "fire" are easy. Aiming, now that's the hard part.`);
+    expect(repairFlavourText('Last one standing" is a bit subjective.')).toBe(
+      '"Last one standing" is a bit subjective.',
+    );
+  });
+
+  it("restores a dropped closing quote", () => {
+    expect(repairFlavourText('They call it "the Noxian hello.')).toBe(
+      'They call it "the Noxian hello."',
+    );
+    expect(repairFlavourText(`He doesn't bother to shout "Freeze!`)).toBe(
+      `He doesn't bother to shout "Freeze!"`,
+    );
+  });
+
+  // Balanced but broken: the count is even, yet the first quote closes.
+  it("restores both quotes when each edge lost one", () => {
+    expect(repairFlavourText('Gentle" is not the same as "harmless.')).toBe(
+      '"Gentle" is not the same as "harmless."',
+    );
+  });
+
+  it("leaves prose whose dash follows a genuinely quoted phrase", () => {
+    const prose =
+      'Few people laughed when she claimed she was a "dock pirate" - or at least, few remained.';
+    expect(repairFlavourText(prose)).toBe(prose);
+  });
+
+  it("reads a quote hugging a dash as a closer, not an opener", () => {
+    expect(repairFlavourText('Inaction invites regret."- Mel')).toBe(
+      '"Inaction invites regret."- Mel',
+    );
+  });
+
+  it("is idempotent over every repair", () => {
+    for (const raw of [
+      `Ready" and "fire" are easy.`,
+      'They call it "the Noxian hello.',
+      'Gentle" is not the same as "harmless.',
+      'Those who follow me follow destiny!" - Azir',
+      '<em?"I will light our path.',
+    ]) {
+      const once = repairFlavourText(raw);
+      expect(repairFlavourText(once)).toBe(once);
+    }
   });
 
   it("keeps angle brackets that cannot be a tag", () => {

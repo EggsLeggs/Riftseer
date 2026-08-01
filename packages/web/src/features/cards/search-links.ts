@@ -1,6 +1,6 @@
 /**
- * Search queries and hrefs for the clickable bits of a card — type line, tags
- * and keyword badges.
+ * Search queries and hrefs for the clickable bits of a card — type line, tags,
+ * domains, artist and keyword badges.
  *
  * The strings produced here are real queries in the site search language (see
  * `views/search-syntax-view.tsx`), not a private format: whatever a click
@@ -36,6 +36,16 @@ export function searchHref(query: string): string {
 /** `tag:poro` — classification tags only, not the broader `t:`. */
 export function tagSearchQuery(tag: string): string {
   return `tag:${quoteSearchValue(tag)}`;
+}
+
+/** `a:"Kudos Productions"` — illustrator name. */
+export function artistSearchQuery(artist: string): string {
+  return `a:${quoteSearchValue(artist)}`;
+}
+
+/** `d:body` — a single domain among the card's domains. */
+export function domainSearchQuery(domain: string): string {
+  return `d:${quoteSearchValue(domain)}`;
 }
 
 /**

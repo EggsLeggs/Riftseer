@@ -7,6 +7,7 @@ import type {
   AdminCardLegalities,
   AdminCardMutationResult,
   AdminCardPatch,
+  AdminCardRelationships,
   AdminCardRulings,
   AdminFormatDeleteResult,
   AdminFormatInput,
@@ -154,7 +155,7 @@ export const adminApi = {
     });
   },
 
-  // ── TCGPlayer review queue ──────────────────────────────────────────────────
+  // ── Ingest review queue ─────────────────────────────────────────────────────
 
   /** Defaults to pending entries when no status is given. */
   listReview(
@@ -275,17 +276,36 @@ export const adminApi = {
     });
   },
 
-  /** Replaces the card's whole override list — send every entry that should persist. */
+  listCardRelationships(
+    accessToken: string,
+    cardId: string,
+  ): Promise<AdminResult<AdminCardRelationships>> {
+    return request({
+      method: "GET",
+      path: cardPath(cardId, "/relationships"),
+      accessToken,
+    });
+  },
+
+  /**
+   * Replaces one scope's override list. With `applyToAllPrintings` (default
+   * true) entries are oracle-scoped and per-printing exceptions in the group
+   * are cleared; otherwise only this printing's exceptions are replaced.
+   */
   setRelationships(
     accessToken: string,
     cardId: string,
     entries: AdminRelationshipEntry[],
+    applyToAllPrintings = true,
   ): Promise<AdminResult<AdminCardMutationResult>> {
     return request({
       method: "PUT",
       path: cardPath(cardId, "/relationships"),
       accessToken,
-      body: { entries },
+      body: {
+        entries,
+        apply_to_all_printings: applyToAllPrintings,
+      },
     });
   },
 

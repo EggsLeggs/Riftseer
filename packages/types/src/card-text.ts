@@ -28,24 +28,48 @@ function isUnicodeScalarValue(value: number): boolean {
 }
 
 /**
- * RiftCodex flavour text systematically drops the opening dialogue quote while
- * leaving the closer and attribution, e.g.
- *   If you hit a wall, hit it hard!"\n- Vi
- * instead of
- *   "If you hit a wall, hit it hard!"\n- Vi
+ * RiftCodex flavour text loses quote characters at the *edges* of the field.
+ * Most often the opening quote of a line of dialogue:
+ *   If you hit a wall, hit it hard!"\n- Vi   \u2192   "If you hit a wall\u2026!"\n- Vi
+ * but the closer goes missing just as readily:
+ *   He doesn't bother to shout "Freeze!      \u2192   \u2026to shout "Freeze!"
+ * and occasionally both:
+ *   Gentle" is not the same as "harmless.    \u2192   "Gentle" is not \u2026 "harmless."
  *
  * Also strips stray HTML tag debris sometimes left in the same field.
  *
+ * The repair works on the quote *characters*, not on the attribution: each
+ * quote is read as an opener or a closer from the text around it (see
+ * {@link firstQuoteIsCloser}). A field whose first quote closes something must
+ * have lost its opener, and a field left holding an open quote must have lost
+ * its closer. That covers all 9 broken fields in the live corpus; an earlier
+ * version keyed off a trailing "\u2014 Vi" attribution and silently skipped the 6
+ * that have none, Monster Harpoon among them.
+ *
+ * Well-formed prose containing a quoted word (`A dragon's definition of "prey"
+ * is all inclusive.`) opens with an opener and balances, so it is untouched.
+ *
  * The attribution may sit on its own line ("...!"\n- Vi) or run on after the
  * closing quote ("...!" -Azir); both shapes occur upstream, roughly 27 and 82
- * times respectively across the 770 cards that carry flavour text. Requiring a
- * newline would silently skip the larger group.
+ * times respectively across the 770 cards that carry flavour text. **Neither is
+ * rewritten.** The printed cards disagree too — Glasc Mixologist runs its
+ * attribution on, Lacerate breaks before it — and the field gives no way to
+ * tell them apart, so a line break is only ever shown where upstream sent one.
  *
- * Idempotent: text that already opens with a quote is returned untouched, so
- * running this on both ingest and read never doubles the quote.
+ * Idempotent: repaired text is balanced and opens with an opener, so running
+ * this on both ingest and read never doubles a quote.
  */
 export function repairFlavourText(flavour: string): string {
-  let text = flavour.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  let text = flavour
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    // Tidy the whitespace around every break upstream sent: a blank line before
+    // the attribution (`Night approaches!"\n \n- Diana`), a space left at the
+    // end of the quote (`everyone?" \n- Common last words`), or one indenting
+    // the attribution (`your fear."\n - Jhin`). No card prints a blank line or
+    // a hanging indent. Collapsing is not the same as inventing a break — the
+    // newline upstream sent is kept, only the padding around it goes.
+    .replace(/[^\S\n]*\n\s*/g, "\n");
   text = text
     .replace(HTML_TAG, "")
     .replace(HTML_DEBRIS_HEAD, "")
@@ -53,25 +77,54 @@ export function repairFlavourText(flavour: string): string {
 
   const leadMatch = text.match(/^\s*/);
   const lead = leadMatch?.[0] ?? "";
-  const body = text.slice(lead.length);
-  if (body.length === 0) return text;
+  let body = text.slice(lead.length);
+  if (body.length === 0 || countQuotes(body) === 0) return text;
 
-  // Either the field already opens a quote, or its quotes are unbalanced \u2014
-  // which is exactly the shape upstream leaves behind when it drops the opener.
-  // Balanced quotes mean the field is prose containing a quoted word, so a
-  // trailing dash there is punctuation and not an attribution.
-  const opensQuote = body.startsWith('"') || body.startsWith("\u201c");
-  const isDialogue = opensQuote || countQuotes(body) % 2 === 1;
-  if (!isDialogue) return text;
+  if (firstQuoteIsCloser(body)) body = `"${body}`;
+  // Whatever the shape, an odd number of quotes means one edge is still open.
+  // The prepend above fixed the leading edge, so the survivor is the trailing
+  // one \u2014 and an attribution cannot be in the way, because the patterns that
+  // recognise one require a closing quote directly before the dash.
+  if (countQuotes(body) % 2 === 1) body = `${body.trimEnd()}"`;
 
-  const quoted =
-    opensQuote || !ORPHANED_CLOSING_QUOTE.test(body) ? body : `"${body}`;
-
-  return lead + quoted.replace(RUN_ON_ATTRIBUTION, "$1\n$2");
+  // Upstream's own line breaks are preserved, and none are invented. An
+  // attribution runs on after the closing quote on some cards and starts its
+  // own line on others \u2014 Glasc Mixologist prints `"\u2026dosage." \u2014Renata Glasc`
+  // on one flowing line while Lacerate breaks before `\u2014Ambessa` \u2014 and RiftCodex
+  // flattens both to the same run-on shape, so the field cannot tell us which
+  // this is. Guessing got it wrong more often than leaving it alone; where the
+  // break matters, an admin edit is the answer.
+  return lead + body;
 }
 
 function countQuotes(text: string): number {
   return text.match(/["\u201c\u201d]/g)?.length ?? 0;
+}
+
+/**
+ * True when the first quote in `text` reads as closing a quotation rather than
+ * opening one \u2014 the fingerprint of a dropped opening quote.
+ *
+ * Curly quotes say so directly. A straight `"` is judged by its neighbours: a
+ * closer hugs the word it follows and is itself followed by a space, a
+ * punctuation mark, a dash (`regret."- Mel`) or the end of the field. That
+ * keeps a legitimate opener after an em dash or bracket (`\u2014"Hello"`) from being
+ * misread, since a real opener always runs straight into the word it
+ * introduces.
+ */
+function firstQuoteIsCloser(text: string): boolean {
+  const index = text.search(/["\u201c\u201d]/);
+  if (index < 0) return false;
+  if (text[index] === "\u201c") return false;
+  if (text[index] === "\u201d") return true;
+  if (index === 0) return false;
+
+  const previous = text[index - 1]!;
+  const next = text[index + 1];
+  const followsWord = !/\s/.test(previous);
+  const introducesWord =
+    next !== undefined && !/[\s.,;:!?)\]\-\u2013\u2014]/.test(next);
+  return followsWord && !introducesWord;
 }
 
 /**
@@ -87,29 +140,6 @@ const HTML_TAG = /<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>/g;
  */
 const HTML_DEBRIS_HEAD = /^<\/?[a-zA-Z][a-zA-Z0-9]*[?!]?/;
 const HTML_DEBRIS_TAIL = /<\/?[a-zA-Z][a-zA-Z0-9]*$/;
-
-/**
- * A closing quote followed by a dashed attribution, on the same line or the
- * next. Verified against the live card corpus: it fires on 109 flavour texts
- * and every one is a genuine missing opening quote.
- *
- * The attribution has to be the last thing in the field. Without that anchor a
- * quoted word mid-sentence looked like an attribution (`The word "power" - not
- * a rule.`) and gained a bogus opening quote.
- */
-const ORPHANED_CLOSING_QUOTE =
-  /["”][^\S\n]*(?:\n\s*)*[-–—]\s*\S(?:[^\n]*\S)?\s*$/;
-
-/**
- * A dashed attribution running on after the closing quote (`..." -Azir`).
- * Upstream is inconsistent about this: 27 cards put the attribution on its own
- * line and 82 leave it inline. Normalising to the newline form makes the two
- * groups render alike, and is what lets `whitespace-pre-line` show the break.
- *
- * Anchored to the end so only a trailing attribution is moved, never a dash
- * inside the quoted line.
- */
-const RUN_ON_ATTRIBUTION = /(["”])[^\S\n]*([-–—][^\n]*\S)\s*$/;
 
 /** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
 export function decodeCardTextEntities(text: string): string {
@@ -208,6 +238,14 @@ export function normalizeCardTextLayout(
     .replace(
       /\](?=:rb_(?:energy_\d+|rune_\w+|exhaust|might|power):)/g,
       `]${paragraphBreak}`,
+    )
+    // The mirror image: a keyword line that *ends* in its cost, with the next
+    // ability's keyword glued straight on — `[Empower] :rb_rune_body:[Empowered]`.
+    // `[>]` is excluded because it continues the keyword it follows rather than
+    // starting a line ("[Empowered][>] I have +3 …").
+    .replace(
+      /(:rb_\w+:)(?=\[(?!&gt;|>)[A-Za-z])/g,
+      `$1${paragraphBreak}`,
     )
     .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
 

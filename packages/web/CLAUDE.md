@@ -101,20 +101,41 @@ absolute URL. Never assemble card paths by hand.
 | `features/admin/types.ts` | Request/response contracts derived from the Eden treaty `App` type — never hand-mirror the Elysia `t` schemas |
 | `features/admin/api.ts` | Bearer-token fetches for every admin endpoint. Resolves `AdminResult`, never throws |
 | `features/admin/actions.ts` | Server actions — read the session, call `api.ts`, `revalidatePath` the affected pages |
-| `features/admin/card-form.ts` | Editor value shape, Zod schema, `cardToEditorValues`, and `buildCardPatch` |
+| `features/admin/review-draft.ts` | Prefill for create-from-review (`missing_card` → `/admin/cards/new`) |
 | `features/admin/card-id.ts` | `generateCardId()` — 24-char hex IDs in the RiftCodex ObjectId space, for manual cards |
 | `features/admin/dates.ts` | `toDateInputValue()` — coerces card/set dates for `<input type="date">` |
 | `features/admin/hooks/use-admin-mutations.ts` | TanStack Query mutations + toasts, wrapping the server actions |
 | `views/admin/` | Dashboard, card search, new-card form, card editor and its panels, set manager, format manager, rulings manager, review queue, audit log |
 
-`/admin/review` is the TCGPlayer reconciliation queue: products ingest could not
-attach to a card, plus `collector_number` / `released_at` disagreements. Nothing
-applies itself — **confirm** writes a durable card override (for a product, its
+`/admin/review` is the ingest reconciliation queue, fed by two observers:
+TCGPlayer (products ingest could not attach to a card) and Riot's official card
+gallery (printings it lists that we hold no card for), plus field disagreements
+from either. `source` on each entry says which one raised it and therefore
+whether the payload carries a `product` or a `gallery` card. Nothing applies
+itself — **confirm** writes a durable card override (for a product, its
 `tcgplayer_id`, so later ingests match it automatically) and **dismiss** is
-remembered so the next ingest does not resurface the entry. Only pending entries
-are actionable; the confirmed and dismissed tabs are read-only history. An
+remembered so the next ingest does not resurface the entry. A `missing_card`
+entry has nothing to patch on its own: use **Create** on the row to open
+`/admin/cards/new` prefilled from the gallery payload (name, set, collector,
+stats, text, flags, and art). Saving creates the card, uploads the gallery
+image when present, confirms the queue entry, and stamps
+`external_ids.riftbound_id` so later ingests recognise it. You can still
+create elsewhere and paste the id into Confirm. Only pending entries are
+actionable; the confirmed and dismissed tabs are read-only history. An
 unmatched product's card field is pre-filled with ingest's suggestion but stays
 editable, because the suggestion is only a same-set collector-number guess.
+A rules-text diff is dismiss-only — the API has no patch for it, so Confirm is
+disabled on those rows; `CONFIRMABLE_FIELDS` in `admin-review-view.tsx` mirrors
+`buildConfirmPatch` and must stay in step with it.
+
+`importCardImageFromUrlAction` is the one server action that gates on
+`isAdminSession()` itself rather than leaning on the API's allowlist: it
+performs an outbound `fetch()` before the API is ever called, so an ungated
+action would let anyone point this Worker at arbitrary URLs. Any future action
+with a side effect of its own needs the same treatment. Beyond the auth gate the
+fetch is confined to https on Riot's asset CDNs (`IMPORT_HOST_ALLOWLIST`),
+follows redirects by hand, so every hop is re-checked against that list, and
+streams the body under the 20 MB cap instead of buffering whatever arrives.
 
 `/admin/audit` reads `GET /api/v1/admin/audit-log`, the one admin endpoint that
 is not a mutation. Its `action` filter list is hard-coded from the RPC names in
@@ -153,13 +174,19 @@ deletes the row rather than storing a status. `/admin/formats` manages the
 formats themselves — deleting one cascades away its stored statuses, so retiring
 it (`active: false`) is usually what you want.
 
+Relationship overrides (`admin-card-relationships-panel.tsx`) use the same
+apply-to-every-printing toggle. On, entries are stored by `oracle_key` so future
+printings inherit them and per-printing exceptions in the group are cleared; off,
+only this printing's exceptions are replaced. `GET /cards/:id/relationships`
+loads both layers so the editor can round-trip; `PUT` **replaces** the active
+scope's list (default `apply_to_all_printings: true`).
+
 Card edits use **JSON merge-patch** semantics: an omitted key is left alone and
 an explicit `null` clears the value. `buildCardPatch` diffs the form against the
 values it was seeded with and sends only changed leaves — never post a whole
 form, or you will overwrite fields another admin just changed. Nested groups
 (`attributes`, `classification`, …) are deep-merged by the RPC, so a partial
-group is safe. `PUT /cards/:id/relationships` is the exception: it **replaces**
-the card's entire override list.
+group is safe.
 
 ### Consent (c15t)
 

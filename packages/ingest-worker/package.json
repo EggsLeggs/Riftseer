@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config wrangler.jsonc --port 8787",
+    "dev": "wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
     "deploy": "wrangler deploy --config wrangler.jsonc",
     "type-check": "tsc --noEmit"
   },

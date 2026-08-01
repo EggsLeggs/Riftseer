@@ -413,6 +413,8 @@ function matchAst(card: Card, ast: CardSearchAst): boolean {
           return card.metadata?.alternate_art === true;
         case "overnumbered":
           return card.metadata?.overnumbered === true;
+        case "special":
+          return card.metadata?.special_collection === true;
         case "manual":
           return card.source === "manual";
         case "foil":
