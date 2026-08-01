@@ -12,6 +12,7 @@
     "./icons": "./src/icons.ts",
     "./oracle": "./src/oracle.ts",
     "./parser": "./src/parser.ts",
+    "./admin-actions": "./src/admin-actions.ts",
     "./reconciliation": "./src/reconciliation.ts",
     "./slug": "./src/slug.ts",
     "./social-links": "./src/social-links.ts"
