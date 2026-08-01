@@ -1218,7 +1218,10 @@ BEGIN
     v_where := v_where || ' AND r.set_id = ' || quote_literal(v_set_id);
   END IF;
   IF p_collector IS NOT NULL AND p_collector <> '' THEN
-    v_where := v_where || ' AND r.collector_number = ' || quote_literal(p_collector);
+    -- Case-insensitive: prefixed tracks print `T03`/`SP3`/`R01` and variants
+    -- print `42a`, so a caller cannot be expected to match our casing exactly.
+    v_where := v_where || ' AND lower(r.collector_number) = ' ||
+               quote_literal(lower(p_collector));
   END IF;
 
   IF p_collapse THEN

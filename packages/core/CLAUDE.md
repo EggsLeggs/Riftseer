@@ -35,7 +35,7 @@ Tests live in `src/__tests__/`. Use `mock()` from `bun:test` for provider mocks.
 
 ## Adding/Changing Data Fields
 If a new field is added to the canonical `Card` type:
-- Update `packages/types/src/card.ts` (source of truth) and `packages/ingest-worker/src/riftcodex.ts` (rawToCard) and Supabase provider row mapping
+- Update `packages/types/src/card.ts` (source of truth) and `packages/ingest-worker/src/sources/riftcodex.ts` (rawToCard) and Supabase provider row mapping
 - Update the card object field table in `packages/api/docs/cards.md`
 - Check whether `packages/web/src/views/privacy-view.tsx` mentions the data — update if the field affects what is collected or stored
 

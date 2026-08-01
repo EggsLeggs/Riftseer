@@ -1,5 +1,3 @@
-<!-- IMPORTANT: AGENTS.md and CLAUDE.md must remain byte-for-byte identical. Update both together and verify with `cmp AGENTS.md CLAUDE.md`. -->
-
 # Riftseer project guidance
 
 Riftseer is a Riftbound TCG data platform: a shared card model, REST API, Next.js site, Discord bot, Reddit bot, and scheduled ingest pipeline.
@@ -7,25 +5,23 @@ Riftseer is a Riftbound TCG data platform: a shared card model, REST API, Next.j
 ## Repository
 
 ```text
-packages/types/          Zero-dependency shared types, parser, icons, slug helpers
+packages/types/          Zero-dependency shared types, parser, icons, slug and image helpers
 packages/core/           Provider interface, Supabase provider, search, deck model
 packages/api/            Elysia REST API on Cloudflare Workers
-packages/web/            Canonical Next.js App Router site on Cloudflare Workers
-packages/frontend/       Deprecated Vite SPA; prefer packages/web
+packages/web/            Next.js App Router site on Cloudflare Workers
 packages/discord-bot/    Cloudflare Worker Discord bot
 packages/ingest-worker/  Scheduled RiftCodex → Supabase ingest and image hosting
+packages/raycast-extension/  Standalone npm project, outside the Bun workspace
 packages/reddit-bot/     Standalone Devvit project, outside the Bun workspace
-supabase/migrations/     Append-only production database migrations
+supabase/migrations/     Database migrations, append-only after the baseline
 ```
 
-The Bun workspace includes every package above except `packages/reddit-bot`; the deprecated frontend remains present but should not receive new product work.
-
-Read package-local guidance before changing a package, especially `packages/web/AGENTS.md` and `packages/ingest-worker/CLAUDE.md`.
+Read package-local guidance before changing a package.
 
 ## Common commands
 
 ```bash
-bun dev                 # API + canonical web app
+bun dev                 # API + web
 bun dev:api             # API at http://localhost:8789
 bun dev:web             # Next.js development server
 bun build:web
@@ -35,9 +31,7 @@ bun typecheck
 cd packages/ingest-worker
 bun run dev              # Worker at http://localhost:8787 (shares Miniflare R2/queue state with the API via ../../.wrangler/shared)
 curl http://localhost:8787/cdn-cgi/mf/scheduled
-# POST /ingest is unauthenticated unless INGEST_SECRET is set:
-curl -X POST http://localhost:8787/ingest
-curl -X POST http://localhost:8787/ingest -H "Authorization: Bearer ${INGEST_SECRET}"
+curl -X POST http://localhost:8787/ingest   # unauthenticated unless INGEST_SECRET is set
 
 cd packages/discord-bot
 bun run dev
@@ -47,21 +41,34 @@ cd packages/reddit-bot
 npx devvit upload
 ```
 
+## The card model
+
+Two levels. A field belongs to exactly one of them.
+
+- **Oracle** — the rules object. Name, type, tags, domains, rules text, equip data, keywords, meta flags, relationships. Has a real surrogate `id`; printings carry a foreign key to it.
+- **Printing** — one physical card. Art, artist, flavour, **rarity**, collector number, set, finishes, marketplace data, and a pinned `public_slug`.
+
+`oracle_key` is a stable name-derived *lookup slug*, never identity. `oracleKeyForName()` in `packages/types/src/oracle.ts` is used at exactly one moment: when ingest meets a new printing and has to guess which oracle it belongs to. A printing it cannot match goes to the review queue rather than silently creating a second oracle.
+
 ## Architecture invariants
 
-- RiftCodex is authoritative for cards and sets. TCGCSV only enriches existing records with prices, purchase links, and fallback images. Riot's official card gallery (`content.publishing.riotgames.com`, the data behind playriftbound.com) supplies only the equipment section RiftCodex has no field for, and reports what it thinks we are missing or have wrong. Neither source creates a card.
+- RiftCodex is authoritative for cards and sets. TCGCSV only enriches existing records with prices, purchase links and fallback images. Riot's official card gallery (`content.publishing.riotgames.com`) supplies only the `[Equip]` section RiftCodex has no field for, and reports what it thinks we are missing or have wrong. Neither source creates a card.
 - `CardDataProvider` lives in `packages/core`; `SupabaseCardProvider` is the production implementation.
 - Bots resolve cards through `/api/v1/cards/resolve`, not their own databases.
-- Card IDs are text MongoDB ObjectIds, not UUIDs.
-- Card search uses exact `name_normalized` matching before Postgres full-text fallback.
-- The card search grammar (`packages/core/src/card-search-query.ts`) is also the **ruling rule language**: an admin-written query is parsed by that parser, stored as its AST, and evaluated by the same `card_search_ast_to_sql` RPC. Adding a field to search adds it to rules; a leaf that cannot be rendered to SQL must not parse. Document changes in `packages/web/src/views/search-syntax-view.tsx` and `packages/api/docs/search.md`.
-- Each printing receives a stable `public_slug`; ingest must preserve an existing slug. Prefer API-provided `riftseer_uri` over constructing card URLs.
-- RiftCodex types `collector_number` as an integer, which drops the letter prefix several numbering tracks print — `T03` (tokens), `SP3` (special collections), `R01` (runes). `printedCollectorNumber()` in `packages/ingest-worker/src/sources/riftcodex.ts` restores it from the `riftbound_id` collector segment, and only when a prefix is actually present: the id zero-pads plain numbers (`ogn-042a-298`) where the card and every existing slug do not. `metadata.special_collection` (searchable as `is:special`) comes from the same parse.
-- An `[Equip]` gear's second text box — the Might it grants and the effect that comes with it — lives in `attributes.might_bonus` and `text.equipment`. RiftCodex omits it entirely; the official gallery is the only source. It is applied by **oracle key**, because the gallery has no promo printings and an equipment effect is a property of the card, not the printing. A `might_bonus` of `0` is a real printed value, so presence — never truthiness — decides whether a card is equipment.
-- Rulings and format legalities are keyed on `cards.oracle_key` — a name-derived group shared by every printing — not on the card id. `oracleKeyForName()` in `packages/types/src/oracle.ts` is the only derivation; a SQL mirror exists solely for the migration backfill.
-- A ruling is separate from what it applies to. `card_ruling_targets` points one ruling at a whole card (`oracle`), a single printing (`printing`), or a saved search query (`query`). Query targets are materialised into `card_ruling_matches`, refreshed on admin save, at the end of every ingest (`refresh_ruling_rule_matches`), and per card on every admin card mutation (`refresh_ruling_matches_for_card`) — together those are what make a rule cover cards written after it, whether they arrive by ingest or by hand.
-- `cards.keywords` holds the `[Keyword]` badges a printing's text carries, as base keys (`deflect`, not `Deflect 3`). Unlike `oracle_key`, it is derived by a **DB trigger** rather than sent in the ingest payload, so ingest, admin card patches and manual card creation all stay in sync without each remembering to recompute it. `extractCardKeywords()` in `packages/types/src/keywords.ts` is the TypeScript mirror; keep the two in step.
-- Legality is **default-legal**: only non-legal statuses are stored, and precedence is per-printing override → oracle row → legal.
+- Printing ids are text MongoDB ObjectIds, not UUIDs. Deck short-form strings already in the wild encode them, so they must stay stable across a rebuild. Oracle ids are UUIDs.
+- **Two mechanisms that look similar and are not.** A `printing_deltas` row means the card genuinely differs from its oracle on that printing — Vayne carries `Sentinel` on newer printings but not the original, so the oracle has the tag and the old printing carries a `remove`, and printings that arrive later inherit correctly with no action. `locked_fields` means an admin decided a value and ingest must not undo it. Ingest owns `source='ingest'` delta rows and never touches `source='admin'` ones.
+- That pairing, plus `deleted_at` soft deletes and `source='manual'` rows the prune skips, is the *whole* durability story. There is no override overlay and no tombstone table.
+- Relationships are **oracle → oracle edges, stored once**, in three directed kinds: `makes_token`, `character`, `signature`. `used_by` is the reverse of `makes_token`, read by querying the other column. There is no printing-scoped relationship override — a relationship is a property of the rules object.
+- `resolved_printings` is a trigger-maintained projection with the delta layer already applied. Search must never resolve deltas at query time, and `card_search_ast_to_sql` scans exactly one flat relation.
+- The card search grammar (`packages/core/src/card-search-query.ts`) is also the **ruling rule language**: an admin query is parsed by that parser, stored as its AST, and evaluated by the same `card_search_ast_to_sql`. Adding a field to search adds it to rules; a leaf that cannot be rendered to SQL must not parse. Document changes in `packages/web/src/views/search-syntax-view.tsx` and `packages/api/docs/search.md`.
+- **Rarity is printing-level.** TCGPlayer treats Showcase as a rarity while RiftCodex and the gallery report the base card's rarity on an alternate-art or showcase printing. That disagreement is real data, not review-queue noise.
+- An `[Equip]` gear's Might bonus is `oracles.might_bonus`, and `0` is a real printed value — **presence, never truthiness**, decides whether a card is equipment.
+- `oracles.keywords` is derived by a **database trigger** from the rules text, so ingest, admin patches and manual creation all stay in sync without each remembering to recompute it. `extractCardKeywords()` in `packages/types/src/keywords.ts` is the TypeScript mirror; keep the two in step.
+- Legality is **default-legal**: only non-legal statuses are stored at oracle level, and precedence is printing row → oracle row → legal.
+- Hosted image URLs are **derived** from the printing id, never stored. The database keeps `image_hosted_at` (is the full R2 variant set present?) and `image_source_hash` (which source were the variants built from?). `packages/types/src/card-image.ts` is the single derivation, shared by the worker that writes the objects and the API that hands out the URLs.
+- RiftCodex types `collector_number` as an integer, which drops the letter prefix several numbering tracks print — `T03` (tokens), `SP3` (special collections), `R01` (runes). `printedCollectorNumber()` in `packages/ingest-worker/src/sources/riftcodex.ts` restores it from the `riftbound_id` collector segment, and only when a prefix is actually present: the id zero-pads plain numbers (`ogn-042a-298`) where the card and every existing slug do not.
+- Slugs are pinned on first insert and never overwritten, so public URLs do not drift as upstream data is corrected. Because the derivation is pure, a catalogue rebuilt from the same upstream data regenerates identical slugs. Prefer API-provided `riftseer_uri` over constructing card URLs.
+- `/card/<printing-id>` must keep resolving. It is not the canonical URL, but the legacy frontend used it and the current site preserved it.
 - Do not import `@riftseer/core` into the ingest Worker. It has Worker-incompatible dependencies; use the local utilities there.
 
 ## Ingest
@@ -69,58 +76,53 @@ npx devvit upload
 `packages/ingest-worker/src/ingest.ts` coordinates:
 
 ```text
-RiftCodex fetch → normalize/deduplicate → TCGPlayer enrichment
-→ official gallery equipment → relationship linking → durable DB overrides
-→ review queue (TCGPlayer + gallery) → image catalogue
-→ bounded Supabase RPC upserts → guarded final prune
-→ image queue → Cloudflare Images variants → R2 → hash-guarded media update
+RiftCodex fetch → normalize/deduplicate → group printings into oracles
+→ TCGPlayer enrichment → official gallery equipment → oracle relationship edges
+→ divergence detection → printing deltas → bounded ingest_catalogue batches
+→ guarded final prune → projection and preferred-printing refresh
+→ ruling rule refresh → review queue → image queue → R2 variants
 ```
 
-Important behavior:
-
 - TCGPlayer and official-gallery failures are both non-fatal and neither creates cards or sets.
-- DB overrides (`card_overrides`, `manual_cards`, relationship overrides, deletions) are applied after automatic linking so admin edits survive every ingest. Relationship overrides are dual-scoped like legalities: oracle-keyed rows apply to every printing of the card (including ones that arrive later), then printing-scoped exceptions win.
-- `ingest_card_data_v2` receives bounded card batches with pruning disabled. Pruning runs only after every batch succeeds, using the complete valid-ID list.
-- Hosted images use `cards/<id>/{small,normal,large}.webp` plus `original` in R2. `media.source_hash` is the source-URL hash: unchanged completed media is reused; changed sources are queued. The publish RPC verifies the current hash.
-- Rule-scoped rulings are re-materialised after the card upsert (`refreshRulingRuleMatches`). It is advisory: rulings are supplementary to the card page, so a failure is logged and swallowed rather than failing an ingest that already committed.
-- What ingest cannot reconcile is filed in `reconciliation_queue` for `/admin/review` rather than applied: TCGPlayer products that match no card, printings the official gallery lists that we hold no card for, and field disagreements from either source. `source` says which observer raised the entry. Prices are never queued. TCGPlayer is the only source that knows `Showcase` is a rarity — RiftCodex and the gallery both report the base card's rarity on an alternate-art, overnumbered or signature printing — so its rarity is compared and filed too. Detection runs after the override overlay so a confirmed link does not re-surface, and admin decisions are durable — ingest refreshes and prunes only `pending` rows. The prune is queue-wide, so it runs only when **both** sources reported; pruning on one source's findings would delete the other's.
-- The production schedule is `0 */6 * * *`. Manual `POST /ingest` may be protected by `INGEST_SECRET`.
+- `ingest_catalogue` receives bounded batches with pruning disabled. Pruning runs only after every batch succeeds, using the complete valid-id list, so a failed batch leaves stale rows rather than deleting a catalogue it only half wrote.
+- The ingest RPC defers the projection for its transaction (`riftseer.defer_projection`) and rebuilds once at the end — thousands of per-row rebuilds otherwise.
+- Rule-scoped rulings are re-materialised after the upsert. Advisory: rulings are supplementary to the card page, so a failure is logged and swallowed rather than failing an ingest that already committed.
+- What ingest cannot reconcile is filed in `reconciliation_queue` for `/admin/review` rather than applied. `source` says which observer raised the entry, and the fingerprint encodes the observed upstream value, so a dismissal sticks while a genuinely new disagreement resurfaces. Prices are never queued. Detection runs on final data so a confirmed link does not re-surface, and ingest refreshes and prunes only `pending` rows. The prune is queue-wide, so it runs only when **both** sources reported.
+- The production schedule is `0 */6 * * *`.
 
 ## Configuration and deployment
 
 Treat each package's `wrangler.jsonc`, `.env.example`, and generated Worker bindings as authoritative. Never commit secrets; use `.dev.vars` locally and `wrangler secret put` remotely.
 
-Key configuration groups:
+- API: Supabase URL/service/anon keys, optional Upstash, legal consent versions, `SITE_ORIGIN`, comma-separated `ADMIN_USER_IDS`, shared `CARD_IMAGES`/`CARD_IMAGE_QUEUE` bindings, `CARD_IMAGE_BASE_URL`, Metafy OAuth/webhook settings.
+- Ingest: Supabase service credentials, RiftCodex settings, `RIFTBOUND_GALLERY_BASE_URL`, `CARD_IMAGE_BASE_URL`, R2 `CARD_IMAGES`, queue `CARD_IMAGE_QUEUE`, `IMAGES`.
+- Web: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_APP_URL`, secret `C15T_DATABASE_URL` (Supabase transaction pooler on port 6543 with `?prepare=false`).
+- CI ingest migration check: `SUPABASE_DB_URL` must be a Postgres connection URI, preferably an IPv4-compatible Supabase pooler URI — not an HTTPS project URL or service-role key.
 
-- API: Supabase URL/service/anon keys, optional Upstash, legal consent versions, `SITE_ORIGIN`, comma-separated `ADMIN_USER_IDS`, shared `CARD_IMAGES`/`CARD_IMAGE_QUEUE` bindings, `CARD_IMAGE_BASE_URL`, and Metafy OAuth/webhook settings.
-- Ingest: Supabase service credentials, RiftCodex settings, `RIFTBOUND_GALLERY_BASE_URL`, `CARD_IMAGE_BASE_URL`, R2 `CARD_IMAGES`, queue `CARD_IMAGE_QUEUE`, and `IMAGES`.
-- Web: `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_APP_URL`, and secret `C15T_DATABASE_URL` (Supabase transaction pooler on port 6543 with `?prepare=false`).
-- CI ingest migration check: `SUPABASE_DB_URL` must be a Postgres connection URI, preferably an IPv4-compatible Supabase pooler URI—not an HTTPS project URL or service-role key.
-
-Deployments:
-
-- API: `cd packages/api && wrangler deploy`
-- Ingest: `cd packages/ingest-worker && bun run deploy`
-- Web: from `packages/web`, run `bun run preview` first to test workerd, then `bun run deploy`; production builds must use matching build-time and Worker vars.
-- Discord: `cd packages/discord-bot && bun run deploy`
-- Reddit: `cd packages/reddit-bot && npx devvit upload`
+Deployments: `wrangler deploy` from `packages/api` and `packages/discord-bot`; `bun run deploy` from `packages/ingest-worker`; from `packages/web` run `bun run preview` first to test workerd, then `bun run deploy` (production builds must use matching build-time and Worker vars); `npx devvit upload` from `packages/reddit-bot`.
 
 Image infrastructure uses R2 bucket `riftseer-cards`, queues `riftseer-card-images` and `riftseer-card-images-dlq`, and cached custom domain `img.riftseer.com`.
 
 ## Database migrations
 
-- Add a new timestamped file under `supabase/migrations/` for every schema change; never edit an existing migration.
+- The schema is defined by a single squashed baseline: `supabase/migrations/20260810000000_oracle_printing_baseline.sql`. Migrations are append-only after it; never edit an existing one.
 - Prefer `supabase db push` for linked projects. Dashboard SQL or `psql "$SUPABASE_DB_URL" -f <migration>` are fallbacks.
-- The current ingest/override RPC is defined by `20260731000000_phase5_rulings_legalities_formats.sql` (which supersedes the `ingest_card_data_v2` body in `20260729000000_ingest_v2_and_overrides.sql` to persist `oracle_key`); image publication is defined by `20260730001503_phase2_card_image_hosting.sql`; admin mutation RPCs by `20260730120000_phase3_admin_api.sql`; the review queue by `20260801000000_phase6_reconciliation_queue.sql`; per-card ruling rematch by `20260803000000_ruling_matches_for_card.sql`; searchable keywords, the v2 search grammar and ruling targets/rules by `20260802000000_phase7_keywords_and_ruling_rules.sql` (which supersedes `card_search_ast_to_sql` from `20260510140000_add_card_search_rpc.sql` and the ruling RPCs from phase 5); the `is:special` flag and the gallery-aware review queue by `20260805000000_phase8_special_collection_and_gallery_review.sql` (which again supersedes `card_search_ast_to_sql`, renames `reconciliation_queue.tcgplayer_payload` to `payload`, and redefines both phase-6 queue RPCs — apply it and deploy the API together); dual-scope relationship overrides by `20260806000000_relationship_override_scopes.sql` (redefines `admin_set_card_relationships` with `p_all_printings` and adds `admin_list_card_relationships` — apply it and deploy the API together). `20260807000000_relationship_lock_order_and_queue_rename_guard.sql` then supersedes `admin_set_card_relationships` once more (locking the oracle group in id order), drops the redundant `card_relationship_overrides_oracle_key_idx`, and re-runs the phase-8 `payload` rename conditionally for a database left part-way through that push; `20260808000000_relationship_lock_order_entry_check.sql` supersedes that body again, making the entry check existence-only so the path card is no longer locked ahead of its group.
+- A new column needs a reader **and** a writer; a new table needs a reason the existing ones cannot serve. State both in the migration.
+- No new JSONB grab-bag columns. `attributes` / `classification` / `text` / `metadata` existed because they mirrored an upstream payload, and unwinding them is what this schema is for. New fields get columns, or a stated reason not to.
+- One implementation per pattern. Three hand-rolled versions of "oracle row, then printing exception" is the clearest lesson in this repo's history.
+- Validate a migration by running it, not by reading it. A local Postgres catches SQL errors; a local **PostgREST** additionally catches client-shape bugs psql cannot see — a one-to-one embedded resource comes back as an object or null, never an array.
+
+## Writing guidance files
+
+- Prefer a structural fix to a documented warning. A line saying "keep X and Y in step" is a bug report against the code: hoist the shared thing instead.
+- Keep hard-won "why" — anything that encodes a bug already paid for. Move local "what" into a code comment next to the thing it describes, where it is seen at the moment it matters and updated in the same diff. Delete restatements of what the code says more accurately.
+- Adding a bullet to an invariants list should prompt the question *"which bullet does this replace?"*. The append-only habit is what turned this file's migration section into a changelog.
+- `AGENTS.md` is a symlink to this file. Do not copy it.
 
 ## Legal pages
 
-Canonical copy lives in:
+Canonical copy lives in `packages/web/src/views/privacy-view.tsx` (`/privacy`), `packages/web/src/views/terms-view.tsx` (`/terms`), and the shared `packages/web/src/views/legal-document.tsx`.
 
-- `packages/web/src/views/privacy-view.tsx` (`/privacy`)
-- `packages/web/src/views/terms-view.tsx` (`/terms`)
-- shared layout: `packages/web/src/views/legal-document.tsx`
+When policy content changes, update the page and its "Last updated" date. For material changes, also bump `LEGAL_PRIVACY_VERSION` and/or `LEGAL_TERMS_VERSION` in `packages/api/wrangler.jsonc` and redeploy the API.
 
-When policy content changes, update the relevant page and its “Last updated” date. For material changes, also bump `LEGAL_PRIVACY_VERSION` and/or `LEGAL_TERMS_VERSION` in `packages/api/wrangler.jsonc` and redeploy the API.
-
-Review the legal pages when data collection, third parties, bot behavior/logging, card-data use, age/acceptable-use rules, contact details, or dispute terms change. The deprecated SPA only contains stubs linking to the canonical pages.
+Review the legal pages when data collection, third parties, bot behavior/logging, card-data use, age/acceptable-use rules, contact details, or dispute terms change.

@@ -3,21 +3,20 @@
  *
  * RiftCodex is the sole source of sets and cards. TCGPlayer is used ONLY to add
  * prices, purchase URIs, and (as a last resort) a fallback image — it never
- * creates sets or cards.
+ * creates sets or printings.
  *
  * Step 1 — matchTcgGroupsToSets: backfill each RiftCodex set's tcgplayer_group_id
  *   from a matching TCGPlayer group (by group_id or set_code). Returns a
  *   set_code → groupId map. Never invents promo sets.
  * Step 2 — buildProductMap: index TCGPlayer products by productId AND by
- *   (groupId → normalized name) so cards without a tcgplayer_id can still match.
- * Step 3 — enrichCards: apply prices + purchase URIs to cards, matching by
+ *   (groupId → normalized name) so printings without a tcgplayer_id can match.
+ * Step 3 — enrichPrintings: apply prices + purchase URIs, matching by
  *   tcgplayer_id first, then by (set's group + normalized name).
  */
 
 import { normalizeCardName } from "../utils.ts";
 import type { TCGGroup, TCGGroupResult } from "../sources/tcgcsv.ts";
-import type { IngestSet } from "./types.ts";
-import type { Card } from "@riftseer/types";
+import type { IngestPrinting, IngestSet } from "./types.ts";
 import { overrides } from "../overrides/index.ts";
 import { logger } from "../utils.ts";
 
@@ -70,8 +69,9 @@ export function matchTcgGroupsToSets(
   const setGroupMap = new Map<string, number>();
   // Seed from sets that already carry a group id (from RiftCodex /sets).
   for (const s of ingestSets) {
-    const gid = s.external_ids.tcgplayer_group_id;
-    if (typeof gid === "number") setGroupMap.set(s.set_code, gid);
+    if (typeof s.tcgplayer_group_id === "number") {
+      setGroupMap.set(s.set_code, s.tcgplayer_group_id);
+    }
   }
 
   let matched = 0;
@@ -83,7 +83,7 @@ export function matchTcgGroupsToSets(
     const existing = bySetCode.get(setCode);
     if (!existing) continue; // no RiftCodex set for this group — ignore it
 
-    existing.external_ids.tcgplayer_group_id = group.groupId;
+    existing.tcgplayer_group_id = group.groupId;
     if (group.publishedOn && !existing.published_on) {
       existing.published_on = group.publishedOn;
     }
@@ -158,21 +158,21 @@ function extractProductRarity(
  * TCGPlayer spells those tracks both ways across groups, and RiftCodex itself
  * only ever knew the digits.
  */
-export function collectorCandidates(card: Card): string[] {
+export function collectorCandidates(printing: IngestPrinting): string[] {
   const out = new Set<string>();
 
   // Most specific first. A variant printing and its base share a name in the
   // Vendetta data, so trying the bare number first matched the alternate art
   // against the base printing's product — and it never reached `113a`.
-  const riftboundId = card.external_ids?.riftbound_id;
-  const [, printedNumber] = riftboundId?.match(/^[^-]+-([^-]+)(?:-|$)/i) ?? [];
+  const [, printedNumber] =
+    printing.riftbound_id?.match(/^[^-]+-([^-]+)(?:-|$)/i) ?? [];
   const fromRiftboundId = normalizeCollectorNumber(printedNumber);
   if (fromRiftboundId) out.add(fromRiftboundId);
 
-  const base = normalizeCollectorNumber(card.collector_number);
+  const base = normalizeCollectorNumber(printing.collector_number);
   if (base) {
-    if (card.metadata?.alternate_art) out.add(`${base}a`);
-    if (card.metadata?.signature) out.add(`${base}*`);
+    if (printing.is_alternate_art) out.add(`${base}a`);
+    if (printing.is_signature) out.add(`${base}*`);
     out.add(base);
 
     const [, digits] = base.match(/^[a-z]+(\d+)$/) ?? [];
@@ -272,78 +272,51 @@ export function buildProductMap(groupResults: TCGGroupResult[]): ProductMaps {
   return { byId, byGroupCollectorName, byGroupCollector, byGroupName };
 }
 
-/** How `enrichCards` found the product — see the numbered fallbacks there. */
+/** How `enrichPrintings` found the product — see the numbered fallbacks there. */
 type ProductMatchSource = "id" | "collector-name" | "collector" | "name";
 
 function applyProduct(
-  card: Card,
+  printing: IngestPrinting,
   product: EnrichedProduct,
   matchSource: ProductMatchSource,
 ): void {
-  card.purchase_uris = { ...card.purchase_uris, tcgplayer: product.url };
-  card.prices = {
-    ...card.prices,
-    tcgplayer: {
-      normal: bestPrice(product.normal),
-      foil: bestPrice(product.foil),
-      low_normal: product.normal.low,
-      low_foil: product.foil.low,
-    },
-    cardmarket: {
-      // Cardmarket feed is not available upstream — keep a stable nullable shape.
-      normal: card.prices?.cardmarket?.normal ?? null,
-      foil: card.prices?.cardmarket?.foil ?? null,
-      low_normal: card.prices?.cardmarket?.low_normal ?? null,
-      low_foil: card.prices?.cardmarket?.low_foil ?? null,
-    },
-  };
-  if (!card.released_at && product.releasedOn) card.released_at = product.releasedOn;
+  printing.tcgplayer_url = product.url;
+  printing.price_normal = bestPrice(product.normal);
+  printing.price_foil = bestPrice(product.foil);
+  printing.price_low_normal = product.normal.low;
+  printing.price_low_foil = product.foil.low;
+  if (!printing.released_at && product.releasedOn) {
+    printing.released_at = product.releasedOn;
+  }
 
   // Persist the id we actually matched, so next run resolves it directly. A
   // fallback match means any stored id failed to resolve to a product — leaving
-  // it in place would keep the card matching by name forever.
+  // it in place would keep the printing matching by name forever.
   if (matchSource !== "id") {
-    card.external_ids = { ...card.external_ids, tcgplayer_id: String(product.productId) };
+    printing.tcgplayer_id = String(product.productId);
   }
 
-  const cardOverride = overrides.cards[card.id];
-  const hasRiftCodexImage = Boolean(
-    card.media?.source_url ||
-      card.media?.media_urls?.large ||
-      card.media?.media_urls?.normal ||
-      card.media?.media_urls?.png ||
-      card.media?.media_urls?.small,
-  );
+  const cardOverride = overrides.cards[printing.id];
   const needsTcgImage =
-    !hasRiftCodexImage || cardOverride?.use_tcgplayer_image;
+    !printing.image_source_url || cardOverride?.use_tcgplayer_image;
   if (needsTcgImage && product.imageUrl) {
     const raw = product.imageUrl;
-    let small: string;
-    let normal: string;
-    let large: string;
+    // Only the largest is kept: the hosted variants are transcoded down from
+    // whatever source we store, so the smaller CDN sizes have no use.
     if (/_200w\./.test(raw)) {
-      small = raw;
-      normal = raw.replace(/_200w\./, "_400w.");
-      large = raw.replace(/_200w\./, "_in_1000x1000.");
+      printing.image_source_url = raw.replace(/_200w\./, "_in_1000x1000.");
     } else {
-      logger.warn("TCGPlayer image URL missing _200w. token; using same URL for all sizes", {
+      logger.warn("TCGPlayer image URL missing _200w. token; using it as-is", {
         imageUrl: raw,
-        cardId: card.id,
+        printingId: printing.id,
       });
-      small = raw;
-      normal = raw;
-      large = raw;
+      printing.image_source_url = raw;
     }
-    card.media = {
-      ...card.media,
-      source_url: large,
-      source_provider: "tcgplayer",
-      media_urls: { small, normal, large },
-    };
+    printing.image_source_provider = "tcgplayer";
   }
 }
 
-/** How confident a match is. Lower wins when two cards want the same product. */
+/** How confident a match is. Lower wins when two printings want the same product. */
 const MATCH_RANK: Record<ProductMatchSource, number> = {
   id: 0,
   "collector-name": 1,
@@ -369,22 +342,21 @@ function namesAgreeAllowingVariantSuffix(a: string, b: string): boolean {
  * is describing our plain printing — when several printings contend for one
  * product, the least variant of them is the one it means.
  */
-function variantDistance(card: Card): number {
-  const m = card.metadata;
+function variantDistance(printing: IngestPrinting): number {
   return (
-    (m?.alternate_art ? 1 : 0) +
-    (m?.signature ? 1 : 0) +
-    (m?.overnumbered ? 1 : 0)
+    (printing.is_alternate_art ? 1 : 0) +
+    (printing.is_signature ? 1 : 0) +
+    (printing.is_overnumbered ? 1 : 0)
   );
 }
 
-/** The best match this card can find, or undefined. */
+/** The best match this printing can find, or undefined. */
 function findProduct(
-  card: Card,
+  printing: IngestPrinting,
   maps: ProductMaps,
   groupId: number | undefined,
 ): { product: EnrichedProduct; matchSource: ProductMatchSource } | undefined {
-  const tcgIdStr = card.external_ids?.tcgplayer_id;
+  const tcgIdStr = printing.tcgplayer_id;
   if (tcgIdStr) {
     const productId = parseInt(tcgIdStr, 10);
     if (Number.isFinite(productId)) {
@@ -401,9 +373,9 @@ function findProduct(
     // the variant number (`113a`) always beats one on the bare number (`113`).
     // Doing all the exact-name lookups first would hand the alternate art its
     // base printing's product, since the two share a name in the Vendetta data.
-    for (const collectorNumber of collectorCandidates(card)) {
+    for (const collectorNumber of collectorCandidates(printing)) {
       const exact = collectorMap?.get(
-        collectorNameKey(collectorNumber, card.name_normalized),
+        collectorNameKey(collectorNumber, printing.name_normalized),
       );
       if (exact) return { product: exact, matchSource: "collector-name" };
 
@@ -413,14 +385,14 @@ function findProduct(
       // key both sides share. Only when unambiguous: two products on one number
       // means the number cannot identify the printing by itself.
       const candidates = (numberMap?.get(collectorNumber) ?? []).filter((p) =>
-        namesAgreeAllowingVariantSuffix(p.normalizedName, card.name_normalized),
+        namesAgreeAllowingVariantSuffix(p.normalizedName, printing.name_normalized),
       );
       if (candidates.length === 1) {
         return { product: candidates[0]!, matchSource: "collector" };
       }
     }
 
-    const product = maps.byGroupName.get(groupId)?.get(card.name_normalized);
+    const product = maps.byGroupName.get(groupId)?.get(printing.name_normalized);
     if (product) return { product, matchSource: "name" };
   }
 
@@ -428,29 +400,30 @@ function findProduct(
 }
 
 /**
- * Apply TCGPlayer prices and purchase URIs to cards.
- *   1. Match by card.external_ids.tcgplayer_id (RiftCodex's productId).
- *   2. Fall back to the card's set group + collector number + normalized name.
- *   3. Fall back to the card's set group + collector number, when exactly one
+ * Apply TCGPlayer prices and purchase URIs to printings.
+ *   1. Match by the printing's `tcgplayer_id` (RiftCodex's, or an admin's).
+ *   2. Fall back to the set's group + collector number + normalized name.
+ *   3. Fall back to the set's group + collector number, when exactly one
  *      product carries it and the names agree bar a variant suffix.
- *   4. Fall back to the card's set group + normalized name.
+ *   4. Fall back to the set's group + normalized name.
  *
- * **A product is applied to at most one card.** TCGPlayer often lists a single
- * product where we hold several printings — the base, its alternate art, its
- * overnumbered and signature reprints — and the name-only fallback happily gave
- * all of them the same product id. That is wrong twice over: it publishes the
- * base printing's price on a printing that has none, and because the reconciler
- * compares each card against its linked product, it files a permanent rarity
- * disagreement against every variant (TCGPlayer describes the base, so it never
- * agrees and the entry can never be resolved).
+ * **A product is applied to at most one printing.** TCGPlayer often lists a
+ * single product where we hold several printings — the base, its alternate art,
+ * its overnumbered and signature reprints — and the name-only fallback happily
+ * gave all of them the same product id. That is wrong twice over: it publishes
+ * the base printing's price on a printing that has none, and because the
+ * reconciler compares each printing against its linked product, it files a
+ * permanent rarity disagreement against every variant (TCGPlayer describes the
+ * base, so it never agrees and the entry can never be resolved).
  *
- * Matches are therefore collected first and contention resolved per product:
- * strongest match tier wins, then the least variant printing, then the lowest
- * card id so a tie is stable across runs. A card that loses simply gets no
- * TCGPlayer data, which is the truth — that printing is not listed.
+ * Matches are therefore collected first and contention resolved per product: an
+ * admin-confirmed link first, then the strongest match tier, then the least
+ * variant printing, then the lowest id so a tie is stable across runs. A
+ * printing that loses simply gets no TCGPlayer data, which is the truth — that
+ * printing is not listed.
  */
-export function enrichCards(
-  cards: Card[],
+export function enrichPrintings(
+  printings: IngestPrinting[],
   maps: ProductMaps,
   setGroupMap: Map<string, number>,
 ): {
@@ -461,18 +434,19 @@ export function enrichCards(
   byName: number;
 } {
   interface Claim {
-    card: Card;
+    printing: IngestPrinting;
     matchSource: ProductMatchSource;
   }
   const claims = new Map<number, Claim[]>();
 
-  for (const card of cards) {
-    const setCode = card.set?.set_code;
-    const groupId = setCode ? setGroupMap.get(setCode) : undefined;
-    const match = findProduct(card, maps, groupId);
+  for (const printing of printings) {
+    const groupId = printing.set_code
+      ? setGroupMap.get(printing.set_code)
+      : undefined;
+    const match = findProduct(printing, maps, groupId);
     if (!match) continue;
     const existing = claims.get(match.product.productId);
-    const claim: Claim = { card, matchSource: match.matchSource };
+    const claim: Claim = { printing, matchSource: match.matchSource };
     if (existing) existing.push(claim);
     else claims.set(match.product.productId, [claim]);
   }
@@ -488,11 +462,17 @@ export function enrichCards(
     if (!product) continue;
 
     const [winner] = [...contenders].sort((a, b) => {
+      // An admin confirmed this link in the review queue. Letting a heuristic
+      // outrank it would re-file the entry they just resolved.
+      const locked =
+        Number(Boolean(b.printing.tcgplayer_id_locked)) -
+        Number(Boolean(a.printing.tcgplayer_id_locked));
+      if (locked !== 0) return locked;
       const rank = MATCH_RANK[a.matchSource] - MATCH_RANK[b.matchSource];
       if (rank !== 0) return rank;
-      const variant = variantDistance(a.card) - variantDistance(b.card);
+      const variant = variantDistance(a.printing) - variantDistance(b.printing);
       if (variant !== 0) return variant;
-      return a.card.id.localeCompare(b.card.id);
+      return a.printing.id.localeCompare(b.printing.id);
     });
 
     if (contenders.length > 1) {
@@ -502,20 +482,23 @@ export function enrichCards(
         // A loser that matched *by id* is carrying the contested id upstream.
         // Leaving it there would keep the reconciler comparing that printing
         // against a product describing another one, filing a disagreement no
-        // admin can ever resolve. One product, one card — including the id.
-        if (loser.card.external_ids?.tcgplayer_id === String(productId)) {
-          const { tcgplayer_id: _dropped, ...rest } = loser.card.external_ids;
-          loser.card.external_ids = rest;
+        // admin can ever resolve. One product, one printing — including the id.
+        // An admin-locked id is exempt: it is a decision, not an observation.
+        if (
+          !loser.printing.tcgplayer_id_locked &&
+          loser.printing.tcgplayer_id === String(productId)
+        ) {
+          loser.printing.tcgplayer_id = undefined;
         }
       }
       logger.info("TCGPlayer product contested by several printings", {
         productId,
         productName: product.name,
-        winner: winner.card.id,
-        winnerName: winner.card.name,
+        winner: winner.printing.id,
+        winnerName: winner.printing.name,
         skipped: contenders
           .filter((c) => c !== winner)
-          .map((c) => `${c.card.id} (${c.matchSource})`),
+          .map((c) => `${c.printing.id} (${c.matchSource})`),
       });
     }
 
@@ -524,7 +507,7 @@ export function enrichCards(
     else if (winner.matchSource === "collector") byCollectorCount++;
     else byNameCount++;
 
-    applyProduct(winner.card, product, winner.matchSource);
+    applyProduct(winner.printing, product, winner.matchSource);
   }
 
   const enriched =
@@ -536,7 +519,7 @@ export function enrichCards(
     matchedByCollector: byCollectorCount,
     matchedByName: byNameCount,
     contested,
-    cards: cards.length,
+    printings: printings.length,
   });
   return {
     enriched,
@@ -545,50 +528,4 @@ export function enrichCards(
     byCollector: byCollectorCount,
     byName: byNameCount,
   };
-}
-
-/**
- * Second pass for cards whose `tcgplayer_id` only appeared after the DB override
- * overlay — the link an admin confirmed in the review queue.
- *
- * `enrichCards` runs on the raw RiftCodex result, before overrides are applied,
- * so it cannot see that link and those cards would otherwise stay priceless
- * forever. This deliberately touches only prices and the purchase URI: media and
- * every other field are already final at this point in the pipeline, and an
- * admin's image override must not be undone by a late enrichment pass.
- */
-export function backfillLinkedPrices(cards: Card[], maps: ProductMaps): number {
-  let applied = 0;
-
-  for (const card of cards) {
-    if (card.prices?.tcgplayer?.normal != null) continue;
-
-    const tcgIdStr = card.external_ids?.tcgplayer_id;
-    if (!tcgIdStr) continue;
-    const productId = parseInt(tcgIdStr, 10);
-    if (!Number.isFinite(productId)) continue;
-
-    const product = maps.byId.get(productId);
-    if (!product) continue;
-
-    card.purchase_uris = {
-      ...card.purchase_uris,
-      tcgplayer: card.purchase_uris?.tcgplayer ?? product.url,
-    };
-    card.prices = {
-      ...card.prices,
-      tcgplayer: {
-        normal: bestPrice(product.normal),
-        foil: bestPrice(product.foil),
-        low_normal: product.normal.low,
-        low_foil: product.foil.low,
-      },
-    };
-    applied++;
-  }
-
-  if (applied > 0) {
-    logger.info("Backfilled prices for override-linked cards", { applied });
-  }
-  return applied;
 }

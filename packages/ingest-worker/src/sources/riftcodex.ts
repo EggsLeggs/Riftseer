@@ -1,12 +1,15 @@
 /**
- * RiftCodex API fetch + Raw → Card mapping for the ingest worker.
+ * RiftCodex API fetch + Raw → IngestPrinting mapping for the ingest worker.
  * Upstream: https://api.riftcodex.com
  *   GET /sets        → RawSetInfo[]
  *   GET /cards?page=N&size=100 → paginated RawCard[]
+ *
+ * Every RiftCodex row is a *printing*. The oracle-level fields it carries are
+ * recorded as this printing's observation of them; grouping happens later.
  */
 
 import { normalizeCardName, logger } from "../utils.ts";
-import type { Card } from "@riftseer/types";
+import type { IngestPrinting } from "../pipeline/types.ts";
 import { repairFlavourText } from "@riftseer/types/card-text";
 
 const PAGE_SIZE = 100;
@@ -221,8 +224,7 @@ export function printedVariantSignals(riftboundId: string): PrintedVariantSignal
   };
 }
 
-export function rawToCard(raw: RawCard): Card {
-  const setCode = raw.set?.set_id?.toUpperCase();
+export function rawToPrinting(raw: RawCard): IngestPrinting {
   const variantSignals = printedVariantSignals(raw.riftbound_id ?? "");
   const cardType = raw.classification?.type;
   // A Legend is a complete card type, not a Champion-supertype unit. A small
@@ -231,87 +233,58 @@ export function rawToCard(raw: RawCard): Card {
     cardType?.toLowerCase() === "legend"
       ? undefined
       : raw.classification?.supertype || undefined;
+  // Largest first: the hosted variants are transcoded down from whatever we
+  // fetch, so a bigger source is never worse.
   const sourceImageUrl =
     raw.media?.image_url_large ||
     raw.media?.image_url ||
     raw.media?.image_url_png ||
     raw.media?.image_url_small ||
     undefined;
+
   return {
-    object: "card",
     id: raw.id,
+
     name: raw.name,
     name_normalized: normalizeCardName(raw.metadata?.clean_name || raw.name),
-    collector_number: printedCollectorNumber(
-      raw.riftbound_id,
-      raw.collector_number,
-    ),
-    released_at: normalizeDate(raw.released_at),
-    external_ids: {
-      riftcodex_id: raw.id,
-      riftbound_id: raw.riftbound_id || undefined,
-      tcgplayer_id: raw.tcgplayer_id || undefined,
-    },
-    set: setCode
-      ? {
-          set_code: setCode,
-          set_id: raw.set?.set_id,
-          set_name: raw.set?.name ?? raw.set?.label ?? setCode,
-          set_uri: raw.set?.set_uri,
-          set_search_uri: raw.set?.set_search_uri,
-        }
-      : undefined,
-    attributes: {
-      energy: raw.attributes?.energy ?? null,
-      might: raw.attributes?.might ?? null,
-      power: raw.attributes?.power ?? null,
-    },
-    classification: {
-      type: cardType,
-      supertype,
-      rarity: raw.classification?.rarity,
-      tags: raw.tags?.length ? raw.tags : undefined,
-      domains: raw.classification?.domain?.length ? raw.classification.domain : undefined,
-    },
-    text: {
-      rich: raw.text?.rich || undefined,
-      plain: raw.text?.plain || undefined,
-      flavour: raw.text?.flavour
-        ? repairFlavourText(raw.text.flavour)
-        : undefined,
-    },
-    artist: raw.media?.artist || undefined,
-    metadata: {
-      finishes: raw.metadata?.finishes,
-      alternate_art:
-        (raw.metadata?.alternate_art ?? false) || variantSignals.alternateArt,
-      overnumbered:
-        (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
-      signature: (raw.metadata?.signature ?? false) || variantSignals.signature,
-      special_collection: variantSignals.specialCollection,
-    },
-    media: {
-      orientation: raw.orientation || undefined,
-      accessibility_text: raw.media?.accessibility_text || undefined,
-      source_url: sourceImageUrl,
-      source_provider: sourceImageUrl ? "riftcodex" : undefined,
-      media_urls: raw.media?.image_url
-        ? {
-            small: raw.media.image_url_small,
-            normal: raw.media.image_url,
-            large: raw.media.image_url_large,
-            png: raw.media.image_url_png,
-          }
-        : undefined,
-    },
+    card_type: cardType || undefined,
+    supertype,
     is_token: isTokenCard(raw),
-    source: "riftcodex",
-    all_parts: [],
-    used_by: [],
-    related_champions: [],
-    related_legends: [],
-    related_signatures: [],
-    related_printings: [],
+    energy: raw.attributes?.energy ?? null,
+    might: raw.attributes?.might ?? null,
+    power: raw.attributes?.power ?? null,
+    text_rich: raw.text?.rich || undefined,
+    text_plain: raw.text?.plain || undefined,
+    tags: raw.tags?.length ? raw.tags : [],
+    domains: raw.classification?.domain?.length ? raw.classification.domain : [],
+
+    set_code: raw.set?.set_id?.toUpperCase(),
+    artist: raw.media?.artist || undefined,
+    collector_number:
+      printedCollectorNumber(raw.riftbound_id, raw.collector_number) ||
+      undefined,
+    released_at: normalizeDate(raw.released_at),
+    rarity: raw.classification?.rarity || undefined,
+    flavour_text: raw.text?.flavour
+      ? repairFlavourText(raw.text.flavour)
+      : undefined,
+    finishes: raw.metadata?.finishes ?? [],
+    is_signature:
+      (raw.metadata?.signature ?? false) || variantSignals.signature,
+    is_alternate_art:
+      (raw.metadata?.alternate_art ?? false) || variantSignals.alternateArt,
+    is_overnumbered:
+      (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
+    is_special_collection: variantSignals.specialCollection,
+
+    riftcodex_id: raw.id,
+    riftbound_id: raw.riftbound_id || undefined,
+    tcgplayer_id: raw.tcgplayer_id || undefined,
+
+    image_source_url: sourceImageUrl,
+    image_source_provider: sourceImageUrl ? "riftcodex" : undefined,
+    image_orientation: raw.orientation || undefined,
+    image_alt_text: raw.media?.accessibility_text || undefined,
   };
 }
 

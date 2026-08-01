@@ -1,25 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { oracleKeyForName } from "@riftseer/types/oracle";
+import type { SlugPrinting } from "@riftseer/types";
 
 export interface AdminRpcResult {
   ok: boolean;
   reason?: string;
   [key: string]: unknown;
-}
-
-export interface AdminSlugCard {
-  id: string;
-  name: string;
-  name_normalized: string;
-  collector_number?: string;
-  set?: {
-    set_code: string;
-    set_name: string;
-  };
-  metadata?: {
-    alternate_art?: boolean;
-    signature?: boolean;
-  };
 }
 
 export interface AdminAuditEntry {
@@ -64,38 +49,33 @@ export interface AdminFormat {
 }
 
 /**
- * One format's legality for one printing, with both layers exposed separately.
- * The public payload only carries the resolved status; the editor needs to know
- * whether it came from the shared card row or this printing's override so the
- * "apply to all printings" toggle can be shown in the right state.
+ * One format's legality for one printing. `scope` is what the editor needs that
+ * the public payload does not carry: whether the status came from this
+ * printing's own row, from the oracle, or from the default.
  */
-export interface AdminCardLegalityEntry {
+export interface AdminPrintingLegalityEntry {
   format_id: string;
   format_code: string;
   format_name: string;
-  format_active: boolean;
-  oracle_status: AdminLegalityStatus | null;
-  printing_status: AdminLegalityStatus | null;
-  effective_status: AdminLegalityStatus;
+  status: AdminLegalityStatus;
+  scope: "printing" | "oracle" | "default";
 }
 
-export interface AdminCardLegalities {
-  card_id: string;
-  oracle_key: string;
-  entries: AdminCardLegalityEntry[];
+export interface AdminPrintingLegalities {
+  printing_id: string;
+  oracle_id: string;
+  entries: AdminPrintingLegalityEntry[];
 }
 
-export interface AdminCardRuling {
+export interface AdminPrintingRuling {
   id: string;
   type: "ruling" | "note";
   text: string;
   dated: string | null;
   source: string | null;
   active: boolean;
-  /** Which target kind put this entry on the card being edited. */
+  /** Which target kind put this entry on the printing being edited. */
   scope: "printing" | "oracle" | "rule";
-  /** True when the entry is shared by every printing of this card. */
-  all_printings: boolean;
   /**
    * True when the ruling has several targets or any rule target. The panel must
    * show those read-only: retargeting or deleting one here would silently
@@ -107,38 +87,32 @@ export interface AdminCardRuling {
   updated_at: string | null;
 }
 
-export interface AdminCardRulings {
-  card_id: string;
-  oracle_key: string;
-  entries: AdminCardRuling[];
-}
-
-export type AdminRelationshipKind =
-  | "all_parts"
-  | "used_by"
-  | "related_champions"
-  | "related_legends"
-  | "related_signatures"
-  | "related_printings";
-
-export type AdminRelationshipAction = "add" | "remove";
-
-/** One durable relationship override entry (oracle- or printing-scoped). */
-export interface AdminRelationshipEntry {
-  kind: AdminRelationshipKind;
-  related_card_id: string;
-  action: AdminRelationshipAction;
+export interface AdminPrintingRulings {
+  printing_id: string;
+  oracle_id: string;
+  entries: AdminPrintingRuling[];
 }
 
 /**
- * Layered relationship overrides for the editor. Live arrays live on the card
- * payload; this is only the durable add/remove rows that survive ingest.
+ * Oracle → oracle edges. There is no printing scope: a relationship is a
+ * property of the rules object, so there is no per-printing exception to
+ * express.
  */
-export interface AdminCardRelationships {
-  card_id: string;
-  oracle_key: string;
-  oracle_entries: AdminRelationshipEntry[];
-  printing_entries: AdminRelationshipEntry[];
+export type AdminRelationshipKind = "makes_token" | "character" | "signature";
+
+export interface AdminRelationshipEdge {
+  kind: AdminRelationshipKind;
+  oracle_id: string;
+  name: string;
+  slug: string;
+  source: "ingest" | "admin";
+}
+
+export interface AdminOracleRelationships {
+  oracle_id: string;
+  outgoing: AdminRelationshipEdge[];
+  /** Edges pointing *at* this oracle — the reverse view, not separately stored. */
+  incoming: AdminRelationshipEdge[];
 }
 
 // ─── Reconciliation queue ─────────────────────────────────────────────────────
@@ -146,7 +120,8 @@ export interface AdminCardRelationships {
 export type AdminReconciliationKind =
   | "unmatched_product"
   | "field_diff"
-  | "missing_card";
+  | "missing_printing"
+  | "unmatched_oracle";
 
 /** Which upstream raised the entry. Decides which half of the payload is set. */
 export type AdminReconciliationSource = "tcgplayer" | "gallery";
@@ -205,7 +180,8 @@ export interface AdminReconciliationPayload {
   field?: AdminReconciliationField;
   current_value?: string | null;
   proposed_value?: string | null;
-  card_id?: string;
+  printing_id?: string;
+  oracle_id?: string;
   card_name?: string;
 }
 
@@ -216,8 +192,9 @@ export interface AdminReconciliationEntry {
   fingerprint: string;
   status: AdminReconciliationStatus;
   payload: AdminReconciliationPayload;
-  /** Ingest's suggestion, or the card an admin confirmed the entry against. */
-  proposed_card_id: string | null;
+  /** Ingest's suggestions, or what an admin confirmed the entry against. */
+  proposed_printing_id: string | null;
+  proposed_oracle_id: string | null;
   note: string | null;
   resolved_by: string | null;
   resolved_at: string | null;
@@ -253,12 +230,9 @@ export type AdminRulingTargetKind = "oracle" | "printing" | "query";
 export interface AdminRulingTarget {
   id: string;
   kind: AdminRulingTargetKind;
-  oracle_key: string | null;
-  card_id: string | null;
-  /** Resolved for display; null when the printing has since been pruned. */
-  card_name: string | null;
+  oracle_id: string | null;
+  printing_id: string | null;
   query: string | null;
-  ast: unknown;
   /** Materialised match count — query targets only, null for the others. */
   match_count: number | null;
 }
@@ -283,7 +257,7 @@ export interface AdminRulingsPage {
 export interface AdminRulingsQuery {
   limit: number;
   offset: number;
-  /** Substring match over ruling text and source. */
+  /** Substring match over ruling text. */
   query?: string;
   /** Narrow to rulings carrying at least one target of this kind. */
   kind?: AdminRulingTargetKind;
@@ -301,32 +275,56 @@ export interface AdminRulePreview {
   }>;
 }
 
+/** The admin source an upload writes onto a printing before the queue runs. */
+export interface AdminPrintingImageSource {
+  source_url: string;
+  source_hash: string;
+  alt_text?: string;
+}
+
 export interface AdminDataRepository {
   callRpc(
     name: string,
     args: Record<string, unknown>,
   ): Promise<AdminRpcResult>;
-  getSlugCard(cardId: string): Promise<AdminSlugCard | null>;
+  /** Exactly the fields a printing slug is derived from. Null when unknown. */
+  getSlugPrinting(printingId: string): Promise<SlugPrinting | null>;
+  /** An oracle's display name — the name segment of a new printing's slug. */
+  getOracleName(oracleId: string): Promise<string | null>;
+  /** The oracle a printing belongs to — also the existence check for one. */
+  getPrintingOracleId(printingId: string): Promise<string | null>;
   /**
-   * Slugs that could collide with `baseSlug`. `generatePublicSlug` only ever
+   * Slugs that could collide with `baseSlug`. Slug generation only ever
    * proposes `<base>` or `<base>-<n>`, so the caller scopes the read to that
    * prefix instead of loading the whole catalogue.
    */
-  getTakenSlugs(
+  getTakenPrintingSlugs(
     baseSlug: string,
-    excludeCardId?: string,
+    excludePrintingId?: string,
   ): Promise<Set<string>>;
+  getTakenOracleSlugs(baseSlug: string): Promise<Set<string>>;
+  /**
+   * Point a printing at an admin-uploaded source and lock its image against the
+   * next ingest. Returns false when the printing does not exist.
+   */
+  setPrintingImageSource(
+    printingId: string,
+    media: AdminPrintingImageSource,
+    actorId: string,
+  ): Promise<boolean>;
   listAuditLog(query: AdminAuditQuery): Promise<AdminAuditPage>;
   listFormats(): Promise<AdminFormat[]>;
   /**
-   * Returns null when the card does not exist, so callers can 404 rather than
-   * render an empty legality/ruling table for a card id that never existed.
+   * Return null when the printing does not exist, so callers can 404 rather
+   * than render an empty table for an id that never existed.
    */
-  listCardLegalities(cardId: string): Promise<AdminCardLegalities | null>;
-  listCardRulings(cardId: string): Promise<AdminCardRulings | null>;
-  listCardRelationships(
-    cardId: string,
-  ): Promise<AdminCardRelationships | null>;
+  listPrintingLegalities(
+    printingId: string,
+  ): Promise<AdminPrintingLegalities | null>;
+  listPrintingRulings(printingId: string): Promise<AdminPrintingRulings | null>;
+  listOracleRelationships(
+    oracleId: string,
+  ): Promise<AdminOracleRelationships | null>;
   listReconciliation(
     query: AdminReconciliationQuery,
   ): Promise<AdminReconciliationPage>;
@@ -356,61 +354,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function parseSlugCard(value: unknown): AdminSlugCard | null {
-  if (!isRecord(value)) return null;
-  if (
-    typeof value.id !== "string" ||
-    typeof value.name !== "string" ||
-    typeof value.name_normalized !== "string"
-  ) {
-    return null;
-  }
-
-  const joinedSet = Array.isArray(value.sets) ? value.sets[0] : value.sets;
-  const set =
-    isRecord(joinedSet) &&
-    typeof joinedSet.set_code === "string" &&
-    typeof joinedSet.set_name === "string"
-      ? {
-          set_code: joinedSet.set_code,
-          set_name: joinedSet.set_name,
-        }
-      : undefined;
-  const metadata = isRecord(value.metadata)
-    ? {
-        alternate_art:
-          typeof value.metadata.alternate_art === "boolean"
-            ? value.metadata.alternate_art
-            : undefined,
-        signature:
-          typeof value.metadata.signature === "boolean"
-            ? value.metadata.signature
-            : undefined,
-      }
-    : undefined;
-
-  return {
-    id: value.id,
-    name: value.name,
-    name_normalized: value.name_normalized,
-    collector_number:
-      typeof value.collector_number === "string"
-        ? value.collector_number
-        : undefined,
-    set,
-    metadata,
-  };
-}
-
 export function createAdminDataRepository(
   client: SupabaseClient,
 ): AdminDataRepository {
+  const rpc = async (name: string, args: Record<string, unknown>) => {
+    const { data, error } = await client.rpc(name, args);
+    if (error) throw new AdminRepositoryError(error.message, error.code);
+    return data;
+  };
+
   return {
     async callRpc(name, args) {
-      const { data, error } = await client.rpc(name, args);
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
+      const data = await rpc(name, args);
       if (!isRecord(data) || typeof data.ok !== "boolean") {
         throw new AdminRepositoryError(
           `${name} returned an invalid response`,
@@ -425,37 +380,65 @@ export function createAdminDataRepository(
       };
     },
 
-    async getSlugCard(cardId) {
+    async getSlugPrinting(printingId) {
+      // The projection, not `printings`: a slug needs the resolved name, which
+      // lives on the oracle and can be overridden by a printing delta.
       const { data, error } = await client
-        .from("cards")
-        .select(
-          "id, name, name_normalized, collector_number, metadata, sets:set_id(set_code, set_name)",
-        )
-        .eq("id", cardId)
+        .from("resolved_printings")
+        .select("printing_id, name, set_code, collector_number, is_alternate_art, is_signature")
+        .eq("printing_id", printingId)
         .maybeSingle();
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
-      return data ? parseSlugCard(data) : null;
+      if (error) throw new AdminRepositoryError(error.message, error.code);
+      if (!isRecord(data) || typeof data.name !== "string") return null;
+      return {
+        id: printingId,
+        name: data.name,
+        setCode: typeof data.set_code === "string" ? data.set_code : undefined,
+        collectorNumber:
+          typeof data.collector_number === "string"
+            ? data.collector_number
+            : undefined,
+        alternateArt: data.is_alternate_art === true,
+        signature: data.is_signature === true,
+      };
     },
 
-    async getTakenSlugs(baseSlug, excludeCardId) {
+    async getOracleName(oracleId) {
+      const { data, error } = await client
+        .from("oracles")
+        .select("name")
+        .eq("id", oracleId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error) throw new AdminRepositoryError(error.message, error.code);
+      return isRecord(data) && typeof data.name === "string" ? data.name : null;
+    },
+
+    async getPrintingOracleId(printingId) {
+      const { data, error } = await client
+        .from("printings")
+        .select("oracle_id")
+        .eq("id", printingId)
+        .maybeSingle();
+      if (error) throw new AdminRepositoryError(error.message, error.code);
+      return isRecord(data) && typeof data.oracle_id === "string"
+        ? data.oracle_id
+        : null;
+    },
+
+    async getTakenPrintingSlugs(baseSlug, excludePrintingId) {
       // Prefix match rather than equality: the candidates are `<base>` and
       // `<base>-<n>`. It can over-match (`.../card` also returns `.../cardio`),
       // which is harmless — such rows never equal a proposed candidate — while
       // under-matching is impossible, so no collision can slip through.
       let query = client
-        .from("cards")
+        .from("printings")
         .select("public_slug")
         .like("public_slug", `${baseSlug}%`);
-      if (excludeCardId) {
-        query = query.neq("id", excludeCardId);
-      }
+      if (excludePrintingId) query = query.neq("id", excludePrintingId);
 
       const { data, error } = await query;
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
+      if (error) throw new AdminRepositoryError(error.message, error.code);
 
       const taken = new Set<string>();
       for (const row of data ?? []) {
@@ -464,6 +447,72 @@ export function createAdminDataRepository(
         }
       }
       return taken;
+    },
+
+    async getTakenOracleSlugs(baseSlug) {
+      const { data, error } = await client
+        .from("oracles")
+        .select("slug")
+        .like("slug", `${baseSlug}%`);
+      if (error) throw new AdminRepositoryError(error.message, error.code);
+
+      const taken = new Set<string>();
+      for (const row of data ?? []) {
+        if (typeof row.slug === "string" && row.slug) taken.add(row.slug);
+      }
+      return taken;
+    },
+
+    async setPrintingImageSource(printingId, media, actorId) {
+      const existing = await client
+        .from("printings")
+        .select("locked_fields")
+        .eq("id", printingId)
+        .maybeSingle();
+      if (existing.error) {
+        throw new AdminRepositoryError(existing.error.message, existing.error.code);
+      }
+      if (!isRecord(existing.data)) return false;
+
+      // An admin upload is a deliberate choice, so it claims the image the same
+      // way any other admin edit claims a field.
+      const locked = new Set(
+        Array.isArray(existing.data.locked_fields)
+          ? existing.data.locked_fields.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : [],
+      );
+      locked.add("image");
+
+      const { error } = await client
+        .from("printings")
+        .update({
+          image_source_url: media.source_url,
+          image_source_hash: media.source_hash,
+          image_source_provider: "admin",
+          // The variants for the previous source no longer describe this
+          // printing; the queue consumer republishes once it has built them.
+          image_hosted_at: null,
+          ...(media.alt_text === undefined
+            ? {}
+            : { image_alt_text: media.alt_text }),
+          locked_fields: [...locked].sort(),
+        })
+        .eq("id", printingId);
+      if (error) throw new AdminRepositoryError(error.message, error.code);
+
+      const logged = await client.from("admin_audit_log").insert({
+        actor_id: actorId,
+        action: "printing.image",
+        target_type: "printing",
+        target_id: printingId,
+        detail: { source_hash: media.source_hash },
+      });
+      if (logged.error) {
+        throw new AdminRepositoryError(logged.error.message, logged.error.code);
+      }
+      return true;
     },
 
     async listAuditLog(query) {
@@ -485,9 +534,7 @@ export function createAdminDataRepository(
         .order("id", { ascending: false })
         .range(query.offset, query.offset + query.limit - 1);
 
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
+      if (error) throw new AdminRepositoryError(error.message, error.code);
 
       return {
         entries: (data ?? []).map(parseAuditEntry),
@@ -518,9 +565,7 @@ export function createAdminDataRepository(
           .from(table)
           .select("format_id", { count: "exact", head: true })
           .eq("format_id", formatId);
-        if (error) {
-          throw new AdminRepositoryError(error.message, error.code);
-        }
+        if (error) throw new AdminRepositoryError(error.message, error.code);
         return count ?? 0;
       };
 
@@ -528,8 +573,8 @@ export function createAdminDataRepository(
         (formats.data ?? []).map(async (row) => {
           const id = String(row.id);
           const [legalityCount, overrideCount] = await Promise.all([
-            countFor("card_legalities", id),
-            countFor("card_legality_overrides", id),
+            countFor("oracle_legalities", id),
+            countFor("printing_legalities", id),
           ]);
           return {
             id,
@@ -544,116 +589,56 @@ export function createAdminDataRepository(
       );
     },
 
-    async listCardLegalities(cardId) {
-      const oracleKey = await loadOracleKey(client, cardId);
-      if (oracleKey === null) return null;
+    async listPrintingLegalities(printingId) {
+      // `legalities_for_printing` cross-joins the printing, so a missing one
+      // returns an empty array indistinguishable from "no active formats".
+      const oracleId = await this.getPrintingOracleId(printingId);
+      if (!oracleId) return null;
 
-      const [formats, oracleRows, overrideRows] = await Promise.all([
-        client
-          .from("formats")
-          .select("id, code, name, sort_order, active")
-          .order("sort_order", { ascending: true })
-          .order("name", { ascending: true }),
-        client
-          .from("card_legalities")
-          .select("format_id, status")
-          .eq("oracle_key", oracleKey),
-        client
-          .from("card_legality_overrides")
-          .select("format_id, status")
-          .eq("card_id", cardId),
-      ]);
-
-      for (const result of [formats, oracleRows, overrideRows]) {
-        if (result.error) {
-          throw new AdminRepositoryError(result.error.message, result.error.code);
-        }
-      }
-
-      const byOracle = indexStatuses(oracleRows.data ?? []);
-      const byPrinting = indexStatuses(overrideRows.data ?? []);
-
+      const data = await rpc("legalities_for_printing", {
+        p_printing_id: printingId,
+      });
       return {
-        card_id: cardId,
-        oracle_key: oracleKey,
-        entries: (formats.data ?? []).map((row) => {
-          const formatId = String(row.id);
-          const oracleStatus = byOracle.get(formatId) ?? null;
-          const printingStatus = byPrinting.get(formatId) ?? null;
-          return {
-            format_id: formatId,
-            format_code: String(row.code),
-            format_name: String(row.name),
-            format_active: row.active !== false,
-            oracle_status: oracleStatus,
-            printing_status: printingStatus,
-            effective_status:
-              printingStatus ?? oracleStatus ?? ("legal" as AdminLegalityStatus),
-          };
-        }),
+        printing_id: printingId,
+        oracle_id: oracleId,
+        entries: Array.isArray(data)
+          ? data.filter(isRecord).map(parseLegalityEntry)
+          : [],
       };
     },
 
-    async listCardRulings(cardId) {
-      // An RPC rather than a table read: entries now arrive through three target
-      // kinds (this printing, the oracle group, or a rule match), and each one
-      // needs its scope and shared-ness resolved before the panel can decide
-      // which controls to offer. Entries scoped to a *sibling* printing are
-      // absent by construction — nothing in the RPC matches them.
-      const { data, error } = await client.rpc("admin_card_rulings", {
-        p_card_id: cardId,
-      });
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
-      if (!data) return null;
+    async listPrintingRulings(printingId) {
+      const oracleId = await this.getPrintingOracleId(printingId);
+      if (!oracleId) return null;
 
-      const payload = data as {
-        card_id?: string;
-        oracle_key?: string;
-        entries?: Array<Record<string, unknown>>;
-      };
+      const data = await rpc("admin_printing_rulings", {
+        p_printing_id: printingId,
+      });
       return {
-        card_id: String(payload.card_id ?? cardId),
-        oracle_key: String(payload.oracle_key ?? ""),
-        entries: (payload.entries ?? []).map(parseCardRuling),
+        printing_id: printingId,
+        oracle_id: oracleId,
+        entries: Array.isArray(data)
+          ? data.filter(isRecord).map(parsePrintingRuling)
+          : [],
       };
     },
 
-    async listCardRelationships(cardId) {
-      const { data, error } = await client.rpc("admin_list_card_relationships", {
-        p_card_id: cardId,
+    async listOracleRelationships(oracleId) {
+      const data = await rpc("admin_list_oracle_relationships", {
+        p_oracle_id: oracleId,
       });
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
-      if (!data) return null;
-
-      const payload = data as {
-        card_id?: string;
-        oracle_key?: string;
-        oracle_entries?: Array<Record<string, unknown>>;
-        printing_entries?: Array<Record<string, unknown>>;
-      };
+      if (!isRecord(data)) return null;
       return {
-        card_id: String(payload.card_id ?? cardId),
-        oracle_key: String(payload.oracle_key ?? ""),
-        oracle_entries: (payload.oracle_entries ?? [])
-          .map(parseRelationshipEntry)
-          .filter((entry): entry is AdminRelationshipEntry => entry !== null),
-        printing_entries: (payload.printing_entries ?? [])
-          .map(parseRelationshipEntry)
-          .filter((entry): entry is AdminRelationshipEntry => entry !== null),
+        oracle_id: String(data.oracle_id ?? oracleId),
+        outgoing: parseEdges(data.outgoing, "to_oracle_id"),
+        incoming: parseEdges(data.incoming, "from_oracle_id"),
       };
     },
 
     async listReconciliation(query) {
       let request = client
         .from("reconciliation_queue")
-        .select(
-          "id, kind, source, fingerprint, status, payload, proposed_card_id, note, resolved_by, resolved_at, created_at, last_seen_at",
-          { count: "exact" },
-        );
+        .select(RECONCILIATION_COLUMNS, { count: "exact" });
 
       if (query.status) request = request.eq("status", query.status);
       if (query.kind) request = request.eq("kind", query.kind);
@@ -695,27 +680,20 @@ export function createAdminDataRepository(
     async getReconciliationEntry(entryId) {
       const { data, error } = await client
         .from("reconciliation_queue")
-        .select(
-          "id, kind, source, fingerprint, status, payload, proposed_card_id, note, resolved_by, resolved_at, created_at, last_seen_at",
-        )
+        .select(RECONCILIATION_COLUMNS)
         .eq("id", entryId)
         .maybeSingle();
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
+      if (error) throw new AdminRepositoryError(error.message, error.code);
       return isRecord(data) ? parseReconciliationEntry(data) : null;
     },
 
     async listRulings(query) {
-      const { data, error } = await client.rpc("admin_list_rulings", {
+      const data = await rpc("admin_list_rulings", {
         p_query: query.query ?? null,
         p_kind: query.kind ?? null,
         p_limit: query.limit,
         p_offset: query.offset,
       });
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
       const payload = isRecord(data) ? data : {};
       return {
         total: typeof payload.total === "number" ? payload.total : 0,
@@ -726,13 +704,10 @@ export function createAdminDataRepository(
     },
 
     async previewRule(ast, limit) {
-      const { data, error } = await client.rpc("card_ruling_rule_preview", {
+      const data = await rpc("ruling_rule_preview", {
         p_ast: ast,
         p_limit: limit,
       });
-      if (error) {
-        throw new AdminRepositoryError(error.message, error.code);
-      }
       const payload = isRecord(data) ? data : {};
       return {
         total: typeof payload.total === "number" ? payload.total : 0,
@@ -754,19 +729,80 @@ export function createAdminDataRepository(
   };
 }
 
+const LEGALITY_STATUSES = new Set<string>(["legal", "not_legal", "banned"]);
+
+function parseLegalityEntry(
+  row: Record<string, unknown>,
+): AdminPrintingLegalityEntry {
+  const status =
+    typeof row.status === "string" && LEGALITY_STATUSES.has(row.status)
+      ? (row.status as AdminLegalityStatus)
+      : "legal";
+  return {
+    format_id: String(row.format_id ?? ""),
+    format_code: String(row.format_code ?? ""),
+    // `legalities_for_printing` names the column `name`, not `format_name`.
+    format_name: typeof row.name === "string" ? row.name : "",
+    status,
+    scope:
+      row.scope === "printing" || row.scope === "oracle" ? row.scope : "default",
+  };
+}
+
+function parsePrintingRuling(row: Record<string, unknown>): AdminPrintingRuling {
+  const scope =
+    row.scope === "printing" || row.scope === "rule" ? row.scope : "oracle";
+  return {
+    id: String(row.id ?? ""),
+    type: row.type === "note" ? "note" : "ruling",
+    text: typeof row.text === "string" ? row.text : "",
+    dated: typeof row.dated === "string" ? row.dated : null,
+    source: typeof row.source === "string" ? row.source : null,
+    active: row.active !== false,
+    scope,
+    // A rule-matched entry is shared by definition, whatever the count says.
+    shared: row.shared === true || scope === "rule",
+    target_count: typeof row.target_count === "number" ? row.target_count : 1,
+    created_at: typeof row.created_at === "string" ? row.created_at : null,
+    updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
+  };
+}
+
+const RELATIONSHIP_KINDS = new Set<string>([
+  "makes_token",
+  "character",
+  "signature",
+]);
+
+function parseEdges(value: unknown, idKey: string): AdminRelationshipEdge[] {
+  if (!Array.isArray(value)) return [];
+  const edges: AdminRelationshipEdge[] = [];
+  for (const row of value) {
+    if (!isRecord(row)) continue;
+    if (typeof row.kind !== "string" || !RELATIONSHIP_KINDS.has(row.kind)) continue;
+    const oracleId = row[idKey];
+    if (typeof oracleId !== "string" || !oracleId) continue;
+    edges.push({
+      kind: row.kind as AdminRelationshipKind,
+      oracle_id: oracleId,
+      name: typeof row.name === "string" ? row.name : "",
+      slug: typeof row.slug === "string" ? row.slug : "",
+      source: row.source === "admin" ? "admin" : "ingest",
+    });
+  }
+  return edges;
+}
+
 function parseRulingTarget(row: Record<string, unknown>): AdminRulingTarget {
   const kind =
     row.kind === "printing" || row.kind === "query" ? row.kind : "oracle";
   return {
     id: String(row.id ?? ""),
     kind,
-    oracle_key: typeof row.oracle_key === "string" ? row.oracle_key : null,
-    card_id: typeof row.card_id === "string" ? row.card_id : null,
-    card_name: typeof row.card_name === "string" ? row.card_name : null,
+    oracle_id: typeof row.oracle_id === "string" ? row.oracle_id : null,
+    printing_id: typeof row.printing_id === "string" ? row.printing_id : null,
     query: typeof row.query === "string" ? row.query : null,
-    ast: row.ast ?? null,
-    match_count:
-      typeof row.match_count === "number" ? row.match_count : null,
+    match_count: typeof row.match_count === "number" ? row.match_count : null,
   };
 }
 
@@ -786,11 +822,32 @@ function parseRuling(row: Record<string, unknown>): AdminRuling {
   };
 }
 
+const RECONCILIATION_COLUMNS =
+  "id, kind, source, fingerprint, status, payload, proposed_printing_id, proposed_oracle_id, note, resolved_by, resolved_at, created_at, last_seen_at";
+
 const RECONCILIATION_STATUSES = [
   "pending",
   "confirmed",
   "dismissed",
 ] as const satisfies readonly AdminReconciliationStatus[];
+
+const RECONCILIATION_KINDS = new Set<string>([
+  "unmatched_product",
+  "field_diff",
+  "missing_printing",
+  "unmatched_oracle",
+]);
+
+const RECONCILIATION_FIELDS = new Set<string>([
+  "collector_number",
+  "released_at",
+  "rarity",
+  "type",
+  "energy",
+  "might",
+  "power",
+  "text",
+]);
 
 function parseReconciliationProduct(
   value: unknown,
@@ -807,17 +864,6 @@ function parseReconciliationProduct(
     set_code: typeof row.set_code === "string" ? row.set_code : null,
   };
 }
-
-const RECONCILIATION_FIELDS = new Set<string>([
-  "collector_number",
-  "released_at",
-  "rarity",
-  "type",
-  "energy",
-  "might",
-  "power",
-  "text",
-]);
 
 function parseReconciliationGalleryCard(
   value: unknown,
@@ -866,8 +912,8 @@ function parseReconciliationEntry(
   return {
     id: String(row.id ?? ""),
     kind:
-      row.kind === "field_diff" || row.kind === "missing_card"
-        ? row.kind
+      typeof row.kind === "string" && RECONCILIATION_KINDS.has(row.kind)
+        ? (row.kind as AdminReconciliationKind)
         : "unmatched_product",
     source,
     fingerprint: typeof row.fingerprint === "string" ? row.fingerprint : "",
@@ -892,111 +938,27 @@ function parseReconciliationEntry(
         typeof payload.proposed_value === "string"
           ? payload.proposed_value
           : null,
-      ...(typeof payload.card_id === "string"
-        ? { card_id: payload.card_id }
+      ...(typeof payload.printing_id === "string"
+        ? { printing_id: payload.printing_id }
+        : {}),
+      ...(typeof payload.oracle_id === "string"
+        ? { oracle_id: payload.oracle_id }
         : {}),
       ...(typeof payload.card_name === "string"
         ? { card_name: payload.card_name }
         : {}),
     },
-    proposed_card_id:
-      typeof row.proposed_card_id === "string" ? row.proposed_card_id : null,
+    proposed_printing_id:
+      typeof row.proposed_printing_id === "string"
+        ? row.proposed_printing_id
+        : null,
+    proposed_oracle_id:
+      typeof row.proposed_oracle_id === "string" ? row.proposed_oracle_id : null,
     note: typeof row.note === "string" ? row.note : null,
     resolved_by: typeof row.resolved_by === "string" ? row.resolved_by : null,
     resolved_at: typeof row.resolved_at === "string" ? row.resolved_at : null,
     created_at: typeof row.created_at === "string" ? row.created_at : "",
     last_seen_at: typeof row.last_seen_at === "string" ? row.last_seen_at : "",
-  };
-}
-
-/**
- * The oracle key for a live card, mirroring the SQL `admin__card_oracle_key`
- * fallback so a row that predates the column still resolves its group.
- */
-async function loadOracleKey(
-  client: SupabaseClient,
-  cardId: string,
-): Promise<string | null> {
-  const { data, error } = await client
-    .from("cards")
-    .select("name, oracle_key")
-    .eq("id", cardId)
-    .maybeSingle();
-  if (error) {
-    throw new AdminRepositoryError(error.message, error.code);
-  }
-  if (!isRecord(data)) return null;
-  if (typeof data.oracle_key === "string" && data.oracle_key) {
-    return data.oracle_key;
-  }
-  return typeof data.name === "string" ? oracleKeyForName(data.name) : null;
-}
-
-function indexStatuses(
-  rows: unknown[],
-): Map<string, AdminLegalityStatus> {
-  const byFormat = new Map<string, AdminLegalityStatus>();
-  for (const row of rows) {
-    if (!isRecord(row)) continue;
-    if (typeof row.format_id !== "string") continue;
-    if (
-      row.status === "legal" ||
-      row.status === "not_legal" ||
-      row.status === "banned"
-    ) {
-      byFormat.set(row.format_id, row.status);
-    }
-  }
-  return byFormat;
-}
-
-function parseCardRuling(row: Record<string, unknown>): AdminCardRuling {
-  const scope =
-    row.scope === "printing" || row.scope === "rule" ? row.scope : "oracle";
-  return {
-    id: String(row.id ?? ""),
-    type: row.type === "note" ? "note" : "ruling",
-    text: typeof row.text === "string" ? row.text : "",
-    dated: typeof row.dated === "string" ? row.dated : null,
-    source: typeof row.source === "string" ? row.source : null,
-    active: row.active !== false,
-    scope,
-    all_printings: row.all_printings === true,
-    // A rule-matched entry is shared by definition, whatever the count says.
-    shared: row.shared === true || scope === "rule",
-    target_count:
-      typeof row.target_count === "number" ? row.target_count : 1,
-    created_at: typeof row.created_at === "string" ? row.created_at : null,
-    updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
-  };
-}
-
-const RELATIONSHIP_KINDS = new Set<AdminRelationshipKind>([
-  "all_parts",
-  "used_by",
-  "related_champions",
-  "related_legends",
-  "related_signatures",
-  "related_printings",
-]);
-
-function parseRelationshipEntry(
-  row: Record<string, unknown>,
-): AdminRelationshipEntry | null {
-  if (
-    typeof row.kind !== "string" ||
-    !RELATIONSHIP_KINDS.has(row.kind as AdminRelationshipKind)
-  ) {
-    return null;
-  }
-  if (typeof row.related_card_id !== "string" || !row.related_card_id) {
-    return null;
-  }
-  if (row.action !== "add" && row.action !== "remove") return null;
-  return {
-    kind: row.kind as AdminRelationshipKind,
-    related_card_id: row.related_card_id,
-    action: row.action,
   };
 }
 

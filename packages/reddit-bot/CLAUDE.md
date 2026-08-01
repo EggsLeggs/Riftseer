@@ -20,7 +20,7 @@ npx devvit playtest <subreddit>      # Live testing against a real subreddit
 |------|---------|
 | `src/main.ts` | Devvit entry point — registers triggers and settings |
 | `src/handler.ts` | `buildReply()` — calls API, formats Markdown response |
-| `src/parser.ts` | `parseCardRequests()` — mirrors `packages/core/src/parser.ts` |
+| `@riftseer/types/parser` | `parseCardRequests()` — imported, never reimplemented |
 | `devvit.json` | App manifest (name, permissions, HTTP domains, marketing assets) |
 
 ## Triggers

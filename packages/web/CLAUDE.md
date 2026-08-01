@@ -59,7 +59,7 @@ URL building happens in the API** (`buildCardDetail` in `@riftseer/core`) — do
 add derived card logic to the view. The fetch is wrapped in React `cache()` so
 `generateMetadata` and the page share one request.
 
-`features/cards/api.ts` uses `AbortSignal.timeout` (12s) and `cache: "no-store"` so requests fail fast instead of hanging; `app/card/error.tsx` shows user-facing copy (no stack traces or dev jargon).
+`features/cards/api.ts` uses `AbortSignal.timeout` (12s) and `cache: "no-store"` so requests fail fast instead of hanging; error boundaries show user-facing copy, never stack traces or dev jargon.
 
 Build URLs with `cardHref()` from `features/cards/paths.ts` for same-origin links
 (dev, preview and production all differ), and `card.riftseer_uri` when you need an
@@ -139,8 +139,8 @@ streams the body under the 20 MB cap instead of buffering whatever arrives.
 
 `/admin/audit` reads `GET /api/v1/admin/audit-log`, the one admin endpoint that
 is not a mutation. Its `action` filter list is hard-coded from the RPC names in
-`supabase/migrations/20260730120000_phase3_admin_api.sql`; add to it whenever an
-admin RPC is added, or the new action silently filters to nothing.
+`supabase/migrations/20260810000000_oracle_printing_baseline.sql`; add to it
+whenever an admin RPC is added, or the new action silently filters to nothing.
 
 Creating a manual card is a two-step flow: `/admin/cards/new` posts only the
 fields that feed `public_slug` (name, set, collector number, signature,
@@ -402,8 +402,8 @@ Supabase can redirect to the app root with errors in the URL hash (e.g. `/#error
 
 Shared primitives (`SubHeading`, `Text`, lists, external links): `src/views/legal-document.tsx`.
 
-- **Privacy Policy** — `src/views/privacy-view.tsx`, route `/privacy`, metadata in `src/app/privacy/page.tsx`.
-- **Terms of Service** — `src/views/terms-view.tsx`, route `/terms`, metadata in `src/app/terms/page.tsx`.
+- **Privacy Policy** — `src/views/privacy-view.tsx`, route `/privacy`, metadata in `src/app/(site)/privacy/page.tsx`.
+- **Terms of Service** — `src/views/terms-view.tsx`, route `/terms`, metadata in `src/app/(site)/terms/page.tsx`.
 
 Both use the same readable layout (centered column ~800px, clear section headings). Use explicit `{" "}` between closing `</strong>`/`</InlineLink>` and following words where needed so production builds do not collapse spaces.
 

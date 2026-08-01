@@ -76,7 +76,7 @@ const json = await res.json()
 ## Adding a New Route (to an existing version)
 1. Add the route handler to the relevant versioned sub-app (`v1`, etc.) in `src/index.ts`
 2. Add Elysia schema annotations (`.query()`, `.body()`, `.response()`) for Eden Treaty types
-3. Write a test in `src/__tests__/routes.test.ts`
+3. Write a test in `src/__tests__/routes/`
 4. Update or add the relevant doc page in `packages/api/docs/`
 5. If the route exposes new personal data or logs new information, update `packages/web/src/views/privacy-view.tsx`
 

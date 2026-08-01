@@ -1,18 +1,79 @@
-import { t } from "elysia";
+import { t, type Static } from "elysia";
+import type {
+  CardLegality,
+  CardPrices,
+  CardPurchaseUris,
+  CardRequest,
+  CardRuling,
+  Format,
+  Oracle,
+  OracleDetail,
+  OracleRef,
+  Printing,
+  ResolvedCard,
+} from "@riftseer/types";
 
-export const RelatedCardSchema = t.Object({
-  object: t.Literal("related_card"),
-  id: t.String({ description: "ID of the referenced card" }),
+// ─── Drift guard ──────────────────────────────────────────────────────────────
+//
+// TypeBox cannot derive a schema from a TypeScript interface without a codegen
+// step, so the shapes below are still written by hand — and this file has
+// already drifted from the card model twice. The guard makes the third time a
+// compile error.
+//
+// Both directions matter. Elysia cleans every response against these schemas,
+// so a field the schema forgets is a field the API silently stops returning;
+// a field the schema invents is one no handler can produce.
+
+type Mirrors<Schema, Domain> = [Schema] extends [Domain]
+  ? [Domain] extends [Schema]
+    ? true
+    : { schema_rejects_a_valid_value: Exclude<keyof Schema, keyof Domain> }
+  : { schema_is_missing_or_mistypes: Exclude<keyof Domain, keyof Schema> };
+
+/** Fails to satisfy its constraint — and so fails the build — on any drift. */
+type Assert<T extends true> = T;
+
+// ─── Oracle ───────────────────────────────────────────────────────────────────
+
+export const OracleRefSchema = t.Object({
+  object: t.Literal("oracle_ref"),
+  id: t.String({ description: "UUID of the referenced oracle" }),
   name: t.String(),
-  component: t.String({ description: "Relationship role, e.g. 'token', 'meld_part'" }),
-  uri: t.Optional(t.String({ description: "API URI for the referenced card" })),
-  riftseer_uri: t.Optional(
-    t.String({ description: "Absolute public site URL for the referenced card" }),
-  ),
-  set_code: t.Optional(t.String({ description: "Set code — on related_printings stubs" })),
-  collector_number: t.Optional(t.String()),
-  published_on: t.Optional(t.String({ description: "ISO release date for printing order" })),
-  alternate_art: t.Optional(t.Boolean()),
+  slug: t.String({ description: "Oracle-level public slug, e.g. `brush`" }),
+  uri: t.Optional(t.String()),
+  riftseer_uri: t.Optional(t.String()),
+  image_small: t.Optional(t.String()),
+});
+
+const OracleTextSchema = t.Partial(
+  t.Object({
+    rich: t.String(),
+    plain: t.String(),
+    equipment: t.String({
+      description:
+        "The effect an `[Equip]` gear grants the unit it is attached to.",
+    }),
+  }),
+);
+
+const OracleRelationshipsSchema = t.Object({
+  makes_tokens: t.Array(OracleRefSchema),
+  used_by: t.Array(OracleRefSchema),
+  characters: t.Array(OracleRefSchema),
+  signatures: t.Array(OracleRefSchema),
+});
+
+// ─── Printing ─────────────────────────────────────────────────────────────────
+
+export const CardSetSchema = t.Object({
+  set_code: t.String(),
+  set_id: t.Optional(t.String()),
+  set_name: t.String(),
+  set_uri: t.Optional(t.String()),
+  set_search_uri: t.Optional(t.String()),
+  published_on: t.Optional(t.String()),
+  card_count: t.Optional(t.Number()),
+  is_promo: t.Optional(t.Boolean()),
 });
 
 const PriceEntrySchema = t.Partial(
@@ -26,8 +87,8 @@ const PriceEntrySchema = t.Partial(
 
 export const CardPricesSchema = t.Partial(
   t.Object({
-    tcgplayer: t.Optional(PriceEntrySchema),
-    cardmarket: t.Optional(PriceEntrySchema),
+    tcgplayer: PriceEntrySchema,
+    cardmarket: PriceEntrySchema,
   }),
 );
 
@@ -38,132 +99,125 @@ export const CardPurchaseUrisSchema = t.Partial(
   }),
 );
 
-export const CardSchema = t.Object({
-  object: t.Literal("card"),
-  id: t.String(),
-  name: t.String(),
-  name_normalized: t.String(),
-  released_at: t.Optional(t.String()),
+const PrintingImageSchema = t.Partial(
+  t.Object({
+    small: t.String(),
+    normal: t.String(),
+    large: t.String(),
+    original: t.String(),
+  }),
+);
+
+export const PrintingSchema = t.Object({
+  object: t.Literal("printing"),
+  id: t.String({ description: "RiftCodex Mongo ObjectId" }),
+  oracle_id: t.String({ description: "UUID of the oracle this prints" }),
+
+  set: t.Optional(CardSetSchema),
   collector_number: t.Optional(t.String()),
-  external_ids: t.Optional(t.Partial(t.Object({
-    riftcodex_id: t.String(),
-    riftbound_id: t.String(),
-    tcgplayer_id: t.String(),
-  }))),
-  set: t.Optional(t.Object({
-    set_code: t.String(),
-    set_id: t.Optional(t.String()),
-    set_name: t.String(),
-    set_uri: t.Optional(t.String()),
-    set_search_uri: t.Optional(t.String()),
-    published_on: t.Optional(t.String()),
-    card_count: t.Optional(t.Number()),
-  })),
-  oracle_key: t.Optional(
+  collector_label: t.Optional(
+    t.String({ description: "Display form, e.g. `21★` or `12a`" }),
+  ),
+  rarity: t.Optional(
     t.String({
       description:
-        "Name-derived key shared by every printing of this card. Rulings and format legalities are keyed on it.",
+        "Printing-level: TCGPlayer treats Showcase as a rarity while RiftCodex reports the base card's.",
     }),
   ),
-  keywords: t.Optional(
-    t.Array(t.String(), {
-      description:
-        "`[Keyword]` tags in this printing's rules text, as base keys " +
-        "(`deflect`, not `Deflect 3`). Searchable with `kw:`.",
-    }),
-  ),
-  attributes: t.Optional(t.Partial(t.Object({
-    energy: t.Nullable(t.Number()),
-    might: t.Nullable(t.Number()),
-    power: t.Nullable(t.Number()),
-    might_bonus: t.Nullable(t.Number()),
-  }))),
-  classification: t.Optional(t.Partial(t.Object({
-    type: t.String(),
-    supertype: t.Nullable(t.String()),
-    rarity: t.String(),
-    tags: t.Array(t.String()),
-    domains: t.Array(t.String()),
-  }))),
-  text: t.Optional(t.Partial(t.Object({
-    rich: t.String(),
-    plain: t.String(),
-    flavour: t.String(),
-    equipment: t.String(),
-  }))),
+  released_at: t.Optional(t.String()),
   artist: t.Optional(t.String()),
   artist_id: t.Optional(t.String()),
-  metadata: t.Optional(t.Partial(t.Object({
-    finishes: t.Array(t.String()),
-    signature: t.Boolean(),
-    overnumbered: t.Boolean(),
-    alternate_art: t.Boolean(),
-    special_collection: t.Boolean(),
-  }))),
-  media: t.Optional(t.Partial(t.Object({
-    orientation: t.String(),
-    accessibility_text: t.String(),
-    media_urls: t.Optional(t.Partial(t.Object({
-      small: t.String(),
-      normal: t.String(),
-      large: t.String(),
-      png: t.String(),
-    }))),
-  }))),
-  purchase_uris: t.Optional(CardPurchaseUrisSchema),
+  flavour_text: t.Optional(t.String()),
+
+  finishes: t.Array(t.String()),
+  signature: t.Boolean(),
+  alternate_art: t.Boolean(),
+  overnumbered: t.Boolean(),
+  special_collection: t.Boolean(),
+
+  image: t.Optional(PrintingImageSchema),
+  image_orientation: t.Optional(t.String()),
+  image_alt_text: t.Optional(t.String()),
+
   prices: t.Optional(CardPricesSchema),
-  is_token: t.Boolean(),
-  all_parts: t.Array(RelatedCardSchema),
-  used_by: t.Array(RelatedCardSchema),
-  related_champions: t.Array(RelatedCardSchema),
-  related_legends: t.Array(RelatedCardSchema),
-  related_signatures: t.Array(RelatedCardSchema),
-  related_printings: t.Array(RelatedCardSchema),
-  public_slug: t.Optional(
-    t.String({
+  purchase_uris: t.Optional(CardPurchaseUrisSchema),
+
+  external_ids: t.Optional(
+    t.Partial(
+      t.Object({
+        riftcodex_id: t.String(),
+        riftbound_id: t.String(),
+        tcgplayer_id: t.String(),
+        cardmarket_id: t.String(),
+      }),
+    ),
+  ),
+
+  public_slug: t.String({
+    description:
+      "Stable public URL path, no leading slash — e.g. `ogn/12a/signature/sun-disc`.",
+  }),
+  riftseer_uri: t.Optional(t.String()),
+  differs_from_oracle: t.Optional(
+    t.Boolean({
       description:
-        "Stable public URL path for the printing (no leading slash), e.g. 'ogn/12a/signature/sun-disc'.",
+        "True when this printing carries a delta from its oracle. The resolved values are already applied.",
     }),
   ),
-  riftseer_uri: t.Optional(
-    t.String({
-      description:
-        "Absolute public site URL for this card (e.g. https://riftseer.com/card/ogn/12a/sun-disc).",
-    }),
-  ),
+
+  source: t.Optional(t.UnionEnum(["riftcodex", "manual"])),
   updated_at: t.Optional(t.String()),
   ingested_at: t.Optional(t.String()),
 });
 
-export const CardPrintingSummarySchema = t.Object({
-  object: t.Literal("card_printing"),
-  id: t.String(),
+export const OracleSchema = t.Object({
+  object: t.Literal("oracle"),
+  id: t.String({ description: "Stable UUID" }),
+  oracle_key: t.String({
+    description: "Name-derived lookup key. Not the identity — `id` is.",
+  }),
+  slug: t.String({ description: "Oracle-level public URL segment" }),
   name: t.String(),
-  public_slug: t.Optional(t.String()),
-  riftseer_uri: t.Optional(t.String()),
-  set_code: t.Optional(t.String()),
-  set_name: t.Optional(t.String()),
-  collector_number: t.Optional(t.String()),
-  collector_label: t.Optional(
-    t.String({
-      description:
-        "Collector number with its variant marker, e.g. '12a' (alternate art) or '21★' (signature).",
-    }),
-  ),
-  rarity: t.Optional(t.String()),
-  type: t.Optional(t.String()),
-  energy: t.Optional(t.Nullable(t.Number())),
-  power: t.Optional(t.Nullable(t.Number())),
+  name_normalized: t.String(),
+
+  card_type: t.Optional(t.String()),
+  supertype: t.Optional(t.Nullable(t.String())),
   is_token: t.Boolean(),
-  alternate_art: t.Optional(t.Boolean()),
-  signature: t.Optional(t.Boolean()),
-  image_small: t.Optional(t.String()),
-  prices: t.Optional(CardPricesSchema),
-  purchase_uris: t.Optional(CardPurchaseUrisSchema),
-  is_current: t.Optional(
-    t.Boolean({ description: "True for the printing being viewed." }),
+
+  energy: t.Optional(t.Nullable(t.Number())),
+  might: t.Optional(t.Nullable(t.Number())),
+  power: t.Optional(t.Nullable(t.Number())),
+  might_bonus: t.Optional(
+    t.Nullable(
+      t.Number({
+        description:
+          "Equipment only, where `0` is a real printed value. Test presence, never truthiness.",
+      }),
+    ),
   ),
+
+  text: t.Optional(OracleTextSchema),
+
+  keywords: t.Array(t.String(), {
+    description: "`[Keyword]` base keys (`deflect`, not `Deflect 3`).",
+  }),
+  tags: t.Array(t.String()),
+  domains: t.Array(t.String()),
+  meta_flags: t.Array(t.String(), {
+    description: "Searchable `is:` flags that are not printed on the card.",
+  }),
+
+  relationships: t.Optional(OracleRelationshipsSchema),
+
+  preferred_printing: t.Optional(PrintingSchema),
+  printings: t.Optional(t.Array(PrintingSchema)),
+
+  source: t.Optional(t.UnionEnum(["riftcodex", "manual"])),
+  riftseer_uri: t.Optional(t.String()),
+  updated_at: t.Optional(t.String()),
 });
+
+// ─── Rulings, legalities, formats ─────────────────────────────────────────────
 
 export const LegalityStatusSchema = t.UnionEnum([
   "legal",
@@ -174,9 +228,9 @@ export const LegalityStatusSchema = t.UnionEnum([
 export const FormatSchema = t.Object({
   object: t.Literal("format"),
   id: t.String(),
-  code: t.String({ description: "Stable lowercase handle, e.g. 'standard'." }),
+  code: t.String({ description: "Stable lowercase handle, e.g. `standard`" }),
   name: t.String(),
-  sort_order: t.Number({ description: "Display order, ascending." }),
+  sort_order: t.Number({ description: "Display order, ascending" }),
   active: t.Boolean({
     description: "False for retired formats; they are omitted from public lists.",
   }),
@@ -190,7 +244,7 @@ export const CardLegalitySchema = t.Object({
   status: LegalityStatusSchema,
   scope: t.UnionEnum(["printing", "oracle", "default"], {
     description:
-      "Which layer decided the status: this printing's override, the shared card-level row, or the default (legal).",
+      "Which layer decided the status: this printing's override, the oracle row, or the default (legal).",
   }),
   updated_at: t.Optional(t.String()),
 });
@@ -200,50 +254,36 @@ export const CardRulingSchema = t.Object({
   id: t.String(),
   type: t.UnionEnum(["ruling", "note"]),
   text: t.String(),
-  dated: t.Optional(t.String({ description: "ISO date the ruling was issued." })),
+  dated: t.Optional(t.String()),
   source: t.Optional(t.String()),
   scope: t.Optional(
     t.UnionEnum(["printing", "oracle", "rule"], {
       description:
-        "How the entry reached this card: written for this printing, shared by " +
-        "every printing of the card, or matched by a query-scoped ruling.",
+        "How the entry reached the card: this printing, the oracle, or a query-scoped rule.",
     }),
   ),
   created_at: t.Optional(t.String()),
   updated_at: t.Optional(t.String()),
 });
 
-export const CardDetailSchema = t.Object({
-  object: t.Literal("card_detail"),
-  card: CardSchema,
-  printings: t.Array(CardPrintingSummarySchema, {
-    description: "All printings including the current one, oldest set first.",
+// ─── Detail and resolution ────────────────────────────────────────────────────
+
+export const OracleDetailSchema = t.Object({
+  object: t.Literal("oracle_detail"),
+  oracle: OracleSchema,
+  printing: PrintingSchema,
+  printings: t.Array(PrintingSchema, {
+    description: "Every printing of this oracle, oldest set first.",
   }),
-  tokens: t.Array(CardPrintingSummarySchema, {
-    description: "Token cards this card creates.",
-  }),
-  used_by: t.Array(CardPrintingSummarySchema, {
-    description:
-      "Cards that create this token — one preferred printing per card.",
-  }),
-  champions: t.Array(CardPrintingSummarySchema, {
-    description: "Champions sharing a tag with this legend, one row per character.",
-  }),
-  legends: t.Array(CardPrintingSummarySchema, {
-    description: "Legends sharing a tag with this champion, one row per character.",
-  }),
-  signatures: t.Array(CardPrintingSummarySchema, {
-    description:
-      "Signature cards tied to this legend/champion by a shared character tag, one row per signature.",
-  }),
+  tokens: t.Array(OracleRefSchema),
+  used_by: t.Array(OracleRefSchema),
+  characters: t.Array(OracleRefSchema),
+  signatures: t.Array(OracleRefSchema),
   purchase: CardPurchaseUrisSchema,
-  rulings: t.Array(CardRulingSchema, {
-    description:
-      "Rulings and notes for this printing — everything shared across the card plus anything scoped to this printing, oldest first.",
-  }),
+  rulings: t.Array(CardRulingSchema),
   legalities: t.Array(CardLegalitySchema, {
     description:
-      "One entry per active format, in format order, already resolved through printing override → card → default legal.",
+      "One entry per active format, already resolved through printing → oracle → default legal.",
   }),
 });
 
@@ -256,12 +296,9 @@ export const CardRequestSchema = t.Object({
 
 export const ResolvedCardSchema = t.Object({
   request: CardRequestSchema,
-  card: t.Nullable(CardSchema),
-  matchType: t.Union([
-    t.Literal("exact"),
-    t.Literal("fuzzy"),
-    t.Literal("not-found"),
-  ]),
+  oracle: t.Nullable(OracleSchema),
+  printing: t.Nullable(PrintingSchema),
+  matchType: t.UnionEnum(["exact", "fuzzy", "not-found"]),
   score: t.Optional(t.Number()),
 });
 
@@ -270,25 +307,66 @@ export const ErrorSchema = t.Object({
   code: t.String(),
 });
 
-export const SimplifiedDeckSchema = t.Object({
-  id: t.Nullable(t.String({ description: "Deck ID" })),
-  legend: t.Nullable(t.String({ description: "Legend card ID" })),
-  mainDeck: t.Array(t.String({ description: "Card ID and quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" })),
-  chosenChampionId: t.Nullable(t.String({ description: "Champion card ID" })),
-  sideboard: t.Array(t.String({ description: "Card ID and quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" })),
-  runes: t.Array(t.String({ description: "Card ID and quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" })),
-  battlegrounds: t.Array(t.String({ description: "Battleground card ID" })),
-}, { description: "Simplified deck format with card IDs and quantities" });
+// ─── Drift assertions ─────────────────────────────────────────────────────────
+
+type _MirrorsOracleRef = Assert<
+  Mirrors<Static<typeof OracleRefSchema>, OracleRef>
+>;
+type _MirrorsPrinting = Assert<Mirrors<Static<typeof PrintingSchema>, Printing>>;
+type _MirrorsOracle = Assert<Mirrors<Static<typeof OracleSchema>, Oracle>>;
+type _MirrorsPrices = Assert<Mirrors<Static<typeof CardPricesSchema>, CardPrices>>;
+type _MirrorsPurchase = Assert<
+  Mirrors<Static<typeof CardPurchaseUrisSchema>, CardPurchaseUris>
+>;
+type _MirrorsFormat = Assert<Mirrors<Static<typeof FormatSchema>, Format>>;
+type _MirrorsLegality = Assert<
+  Mirrors<Static<typeof CardLegalitySchema>, CardLegality>
+>;
+type _MirrorsRuling = Assert<Mirrors<Static<typeof CardRulingSchema>, CardRuling>>;
+type _MirrorsDetail = Assert<
+  Mirrors<Static<typeof OracleDetailSchema>, OracleDetail>
+>;
+type _MirrorsRequest = Assert<
+  Mirrors<Static<typeof CardRequestSchema>, CardRequest>
+>;
+type _MirrorsResolved = Assert<
+  Mirrors<Static<typeof ResolvedCardSchema>, ResolvedCard>
+>;
+
+// ─── Decks ────────────────────────────────────────────────────────────────────
+//
+// Deliberately not mirrored: the wire shape renames `legendId` to `legend`, and
+// `decksRoutes` maps between them. Deck entries are `printingId:quantity` — a
+// deck list is a list of physical cards.
+
+export const SimplifiedDeckSchema = t.Object(
+  {
+    id: t.Nullable(t.String({ description: "Deck ID" })),
+    legend: t.Nullable(t.String({ description: "Legend printing ID" })),
+    mainDeck: t.Array(
+      t.String({ description: "Printing ID and quantity, e.g. `aaa000…001:2`" }),
+    ),
+    chosenChampionId: t.Nullable(t.String({ description: "Champion printing ID" })),
+    sideboard: t.Array(t.String({ description: "Printing ID and quantity" })),
+    runes: t.Array(t.String({ description: "Printing ID and quantity" })),
+    battlegrounds: t.Array(t.String({ description: "Battleground printing ID" })),
+  },
+  { description: "Simplified deck format with printing IDs and quantities" },
+);
 
 export const SimplifiedDeckRequestSchema = t.Object({
   cardsToAdd: t.Optional(
     t.Array(
-      t.String({ description: "Cards to add to the shortform deck. Format: ID:quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" }),
+      t.String({
+        description: "Printings to add. Format: `id:quantity`",
+      }),
     ),
   ),
   cardsToRemove: t.Optional(
     t.Array(
-      t.String({ description: "Cards to remove from the shortform deck. Format: ID:quantity, e.g. '123e4567-e89b-12d3-a456-426614174000:2'" }),
+      t.String({
+        description: "Printings to remove. Format: `id:quantity`",
+      }),
     ),
   ),
 });

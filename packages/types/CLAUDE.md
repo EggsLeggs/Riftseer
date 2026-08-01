@@ -50,7 +50,7 @@ import {
 ## Adding/Changing Data Fields
 If a new field is added to the canonical `Card` type:
 - Update `src/card.ts` here first
-- Update `packages/ingest-worker/src/riftcodex.ts` (`rawToCard`)
+- Update `packages/ingest-worker/src/sources/riftcodex.ts` (`rawToCard`)
 - Update the row mapping in `packages/core/src/providers/supabase.ts` (`dbRowToCard`)
 - Update the field table in `packages/api/docs/cards.md`
 - Check `packages/web/src/views/privacy-view.tsx` if the field affects what data is stored or shown

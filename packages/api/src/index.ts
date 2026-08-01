@@ -4,11 +4,13 @@
  * All API endpoints are under /api/v1:
  *   GET  /api/v1/health
  *   GET  /api/v1/meta
- *   GET  /api/v1/cards          ?name&set&collector&fuzzy&limit&offset
+ *   GET  /api/v1/cards          ?q&set&collector&fuzzy&unique&limit&offset
  *   GET  /api/v1/cards/random
- *   GET  /api/v1/cards/:id
+ *   GET  /api/v1/cards/detail   ?oracle | ?printing | ?slug
+ *   GET  /api/v1/cards/:id      — one oracle
  *   GET  /api/v1/cards/:id/text
- *   GET  /api/v1/cards/by-slug/* — look up a card by its persisted public_slug
+ *   GET  /api/v1/cards/by-slug/* — oracle or printing slug
+ *   GET  /api/v1/printings/:id  — one printing
  *   POST /api/v1/cards/resolve  body: { requests: string[] }
  *   GET  /api/v1/sets
  *   GET  /api/v1/formats
@@ -107,12 +109,22 @@ const adminImageBindings: AdminImageBindings = {
   },
 };
 
+// A deck list stores *printing* ids, but every construction rule reads oracle
+// fields — so a deck entry is one of each, flattened.
 const deckProvider = new SimplifiedDeckProviderImpl(
   new DeckSerializerV1(),
   async (id: string) => {
-    const card = await cardProvider.getCardById(id);
-    if (!card) throw new NotFoundError(`Card not found: ${id}`);
-    return card;
+    const printing = await cardProvider.getPrintingById(id);
+    if (!printing) throw new NotFoundError(`Printing not found: ${id}`);
+    const oracle = await cardProvider.getOracleById(printing.oracle_id);
+    if (!oracle) throw new NotFoundError(`Card not found for printing: ${id}`);
+    return {
+      id: printing.id,
+      name: oracle.name,
+      card_type: oracle.card_type,
+      supertype: oracle.supertype,
+      domains: oracle.domains,
+    };
   },
 );
 

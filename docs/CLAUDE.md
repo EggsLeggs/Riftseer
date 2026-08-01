@@ -63,7 +63,7 @@ When a new package needs documentation:
    }]
    ```
 
-3. Create `docs/sidebarsSection.ts` (autogenerate pattern — copy `sidebarsSupabase.ts`).
+3. Create the matching sidebar module (autogenerate pattern — copy `sidebarsSupabase.ts`).
 4. Add a navbar item under `themeConfig.navbar.items` in `docusaurus.config.ts`.
 
 ## Linking Between Sections (cross-plugin links)

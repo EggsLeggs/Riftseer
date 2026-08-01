@@ -81,9 +81,12 @@ export default {
       return new Response(
         JSON.stringify({
           ok: result.ok,
-          cardsCount: result.cardsCount,
+          oraclesCount: result.oraclesCount,
+          printingsCount: result.printingsCount,
           setsCount: result.setsCount,
           imageJobsCount: result.imageJobsCount,
+          divergenceCount: result.divergenceCount,
+          reviewEntriesCount: result.reviewEntriesCount,
           elapsedMs: result.elapsedMs,
           ...(result.error && { error: result.error }),
         }),

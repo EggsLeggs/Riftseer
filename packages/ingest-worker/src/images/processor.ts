@@ -1,15 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { CardMedia } from "@riftseer/types";
+import {
+  CARD_IMAGE_VARIANTS,
+  hostedObjectKeyFromUrl,
+  printingImageObjectKeys,
+} from "@riftseer/types/card-image";
 import type { Env } from "../env.ts";
 import { createSupabase } from "../supabase.ts";
 import { logger } from "../utils.ts";
-import {
-  buildHostedMediaUrls,
-  buildImageObjectKeys,
-  hasCompleteHostedMedia,
-  hostedObjectKeyFromUrl,
-  IMAGE_VARIANTS,
-} from "./model.ts";
 import {
   enqueueCardImageJobs,
   loadPendingCardImageJobs,
@@ -29,8 +26,12 @@ const CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 class PermanentImageError extends Error {}
 
-interface CurrentCardMedia {
-  media: CardMedia;
+/** The image state of one printing, as stored. */
+interface CurrentPrintingImage {
+  sourceUrl: string | null;
+  sourceHash: string | null;
+  sourceProvider: string | null;
+  hosted: boolean;
 }
 
 export function hasCompleteCurrentVariantSet(
@@ -38,27 +39,40 @@ export function hasCompleteCurrentVariantSet(
   sourceHash: string,
 ): boolean {
   return (
-    objects.length === IMAGE_VARIANTS.length &&
+    objects.length === CARD_IMAGE_VARIANTS.length &&
     objects.every(
       (object) => object?.customMetadata?.sourceHash === sourceHash,
     )
   );
 }
 
-async function loadCurrentCardMedia(
+async function loadCurrentPrintingImage(
   supabase: SupabaseClient,
-  cardId: string,
-): Promise<CurrentCardMedia | null> {
+  printingId: string,
+): Promise<CurrentPrintingImage | null> {
   const { data, error } = await supabase
-    .from("cards")
-    .select("media")
-    .eq("id", cardId)
+    .from("printings")
+    .select(
+      "image_source_url, image_source_hash, image_source_provider, image_hosted_at",
+    )
+    .eq("id", printingId)
     .limit(1);
   if (error) {
-    throw new Error(`load card media failed: ${error.message}`);
+    throw new Error(`load printing image failed: ${error.message}`);
   }
-  const row = (data?.[0] ?? null) as { media: CardMedia | null } | null;
-  return row ? { media: row.media ?? {} } : null;
+  const row = (data?.[0] ?? null) as {
+    image_source_url: string | null;
+    image_source_hash: string | null;
+    image_source_provider: string | null;
+    image_hosted_at: string | null;
+  } | null;
+  if (!row) return null;
+  return {
+    sourceUrl: row.image_source_url,
+    sourceHash: row.image_source_hash,
+    sourceProvider: row.image_source_provider,
+    hosted: row.image_hosted_at !== null,
+  };
 }
 
 interface DownloadedImage {
@@ -259,23 +273,17 @@ async function processCardImageJob(
   env: Env,
   job: CardImageJob,
 ): Promise<"queued" | "stale" | "unchanged" | "missing"> {
-  const current = await loadCurrentCardMedia(supabase, job.cardId);
+  const current = await loadCurrentPrintingImage(supabase, job.printingId);
   if (!current) return "missing";
 
   if (
-    current.media.source_hash !== job.sourceHash ||
-    (current.media.source_url &&
-      current.media.source_url !== job.sourceUrl) ||
-    (current.media.source_provider === "admin" &&
-      job.sourceProvider !== "admin")
+    current.sourceHash !== job.sourceHash ||
+    (current.sourceUrl && current.sourceUrl !== job.sourceUrl) ||
+    (current.sourceProvider === "admin" && job.sourceProvider !== "admin")
   ) {
     return "stale";
   }
-  if (
-    hasCompleteHostedMedia(current.media, env.CARD_IMAGE_BASE_URL)
-  ) {
-    return "unchanged";
-  }
+  if (current.hosted) return "unchanged";
 
   const timeoutMs = Number.parseInt(env.UPSTREAM_TIMEOUT_MS, 10);
   const timeout =
@@ -289,9 +297,9 @@ async function processCardImageJob(
       `image source exceeds ${MAX_SOURCE_BYTES} bytes`,
     );
   }
-  const keys = buildImageObjectKeys(job.cardId);
+  const keys = printingImageObjectKeys(job.printingId);
   const objectMetadata = {
-    cardId: job.cardId,
+    printingId: job.printingId,
     sourceHash: job.sourceHash,
     sourceProvider: job.sourceProvider,
   };
@@ -323,11 +331,11 @@ async function processCardImageJob(
 
   const orientation = info.width > info.height ? "landscape" : "portrait";
   await env.CARD_IMAGE_QUEUE.sendBatch(
-    IMAGE_VARIANTS.map((variant) => ({
+    CARD_IMAGE_VARIANTS.map((variant) => ({
       body: {
         version: CARD_IMAGE_JOB_VERSION,
         type: "variant" as const,
-        cardId: job.cardId,
+        printingId: job.printingId,
         sourceHash: job.sourceHash,
         variant: variant.name,
         orientation,
@@ -343,15 +351,13 @@ async function processCardImageVariantJob(
   env: Env,
   job: CardImageVariantJob,
 ): Promise<"variant" | "hosted" | "stale" | "unchanged" | "missing"> {
-  const current = await loadCurrentCardMedia(supabase, job.cardId);
+  const current = await loadCurrentPrintingImage(supabase, job.printingId);
   if (!current) return "missing";
-  if (current.media.source_hash !== job.sourceHash) return "stale";
-  if (hasCompleteHostedMedia(current.media, env.CARD_IMAGE_BASE_URL)) {
-    return "unchanged";
-  }
+  if (current.sourceHash !== job.sourceHash) return "stale";
+  if (current.hosted) return "unchanged";
 
-  const sourceUrl = current.media.source_url;
-  const sourceProvider = current.media.source_provider;
+  const sourceUrl = current.sourceUrl;
+  const sourceProvider = current.sourceProvider;
   if (
     typeof sourceUrl !== "string" ||
     (sourceProvider !== "riftcodex" &&
@@ -361,12 +367,12 @@ async function processCardImageVariantJob(
     return "stale";
   }
 
-  const keys = buildImageObjectKeys(job.cardId);
+  const keys = printingImageObjectKeys(job.printingId);
   const original = await env.CARD_IMAGES.get(keys.original);
   if (!original?.body) {
     throw new Error("original image is missing from R2");
   }
-  const variant = IMAGE_VARIANTS.find(
+  const variant = CARD_IMAGE_VARIANTS.find(
     (candidate) => candidate.name === job.variant,
   );
   if (!variant) {
@@ -379,7 +385,7 @@ async function processCardImageVariantJob(
     variant.width,
     variant.quality,
     {
-      cardId: job.cardId,
+      printingId: job.printingId,
       sourceHash: job.sourceHash,
       sourceProvider,
       variant: variant.name,
@@ -387,32 +393,30 @@ async function processCardImageVariantJob(
   );
 
   const hostedVariants = await Promise.all(
-    IMAGE_VARIANTS.map((candidate) =>
+    CARD_IMAGE_VARIANTS.map((candidate) =>
       env.CARD_IMAGES.head(keys[candidate.name])
     ),
   );
   // Object keys are stable across source changes. Merely finding all three keys
   // is insufficient because some may still contain variants from the previous
-  // source. Publish URLs only after every object identifies this exact hash.
+  // source. Publish only after every object identifies this exact hash.
   if (!hasCompleteCurrentVariantSet(hostedVariants, job.sourceHash)) {
     return "variant";
   }
 
-  const mediaUrls = buildHostedMediaUrls(
-    env.CARD_IMAGE_BASE_URL,
-    job.cardId,
-    job.sourceHash,
-  );
-  const { data, error } = await supabase.rpc("apply_card_hosted_media", {
-    p_card_id: job.cardId,
+  // Hosted URLs are derived from the printing id, so publication is a single
+  // `image_hosted_at` stamp. Still hash-guarded: the row must point at the
+  // source these variants were built from.
+  const { data, error } = await supabase.rpc("apply_printing_hosted_media", {
+    p_printing_id: job.printingId,
     p_source_hash: job.sourceHash,
     p_source_url: sourceUrl,
     p_source_provider: sourceProvider,
     p_orientation: job.orientation,
-    p_media_urls: mediaUrls,
+    p_alt_text: null,
   });
   if (error) {
-    throw new Error(`apply_card_hosted_media failed: ${error.message}`);
+    throw new Error(`apply_printing_hosted_media failed: ${error.message}`);
   }
   return data === true ? "hosted" : "stale";
 }
@@ -429,10 +433,7 @@ export async function processCardImageQueue(
   for (const message of batch.messages) {
     if (isCardImageCatalogJob(message.body)) {
       try {
-        const jobs = await loadPendingCardImageJobs(
-          supabase,
-          env.CARD_IMAGE_BASE_URL,
-        );
+        const jobs = await loadPendingCardImageJobs(supabase);
         await enqueueCardImageJobs(env.CARD_IMAGE_QUEUE, jobs);
         logger.info("Card image catalog job complete", {
           messageId: message.id,
@@ -461,7 +462,7 @@ export async function processCardImageQueue(
         );
         logger.info("Card image variant job complete", {
           messageId: message.id,
-          cardId: message.body.cardId,
+          printingId: message.body.printingId,
           variant: message.body.variant,
           outcome,
         });
@@ -471,7 +472,7 @@ export async function processCardImageQueue(
         if (error instanceof PermanentImageError) {
           logger.error("Discarding permanent card image variant failure", {
             messageId: message.id,
-            cardId: message.body.cardId,
+            printingId: message.body.printingId,
             variant: message.body.variant,
             error: detail,
           });
@@ -482,7 +483,7 @@ export async function processCardImageQueue(
         const delaySeconds = retryDelay(message.attempts);
         logger.error("Retrying card image variant job", {
           messageId: message.id,
-          cardId: message.body.cardId,
+          printingId: message.body.printingId,
           variant: message.body.variant,
           attempts: message.attempts,
           delaySeconds,
@@ -509,7 +510,7 @@ export async function processCardImageQueue(
       );
       logger.info("Card image job complete", {
         messageId: message.id,
-        cardId: message.body.cardId,
+        printingId: message.body.printingId,
         outcome,
       });
       message.ack();
@@ -518,7 +519,7 @@ export async function processCardImageQueue(
       if (error instanceof PermanentImageError) {
         logger.error("Discarding permanent card image failure", {
           messageId: message.id,
-          cardId: message.body.cardId,
+          printingId: message.body.printingId,
           error: detail,
         });
         message.ack();
@@ -528,7 +529,7 @@ export async function processCardImageQueue(
       const delaySeconds = retryDelay(message.attempts);
       logger.error("Retrying card image job", {
         messageId: message.id,
-        cardId: message.body.cardId,
+        printingId: message.body.printingId,
         attempts: message.attempts,
         delaySeconds,
         error: detail,
