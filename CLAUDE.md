@@ -24,6 +24,12 @@ Read package-local guidance before changing a package.
 bun dev                 # API + web
 bun dev:api             # API at http://localhost:8789
 bun dev:web             # Next.js development server
+
+bun run db:local:up     # Postgres + PostgREST + a Supabase-shaped proxy on :54321
+bun run db:local:reset  # drop the volume and rebuild from supabase/migrations
+bun run dev:api:local   # API against the local database instead of production
+bun run dev:ingest:local
+curl localhost:8787/    # reports which database the ingest worker would write to
 bun build:web
 bun test
 bun typecheck

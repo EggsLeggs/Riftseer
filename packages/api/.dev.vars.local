@@ -1,0 +1,7 @@
+# Local docker stack — see `bun run db:local:up`. Not credentials; see the
+# ingest worker's .dev.vars.local for why.
+SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE_KEY=local-service-role
+SUPABASE_ANON_KEY=local-anon
+SITE_ORIGIN=http://localhost:3000
+ADMIN_USER_IDS=

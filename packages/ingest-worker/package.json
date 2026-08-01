@@ -15,6 +15,6 @@
     "@cloudflare/workers-types": "^5.20260729.1",
     "@riftseer/types": "workspace:*",
     "typescript": "~5.8.0",
-    "wrangler": "^4.115.0"
+    "wrangler": "^4.118.0"
   }
 }

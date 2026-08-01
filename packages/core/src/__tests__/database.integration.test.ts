@@ -35,9 +35,9 @@ async function reseed(): Promise<void> {
   await command([process.execPath, DATABASE_SCRIPT, "reseed"]);
 }
 
-async function waitForPostgrest(): Promise<void> {
+async function waitForPostgrest(baseUrl: string): Promise<void> {
   for (let attempt = 0; attempt < 50; attempt += 1) {
-    const response = await fetch("http://localhost:54321/rest/v1/oracles?select=id&limit=1", {
+    const response = await fetch(`${baseUrl}/rest/v1/oracles?select=id&limit=1`, {
       headers: { Prefer: "count=exact" },
     }).catch(() => null);
     if (response?.ok && response.headers.get("content-range")?.endsWith("/4")) return;
@@ -57,10 +57,15 @@ async function sqlJson<T>(statement: string): Promise<T> {
 integration("oracle/printing database contracts", () => {
   let proxy: ReturnType<typeof Bun.serve>;
   let provider: SupabaseCardProvider;
+  let proxyUrl = "";
 
   beforeAll(() => {
     proxy = Bun.serve({
-      port: 54321,
+      // Port 0 asks the OS for a free one. A fixed port collided with the
+      // docker-compose `supabase-proxy`, which does the same prefix-stripping
+      // job on the canonical Supabase port — so running the local stack broke
+      // the test that exists to verify that same stack.
+      port: 0,
       async fetch(request) {
         const url = new URL(request.url);
         url.protocol = POSTGREST_URL.protocol;
@@ -77,8 +82,8 @@ integration("oracle/printing database contracts", () => {
         });
       },
     });
-    const url = `http://localhost:${proxy.port}`;
-    globalThis.process.env.SUPABASE_URL = url;
+    proxyUrl = `http://localhost:${proxy.port}`;
+    globalThis.process.env.SUPABASE_URL = proxyUrl;
     globalThis.process.env.SUPABASE_SERVICE_ROLE_KEY = "test-key";
     globalThis.process.env.CARD_IMAGE_BASE_URL = "https://img.riftseer.com";
     provider = new SupabaseCardProvider();
@@ -86,7 +91,7 @@ integration("oracle/printing database contracts", () => {
 
   beforeEach(async () => {
     await reseed();
-    await waitForPostgrest();
+    await waitForPostgrest(proxyUrl);
   });
   afterAll(() => proxy?.stop());
 

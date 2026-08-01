@@ -684,7 +684,15 @@ BEGIN
         PARTITION BY p.oracle_id
         ORDER BY
           (p.image_hosted_at IS NULL),
-          (s.is_promo OR p.is_alternate_art OR p.is_special_collection OR p.is_signature),
+          -- Every way a printing can be "not the ordinary one". Overnumbered
+          -- and Showcase belong here as much as promo or alternate art: a
+          -- Showcase reprint is newer than the base printing, so leaving it
+          -- undemoted made it win on recency and become the face of the card.
+          -- Showcase arrives as a *rarity* from TCGPlayer rather than as a
+          -- flag, which is why it is matched on rarity here.
+          (s.is_promo OR p.is_alternate_art OR p.is_special_collection
+             OR p.is_signature OR p.is_overnumbered
+             OR lower(coalesce(p.rarity, '')) = 'showcase'),
           s.published_on DESC NULLS LAST,
           nullif(regexp_replace(coalesce(p.collector_number, ''), '\D', '', 'g'), '')::integer
             NULLS LAST,
