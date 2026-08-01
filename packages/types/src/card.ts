@@ -1,30 +1,35 @@
 // ─── Card schema ───────────────────────────────────────────────────────────────
-// Canonical nested card type. Mirrors Postgres schema in supabase/migrations.
+//
+// Two levels, mirroring supabase/migrations/20260810000000_oracle_printing_baseline.sql.
+//
+//   Oracle    The rules object. Not a physical card. Everything true of the
+//             card regardless of which piece of cardboard you hold.
+//   Printing  One physical card: art, artist, flavour, rarity, collector
+//             number, set, finishes, marketplace data.
+//
+// A field belongs to exactly one of them. If you find yourself wanting to put
+// a printing field on the oracle "for convenience", that is the mistake this
+// split exists to stop.
 
-/** A card referenced inside all_parts or used_by (e.g. a token). */
-export interface RelatedCard {
-  object: "related_card";
-  /** UUID of the referenced card. */
+/**
+ * A reference to another oracle — the shape relationships travel in.
+ *
+ * This replaces the six denormalised stub arrays the flat card model carried,
+ * four of which were reverse views of the other two.
+ */
+export interface OracleRef {
+  object: "oracle_ref";
+  /** UUID of the referenced oracle. */
   id: string;
   name: string;
-  /** Relationship role, e.g. "token", "meld_part". */
-  component: string;
-  /** API URI for the referenced card, e.g. /api/v1/cards/:id */
+  /** Oracle-level public slug, e.g. "brush". */
+  slug: string;
+  /** API URI, e.g. /api/v1/cards/:id */
   uri?: string;
-  /** Absolute public site URL for the referenced card. Computed at response time. */
+  /** Absolute public site URL. Computed at response time, never persisted. */
   riftseer_uri?: string;
-  /** Set code for printing siblings — populated on related_printings stubs. */
-  set_code?: string;
-  collector_number?: string;
-  /** Release date used to order printings (from set or card). */
-  published_on?: string;
-  alternate_art?: boolean;
-}
-
-export interface CardExternalIds {
-  riftcodex_id?: string;
-  riftbound_id?: string;
-  tcgplayer_id?: string;
+  /** Small image of the referenced oracle's preferred printing, when known. */
+  image_small?: string;
 }
 
 export interface CardSet {
@@ -35,8 +40,9 @@ export interface CardSet {
   set_search_uri?: string;
   /** ISO date the set was published, e.g. "2024-11-15". */
   published_on?: string;
-  /** Total number of cards in this set. */
+  /** Total number of printings in this set. */
   card_count?: number;
+  is_promo?: boolean;
 }
 
 // ─── Rulings, legalities and formats ──────────────────────────────────────────
@@ -57,16 +63,16 @@ export interface Format {
 
 /**
  * Legality status for one card in one format. Absence of any stored row means
- * `legal` — only non-legal statuses are persisted.
+ * `legal` — only non-legal statuses are persisted at oracle level.
  */
 export type CardLegalityStatus = "legal" | "not_legal" | "banned";
 
 /**
- * A card's resolved legality in one format.
+ * A resolved legality in one format.
  *
- * Read precedence is printing override → oracle-level row → default `legal`.
- * `scope` says which of those decided this entry, so an editor can show whether
- * the status came from the shared card or from this specific printing.
+ * Read precedence is printing row → oracle row → default `legal`. `scope` says
+ * which of those decided this entry, so an editor can show whether the status
+ * came from the card or from this specific printing.
  */
 export interface CardLegality {
   object: "card_legality";
@@ -80,12 +86,12 @@ export interface CardLegality {
 }
 
 /**
- * An official ruling or an editorial note attached to a card.
+ * An official ruling or an editorial note.
  *
  * A ruling is written once and pointed at any number of targets — a single
- * printing, a whole card (its oracle group), or a saved search query that keeps
- * matching cards as new ones are released. `scope` reports which of those
- * brought this entry onto the card being viewed.
+ * printing, a whole oracle, or a saved search query that keeps matching cards
+ * as new ones are released. `scope` reports which of those brought this entry
+ * onto the card being viewed.
  */
 export interface CardRuling {
   object: "card_ruling";
@@ -110,83 +116,125 @@ export interface CardRuling {
   updated_at?: string;
 }
 
-export interface CardAttributes {
-  /** Energy cost to play the card. */
-  energy?: number | null;
-  /** Might stat (unit's defense-side). */
-  might?: number | null;
-  /** Power stat (unit's attack-side). */
-  power?: number | null;
-  /**
-   * Might an `[Equip]` Gear grants the unit it is attached to. Present only on
-   * equipment, where `0` is a real printed value — absent means "not
-   * equipment", not "grants nothing".
-   */
-  might_bonus?: number | null;
-}
+// ─── Oracle ───────────────────────────────────────────────────────────────────
 
-export interface CardClassification {
-  /** Card type line, e.g. "Unit", "Gear", "Spell". */
-  type?: string;
-  /** Optional supertype, e.g. "Champion". */
-  supertype?: string | null;
-  /** Rarity string, e.g. "Common", "Rare", "Legendary". */
-  rarity?: string;
-  /** Card tags, e.g. ["Poro"]. */
-  tags?: string[];
-  /** Domains/regions the card belongs to, e.g. ["Fury"]. */
-  domains?: string[];
-}
-
-export interface CardText {
+export interface OracleText {
   /** Rich text with inline symbol tokens (e.g. :rb_exhaust:). */
   rich?: string;
   /** Plain-text rules text with symbols replaced by readable tokens. */
   plain?: string;
-  /** Flavour / lore text if available. */
-  flavour?: string;
   /**
-   * The effect an `[Equip]` Gear grants the unit it is attached to, in the same
-   * vocabulary as `plain`. Sits alongside `attributes.might_bonus`; an
-   * equipment whose bonus is its whole effect has the bonus and no text here.
+   * The effect an `[Equip]` Gear grants the unit it is attached to, in the
+   * same vocabulary as `plain`. Sits alongside `might_bonus`; an equipment
+   * whose bonus is its whole effect has the bonus and no text here.
    */
   equipment?: string;
 }
 
-export interface CardMetadata {
-  /** Print finishes available, e.g. ["Normal", "Foil"]. */
-  finishes?: string[];
-  signature?: boolean;
-  overnumbered?: boolean;
-  alternate_art?: boolean;
+/** The kinds of edge an oracle can have. Each is stored once, not per printing. */
+export interface OracleRelationships {
+  /** Token oracles this card creates. */
+  makes_tokens: OracleRef[];
+  /** Cards that create this token — the reverse of `makes_tokens`. */
+  used_by: OracleRef[];
   /**
-   * Printed on a numbered track separate from the main set, e.g. Vendetta's
-   * `SP1`–`SP6` showcase champions. Like `overnumbered` and `alternate_art`,
-   * this describes the printing rather than the card.
+   * The same character in another role: a legend's champions, or a champion's
+   * legends. One undirected pairing, read from whichever side you are on.
    */
-  special_collection?: boolean;
+  characters: OracleRef[];
+  /**
+   * Signature cards tied to this legend/champion, or — read from the signature
+   * card — the legend/champion it belongs to.
+   */
+  signatures: OracleRef[];
 }
 
-export interface CardMediaUrls {
+export interface Oracle {
+  object: "oracle";
+  /** Stable UUID. Printings reference this, not the name-derived key. */
+  id: string;
+  /**
+   * Name-derived lookup slug — see `oracleKeyForName` in `./oracle.ts`. Stable
+   * and unique, but NOT the identity: it is how ingest guesses which oracle a
+   * new printing belongs to, and nothing more.
+   */
+  oracle_key: string;
+  /** Oracle-level public URL segment, e.g. "brush". Pinned on creation. */
+  slug: string;
+  name: string;
+  /** Lowercased, punctuation-stripped name — used for exact-match lookup. */
+  name_normalized: string;
+
+  /** Card type line, e.g. "Unit", "Gear", "Spell", "Legend". */
+  card_type?: string;
+  /** Optional supertype, e.g. "Champion", "Rune", "Battleground". */
+  supertype?: string | null;
+  /**
+   * A token has a `card_type` (Unit, Gear, Battlefield) *and* is a token, so
+   * this is orthogonal to `card_type` rather than a value of it.
+   */
+  is_token: boolean;
+
+  /** Energy cost to play the card. */
+  energy?: number | null;
+  /** Might stat (unit's defence side). */
+  might?: number | null;
+  /** Power stat (unit's attack side). */
+  power?: number | null;
+  /**
+   * Might an `[Equip]` Gear grants the unit it is attached to. Present only on
+   * equipment, where `0` is a real printed value — absent means "not
+   * equipment", not "grants nothing". Test presence, never truthiness.
+   */
+  might_bonus?: number | null;
+
+  text?: OracleText;
+
+  /**
+   * `[Keyword]` tags carried by the rules text, as base keys (`"deflect"`, not
+   * `"Deflect 3"`) — see `extractCardKeywords` in `./keywords.ts`. Derived by a
+   * database trigger, so ingest, admin patches and manual creation stay in
+   * sync without each remembering to recompute it.
+   */
+  keywords: string[];
+  /** Card tags, e.g. ["Poro", "Sentinel"]. */
+  tags: string[];
+  /** Domains the card belongs to, e.g. ["Fury"]. */
+  domains: string[];
+  /**
+   * Searchable `is:` flags that are not printed on the card. Extensible
+   * without a schema change per flag.
+   */
+  meta_flags: string[];
+
+  relationships?: OracleRelationships;
+
+  /**
+   * The printing to show when the caller did not ask for a specific one.
+   * Computed by ingest from a deterministic ranking, overridable by an admin.
+   */
+  preferred_printing?: Printing;
+  /** Every printing of this card, oldest set first. Included on detail reads. */
+  printings?: Printing[];
+
+  /**
+   * Provenance: "riftcodex" (ingested upstream, eligible for the ingest prune)
+   * or "manual" (admin-authored, never pruned).
+   */
+  source?: "riftcodex" | "manual";
+  /** Absolute public site URL. Computed at response time, never persisted. */
+  riftseer_uri?: string;
+  updated_at?: string;
+}
+
+// ─── Printing ─────────────────────────────────────────────────────────────────
+
+export interface PrintingImage {
   small?: string;
   normal?: string;
   large?: string;
   /** Original source bytes re-hosted without transcoding. */
   original?: string;
-  png?: string;
-}
-
-export interface CardMedia {
-  /** Display orientation: "portrait" (vertical) or "landscape" (horizontal). */
-  orientation?: string;
-  accessibility_text?: string;
-  media_urls?: CardMediaUrls;
-  /** Best upstream image selected for the current printing. */
-  source_url?: string;
-  /** SHA-256 of source_url, used to make image hosting idempotent. */
-  source_hash?: string;
-  /** Provenance of source_url. Admin images are not replaced by ingest. */
-  source_provider?: "riftcodex" | "tcgplayer" | "admin";
 }
 
 export interface CardPurchaseUris {
@@ -206,72 +254,71 @@ export interface CardPrices {
   cardmarket?: CardPriceEntry;
 }
 
-export interface Card {
-  object: "card";
-  /** Stable UUID (matches Postgres cards.id). */
+export interface Printing {
+  object: "printing";
+  /** RiftCodex Mongo ObjectId. Deck short-forms in the wild encode these. */
   id: string;
-  name: string;
-  /** Lowercased, punctuation-stripped name — used for in-memory index lookups. */
-  name_normalized: string;
-  released_at?: string;
-  collector_number?: string;
-  external_ids?: CardExternalIds;
+  /** The oracle this is a printing of. */
+  oracle_id: string;
+
   set?: CardSet;
+  collector_number?: string;
+  /** Display form of the collector number, e.g. "21★" or "12a". */
+  collector_label?: string;
   /**
-   * Name-derived grouping key shared by every printing of this card — see
-   * `oracleKeyForName` in `./oracle.ts`. Rulings and format legalities hang off
-   * this key so they are authored once and inherited by all printings.
+   * Rarity is printing-level: TCGPlayer treats Showcase as a rarity while
+   * RiftCodex and the official gallery report the base card's rarity on an
+   * alternate-art or showcase printing. That disagreement is real.
    */
-  oracle_key?: string;
-  /**
-   * `[Keyword]` tags carried by this printing's rules text, as base keys
-   * (`"deflect"`, not `"Deflect 3"`) — see `extractCardKeywords` in
-   * `./keywords.ts`. Derived at ingest and stored so `kw:` search filters and
-   * keyword-scoped ruling rules can be indexed rather than scanning text.
-   */
-  keywords?: string[];
-  attributes?: CardAttributes;
-  classification?: CardClassification;
-  text?: CardText;
+  rarity?: string;
+  released_at?: string;
   artist?: string;
   artist_id?: string;
-  metadata?: CardMetadata;
-  media?: CardMedia;
-  purchase_uris?: CardPurchaseUris;
+  flavour_text?: string;
+
+  /** Print finishes available, e.g. ["Normal", "Foil"]. */
+  finishes: string[];
+  signature: boolean;
+  alternate_art: boolean;
+  overnumbered: boolean;
+  /**
+   * Printed on a numbered track separate from the main set, e.g. Vendetta's
+   * `SP1`–`SP6` showcase champions.
+   */
+  special_collection: boolean;
+
+  image?: PrintingImage;
+  /** Display orientation: "portrait" (vertical) or "landscape" (horizontal). */
+  image_orientation?: string;
+  image_alt_text?: string;
+
   prices?: CardPrices;
-  is_token: boolean;
+  purchase_uris?: CardPurchaseUris;
+
+  external_ids?: {
+    riftcodex_id?: string;
+    riftbound_id?: string;
+    tcgplayer_id?: string;
+    cardmarket_id?: string;
+  };
+
   /**
-   * Provenance of the row: "riftcodex" (ingested from upstream, eligible for the
-   * ingest prune) or "manual" (admin-authored, never pruned). Defaults to
-   * "riftcodex" when unset.
+   * Stable public URL path (no leading slash), e.g.
+   * "ogn/12a/signature/sun-disc". Pinned on first ingest and never
+   * overwritten, so links do not drift as upstream data is corrected.
    */
-  source?: "riftcodex" | "manual";
-  /** Related token/part cards produced or referenced by this card. */
-  all_parts: RelatedCard[];
-  /** Non-token cards that create or reference this card (populated on tokens). */
-  used_by: RelatedCard[];
-  /** Champion cards linked to this legend by a shared tag (populated on legends). */
-  related_champions: RelatedCard[];
-  /** Legend cards linked to this champion by a shared tag (populated on champions). */
-  related_legends: RelatedCard[];
-  /**
-   * Signature cards (supertype "Signature") tied to this legend/champion by a
-   * shared character tag (populated on legends and champions). The reverse link
-   * lives on the signature card's related_legends / related_champions.
-   */
-  related_signatures: RelatedCard[];
-  /** Other printings/art variants of the same card. */
-  related_printings: RelatedCard[];
-  /**
-   * Stable public URL path (no leading slash), e.g. "ogn/12a/signature/sun-disc".
-   * Set on first ingest and never overwritten so links don't drift.
-   */
-  public_slug?: string;
-  /**
-   * Absolute public site URL, e.g. "https://riftseer.com/card/ogn/12a/signature/sun-disc".
-   * Computed at response time from public_slug + the configured site origin.
-   */
+  public_slug: string;
+  /** Absolute public site URL. Computed at response time, never persisted. */
   riftseer_uri?: string;
+
+  /**
+   * True when this printing carries a delta — it genuinely differs from its
+   * oracle in some field. The resolved values are already applied to whatever
+   * the caller reads; this only flags that a difference exists.
+   */
+  differs_from_oracle?: boolean;
+
+  source?: "riftcodex" | "manual";
   updated_at?: string;
   ingested_at?: string;
 }
@@ -290,49 +337,71 @@ export interface CardRequest {
   collector?: string;
 }
 
-/** The result of resolving a CardRequest against the card provider. */
+/**
+ * The result of resolving a CardRequest.
+ *
+ * Resolution is an *oracle* lookup — "what is this card" — that also picks a
+ * printing: the one the request named, or the oracle's preferred one.
+ */
 export interface ResolvedCard {
   request: CardRequest;
-  /** The matched card, or null if not found. */
-  card: Card | null;
-  /** How the card was matched. */
+  oracle: Oracle | null;
+  printing: Printing | null;
   matchType: "exact" | "fuzzy" | "not-found";
-  /** Optional relevance score when matchType === "fuzzy" (if the provider supplies one). */
+  /** Optional relevance score when matchType === "fuzzy". */
   score?: number;
 }
 
 // ─── Search options ────────────────────────────────────────────────────────────
 
+/**
+ * `unique` decides what a result row is:
+ *
+ *   "oracle"   one row per card, carrying its preferred printing (default)
+ *   "prints"   one row per printing, for printing-level queries like
+ *              `is:alternate` or a set/collector filter
+ */
+export type SearchUniqueMode = "oracle" | "prints";
+
 export interface CardSearchOptions {
   set?: string;
   collector?: string | number;
-  /** Whether to fall back to fuzzy matching when no exact match is found. Default: true. */
+  /** Fall back to fuzzy matching when no exact match is found. Default: true. */
   fuzzy?: boolean;
   /** Max results to return. Default: 10. */
   limit?: number;
-  /** Skip this many matching cards before returning results (0-based). Default: 0. */
+  /** Skip this many matches before returning results (0-based). Default: 0. */
   offset?: number;
-  /** When true, skip deduplication and return all printings. Default: false. */
-  unique?: boolean;
+  unique?: SearchUniqueMode;
 }
 
-/** Paged name search: `cards` is one page; `total` is the full match count. */
-export interface CardSearchResult {
-  cards: Card[];
-  /** Total matches for this query (across all pages), after name-dedup ranking. */
+/** Paged oracle search: `oracles` is one page; `total` is the full match count. */
+export interface OracleSearchResult {
+  oracles: Oracle[];
+  total: number;
+}
+
+/** Paged printing search, used when `unique` is "prints". */
+export interface PrintingSearchResult {
+  printings: Printing[];
   total: number;
 }
 
 // ─── Deck interfaces ────────────────────────────────────────────────────────────
 
+/**
+ * Decks identify cards by **printing** id, not oracle id: a deck list is a
+ * list of physical cards, and short-form strings already in the wild encode
+ * those ids.
+ */
 export interface SimplifiedDeck {
-    id: string | null;
-    legendId: string | null;
-    chosenChampionId: string | null;
-    /** The following 3 arrays contain strings of form "cardId:quantity" */
-    mainDeck: string[];
-    sideboard: string[];
-    runes: string[];
-    /** This one just contains the ids since battlegrounds are unique */
-    battlegrounds: string[];
+  id: string | null;
+  legendId: string | null;
+  chosenChampionId: string | null;
+  /** The following 3 arrays contain strings of form "printingId:quantity" */
+  mainDeck: string[];
+  sideboard: string[];
+  runes: string[];
+  /** This one just contains the ids since battlegrounds are unique */
+  battlegrounds: string[];
 }

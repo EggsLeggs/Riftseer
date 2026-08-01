@@ -8,4 +8,4 @@ export * from "./src/icons.ts";
 export * from "./src/oracle.ts";
 export * from "./src/slug.ts";
 export * from "./src/social-links.ts";
-export * from "./src/printings.ts";
+export * from "./src/reconciliation.ts";

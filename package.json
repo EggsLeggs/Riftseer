@@ -1,7 +1,7 @@
 {
   "name": "riftseer",
   "private": true,
-  "workspaces": ["packages/types", "packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "packages/web", "docs"],
+  "workspaces": ["packages/types", "packages/core", "packages/api", "packages/discord-bot", "packages/ingest-worker", "packages/web", "docs"],
   "_workspacesExcluded": "packages/reddit-bot (Devvit/npm standalone) and packages/raycast-extension (Raycast/npm standalone) are intentionally excluded — both require npm and are not Bun workspace members.",
   "overrides": {
     "@sinclair/typebox": "0.34.48",
@@ -12,9 +12,7 @@
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait",
     "dev:api": "cd packages/api && wrangler dev --persist-to ../../.wrangler/shared",
     "dev:ingest": "cd packages/ingest-worker && wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
-    "dev:frontend": "cd packages/frontend && bun run dev",
     "dev:raycast": "cd packages/raycast-extension && npm run dev",
-    "build:frontend": "cd packages/frontend && bun run build",
     "dev:web": "cd packages/web && bun run --env-file ../../.env dev",
     "build:web": "cd packages/web && bun run build",
     "preview:web": "cd packages/web && bun run --env-file ../../.env preview",
