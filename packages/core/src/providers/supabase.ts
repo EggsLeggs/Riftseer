@@ -666,17 +666,26 @@ export class SupabaseCardProvider implements CardDataProvider {
     const offset = Math.max(opts.offset ?? 0, 0);
 
     const { ids, total } = await this.searchIds(ast, opts, false);
-    if (ids.length === 0) return { printings: [], total };
+    if (ids.length === 0) return { printings: [], oracles: [], total };
 
     const printings = await this.getPrintingsByIds(ids);
     const rows = await this.oracleRowsByIds(printings.map((p) => p.oracle_id));
     const nameById = new Map(rows.map((r) => [r.id, r.name]));
     const names = new Map(printings.map((p) => [p.id, nameById.get(p.oracle_id) ?? ""]));
 
-    return {
-      printings: this.rankByText(ast, printings, names).slice(offset, offset + limit),
-      total,
-    };
+    const page = this.rankByText(ast, printings, names).slice(offset, offset + limit);
+
+    // The owning oracles were already loaded to rank by name, so return them
+    // rather than making every caller re-fetch what we are holding. They come
+    // back as a sibling list keyed by id instead of embedded per printing: a
+    // printing search (`is:alternate`, a set browse) returns many printings of
+    // comparatively few cards, so embedding would duplicate heavily.
+    const wanted = new Set(page.map((p) => p.oracle_id));
+    const oracles = await this.attachPreferredPrintings(
+      rows.filter((r) => wanted.has(r.id)),
+    );
+
+    return { printings: page, oracles, total };
   }
 
   async browseOracles(opts: {

@@ -381,9 +381,17 @@ export interface OracleSearchResult {
   total: number;
 }
 
-/** Paged printing search, used when `unique` is "prints". */
+/**
+ * Paged printing search, used when `unique` is "prints".
+ *
+ * `oracles` carries the distinct owning cards for the returned printings, so a
+ * client can render a type line or rules text without a second request per
+ * row. It is a sibling list keyed by id rather than an embedded field because
+ * a printing search typically returns many printings of few cards.
+ */
 export interface PrintingSearchResult {
   printings: Printing[];
+  oracles: Oracle[];
   total: number;
 }
 

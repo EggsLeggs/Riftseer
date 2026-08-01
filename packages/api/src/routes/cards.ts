@@ -537,11 +537,14 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         };
 
         if (query.unique === "prints") {
-          const { printings: rows, total } =
-            await cardProvider.searchPrintingsByAst(ast, {
-              ...opts,
-              unique: "prints",
-            });
+          const {
+            printings: rows,
+            oracles: owners,
+            total,
+          } = await cardProvider.searchPrintingsByAst(ast, {
+            ...opts,
+            unique: "prints",
+          });
           const printings = printingsOut(rows, query.include);
           return {
             ...empty,
@@ -551,6 +554,9 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
             offset,
             limit: clampedLimit,
             printings,
+            // The owning cards, so a client rendering a type line or rules
+            // text alongside each printing does not need a request per row.
+            cards: finalizeOracles(owners, siteOrigin),
           };
         }
 

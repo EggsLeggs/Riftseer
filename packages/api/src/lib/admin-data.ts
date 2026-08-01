@@ -67,6 +67,39 @@ export interface AdminPrintingLegalities {
   entries: AdminPrintingLegalityEntry[];
 }
 
+/**
+ * The admin-authored delta on one printing, or null when it inherits its
+ * oracle wholesale.
+ *
+ * Only `source='admin'` rows are returned. Ingest keeps its own delta rows for
+ * genuine upstream divergence, and surfacing those in the editor would invite
+ * an admin to "correct" a difference the printed card really has.
+ */
+export interface AdminPrintingDelta {
+  printing_id: string;
+  tags_added: string[];
+  tags_removed: string[];
+  domains_added: string[];
+  domains_removed: string[];
+  keywords_added: string[];
+  keywords_removed: string[];
+  meta_flags_added: string[];
+  meta_flags_removed: string[];
+  name_override: string | null;
+  card_type_override: string | null;
+  supertype_override: string | null;
+  energy_override: number | null;
+  might_override: number | null;
+  power_override: number | null;
+  might_bonus_override: number | null;
+  text_rich_override: string | null;
+  text_plain_override: string | null;
+  equipment_text_override: string | null;
+  cleared_fields: string[];
+  note: string | null;
+  updated_at: string | null;
+}
+
 export interface AdminPrintingRuling {
   id: string;
   type: "ruling" | "note";
@@ -322,6 +355,13 @@ export interface AdminDataRepository {
     printingId: string,
   ): Promise<AdminPrintingLegalities | null>;
   listPrintingRulings(printingId: string): Promise<AdminPrintingRulings | null>;
+  /**
+   * Null when the printing does not exist; a delta with every field empty when
+   * it exists but inherits its oracle. The editor needs to tell those apart.
+   */
+  getPrintingDelta(
+    printingId: string,
+  ): Promise<{ printing_id: string; delta: AdminPrintingDelta | null } | null>;
   listOracleRelationships(
     oracleId: string,
   ): Promise<AdminOracleRelationships | null>;
@@ -604,6 +644,26 @@ export function createAdminDataRepository(
         entries: Array.isArray(data)
           ? data.filter(isRecord).map(parseLegalityEntry)
           : [],
+      };
+    },
+
+    async getPrintingDelta(printingId) {
+      const oracleId = await this.getPrintingOracleId(printingId);
+      if (!oracleId) return null;
+
+      const { data, error } = await client
+        .from("printing_deltas")
+        .select("*")
+        .eq("printing_id", printingId)
+        // Ingest owns its own delta rows for genuine upstream divergence; the
+        // editor must not offer to overwrite those.
+        .eq("source", "admin")
+        .maybeSingle();
+      if (error) throw new AdminRepositoryError(error.message);
+
+      return {
+        printing_id: printingId,
+        delta: data ? (data as unknown as AdminPrintingDelta) : null,
       };
     },
 

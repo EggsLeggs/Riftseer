@@ -1929,6 +1929,38 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
         },
       },
     )
+    // Read before write: the panel authors a delta against what is already
+    // stored, so without this it could only ever clear-and-replace.
+    .get(
+      "/printings/:id/deltas",
+      async ({ params, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const result = await safely("printing.delta.read", () =>
+          repository.getPrintingDelta(params.id),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        if (!result.data) {
+          return status(404, { error: "Printing not found", code: "NOT_FOUND" });
+        }
+        return result.data;
+      },
+      {
+        params: t.Object({ id: t.String() }),
+        detail: {
+          tags: ["Admin"],
+          summary: "Read a printing's admin-authored delta",
+          description:
+            "Returns `delta: null` when the printing inherits its oracle wholesale. Ingest-authored deltas are deliberately not returned — they record genuine upstream divergence, not an admin decision.",
+        },
+      },
+    )
     .put(
       "/printings/:id/deltas",
       async ({ params, body, adminUser, status }) => {
