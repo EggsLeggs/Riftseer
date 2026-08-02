@@ -20,7 +20,7 @@
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait",
     "dev:local": "bun run dev:api:local & bun run dev:web & wait",
     "dev:api": "cd packages/api && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared",
-    "dev:api:local": "cd packages/api && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared --env-file .dev.vars.local",
+    "dev:api:local": "cd packages/api && touch .dev.vars.local.secrets && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared --env-file .dev.vars.local --env-file .dev.vars.local.secrets",
     "dev:ingest": "cd packages/ingest-worker && ./node_modules/.bin/wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
     "dev:ingest:local": "cd packages/ingest-worker && ./node_modules/.bin/wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared --env-file .dev.vars.local",
     "dev:raycast": "cd packages/raycast-extension && npm run dev",

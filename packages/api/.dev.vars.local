@@ -10,10 +10,13 @@ SITE_ORIGIN=http://localhost:3000
 # stack" — the proxy refusing loudly rather than 404ing into confusion.
 #
 # To use the admin UI locally, point identity at a real project while card data
-# stays local. Uncomment and fill in:
+# stays local. Those values are real credentials, so they do NOT go in this
+# file — this one is committed. Put them in `.dev.vars.local.secrets`, which is
+# gitignored and which `bun run dev:api:local` loads after this file:
 #
 #   SUPABASE_AUTH_URL=https://<project>.supabase.co
-#   SUPABASE_AUTH_ANON_KEY=<that project's anon key>
+#   SUPABASE_AUTH_ANON_KEY=<that project's ANON key, role "anon" — never the
+#                           service-role key: this client signs users in>
 #   ADMIN_USER_IDS=<your user id in that project>
 #
 # Only sign-in and token verification follow those. Every card read and write

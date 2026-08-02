@@ -21,6 +21,9 @@ next-env.d.ts
 .env
 .env.local
 .dev.vars
+# `.dev.vars.local` is committed on purpose — it holds local-docker placeholders,
+# not credentials. Real values that ride alongside it go here instead.
+.dev.vars.local.secrets
 
 # Wrangler (Cloudflare Workers)
 .wrangler/

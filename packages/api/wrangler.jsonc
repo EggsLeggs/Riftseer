@@ -41,12 +41,37 @@
 		]
 	},
 	// Required for core API + Supabase auth routes.
-	// Optional secrets (omit from required): UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, TCGPLAYER_AFFILIATE_ID
 	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
-	// METAFY_CLIENT_SECRET — set via: wrangler secret put METAFY_CLIENT_SECRET
-	// METAFY_CLIENT_ID — not confidential, but the value is not committed; set via: wrangler secret put METAFY_CLIENT_ID
-	// METAFY_WEBHOOK_SECRET — optional, set via: wrangler secret put METAFY_WEBHOOK_SECRET (Partners only)
+	//
+	// This list is an ALLOWLIST, not just a deploy-time assertion: declaring it
+	// replaces wrangler's .dev.vars/.env inference, so a key missing from here is
+	// silently dropped and never reaches the Worker in `wrangler dev`. Omitting
+	// the "optional" secrets is what made SUPABASE_AUTH_URL a no-op — the code
+	// read it, .dev.vars.example documented it, and the value never arrived.
+	//
+	// So: every secret `process.env` is read for, in this Worker or in
+	// @riftseer/core, has to appear below. Ones that are genuinely optional log a
+	// startup warning when unset, which is the visible half of the trade — far
+	// cheaper than a binding that vanishes without a word.
+	//
+	// Remote values are set with `wrangler secret put <name>`.
 	"secrets": {
-		"required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_ANON_KEY", "METAFY_CLIENT_SECRET", "METAFY_CLIENT_ID"]
+		"required": [
+			"SUPABASE_URL",
+			"SUPABASE_SERVICE_ROLE_KEY",
+			"SUPABASE_ANON_KEY",
+			// Optional — sign-in resolves against SUPABASE_URL when unset.
+			"SUPABASE_AUTH_URL",
+			"SUPABASE_AUTH_ANON_KEY",
+			"METAFY_CLIENT_SECRET",
+			// Not confidential, but the value is not committed.
+			"METAFY_CLIENT_ID",
+			// Optional — Metafy Partners only.
+			"METAFY_WEBHOOK_SECRET",
+			// Optional — leave unset to disable Redis / affiliate links.
+			"UPSTASH_REDIS_REST_URL",
+			"UPSTASH_REDIS_REST_TOKEN",
+			"TCGPLAYER_AFFILIATE_ID"
+		]
 	}
 }
