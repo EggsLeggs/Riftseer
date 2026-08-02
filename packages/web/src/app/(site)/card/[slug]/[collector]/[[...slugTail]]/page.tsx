@@ -30,7 +30,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const joined = await resolveSlug(params);
   const detail = joined ? await loadDetail(joined) : null;
   if (!detail) return { title: "Card not found — Riftseer" };
-  return cardMetadata(detail.card, cardHref(detail.card));
+  return cardMetadata(
+    detail.oracle,
+    detail.printing,
+    cardHref(detail.printing),
+  );
 }
 
 /**
@@ -44,9 +48,9 @@ export default async function CardBySlugPage({ params }: Props) {
   const detail = await loadDetail(joined);
   if (!detail) notFound();
 
-  const { card } = detail;
-  if (card.public_slug && card.public_slug !== joined) {
-    permanentRedirect(cardPathFromPublicSlug(card.public_slug));
+  const { printing } = detail;
+  if (printing.public_slug && printing.public_slug !== joined) {
+    permanentRedirect(cardPathFromPublicSlug(printing.public_slug));
   }
 
   return (

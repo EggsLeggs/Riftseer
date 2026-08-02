@@ -1,354 +1,374 @@
 /**
  * SupabaseCardProvider
  *
- * Reads card data from Supabase Postgres (populated by the ingest pipeline).
- * Name search uses Postgres full-text search (tsvector); no in-memory card index.
+ * Reads the card catalogue from Supabase Postgres, populated by the ingest
+ * pipeline.
  *
- * Enable with: CARD_PROVIDER=supabase
+ * Search runs against `resolved_printings` — the projection that has already
+ * applied the printing delta layer — so there is exactly one search path here
+ * rather than the three the flat model needed. Collapsing results to one row
+ * per card happens as `GROUP BY oracle_id` inside the RPC, not as a
+ * name-string heuristic applied on every read.
+ *
  * Requires: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- * Optional: CACHE_REFRESH_INTERVAL_MS (periodic stats refresh)
+ * Optional: CACHE_REFRESH_INTERVAL_MS, CARD_IMAGE_BASE_URL
  */
 
-import type { CardDataProvider } from "../provider.ts";
-import type {
-  Card,
-  CardLegality,
-  CardLegalityStatus,
-  CardRequest,
-  CardRuling,
-  CardSearchOptions,
-  CardSearchResult,
-  Format,
-  ResolvedCard,
-  CardAttributes,
-  CardClassification,
-  CardText,
-  CardMedia,
-  CardMetadata,
-  CardPrices,
-  CardPurchaseUris,
-  CardExternalIds,
-  RelatedCard,
-  CardPriceEntry,
-} from "../types.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { printingImageUrls } from "@riftseer/types/card-image";
 import { repairFlavourText } from "@riftseer/types/card-text";
 import { oracleKeyForName } from "@riftseer/types/oracle";
-import { extractCardKeywords } from "@riftseer/types/keywords";
-import { logger } from "../logger.ts";
-import { getSupabaseClient } from "../supabase/client.ts";
-import { normalizeCardName } from "../normalize.ts";
-import { rankIds, type Nameable } from "../search.ts";
 import {
+  exactNameLeaf,
   findTextLeafValue,
-  isExactNameOnly,
-  isLegacyTextOnly,
   parseCardSearchQuery,
   type CardSearchAst,
 } from "../card-search-query.ts";
+import { logger } from "../logger.ts";
+import { normalizeCardName } from "../normalize.ts";
+import type { CardDataProvider } from "../provider.ts";
+import { rankIds, type Nameable } from "../search.ts";
+import { getSupabaseClient } from "../supabase/client.ts";
+import type {
+  CardLegality,
+  CardPrices,
+  CardRequest,
+  CardRuling,
+  CardSearchOptions,
+  Format,
+  Oracle,
+  OracleSearchResult,
+  Printing,
+  PrintingSearchResult,
+  ResolvedCard,
+} from "../types.ts";
 
-const REFRESH_INTERVAL_MS = parseInt(
+const REFRESH_INTERVAL_MS = Number.parseInt(
   process.env.CACHE_REFRESH_INTERVAL_MS ?? "21600000",
   10,
 );
 
-const CARD_SELECT =
-  "*, sets:set_id(set_code, set_name, set_uri, set_search_uri, is_promo, published_on, card_count), artists:artist_id(name)";
+const CARD_IMAGE_BASE_URL =
+  process.env.CARD_IMAGE_BASE_URL ?? "https://img.riftseer.com";
 
-// `*` already covers public_slug, but we re-state it here so the dependency
-// is greppable.
+const ORACLE_SELECT = "*";
 
-const SLIM_SELECT = "id, name, name_normalized";
+const PRINTING_SELECT =
+  "*, sets:set_id(set_code, set_name, set_uri, set_search_uri, is_promo, published_on, card_count), artists:artist_id(name), printing_deltas(printing_id)";
 
 /** PostgREST `in` filter URL limits — chunk large id lists. */
 const ID_IN_CHUNK_SIZE = 100;
 
-function chunkIds<T>(arr: T[], size: number): T[][] {
+/** Hard ceiling on ids the search RPC will return in one call. */
+const MAX_SEARCH_IDS = 5000;
+
+function chunk<T>(items: T[], size: number): T[][] {
   const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
   return out;
 }
 
-// ─── DB row shape (cards joined with sets + artists) ─────────────────────────
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
 
-interface DBCardRow {
+// ─── Row shapes ───────────────────────────────────────────────────────────────
+
+interface OracleRow {
   id: string;
+  oracle_key: string;
+  slug: string;
   name: string;
   name_normalized: string;
-  oracle_key: string | null;
+  card_type: string | null;
+  supertype: string | null;
+  is_token: boolean;
+  energy: number | null;
+  might: number | null;
+  power: number | null;
+  might_bonus: number | null;
+  equipment_text: string | null;
+  text_rich: string | null;
+  text_plain: string | null;
   keywords: string[] | null;
+  tags: string[] | null;
+  domains: string[] | null;
+  meta_flags: string[] | null;
+  preferred_printing_id: string | null;
+  source: "riftcodex" | "manual" | null;
+  updated_at: string | null;
+}
+
+interface PrintingRow {
+  id: string;
+  oracle_id: string;
   collector_number: string | null;
   released_at: string | null;
-  set_id: string | null;
+  rarity: string | null;
+  public_slug: string;
+  flavour_text: string | null;
+  finishes: string[] | null;
+  is_signature: boolean;
+  is_alternate_art: boolean;
+  is_overnumbered: boolean;
+  is_special_collection: boolean;
+  riftcodex_id: string | null;
+  riftbound_id: string | null;
+  tcgplayer_id: string | null;
+  cardmarket_id: string | null;
+  image_source_url: string | null;
+  image_source_hash: string | null;
+  image_orientation: string | null;
+  image_alt_text: string | null;
+  image_hosted_at: string | null;
+  price_normal: number | null;
+  price_foil: number | null;
+  price_low_normal: number | null;
+  price_low_foil: number | null;
+  tcgplayer_url: string | null;
+  cardmarket_url: string | null;
   artist_id: string | null;
-  external_ids: CardExternalIds;
-  attributes: CardAttributes;
-  classification: CardClassification;
-  text: CardText;
-  metadata: CardMetadata;
-  media: CardMedia;
-  purchase_uris: CardPurchaseUris;
-  prices: CardPrices;
-  all_parts: RelatedCard[];
-  used_by: RelatedCard[];
-  related_champions: RelatedCard[];
-  related_legends: RelatedCard[];
-  related_signatures: RelatedCard[];
-  related_printings: RelatedCard[];
-  is_token: boolean;
+  set_id: string | null;
   source: "riftcodex" | "manual" | null;
-  public_slug: string | null;
-  updated_at: string;
-  ingested_at: string;
-  sets: {
+  updated_at: string | null;
+  ingested_at: string | null;
+  sets?: {
     set_code: string;
     set_name: string;
     set_uri: string | null;
     set_search_uri: string | null;
-    is_promo: boolean | null;
+    is_promo: boolean;
     published_on: string | null;
     card_count: number | null;
   } | null;
-  artists: { name: string } | null;
+  artists?: { name: string } | null;
+  // A to-ONE embed, not an array: printing_deltas is keyed on printing_id, so
+  // PostgREST returns the row itself or null. Treating it as an array made
+  // `differs_from_oracle` silently always false.
+  printing_deltas?: { printing_id: string } | null;
 }
 
-function dbRowToCard(row: DBCardRow): Card {
+// ─── Mappers ──────────────────────────────────────────────────────────────────
+
+function oracleRowToOracle(row: OracleRow): Oracle {
   return {
-    object: "card",
+    object: "oracle",
     id: row.id,
-    name: row.name,
-    name_normalized: row.name_normalized,
-    // Fall back to the name-derived key so a row that predates the column (or a
-    // manual card seeded before its patch landed) still resolves its rulings.
+    // Both fallbacks exist for the same reason: a row written before a
+    // migration finished should render, not 500.
     oracle_key: row.oracle_key ?? oracleKeyForName(row.name),
-    // Kept in sync by a trigger, so a row can only be missing it if the phase 7
-    // migration has not run yet; derive locally so `kw:` badges still render.
-    keywords:
-      row.keywords ?? extractCardKeywords(row.text?.rich ?? row.text?.plain),
-    collector_number: row.collector_number ?? undefined,
-    released_at: row.released_at ?? undefined,
-    external_ids: row.external_ids,
+    slug: row.slug,
+    name: row.name,
+    name_normalized: row.name_normalized ?? normalizeCardName(row.name),
+    card_type: row.card_type ?? undefined,
+    supertype: row.supertype,
+    is_token: Boolean(row.is_token),
+    energy: row.energy,
+    might: row.might,
+    power: row.power,
+    // Presence, not truthiness: 0 is a real printed Might bonus, so this stays
+    // null-vs-number rather than collapsing through `||`.
+    might_bonus: row.might_bonus,
+    text: {
+      rich: row.text_rich ?? undefined,
+      plain: row.text_plain ?? undefined,
+      equipment: row.equipment_text ?? undefined,
+    },
+    keywords: row.keywords ?? [],
+    tags: row.tags ?? [],
+    domains: row.domains ?? [],
+    meta_flags: row.meta_flags ?? [],
+    source: row.source ?? "riftcodex",
+    updated_at: row.updated_at ?? undefined,
+  };
+}
+
+/** `21★` for a signature printing, `12a` for alternate art, else the number. */
+export function collectorLabel(
+  collectorNumber: string | null | undefined,
+  flags: { signature?: boolean; alternate_art?: boolean },
+): string | undefined {
+  if (!collectorNumber) return undefined;
+  if (flags.signature) return `${collectorNumber}★`;
+  if (flags.alternate_art && /\d$/.test(collectorNumber)) {
+    return `${collectorNumber}a`;
+  }
+  return collectorNumber;
+}
+
+function printingPrices(row: PrintingRow): CardPrices | undefined {
+  const entry = {
+    normal: row.price_normal,
+    foil: row.price_foil,
+    low_normal: row.price_low_normal,
+    low_foil: row.price_low_foil,
+  };
+  const hasAny = Object.values(entry).some((v) => v !== null && v !== undefined);
+  return hasAny ? { tcgplayer: entry } : undefined;
+}
+
+function printingRowToPrinting(row: PrintingRow): Printing {
+  const signature = Boolean(row.is_signature);
+  const alternateArt = Boolean(row.is_alternate_art);
+
+  // Hosted URLs are derived, never stored: `image_hosted_at` is the only
+  // signal that the full R2 variant set exists. Anything else falls back to
+  // the upstream source so a card page is never blank.
+  const image =
+    row.image_hosted_at && row.image_source_hash
+      ? printingImageUrls(CARD_IMAGE_BASE_URL, row.id, row.image_source_hash)
+      : row.image_source_url
+        ? { original: row.image_source_url }
+        : undefined;
+
+  return {
+    object: "printing",
+    id: row.id,
+    oracle_id: row.oracle_id,
     set: row.sets
       ? {
-          set_code: row.sets.set_code,
           set_id: row.set_id ?? undefined,
+          set_code: row.sets.set_code,
           set_name: row.sets.set_name,
           set_uri: row.sets.set_uri ?? undefined,
           set_search_uri: row.sets.set_search_uri ?? undefined,
           published_on: row.sets.published_on ?? undefined,
           card_count: row.sets.card_count ?? undefined,
+          is_promo: row.sets.is_promo,
         }
       : undefined,
-    attributes: row.attributes,
-    classification: row.classification,
-    text: row.text?.flavour
-      ? { ...row.text, flavour: repairFlavourText(row.text.flavour) }
-      : row.text,
+    collector_number: row.collector_number ?? undefined,
+    collector_label: collectorLabel(row.collector_number, {
+      signature,
+      alternate_art: alternateArt,
+    }),
+    rarity: row.rarity ?? undefined,
+    released_at: row.released_at ?? undefined,
     artist: row.artists?.name,
     artist_id: row.artist_id ?? undefined,
-    metadata: row.metadata,
-    media: row.media,
-    purchase_uris: row.purchase_uris,
-    prices: row.prices,
-    is_token: row.is_token,
+    // Upstream flavour text arrives with mangled entities and line breaks;
+    // repairing on read means every consumer gets the same string.
+    flavour_text: row.flavour_text ? repairFlavourText(row.flavour_text) : undefined,
+    finishes: row.finishes ?? [],
+    signature,
+    alternate_art: alternateArt,
+    overnumbered: Boolean(row.is_overnumbered),
+    special_collection: Boolean(row.is_special_collection),
+    image,
+    image_orientation: row.image_orientation ?? undefined,
+    image_alt_text: row.image_alt_text ?? undefined,
+    prices: printingPrices(row),
+    purchase_uris: {
+      tcgplayer: row.tcgplayer_url ?? undefined,
+      cardmarket: row.cardmarket_url ?? undefined,
+    },
+    external_ids: {
+      riftcodex_id: row.riftcodex_id ?? undefined,
+      riftbound_id: row.riftbound_id ?? undefined,
+      tcgplayer_id: row.tcgplayer_id ?? undefined,
+      cardmarket_id: row.cardmarket_id ?? undefined,
+    },
+    public_slug: row.public_slug,
+    differs_from_oracle: row.printing_deltas != null,
     source: row.source ?? "riftcodex",
-    all_parts: row.all_parts ?? [],
-    used_by: row.used_by ?? [],
-    related_champions: row.related_champions ?? [],
-    related_legends: row.related_legends ?? [],
-    related_signatures: row.related_signatures ?? [],
-    related_printings: row.related_printings ?? [],
-    public_slug: row.public_slug ?? undefined,
-    updated_at: row.updated_at,
-    ingested_at: row.ingested_at,
-  };
-}
-
-// ─── Format / legality / ruling rows ─────────────────────────────────────────
-
-interface DBFormatRow {
-  id: string;
-  code: string;
-  name: string;
-  sort_order: number | null;
-  active: boolean | null;
-}
-
-interface DBLegalityRow {
-  format_id: string;
-  status: CardLegalityStatus;
-  updated_at: string | null;
-}
-
-interface DBCardRulingRow {
-  id: string;
-  type: "ruling" | "note";
-  text: string;
-  dated: string | null;
-  source: string | null;
-  scope: "printing" | "oracle" | "rule" | null;
-  created_at: string | null;
-  updated_at: string | null;
-}
-
-function dbRowToFormat(row: DBFormatRow): Format {
-  return {
-    object: "format",
-    id: row.id,
-    code: row.code,
-    name: row.name,
-    sort_order: row.sort_order ?? 0,
-    active: row.active ?? true,
-  };
-}
-
-function indexLegalityRows(
-  rows: DBLegalityRow[] | null,
-): Map<string, DBLegalityRow> {
-  return new Map((rows ?? []).map((row) => [row.format_id, row]));
-}
-
-function dbRowToCardRuling(row: DBCardRulingRow): CardRuling {
-  return {
-    object: "card_ruling",
-    id: row.id,
-    type: row.type,
-    text: row.text,
-    dated: row.dated ?? undefined,
-    source: row.source ?? undefined,
-    scope: row.scope ?? undefined,
-    created_at: row.created_at ?? undefined,
     updated_at: row.updated_at ?? undefined,
+    ingested_at: row.ingested_at ?? undefined,
   };
 }
 
-async function getSetIdByCode(setCode: string): Promise<string | null> {
-  const { data, error } = await getSupabaseClient()
-    .from("sets")
-    .select("id")
-    .eq("set_code", setCode.toUpperCase())
-    .maybeSingle();
-
-  if (error) throw new Error(`Failed to resolve set code: ${error.message}`);
-  return data?.id ?? null;
-}
-
-// ─── Search-result dedup: one representative printing per card name ──────────
-
-const RARITY_RANK: Record<string, number> = {
-  Common: 0,
-  Uncommon: 1,
-  Rare: 2,
-  Epic: 3,
-  Legendary: 4,
-};
-
 /**
- * Strip trailing parenthetical suffixes — e.g. "(Signature)", "(Alternate Art)",
- * "(Overnumbered)" — then normalize.  Cards that share the same base name are
- * treated as variant printings of the same card.
+ * Rewrite every free-text leaf as an exact-name match.
+ *
+ * `fuzzy: false` means "exact name only". A `text` leaf renders to a prefix
+ * tsquery, which is the fuzzy behaviour the caller is opting out of, so the
+ * only honest way to honour the flag is to change the leaf. A name that
+ * normalises to nothing can match nothing, so the leaf is dropped and the
+ * surrounding AND/OR still holds.
  */
-function baseNormalized(name: string): string {
-  return normalizeCardName(name.replace(/\s*\(.*?\)\s*$/, ""));
-}
-
-/**
- * From a group of same-base-name rows, pick the representative printing.
- * Priority: non-promo → lowest rarity → newest release →
- *           non-alt-art → non-signature → non-overnumbered.
- */
-function pickPreferredPrinting(rows: DBCardRow[]): DBCardRow {
-  if (rows.length === 1) return rows[0];
-
-  const nonPromo = rows.filter((r) => !r.sets?.is_promo);
-  const candidates = nonPromo.length > 0 ? nonPromo : rows;
-
-  candidates.sort((a, b) => {
-    const rarA = RARITY_RANK[a.classification?.rarity ?? ""] ?? 99;
-    const rarB = RARITY_RANK[b.classification?.rarity ?? ""] ?? 99;
-    if (rarA !== rarB) return rarA - rarB;
-
-    const dateA = a.released_at ?? "";
-    const dateB = b.released_at ?? "";
-    if (dateA !== dateB) return dateB.localeCompare(dateA);
-
-    const altA = a.metadata?.alternate_art ? 1 : 0;
-    const altB = b.metadata?.alternate_art ? 1 : 0;
-    if (altA !== altB) return altA - altB;
-
-    const sigA = a.metadata?.signature ? 1 : 0;
-    const sigB = b.metadata?.signature ? 1 : 0;
-    if (sigA !== sigB) return sigA - sigB;
-
-    const overA = a.metadata?.overnumbered ? 1 : 0;
-    const overB = b.metadata?.overnumbered ? 1 : 0;
-    return overA - overB;
-  });
-
-  return candidates[0];
-}
-
-/**
- * Collapse rows into one per unique base card name, preserving encounter order,
- * returning every group — used for search pagination (slice after dedup).
- */
-function deduplicateRowsAll(rows: DBCardRow[]): DBCardRow[] {
-  const groups = new Map<string, DBCardRow[]>();
-  const nameOrder: string[] = [];
-
-  for (const row of rows) {
-    const key = baseNormalized(row.name);
-    if (!groups.has(key)) {
-      groups.set(key, [row]);
-      nameOrder.push(key);
-    } else {
-      groups.get(key)!.push(row);
-    }
+function exactNameOnly(ast: CardSearchAst): CardSearchAst {
+  switch (ast.op) {
+    case "text":
+      return exactNameLeaf(ast.value) ?? { op: "exact_name", value: "" };
+    case "and":
+    case "or":
+      return { ...ast, children: ast.children.map(exactNameOnly) };
+    case "not":
+      return { op: "not", child: exactNameOnly(ast.child) };
+    default:
+      return ast;
   }
-
-  return nameOrder.map((key) => pickPreferredPrinting(groups.get(key)!));
 }
 
-function sortCardsByCollector(a: Card, b: Card): number {
-  const na = a.collector_number ?? "";
-  const nb = b.collector_number ?? "";
-  const matchA = /^(\d+)(.*)$/.exec(na);
-  const matchB = /^(\d+)(.*)$/.exec(nb);
-  if (matchA && matchB) {
-    const numA = parseInt(matchA[1], 10);
-    const numB = parseInt(matchB[1], 10);
-    if (numA !== numB) return numA - numB;
-    return matchA[2].localeCompare(matchB[2], undefined, {
-      numeric: false,
-      sensitivity: "variant",
-    });
-  }
-  return na.localeCompare(nb, undefined, { numeric: true });
+/** Release order: set publication, then collector number, then id. */
+export function comparePrintings(a: Printing, b: Printing): number {
+  const at = a.set?.published_on ?? a.released_at;
+  const bt = b.set?.published_on ?? b.released_at;
+  // An unknown release date sorts last rather than first — a printing we know
+  // nothing about is not the oldest one.
+  const av = at ? Date.parse(at) : Number.POSITIVE_INFINITY;
+  const bv = bt ? Date.parse(bt) : Number.POSITIVE_INFINITY;
+  if (av !== bv) return av - bv;
+
+  const an = Number.parseInt((a.collector_number ?? "").replace(/\D/g, ""), 10);
+  const bn = Number.parseInt((b.collector_number ?? "").replace(/\D/g, ""), 10);
+  if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
+
+  return a.id.localeCompare(b.id);
 }
+
+// ─── Provider ─────────────────────────────────────────────────────────────────
 
 export class SupabaseCardProvider implements CardDataProvider {
   readonly sourceName = "supabase";
 
+  private client: SupabaseClient | null = null;
   private lastRefresh = 0;
-  private cardCount = 0;
+  private oracleCount = 0;
+  private printingCount = 0;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
-  async warmup(): Promise<void> {
-    logger.info("Supabase provider warming up", {
-      url: process.env.SUPABASE_URL,
-    });
-    await this.touchSupabase();
+  private get db(): SupabaseClient {
+    if (!this.client) this.client = getSupabaseClient();
+    return this.client;
+  }
 
+  async warmup(): Promise<void> {
+    logger.info("Supabase provider warming up", { url: process.env.SUPABASE_URL });
+    await this.refresh();
+
+    // Workers may recycle an isolate before this fires, so /meta can keep the
+    // cold-start snapshot for that isolate instead of receiving a later refresh.
     this.refreshTimer = setInterval(() => {
       this.refresh().catch((err) =>
         logger.error("Scheduled refresh failed", { error: String(err) }),
       );
     }, REFRESH_INTERVAL_MS);
+    // Never hold a Bun/Node process open for a stats refresh.
     this.refreshTimer.unref?.();
+
+    logger.info("Supabase provider ready", {
+      oracles: this.oracleCount,
+      printings: this.printingCount,
+    });
   }
 
   async refresh(): Promise<void> {
-    logger.info("Refreshing provider stats from Supabase");
-    await this.touchSupabase();
+    const [oracles, printings] = await Promise.all([
+      this.db
+        .from("oracles")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null),
+      this.db
+        .from("printings")
+        .select("id", { count: "exact", head: true })
+        .is("deleted_at", null),
+    ]);
+    if (oracles.error) throw new Error(oracles.error.message);
+    if (printings.error) throw new Error(printings.error.message);
+
+    this.oracleCount = oracles.count ?? 0;
+    this.printingCount = printings.count ?? 0;
+    this.lastRefresh = Math.floor(Date.now() / 1000);
   }
 
   stop(): void {
@@ -358,593 +378,528 @@ export class SupabaseCardProvider implements CardDataProvider {
     }
   }
 
-  private async touchSupabase(): Promise<void> {
-    const supabase = getSupabaseClient();
-    const { count, error } = await supabase
-      .from("cards")
-      .select("*", { count: "exact", head: true });
-
-    if (error) throw new Error(error.message);
-
-    this.cardCount = count ?? 0;
-    this.lastRefresh = Math.floor(Date.now() / 1000);
-
-    logger.info("Supabase provider ready", { cardCount: this.cardCount });
+  getStats() {
+    return {
+      lastRefresh: this.lastRefresh,
+      oracleCount: this.oracleCount,
+      printingCount: this.printingCount,
+    };
   }
 
-  async getCardById(id: string): Promise<Card | null> {
-    const { data, error } = await getSupabaseClient()
-      .from("cards")
-      .select(CARD_SELECT)
-      .eq("id", id)
+  // ── Oracles ──────────────────────────────────────────────────────────────
+
+  private async oracleBy(column: string, value: string): Promise<Oracle | null> {
+    const { data, error } = await this.db
+      .from("oracles")
+      .select(ORACLE_SELECT)
+      .eq(column, value)
+      .is("deleted_at", null)
       .maybeSingle();
-
-    if (error) throw new Error(`getCardById failed: ${error.message}`);
-    return data ? dbRowToCard(data as DBCardRow) : null;
+    if (error) throw new Error(`getOracleBy${column} failed: ${error.message}`);
+    if (!data) return null;
+    const [oracle] = await this.attachPreferredPrintings([data as OracleRow]);
+    return oracle ?? null;
   }
 
-  async getCardByPublicSlug(slug: string): Promise<Card | null> {
-    const trimmed = slug.replace(/^\/+|\/+$/g, "");
-    if (!trimmed) return null;
-    const { data, error } = await getSupabaseClient()
-      .from("cards")
-      .select(CARD_SELECT)
-      .eq("public_slug", trimmed)
-      .maybeSingle();
-
-    if (error) throw new Error(`getCardByPublicSlug failed: ${error.message}`);
-    return data ? dbRowToCard(data as DBCardRow) : null;
+  getOracleById(id: string): Promise<Oracle | null> {
+    return this.oracleBy("id", id);
   }
 
-  async getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>> {
-    const result = new Map<string, string>();
-    const unique = Array.from(new Set(ids.filter(Boolean)));
-    if (unique.length === 0) return result;
-
-    for (const idChunk of chunkIds(unique, ID_IN_CHUNK_SIZE)) {
-      const { data, error } = await getSupabaseClient()
-        .from("cards")
-        .select("id, public_slug")
-        .in("id", idChunk);
-
-      if (error) throw new Error(`getPublicSlugsByIds failed: ${error.message}`);
-      for (const row of (data ?? []) as Array<{ id: string; public_slug: string | null }>) {
-        if (row.public_slug) result.set(row.id, row.public_slug);
-      }
-    }
-    return result;
+  getOracleByKey(oracleKey: string): Promise<Oracle | null> {
+    return this.oracleBy("oracle_key", oracleKey);
   }
 
-  async getCardsByIds(ids: string[]): Promise<Card[]> {
-    const unique = Array.from(new Set(ids.filter(Boolean)));
+  getOracleBySlug(slug: string): Promise<Oracle | null> {
+    return this.oracleBy("slug", slug.replace(/^\/+|\/+$/g, ""));
+  }
+
+  private async oracleRowsByIds(ids: string[]): Promise<OracleRow[]> {
+    const unique = [...new Set(ids.filter(Boolean))];
     if (unique.length === 0) return [];
-    const rows = await this.hydrateRowsInOrder(unique);
-    return rows.map(dbRowToCard);
+    const rows: OracleRow[] = [];
+    for (const part of chunk(unique, ID_IN_CHUNK_SIZE)) {
+      const { data, error } = await this.db
+        .from("oracles")
+        .select(ORACLE_SELECT)
+        .in("id", part)
+        .is("deleted_at", null);
+      if (error) throw new Error(`getOraclesByIds failed: ${error.message}`);
+      rows.push(...((data ?? []) as OracleRow[]));
+    }
+    return rows;
   }
 
-  async searchByName(q: string, opts: CardSearchOptions = {}): Promise<CardSearchResult> {
-    const { ast } = parseCardSearchQuery(q);
-    if (!ast) return { cards: [], total: 0 };
-    return this.searchByAst(ast, opts);
+  async getOraclesByIds(ids: string[]): Promise<Oracle[]> {
+    const rows = await this.oracleRowsByIds(ids);
+    const hydrated = await this.attachPreferredPrintings(rows);
+    const byId = new Map(hydrated.map((o) => [o.id, o]));
+    return ids.map((id) => byId.get(id)).filter((o): o is Oracle => Boolean(o));
   }
+
+  async getPrintingsForOracle(oracleId: string): Promise<Printing[]> {
+    const { data, error } = await this.db
+      .from("printings")
+      .select(PRINTING_SELECT)
+      .eq("oracle_id", oracleId)
+      .is("deleted_at", null);
+    if (error) throw new Error(`getPrintingsForOracle failed: ${error.message}`);
+    return ((data ?? []) as PrintingRow[])
+      .map(printingRowToPrinting)
+      .sort(comparePrintings);
+  }
+
+  async getOracleRelationships(oracleId: string) {
+    // Edges are directed and stored once, so both ends have to be read.
+    const [outgoing, incoming] = await Promise.all([
+      this.db
+        .from("oracle_relationships")
+        .select("kind, to_oracle_id")
+        .eq("from_oracle_id", oracleId),
+      this.db
+        .from("oracle_relationships")
+        .select("kind, from_oracle_id")
+        .eq("to_oracle_id", oracleId),
+    ]);
+    if (outgoing.error) throw new Error(outgoing.error.message);
+    if (incoming.error) throw new Error(incoming.error.message);
+
+    const out = (outgoing.data ?? []) as { kind: string; to_oracle_id: string }[];
+    const inc = (incoming.data ?? []) as { kind: string; from_oracle_id: string }[];
+
+    // `used_by` is exactly the reverse of `makes_token`. `character` and
+    // `signature` read the same from either end, so both directions merge.
+    const makesTokenIds = out
+      .filter((e) => e.kind === "makes_token")
+      .map((e) => e.to_oracle_id);
+    const usedByIds = inc
+      .filter((e) => e.kind === "makes_token")
+      .map((e) => e.from_oracle_id);
+    const characterIds = [
+      ...out.filter((e) => e.kind === "character").map((e) => e.to_oracle_id),
+      ...inc.filter((e) => e.kind === "character").map((e) => e.from_oracle_id),
+    ];
+    const signatureIds = [
+      ...out.filter((e) => e.kind === "signature").map((e) => e.to_oracle_id),
+      ...inc.filter((e) => e.kind === "signature").map((e) => e.from_oracle_id),
+    ];
+
+    const all = await this.getOraclesByIds([
+      ...new Set([...makesTokenIds, ...usedByIds, ...characterIds, ...signatureIds]),
+    ]);
+    const byId = new Map(all.map((o) => [o.id, o]));
+    const pick = (ids: string[]) =>
+      [...new Set(ids)]
+        .map((id) => byId.get(id))
+        .filter((o): o is Oracle => Boolean(o))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      makes_tokens: pick(makesTokenIds),
+      used_by: pick(usedByIds),
+      characters: pick(characterIds),
+      signatures: pick(signatureIds),
+    };
+  }
+
+  // ── Printings ────────────────────────────────────────────────────────────
+
+  private async printingBy(column: string, value: string): Promise<Printing | null> {
+    const { data, error } = await this.db
+      .from("printings")
+      .select(PRINTING_SELECT)
+      .eq(column, value)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (error) throw new Error(`getPrintingBy${column} failed: ${error.message}`);
+    return data ? printingRowToPrinting(data as PrintingRow) : null;
+  }
+
+  getPrintingById(id: string): Promise<Printing | null> {
+    return this.printingBy("id", id);
+  }
+
+  getPrintingBySlug(slug: string): Promise<Printing | null> {
+    const trimmed = slug.replace(/^\/+|\/+$/g, "");
+    return trimmed ? this.printingBy("public_slug", trimmed) : Promise.resolve(null);
+  }
+
+  async getPrintingsByIds(ids: string[]): Promise<Printing[]> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return [];
+
+    const rows: PrintingRow[] = [];
+    for (const part of chunk(unique, ID_IN_CHUNK_SIZE)) {
+      const { data, error } = await this.db
+        .from("printings")
+        .select(PRINTING_SELECT)
+        .in("id", part)
+        .is("deleted_at", null);
+      if (error) throw new Error(`getPrintingsByIds failed: ${error.message}`);
+      rows.push(...((data ?? []) as PrintingRow[]));
+    }
+    const byId = new Map(rows.map((r) => [r.id, printingRowToPrinting(r)]));
+    return ids.map((id) => byId.get(id)).filter((p): p is Printing => Boolean(p));
+  }
+
+  async getPrintingsBySet(
+    setCode: string,
+    opts: { limit?: number } = {},
+  ): Promise<Printing[]> {
+    const { data: set, error: setError } = await this.db
+      .from("sets")
+      .select("id")
+      .eq("set_code", setCode.toUpperCase())
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (setError) throw new Error(`getPrintingsBySet failed: ${setError.message}`);
+    if (!set) return [];
+
+    const { data, error } = await this.db
+      .from("printings")
+      .select(PRINTING_SELECT)
+      .eq("set_id", (set as { id: string }).id)
+      .is("deleted_at", null);
+    if (error) throw new Error(`getPrintingsBySet failed: ${error.message}`);
+
+    return ((data ?? []) as PrintingRow[])
+      .map(printingRowToPrinting)
+      .sort(comparePrintings)
+      .slice(0, clamp(opts.limit ?? 1000, 1, 2000));
+  }
+
+  // ── Search ───────────────────────────────────────────────────────────────
 
   /**
-   * Structured-AST entry point. Routes between three execution paths:
-   *
-   *   - **ExactNameOnly** — single `exact_name` leaf → `name_normalized` lookup.
-   *   - **LegacyTextOnly** — single `text` leaf → existing exact-then-FTS path
-   *     (preserves current ranking and dedup behavior for the common case).
-   *   - **RPC** — anything else (filters, OR, NOT, grouping, text+filters)
-   *     → `search_card_ids` RPC with the AST as JSONB; results hydrated and
-   *     deduped in TS to match the legacy semantics.
+   * The one search path. `search_printing_ids` renders the AST against
+   * `resolved_printings` and optionally collapses to one row per oracle. We
+   * hydrate the ids it returns and, when the query carried free text, re-rank
+   * in TypeScript — relevance ordering is not something SQL should be asked
+   * to reproduce.
    */
-  async searchByAst(
+  private async searchIds(
+    ast: CardSearchAst,
+    opts: CardSearchOptions,
+    collapse: boolean,
+  ): Promise<{ ids: string[]; total: number }> {
+    const limit = clamp(opts.limit ?? 10, 1, 100);
+    const offset = Math.max(opts.offset ?? 0, 0);
+
+    const { data, error } = await this.db.rpc("search_printing_ids", {
+      p_ast: opts.fuzzy === false ? exactNameOnly(ast) : ast,
+      p_set: opts.set ?? null,
+      p_collector: opts.collector != null ? String(opts.collector) : null,
+      // Over-fetch so TypeScript re-ranking has something to reorder before
+      // the page is sliced.
+      p_max_ids: clamp((offset + limit) * 5, 200, MAX_SEARCH_IDS),
+      p_collapse: collapse,
+    });
+    if (error) throw new Error(`search failed: ${error.message}`);
+
+    const payload = (data ?? { ids: [], total: 0 }) as { ids: string[]; total: number };
+    return { ids: payload.ids ?? [], total: payload.total ?? 0 };
+  }
+
+  private rankByText(
+    ast: CardSearchAst,
+    printings: Printing[],
+    names: Map<string, string>,
+  ): Printing[] {
+    const query = findTextLeafValue(ast);
+    if (!query) return printings;
+
+    const nameable: Nameable[] = printings.map((p) => ({
+      id: p.id,
+      name: names.get(p.id) ?? "",
+      name_normalized: normalizeCardName(names.get(p.id) ?? ""),
+    }));
+    const order = new Map(
+      rankIds(nameable, query, nameable.length).map((id, i) => [id, i] as const),
+    );
+    // Rows the ranker scored below its floor still matched the query, so they
+    // are appended rather than dropped.
+    return [...printings].sort(
+      (a, b) =>
+        (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+        (order.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+    );
+  }
+
+  searchOracles(q: string, opts: CardSearchOptions = {}): Promise<OracleSearchResult> {
+    const { ast } = parseCardSearchQuery(q);
+    if (!ast) return Promise.resolve({ oracles: [], total: 0 });
+    return this.searchOraclesByAst(ast, opts);
+  }
+
+  async searchOraclesByAst(
     ast: CardSearchAst,
     opts: CardSearchOptions = {},
-  ): Promise<CardSearchResult> {
-    const pageLimit = Math.min(
-      Math.max(Math.floor(Number(opts.limit ?? 10)), 1),
-      100,
+  ): Promise<OracleSearchResult> {
+    const limit = clamp(opts.limit ?? 10, 1, 100);
+    const offset = Math.max(opts.offset ?? 0, 0);
+
+    const { ids, total } = await this.searchIds(ast, opts, true);
+    if (ids.length === 0) return { oracles: [], total };
+
+    const printings = await this.getPrintingsByIds(ids);
+    const rows = await this.oracleRowsByIds(printings.map((p) => p.oracle_id));
+    const oracleById = new Map(rows.map((r) => [r.id, oracleRowToOracle(r)]));
+    const names = new Map(
+      printings.map((p) => [p.id, oracleById.get(p.oracle_id)?.name ?? ""]),
     );
-    const offset = Math.max(0, Math.floor(Number(opts.offset ?? 0)));
 
-    const setId = await this.resolveSetIdOrNull(opts.set);
-    if (opts.set && setId === null) return { cards: [], total: 0 };
+    const page = this.rankByText(ast, printings, names).slice(offset, offset + limit);
 
-    if (isExactNameOnly(ast)) {
-      return this.exactNameSearch(ast.value, setId, opts, pageLimit, offset);
-    }
-
-    if (isLegacyTextOnly(ast)) {
-      return this.legacyTextSearch(ast.value, setId, opts, pageLimit, offset);
-    }
-
-    return this.rpcSearch(ast, opts, pageLimit, offset);
-  }
-
-  private async resolveSetIdOrNull(setCode?: string): Promise<string | null> {
-    if (!setCode) return null;
-    return await getSetIdByCode(setCode);
-  }
-
-  /**
-   * Single normalized-name lookup with optional set/collector. Used when the
-   * AST is a lone `!exact-name` leaf — the cheapest possible search.
-   */
-  private async exactNameSearch(
-    normalizedName: string,
-    setId: string | null,
-    opts: CardSearchOptions,
-    pageLimit: number,
-    offset: number,
-  ): Promise<CardSearchResult> {
-    const supabase = getSupabaseClient();
-    let q = supabase
-      .from("cards")
-      .select(CARD_SELECT)
-      .eq("name_normalized", normalizedName);
-    if (setId) q = q.eq("set_id", setId);
-    if (opts.collector !== undefined && opts.collector !== null) {
-      q = q.eq("collector_number", String(opts.collector));
-    }
-    const exactFetchCap = Math.min(5000, Math.max(200, (offset + pageLimit) * 25));
-    const { data, error } = await q.limit(exactFetchCap);
-    if (error) throw new Error(`exactNameSearch failed: ${error.message}`);
-    if (!data || data.length === 0) return { cards: [], total: 0 };
-    const rows = data as DBCardRow[];
-    const result = opts.unique ? rows : deduplicateRowsAll(rows);
     return {
-      cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
-      total: result.length,
+      // The matching printing is the one embedded — a search for `is:special`
+      // should show the showcase printing, not the card's default one.
+      oracles: page.flatMap((printing): Oracle[] => {
+        const oracle = oracleById.get(printing.oracle_id);
+        return oracle ? [{ ...oracle, preferred_printing: printing }] : [];
+      }),
+      total,
     };
   }
 
-  /**
-   * The legacy free-text path: exact `name_normalized` first; if no rows and
-   * fuzzy is allowed, fall back to FTS, rank in TS, hydrate, dedupe, paginate.
-   * Behavior identical to the pre-AST `searchByName` so existing callers and
-   * tests are unaffected.
-   */
-  private async legacyTextSearch(
-    text: string,
-    setId: string | null,
-    opts: CardSearchOptions,
-    pageLimit: number,
-    offset: number,
-  ): Promise<CardSearchResult> {
-    const norm = normalizeCardName(text);
-    if (norm.length === 0) return { cards: [], total: 0 };
-
-    const supabase = getSupabaseClient();
-
-    const exactFetchCap = Math.min(5000, Math.max(200, (offset + pageLimit) * 25));
-
-    let exactQuery = supabase
-      .from("cards")
-      .select(CARD_SELECT)
-      .eq("name_normalized", norm);
-    if (setId) exactQuery = exactQuery.eq("set_id", setId);
-    if (opts.collector !== undefined && opts.collector !== null) {
-      exactQuery = exactQuery.eq("collector_number", String(opts.collector));
-    }
-
-    const { data: exactData, error: exactError } =
-      await exactQuery.limit(exactFetchCap);
-    if (exactError)
-      throw new Error(`legacyTextSearch exact failed: ${exactError.message}`);
-    if (exactData && exactData.length > 0) {
-      const rows = exactData as DBCardRow[];
-      const result = opts.unique ? rows : deduplicateRowsAll(rows);
-      return {
-        cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
-        total: result.length,
-      };
-    }
-
-    if (opts.fuzzy === false) return { cards: [], total: 0 };
-
-    const prefixQuery = norm
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((w) => `${w}:*`)
-      .join(" & ");
-
-    const fetchLimit = Math.min(
-      Math.max((offset + pageLimit) * 20, 100),
-      500,
-    );
-
-    let ftsDataQuery = supabase
-      .from("cards")
-      .select(SLIM_SELECT)
-      .textSearch("name_search", prefixQuery, { config: "simple" });
-
-    if (setId) ftsDataQuery = ftsDataQuery.eq("set_id", setId);
-    if (opts.collector !== undefined && opts.collector !== null) {
-      ftsDataQuery = ftsDataQuery.eq(
-        "collector_number",
-        String(opts.collector),
-      );
-    }
-
-    let ftsCountQuery = supabase
-      .from("cards")
-      .select("id", { count: "exact", head: true })
-      .textSearch("name_search", prefixQuery, { config: "simple" });
-
-    if (setId) ftsCountQuery = ftsCountQuery.eq("set_id", setId);
-    if (opts.collector !== undefined && opts.collector !== null) {
-      ftsCountQuery = ftsCountQuery.eq(
-        "collector_number",
-        String(opts.collector),
-      );
-    }
-
-    const [{ count: ftsMatchCount, error: ftsCountError }, { data: ftsData, error: ftsError }] =
-      await Promise.all([ftsCountQuery, ftsDataQuery.limit(fetchLimit)]);
-    if (ftsError)
-      throw new Error(`legacyTextSearch FTS failed: ${ftsError.message}`);
-
-    const ftsRows = (ftsData ?? []) as Nameable[];
-    const topIds = rankIds(ftsRows, text, ftsRows.length);
-    const totalFromCount =
-      !ftsCountError &&
-      ftsMatchCount !== null &&
-      ftsMatchCount !== undefined
-        ? ftsMatchCount
-        : null;
-    if (topIds.length === 0) {
-      return { cards: [], total: totalFromCount ?? 0 };
-    }
-
-    const orderedRows = await this.hydrateRowsInOrder(topIds);
-    const result = opts.unique ? orderedRows : deduplicateRowsAll(orderedRows);
-    return {
-      cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
-      total: totalFromCount ?? result.length,
-    };
-  }
-
-  /**
-   * RPC path: serialize the AST to JSONB and call `search_card_ids`, which
-   * returns a capped id list plus the unfiltered total. We hydrate, optionally
-   * re-rank against the AST's first text leaf to keep autocomplete behavior
-   * for queries like `bard t:legend`, then dedupe and paginate.
-   */
-  private async rpcSearch(
+  async searchPrintingsByAst(
     ast: CardSearchAst,
-    opts: CardSearchOptions,
-    pageLimit: number,
-    offset: number,
-  ): Promise<CardSearchResult> {
-    const supabase = getSupabaseClient();
-    const maxIds = Math.min(5000, Math.max(200, (offset + pageLimit) * 25));
+    opts: CardSearchOptions = {},
+  ): Promise<PrintingSearchResult> {
+    const limit = clamp(opts.limit ?? 10, 1, 100);
+    const offset = Math.max(opts.offset ?? 0, 0);
 
-    const setCode = opts.set ?? null;
-    const collector =
-      opts.collector !== undefined && opts.collector !== null
-        ? String(opts.collector)
-        : null;
+    const { ids, total } = await this.searchIds(ast, opts, false);
+    if (ids.length === 0) return { printings: [], oracles: [], total };
 
-    const { data, error } = await supabase.rpc("search_card_ids", {
-      p_ast: ast as unknown as Record<string, unknown>,
-      p_set: setCode,
-      p_collector: collector,
-      p_max_ids: maxIds,
-    });
+    const printings = await this.getPrintingsByIds(ids);
+    const rows = await this.oracleRowsByIds(printings.map((p) => p.oracle_id));
+    const nameById = new Map(rows.map((r) => [r.id, r.name]));
+    const names = new Map(printings.map((p) => [p.id, nameById.get(p.oracle_id) ?? ""]));
 
-    if (error) throw new Error(`searchByAst RPC failed: ${error.message}`);
+    const page = this.rankByText(ast, printings, names).slice(offset, offset + limit);
 
-    const payload = (data ?? { ids: [], total: 0 }) as {
-      ids?: string[];
-      total?: number;
-    };
-    const ids = Array.isArray(payload.ids) ? payload.ids : [];
-    if (ids.length === 0) return { cards: [], total: payload.total ?? 0 };
+    // The owning oracles were already loaded to rank by name, so return them
+    // rather than making every caller re-fetch what we are holding. They come
+    // back as a sibling list keyed by id instead of embedded per printing: a
+    // printing search (`is:alternate`, a set browse) returns many printings of
+    // comparatively few cards, so embedding would duplicate heavily.
+    const wanted = new Set(page.map((p) => p.oracle_id));
+    const oracles = await this.attachPreferredPrintings(
+      rows.filter((r) => wanted.has(r.id)),
+    );
 
-    const rows = await this.hydrateRowsInOrder(ids);
-    const textValue = findTextLeafValue(ast);
-    let ordered: DBCardRow[] = rows;
-    if (textValue) {
-      const ranked = rankIds(rows as Nameable[], textValue, rows.length);
-      const rowMap = new Map(rows.map((r) => [r.id, r]));
-      // Append any rows the ranker dropped (below MIN_AUTOCOMPLETE_SCORE) so
-      // filtered matches without a name signal still appear, just at the end.
-      const seen = new Set(ranked);
-      const tail = rows.filter((r) => !seen.has(r.id));
-      ordered = [
-        ...ranked.flatMap((id) => {
-          const r = rowMap.get(id);
-          return r ? [r] : [];
-        }),
-        ...tail,
-      ];
-    }
-    const result = opts.unique ? ordered : deduplicateRowsAll(ordered);
-    // Pagination total matches other search paths: one row per base name after
-    // deduplicateRowsAll (`result`), not `payload.total` from the RPC (raw SQL
-    // row count before variant merging). Slice/`dbRowToCard` use the same list.
+    return { printings: page, oracles, total };
+  }
+
+  async browseOracles(opts: {
+    limit: number;
+    offset: number;
+  }): Promise<OracleSearchResult> {
+    const limit = clamp(opts.limit, 1, 100);
+    const offset = Math.max(opts.offset, 0);
+
+    const { data, error, count } = await this.db
+      .from("oracles")
+      .select(ORACLE_SELECT, { count: "exact" })
+      .is("deleted_at", null)
+      .order("name", { ascending: true })
+      .range(offset, offset + limit - 1);
+    if (error) throw new Error(`browseOracles failed: ${error.message}`);
+
     return {
-      cards: result.slice(offset, offset + pageLimit).map(dbRowToCard),
-      total: result.length,
+      oracles: await this.attachPreferredPrintings((data ?? []) as OracleRow[]),
+      total: count ?? 0,
     };
   }
 
-  private async hydrateRowsInOrder(ids: string[]): Promise<DBCardRow[]> {
-    if (ids.length === 0) return [];
-    const supabase = getSupabaseClient();
-    const all: DBCardRow[] = [];
-    for (const chunk of chunkIds(ids, ID_IN_CHUNK_SIZE)) {
-      const { data, error } = await supabase
-        .from("cards")
-        .select(CARD_SELECT)
-        .in("id", chunk);
-      if (error)
-        throw new Error(`hydrateRowsInOrder failed: ${error.message}`);
-      if (data) all.push(...(data as DBCardRow[]));
-    }
-    const rowMap = new Map(all.map((r) => [r.id, r]));
-    return ids.flatMap((id) => {
-      const r = rowMap.get(id);
-      return r ? [r] : [];
-    });
+  async getRandomOracle(): Promise<Oracle | null> {
+    const { count, error } = await this.db
+      .from("oracles")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null);
+    if (error) throw new Error(`getRandomOracle failed: ${error.message}`);
+    if (!count) return null;
+
+    const offset = Math.floor(Math.random() * count);
+    const { data, error: rowError } = await this.db
+      .from("oracles")
+      .select(ORACLE_SELECT)
+      .is("deleted_at", null)
+      .range(offset, offset)
+      .maybeSingle();
+    if (rowError) throw new Error(`getRandomOracle failed: ${rowError.message}`);
+    if (!data) return null;
+
+    const [oracle] = await this.attachPreferredPrintings([data as OracleRow]);
+    return oracle ?? null;
   }
+
+  /** One batched printing fetch for a page of oracle rows. */
+  private async attachPreferredPrintings(rows: OracleRow[]): Promise<Oracle[]> {
+    const oracles = rows.map(oracleRowToOracle);
+    const ids = rows
+      .map((r) => r.preferred_printing_id)
+      .filter((id): id is string => Boolean(id));
+    if (ids.length === 0) return oracles;
+
+    const printings = await this.getPrintingsByIds(ids);
+    const byOracle = new Map(printings.map((p) => [p.oracle_id, p]));
+    return oracles.map((o) => ({ ...o, preferred_printing: byOracle.get(o.id) }));
+  }
+
+  // ── Resolution ───────────────────────────────────────────────────────────
 
   async resolveRequest(req: CardRequest): Promise<ResolvedCard> {
-    const norm = normalizeCardName(req.name);
-    if (norm.length === 0) {
-      return { request: req, card: null, matchType: "not-found" };
-    }
+    const miss: ResolvedCard = {
+      request: req,
+      oracle: null,
+      printing: null,
+      matchType: "not-found",
+    };
 
-    const supabase = getSupabaseClient();
+    let matchType: ResolvedCard["matchType"] = "exact";
+    let oracle = await this.oracleBy("name_normalized", normalizeCardName(req.name)).catch(
+      (err) => {
+        logger.error("resolveRequest exact query failed", { error: String(err) });
+        return null;
+      },
+    );
 
-    const { data: exactRows, error: exactError } = await supabase
-      .from("cards")
-      .select(CARD_SELECT)
-      .eq("name_normalized", norm);
-
-    if (exactError) {
-      logger.error("resolveRequest exact query failed", {
-        error: exactError.message,
+    if (!oracle) {
+      // Fall back to the full search path so a near miss still resolves.
+      const { ast } = parseCardSearchQuery(req.name);
+      if (!ast) return miss;
+      const result = await this.searchOraclesByAst(ast, { limit: 1 }).catch((err) => {
+        logger.error("resolveRequest search failed", { error: String(err) });
+        return { oracles: [], total: 0 };
       });
-      throw new Error(
-        `resolveRequest exact query failed: ${exactError.message}`,
-      );
+      oracle = result.oracles[0] ?? null;
+      matchType = "fuzzy";
     }
+    if (!oracle) return miss;
 
-    const candidates =
-      (exactRows as DBCardRow[] | null)?.map(dbRowToCard) ?? [];
+    const printings = await this.getPrintingsForOracle(oracle.id);
+    const printing = pickRequestedPrinting(printings, req, oracle.preferred_printing);
+    if (!printing) return miss;
 
-    if (req.set && req.collector) {
-      const exact = candidates.find(
-        (c) =>
-          c.set?.set_code === req.set!.toUpperCase() &&
-          c.collector_number === req.collector,
-      );
-      if (exact) return { request: req, card: exact, matchType: "exact" };
-      return { request: req, card: null, matchType: "not-found" };
-    }
-
-    if (req.set) {
-      const withSet = candidates.filter(
-        (c) => c.set?.set_code === req.set!.toUpperCase(),
-      );
-      if (withSet.length > 0)
-        return { request: req, card: withSet[0], matchType: "exact" };
-      if (candidates.length > 0) {
-        logger.debug(
-          "Requested set not found; falling back to default printing",
-          {
-            name: req.name,
-            set: req.set,
-          },
-        );
-      }
-      return { request: req, card: null, matchType: "not-found" };
-    }
-
-    if (req.collector) {
-      const withCollector = candidates.find(
-        (c) => c.collector_number === req.collector,
-      );
-      if (withCollector)
-        return { request: req, card: withCollector, matchType: "exact" };
-      return { request: req, card: null, matchType: "not-found" };
-    }
-
-    if (candidates.length > 0) {
-      return { request: req, card: candidates[0], matchType: "exact" };
-    }
-
-    const { data: ftsRows, error: ftsError } = await supabase
-      .from("cards")
-      .select(CARD_SELECT)
-      .textSearch("name_search", norm, { type: "websearch", config: "simple" })
-      .limit(1);
-
-    if (ftsError) {
-      logger.error("resolveRequest FTS failed", { error: ftsError.message });
-      throw new Error(`resolveRequest FTS failed: ${ftsError.message}`);
-    }
-
-    const first = ftsRows?.[0] as DBCardRow | undefined;
-    if (first) {
-      return { request: req, card: dbRowToCard(first), matchType: "fuzzy" };
-    }
-
-    return { request: req, card: null, matchType: "not-found" };
+    return { request: req, oracle: { ...oracle, printings }, printing, matchType };
   }
 
-  async getSets(): Promise<
-    Array<{ setCode: string; setName: string; cardCount: number; isPromo: boolean; publishedOn: string | null }>
-  > {
-    const { data, error } = await getSupabaseClient()
+  // ── Sets, formats, rulings ───────────────────────────────────────────────
+
+  async getSets() {
+    const { data, error } = await this.db
       .from("sets")
       .select("set_code, set_name, card_count, is_promo, published_on")
+      .is("deleted_at", null)
       .order("set_name");
-
     if (error) throw new Error(`getSets failed: ${error.message}`);
-    if (!data) return [];
 
-    return data.map((row) => ({
+    return (
+      (data ?? []) as {
+        set_code: string;
+        set_name: string;
+        card_count: number | null;
+        is_promo: boolean;
+        published_on: string | null;
+      }[]
+    ).map((row) => ({
       setCode: row.set_code,
       setName: row.set_name,
       cardCount: row.card_count ?? 0,
-      isPromo: row.is_promo ?? false,
-      publishedOn: row.published_on ?? null,
+      isPromo: row.is_promo,
+      publishedOn: row.published_on,
     }));
   }
 
-  async getCardsBySet(
-    setCode: string,
-    opts: { limit?: number } = {},
-  ): Promise<Card[]> {
-    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 1000)), 0), 1000);
-    const setId = await getSetIdByCode(setCode);
-    if (!setId) return [];
-
-    const { data, error } = await getSupabaseClient()
-      .from("cards")
-      .select(CARD_SELECT)
-      .eq("set_id", setId);
-
-    if (error) throw new Error(`getCardsBySet failed: ${error.message}`);
-    const cards = (data as DBCardRow[]).map(dbRowToCard);
-    cards.sort(sortCardsByCollector);
-    return cards.slice(0, limit);
-  }
-
-  async browseCards(opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }> {
-    const limit = Math.min(Math.max(Math.floor(Number(opts.limit ?? 60)), 1), 100);
-    const offset = Math.max(0, Math.floor(Number(opts.offset ?? 0)));
-
-    const supabase = getSupabaseClient();
-    const { data, count, error } = await supabase
-      .from("cards")
-      .select(CARD_SELECT, { count: "exact" })
-      .order("released_at", { ascending: true, nullsFirst: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) throw new Error(`browseCards failed: ${error.message}`);
-    const cards = ((data ?? []) as DBCardRow[]).map(dbRowToCard);
-    return { cards, total: count ?? 0 };
-  }
-
-  async getRandomCard(): Promise<Card | null> {
-    const supabase = getSupabaseClient();
-    const { count, error: countError } = await supabase
-      .from("cards")
-      .select("*", { count: "exact", head: true });
-
-    if (countError)
-      throw new Error(`getRandomCard count failed: ${countError.message}`);
-    const n = count ?? 0;
-    if (n === 0) return null;
-
-    const offset = Math.floor(Math.random() * n);
-    const { data, error } = await supabase
-      .from("cards")
-      .select(CARD_SELECT)
-      .range(offset, offset);
-
-    if (error) throw new Error(`getRandomCard failed: ${error.message}`);
-    const row = data?.[0] as DBCardRow | undefined;
-    return row ? dbRowToCard(row) : null;
-  }
-
-  async getFormats(
-    opts: { includeInactive?: boolean } = {},
-  ): Promise<Format[]> {
-    let query = getSupabaseClient()
+  async getFormats(opts: { includeInactive?: boolean } = {}): Promise<Format[]> {
+    let query = this.db
       .from("formats")
-      .select("id, code, name, sort_order, active");
+      .select("id, code, name, sort_order, active")
+      .order("sort_order")
+      .order("name");
     if (!opts.includeInactive) query = query.eq("active", true);
 
-    const { data, error } = await query
-      .order("sort_order", { ascending: true })
-      .order("name", { ascending: true });
-
+    const { data, error } = await query;
     if (error) throw new Error(`getFormats failed: ${error.message}`);
-    return ((data ?? []) as DBFormatRow[]).map(dbRowToFormat);
+    return ((data ?? []) as Omit<Format, "object">[]).map((row) => ({
+      object: "format" as const,
+      ...row,
+    }));
   }
 
-  /**
-   * Resolve one printing's legality in every active format.
-   *
-   * Precedence is printing override → oracle row → default `legal`, and every
-   * active format gets an entry so the card page can render a complete table
-   * without knowing which statuses happen to be stored.
-   */
-  async getCardLegalities(
-    oracleKey: string,
-    cardId: string,
-  ): Promise<CardLegality[]> {
-    const supabase = getSupabaseClient();
-    const [formats, oracleRows, overrideRows] = await Promise.all([
-      this.getFormats(),
-      supabase
-        .from("card_legalities")
-        .select("format_id, status, updated_at")
-        .eq("oracle_key", oracleKey),
-      supabase
-        .from("card_legality_overrides")
-        .select("format_id, status, updated_at")
-        .eq("card_id", cardId),
-    ]);
-
-    if (oracleRows.error) {
-      throw new Error(`getCardLegalities oracle failed: ${oracleRows.error.message}`);
-    }
-    if (overrideRows.error) {
-      throw new Error(
-        `getCardLegalities overrides failed: ${overrideRows.error.message}`,
-      );
-    }
-
-    const byOracle = indexLegalityRows(oracleRows.data);
-    const byPrinting = indexLegalityRows(overrideRows.data);
-
-    return formats.map((format) => {
-      const override = byPrinting.get(format.id);
-      const oracle = byOracle.get(format.id);
-      const winner = override ?? oracle;
-      return {
-        object: "card_legality",
-        format_id: format.id,
-        format_code: format.code,
-        format_name: format.name,
-        status: winner?.status ?? "legal",
-        scope: override ? "printing" : oracle ? "oracle" : "default",
-        ...(winner?.updated_at ? { updated_at: winner.updated_at } : {}),
-      };
+  async getLegalities(printingId: string): Promise<CardLegality[]> {
+    const { data, error } = await this.db.rpc("legalities_for_printing", {
+      p_printing_id: printingId,
     });
+    if (error) throw new Error(`getLegalities failed: ${error.message}`);
+    return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+      object: "card_legality" as const,
+      format_id: String(row.format_id),
+      format_code: String(row.format_code),
+      format_name: String(row.name),
+      status: row.status as CardLegality["status"],
+      scope: row.scope as CardLegality["scope"],
+    }));
   }
 
-  /**
-   * Rulings and notes visible on one printing: everything shared across the
-   * oracle group (`card_id IS NULL`) plus anything scoped to this printing.
-   */
-  async getCardRulings(
-    oracleKey: string,
-    cardId: string,
-  ): Promise<CardRuling[]> {
-    // One RPC rather than a PostgREST query: a ruling can now arrive via a
-    // printing target, an oracle target, or a materialised rule match, and
-    // resolving those three layers (plus their precedence for `scope`) is not
-    // expressible as a single PostgREST filter. It also keeps admin-chosen
-    // manual card ids out of filter strings, where a comma or parenthesis would
-    // otherwise rewrite the query.
-    const { data, error } = await getSupabaseClient().rpc(
-      "card_rulings_for_card",
-      { p_card_id: cardId, p_oracle_key: oracleKey },
+  async getRulings(printingId: string): Promise<CardRuling[]> {
+    const { data, error } = await this.db.rpc("rulings_for_printing", {
+      p_printing_id: printingId,
+    });
+    if (error) throw new Error(`getRulings failed: ${error.message}`);
+    return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+      object: "card_ruling" as const,
+      id: String(row.id),
+      type: row.type as CardRuling["type"],
+      text: String(row.text),
+      dated: (row.dated as string) ?? undefined,
+      source: (row.source as string) ?? undefined,
+      scope: row.scope as CardRuling["scope"],
+      created_at: (row.created_at as string) ?? undefined,
+      updated_at: (row.updated_at as string) ?? undefined,
+    }));
+  }
+}
+
+/**
+ * Pick the printing a `[[Name|SET-123]]` request asked for.
+ *
+ * Set then collector narrow the candidates; a filter that matches nothing is
+ * ignored rather than emptying the result, so `[[Brush|XYZ]]` still resolves
+ * the card. With no usable filter the caller gets the preferred printing.
+ */
+export function pickRequestedPrinting(
+  printings: Printing[],
+  req: CardRequest,
+  preferred?: Printing,
+): Printing | null {
+  if (printings.length === 0) return null;
+
+  let candidates = printings;
+  let narrowed = false;
+
+  if (req.set) {
+    const wanted = req.set.toUpperCase();
+    const inSet = candidates.filter((p) => p.set?.set_code?.toUpperCase() === wanted);
+    if (inSet.length > 0) {
+      candidates = inSet;
+      narrowed = true;
+    }
+  }
+  if (req.collector) {
+    const wanted = String(req.collector).toLowerCase();
+    const matching = candidates.filter(
+      (p) => p.collector_number?.toLowerCase() === wanted,
     );
-
-    if (error) throw new Error(`getCardRulings failed: ${error.message}`);
-    const rows = Array.isArray(data) ? (data as DBCardRulingRow[]) : [];
-    return rows.map(dbRowToCardRuling);
+    if (matching.length > 0) {
+      candidates = matching;
+      narrowed = true;
+    }
   }
 
-  getStats(): { lastRefresh: number; cardCount: number } {
-    return { lastRefresh: this.lastRefresh, cardCount: this.cardCount };
+  if (!narrowed && preferred) {
+    const hit = candidates.find((p) => p.id === preferred.id);
+    if (hit) return hit;
   }
+  return candidates[0] ?? null;
 }

@@ -1,4 +1,4 @@
-import type { Card } from "@riftseer/types";
+import type { Oracle, Printing } from "@riftseer/types";
 import { EMPTY_VALUE, cardTypeLine } from "@/features/cards/format";
 
 /**
@@ -65,16 +65,16 @@ export function suggestCardAltText(source: AltTextSource): string {
 }
 
 /** Convenience wrapper for a loaded card (image panel, create-from-review). */
-export function suggestAltTextForCard(card: Card): string {
+export function suggestAltTextForCard(oracle: Oracle, printing: Printing): string {
   return suggestCardAltText({
-    name: card.name ?? "",
-    typeLine: cardTypeLine(card),
-    collectorNumber: card.collector_number ?? undefined,
-    setCode: card.set?.set_code ?? undefined,
-    artist: card.artist ?? undefined,
-    signature: card.metadata?.signature === true,
-    alternateArt: card.metadata?.alternate_art === true,
-    overnumbered: card.metadata?.overnumbered === true,
-    specialCollection: card.metadata?.special_collection === true,
+    name: oracle.name,
+    typeLine: cardTypeLine(oracle),
+    collectorNumber: printing.collector_number,
+    setCode: printing.set?.set_code,
+    artist: printing.artist,
+    signature: printing.signature,
+    alternateArt: printing.alternate_art,
+    overnumbered: printing.overnumbered,
+    specialCollection: printing.special_collection,
   });
 }

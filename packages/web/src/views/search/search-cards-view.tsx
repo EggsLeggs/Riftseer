@@ -209,7 +209,7 @@ export function SearchCardsView() {
     if (!trimmed || search.isFetching) return;
     if (search.data?.total !== 1) return;
     const sole = search.data.cards[0];
-    if (sole) router.replace(cardHref(sole));
+    if (sole) router.replace(cardHref(sole.printing));
   }, [trimmed, search.isFetching, search.data, router]);
 
   const setPage = React.useCallback(
@@ -427,4 +427,3 @@ export function SearchCardsView() {
     </div>
   );
 }
-

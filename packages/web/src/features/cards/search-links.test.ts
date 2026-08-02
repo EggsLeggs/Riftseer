@@ -10,12 +10,15 @@ import {
   tagSearchQuery,
 } from "./search-links";
 
-/** Minimal stand-in — only `classification` is read. */
-function card(classification: {
+function card(fields: {
   type?: string | null;
   supertype?: string | null;
 }) {
-  return { classification } as Parameters<typeof cardTypeLineSearchQuery>[0];
+  return {
+    card_type: fields.type,
+    supertype: fields.supertype,
+    is_token: fields.type?.toLowerCase() === "token",
+  } as Parameters<typeof cardTypeLineSearchQuery>[0];
 }
 
 describe("quoteSearchValue", () => {

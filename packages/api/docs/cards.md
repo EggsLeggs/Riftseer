@@ -4,66 +4,128 @@ sidebar_label: Cards
 sidebar_position: 4
 ---
 
-Card endpoints live under `/api/v1/cards`.
+Riftseer separates a card's rules identity from its physical editions:
+
+- An **oracle** is the rules object: name, type line, stats, rules text, keywords, tags, domains, and relationships. Its `id` is a UUID.
+- A **printing** is one physical card: set, collector number, rarity, art, artist, flavour text, finishes, prices, purchase links, and printing flags. Its `id` is a RiftCodex MongoDB ObjectId.
+
+A search or random-card response is normally oracle-shaped and embeds the edition to display as `preferred_printing`. Endpoints that identify a physical edition return a printing directly or return it beside its oracle.
 
 ---
 
 ## Endpoints at a glance
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/v1/cards` | Search / browse — see [Search](./search.md) |
-| `GET` | `/api/v1/cards/random` | Random card |
-| `GET` | `/api/v1/cards/detail` | Full card page payload — card plus expanded printings, tokens and related cards |
-| `GET` | `/api/v1/cards/:id` | Single card by card ID |
-| `GET` | `/api/v1/cards/:id/text` | Plain-text card summary |
-| `GET` | `/api/v1/cards/by-slug/*` | Single card by `public_slug` (set / collector / name path) |
-| `POST` | `/api/v1/cards/resolve` | Batch resolve card name strings |
+| Method | Path                      | Description                                                         |
+| ------ | ------------------------- | ------------------------------------------------------------------- |
+| `GET`  | `/api/v1/cards`           | Search or browse oracles and printings — see [Search](./search.md). |
+| `GET`  | `/api/v1/cards/random`    | Random oracle with its preferred printing.                          |
+| `GET`  | `/api/v1/cards/detail`    | Complete oracle page payload, viewed through one printing.          |
+| `GET`  | `/api/v1/cards/:id`       | Oracle by UUID, lookup key, or single-segment slug.                 |
+| `GET`  | `/api/v1/cards/:id/text`  | Plain-text oracle summary.                                          |
+| `GET`  | `/api/v1/cards/by-slug/*` | Oracle by oracle slug or printing slug.                             |
+| `POST` | `/api/v1/cards/resolve`   | Batch-resolve names to oracle-plus-printing pairs.                  |
+| `GET`  | `/api/v1/printings/:id`   | One physical printing by ObjectId.                                  |
 
 ---
 
-## Card object
+## Oracle object
 
-Every card endpoint returns the same card shape. Key fields:
+Oracle responses have `object: "oracle"`. Important fields:
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `id` | string | Stable identifier (RiftCodex ObjectId) — safe to store |
-| `name` | string | Display name |
-| `name_normalized` | string | Lowercased, punctuation-stripped — used for search |
-| `collector_number` | string | e.g. `OGN-001` |
-| `set.set_code` | string | Short code, e.g. `OGN` |
-| `set.card_count` | number \| undefined | Total cards in this set |
-| `oracle_key` | string \| undefined | Name-derived key shared by every printing of this card. Rulings and format legalities are keyed on it, not on `id` |
-| `keywords` | string[] \| undefined | `[Keyword]` tags in this printing's rules text, as base keys (`deflect`, not `Deflect 3`). Kept in sync by a DB trigger; searchable with `kw:` |
-| `attributes` | object | `energy`, `might`, `power`, plus `might_bonus` on `[Equip]` gear |
-| `attributes.might_bonus` | number \| null \| undefined | Might an `[Equip]` gear grants the unit it is attached to. Present only on equipment, where `0` is a real printed value — absent means "not equipment", not "grants nothing". Sourced from Riot's official card gallery and shared by every printing of the card |
-| `classification` | object | `type`, `supertype`, `rarity`, `tags`, `domains` |
-| `text.plain` | string | Rules text, punctuation intact |
-| `text.rich` | string | Rules text with inline symbol tokens |
-| `text.equipment` | string \| undefined | The effect an `[Equip]` gear grants the equipped unit, in the same vocabulary as `text.plain`. Absent when `might_bonus` is the whole effect |
-| `media` | object \| undefined | Hosted image URLs (`small`, `normal`, `large`, `original`), detected orientation, upstream `source_url`, `source_hash`, and source provider. Hosted URLs use the R2 custom domain after queue processing. |
-| `prices` | object \| undefined | Opt-in — omitted by default; see [Prices](#prices) section |
-| `purchase_uris` | object | Marketplace purchase URLs (`tcgplayer`, `cardmarket`) when available |
-| `is_token` | boolean | `true` for token cards |
-| `source` | string \| undefined | Row provenance: `riftcodex` for ingested cards, `manual` for admin-authored cards |
-| `all_parts` | array | Related tokens or meld parts |
-| `related_champions` | array | Champions linked to this legend (also the legend/champion a signature card belongs to) |
-| `related_legends` | array | Legends linked to this champion (also the legend a signature card belongs to) |
-| `related_signatures` | array | Signature cards (supertype `Signature`, e.g. "Daisy!") tied to this legend/champion by a shared character tag |
-| `related_printings` | array | Array of `RelatedCard` objects — other printings/editions (alternate art, promos, etc.) of the same card |
-| `public_slug` | string \| undefined | Stable public URL path for this printing — e.g. `ogn/12a/signature/sun-disc`. Persisted on first ingest and never overwritten, so URLs do not drift. |
-| `riftseer_uri` | string \| undefined | Absolute public site URL — `${SITE_ORIGIN}/card/${public_slug}`. Computed at response time and also added to every entry in the related-card arrays. Use this instead of building URLs client-side. |
+| Field                           | Type                        | Notes                                                                |
+| ------------------------------- | --------------------------- | -------------------------------------------------------------------- |
+| `id`                            | string                      | Stable oracle UUID and the card's identity.                          |
+| `oracle_key`                    | string                      | Stable name-derived lookup key. It is not identity.                  |
+| `slug`                          | string                      | Oracle-level public slug, for example `sun-disc`.                    |
+| `name`, `name_normalized`       | string                      | Display and normalized search names.                                 |
+| `card_type`                     | string \| undefined         | Base type, for example `Unit`, `Gear`, or `Spell`.                   |
+| `supertype`                     | string \| null \| undefined | Optional type modifier, for example `Champion`.                      |
+| `is_token`                      | boolean                     | Token status, independent of `card_type`.                            |
+| `energy`, `might`, `power`      | number \| null \| undefined | Oracle-level play stats.                                             |
+| `might_bonus`                   | number \| null \| undefined | `[Equip]` bonus. `0` is a real value; test presence, not truthiness. |
+| `text.rich`, `text.plain`       | string \| undefined         | Rules text with symbol tokens or readable plain text.                |
+| `text.equipment`                | string \| undefined         | Effect granted by an `[Equip]` gear.                                 |
+| `keywords`                      | string[]                    | Normalized keyword base keys, for example `deflect`.                 |
+| `tags`, `domains`, `meta_flags` | string[]                    | Oracle classification and searchable metadata.                       |
+| `relationships`                 | object \| undefined         | Oracle-to-oracle relationship arrays; populated on detail reads.     |
+| `preferred_printing`            | Printing \| undefined       | The edition to display. Search embeds the edition that matched.      |
+| `printings`                     | Printing[] \| undefined     | All editions when a read includes them.                              |
+| `source`                        | string \| undefined         | `riftcodex` or `manual`.                                             |
+| `riftseer_uri`                  | string \| undefined         | Absolute oracle page URL, computed when `SITE_ORIGIN` is configured. |
+
+`relationships` contains four arrays:
+
+| Field          | Meaning                                                               |
+| -------------- | --------------------------------------------------------------------- |
+| `makes_tokens` | Token oracles created by this card.                                   |
+| `used_by`      | Cards that create this token; the reverse of `makes_tokens`.          |
+| `characters`   | Other oracle roles for the same character, such as legend ↔ champion. |
+| `signatures`   | Signature cards and their linked legend/champion oracles.             |
+
+Each entry is an `OracleRef`: `{ object: "oracle_ref", id, name, slug, uri?, riftseer_uri?, image_small? }`. Relationships are oracle-level edges and are not overridden per printing.
+
+---
+
+## Printing object
+
+Printing responses have `object: "printing"`. Important fields:
+
+| Field                                                              | Type                 | Notes                                                                                   |
+| ------------------------------------------------------------------ | -------------------- | --------------------------------------------------------------------------------------- |
+| `id`                                                               | string               | Stable RiftCodex MongoDB ObjectId. Existing deck encodings depend on it.                |
+| `oracle_id`                                                        | string               | UUID of the rules object this edition prints.                                           |
+| `set`                                                              | object \| undefined  | `set_code`, `set_name`, IDs, links, publication date, count, and promo status.          |
+| `collector_number`                                                 | string \| undefined  | Raw printed number, including prefixes such as `T03`, `SP3`, or `R01`.                  |
+| `collector_label`                                                  | string \| undefined  | Display label, including a variant marker when applicable.                              |
+| `rarity`                                                           | string \| undefined  | **Printing-level.** Alternate or showcase editions can disagree with the base printing. |
+| `released_at`                                                      | string \| undefined  | Printing release date.                                                                  |
+| `artist`, `flavour_text`                                           | string \| undefined  | Physical-edition credits and flavour copy.                                              |
+| `finishes`                                                         | string[]             | Available finishes, for example `Normal` and `Foil`.                                    |
+| `signature`, `alternate_art`, `overnumbered`, `special_collection` | boolean              | Printing flags.                                                                         |
+| `image`                                                            | object \| undefined  | `small`, `normal`, `large`, and `original` image URLs.                                  |
+| `image_orientation`, `image_alt_text`                              | string \| undefined  | Display metadata for the art.                                                           |
+| `prices`                                                           | object \| undefined  | Opt-in marketplace prices.                                                              |
+| `purchase_uris`                                                    | object \| undefined  | TCGPlayer and Cardmarket links when available.                                          |
+| `external_ids`                                                     | object \| undefined  | RiftCodex, Riftbound, TCGPlayer, and Cardmarket identifiers.                            |
+| `public_slug`                                                      | string               | Pinned printing URL path, for example `ogn/12a/signature/sun-disc`.                     |
+| `riftseer_uri`                                                     | string \| undefined  | Absolute printing page URL. Prefer this over constructing a URL.                        |
+| `differs_from_oracle`                                              | boolean \| undefined | This printing has a rules delta; returned oracle fields are already resolved.           |
+
+---
+
+## GET /api/v1/cards
+
+Search returns one row per oracle by default:
+
+```json
+{
+  "unique": "oracle",
+  "count": 1,
+  "total": 1,
+  "offset": 0,
+  "limit": 10,
+  "cards": [
+    {
+      "object": "oracle",
+      "name": "Sun Disc",
+      "preferred_printing": { "object": "printing", "rarity": "Rare" }
+    }
+  ],
+  "printings": []
+}
+```
+
+Pass `unique=prints` to populate `printings` instead. The matching printing is always preserved: in oracle mode it becomes `preferred_printing`; in print mode it is the result row. See [Search](./search.md) for the full query language and parameters.
 
 ---
 
 ## GET /api/v1/cards/random
 
-Returns one card chosen at random from the full index.
+Returns one random oracle with `preferred_printing` populated.
 
-| Parameter | Type | Notes |
-| --- | --- | --- |
-| `include` | string (optional) | Pass `prices` to include price data; omitted by default (no prices returned) |
+| Parameter | Type              | Notes                                                      |
+| --------- | ----------------- | ---------------------------------------------------------- |
+| `include` | string (optional) | Pass `prices` to include prices on the preferred printing. |
 
 ```http
 GET /api/v1/cards/random
@@ -74,112 +136,70 @@ GET /api/v1/cards/random?include=prices
 
 ## GET /api/v1/cards/detail
 
-Everything the public card page needs in one request. The card's related-card
-stubs are expanded into full rows, then sorted and deduplicated server-side, so
-clients never have to fan out into per-related-card lookups.
+Returns the complete public card-page model. Provide exactly one lookup parameter:
 
-Look up by `id` **or** `slug` — exactly one is required.
-
-| Parameter | Type | Notes |
-| --- | --- | --- |
-| `id` | string (optional) | Card ID. Mutually exclusive with `slug` |
-| `slug` | string (optional) | `public_slug` path, e.g. `ogn/12a/signature/sun-disc`. Mutually exclusive with `id` |
-| `include` | string (optional) | Pass `prices` to include price data on the card **and** on every printing |
+| Parameter  | Type              | Notes                                                                     |
+| ---------- | ----------------- | ------------------------------------------------------------------------- |
+| `oracle`   | string (optional) | Oracle UUID.                                                              |
+| `printing` | string (optional) | Printing ObjectId; views its oracle through this edition.                 |
+| `slug`     | string (optional) | Oracle slug (`sun-disc`) or printing slug (`ogn/12a/signature/sun-disc`). |
+| `include`  | string (optional) | Pass `prices` to include prices across returned printings.                |
 
 ```http
-GET /api/v1/cards/detail?id=67f4064886be8495f7165dd7
+GET /api/v1/cards/detail?oracle=3d8f2da9-9d2b-4a2c-a34d-6f08b54c9571
+GET /api/v1/cards/detail?printing=67f4064886be8495f7165dd7
 GET /api/v1/cards/detail?slug=ogn/21/sun-disc&include=prices
 ```
 
-Response:
+Response fields:
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `object` | `"card_detail"` | |
-| `card` | Card | The requested printing, same shape as `/cards/:id` |
-| `printings` | CardPrintingSummary[] | All printings **including** the current one, oldest set first. The current row has `is_current: true` |
-| `tokens` | CardPrintingSummary[] | Token cards this card creates (from `all_parts`) |
-| `used_by` | CardPrintingSummary[] | Cards that create this token — one preferred printing per card |
-| `champions` | CardPrintingSummary[] | Champions sharing a tag with this legend, collapsed to one row per character |
-| `legends` | CardPrintingSummary[] | Legends sharing a tag with this champion, collapsed to one row per character |
-| `signatures` | CardPrintingSummary[] | Signature cards tied to this legend/champion by a shared character tag, collapsed to one row per signature |
-| `purchase` | object | Resolved `tcgplayer` / `cardmarket` links — the stored purchase URI when trusted, else the product page, else a name search |
-| `rulings` | CardRuling[] | Rulings and notes visible on this printing — the card-wide entries plus any scoped to this printing, oldest first |
-| `legalities` | CardLegality[] | One entry per active format, in format order, already resolved |
+| Field        | Type              | Notes                                                            |
+| ------------ | ----------------- | ---------------------------------------------------------------- |
+| `object`     | `"oracle_detail"` |                                                                  |
+| `oracle`     | Oracle            | Rules object with relationships populated.                       |
+| `printing`   | Printing          | Requested edition, or the oracle's preferred edition.            |
+| `printings`  | Printing[]        | Every edition of the oracle, oldest set first.                   |
+| `tokens`     | OracleRef[]       | Tokens this oracle creates.                                      |
+| `used_by`    | OracleRef[]       | Oracles that create this token.                                  |
+| `characters` | OracleRef[]       | Other roles for the same character.                              |
+| `signatures` | OracleRef[]       | Linked signature cards or owners.                                |
+| `purchase`   | object            | Resolved TCGPlayer/Cardmarket links with search fallbacks.       |
+| `rulings`    | CardRuling[]      | Printing-, oracle-, and query-rule-scoped entries, oldest first. |
+| `legalities` | CardLegality[]    | One resolved entry per active format.                            |
 
-`legalities` is keyed on the card's `oracle_key`, so a status is shared by every
-printing unless a printing-level override says otherwise. Both fields are
-supplementary: if the lookup fails they come back empty and the rest of the
-payload is unaffected.
+Each `CardRuling` is `{ object, id, type, text, dated?, source?, scope?, created_at?, updated_at? }`. Its `scope` is `printing`, `oracle`, or `rule`.
 
-Each `CardRuling` is `{ object, id, type, text, dated?, source?, scope? }`, where
-`type` is `ruling` or `note`. `scope` says how the entry reached this card:
+Each `CardLegality` is `{ object, format_id, format_code, format_name, status, scope, updated_at? }`. Status is `legal`, `not_legal`, or `banned`; scope is `printing`, `oracle`, or `default`. Resolution precedence is printing row → oracle row → legal by default.
 
-- `printing` — written for this exact printing
-- `oracle` — written for the card, shared by every printing
-- `rule` — matched by a query-scoped ruling (for example "every unit with
-  `[Deathknell]`"), so it applies for as long as the card keeps matching
-
-An entry reachable by several of those reports the most specific one.
-
-Each `CardLegality` is
-`{ object, format_id, format_code, format_name, status, scope, updated_at? }`.
-`status` is `legal`, `not_legal`, or `banned`; **absence of a stored status means
-legal**, so every active format appears here even when nothing is recorded.
-`scope` says which layer decided the status — `printing` (this printing's
-override), `oracle` (shared by the card), or `default` (nothing stored). Formats
-themselves are listed by [`GET /api/v1/formats`](./formats).
-
-Each `CardPrintingSummary` carries just enough to render a row and link to it:
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `object` | `"card_printing"` | |
-| `id`, `name` | string | |
-| `public_slug`, `riftseer_uri` | string \| undefined | Link targets |
-| `set_code`, `set_name` | string \| undefined | |
-| `collector_number` | string \| undefined | Raw value |
-| `collector_label` | string \| undefined | With variant marker — `12a` for alternate art, `21★` for signature |
-| `rarity`, `type` | string \| undefined | |
-| `energy`, `power` | number \| null \| undefined | Play cost from `attributes` |
-| `is_token` | boolean | |
-| `alternate_art`, `signature` | boolean \| undefined | |
-| `image_small` | string \| undefined | Smallest available art URL |
-| `prices`, `purchase_uris` | object \| undefined | `prices` requires `include=prices` |
-| `is_current` | boolean \| undefined | Only present (and `true`) on the printing being viewed |
-
-Returns `400` when neither `id` nor `slug` is given (or when both are), and
-`404` when the card does not exist. Related IDs that no longer resolve are omitted rather
-than returned as empty rows.
+The endpoint returns 400 unless exactly one lookup parameter is supplied, 404 when the oracle does not exist, and 404 when it has no printing.
 
 ---
 
 ## GET /api/v1/cards/:id
 
-Fetch a single card by its stable card ID.
+Fetches one oracle by UUID, `oracle_key`, or single-segment oracle slug. This
+endpoint does not accept a printing ID.
 
-| Parameter | Type | Notes |
-| --- | --- | --- |
-| `include` | string (optional) | Pass `prices` to include price data; omitted by default (no prices returned) |
+| Parameter | Type              | Notes                                                  |
+| --------- | ----------------- | ------------------------------------------------------ |
+| `include` | string (optional) | Pass `prices` to include prices on embedded printings. |
 
 ```http
-GET /api/v1/cards/67f4064886be8495f7165dd7
-GET /api/v1/cards/67f4064886be8495f7165dd7?include=prices
+GET /api/v1/cards/3d8f2da9-9d2b-4a2c-a34d-6f08b54c9571
+GET /api/v1/cards/sun-disc
 ```
 
-Returns 404 if no card with that ID exists.
+Returns 404 when no oracle matches the supplied handle.
 
 ---
 
 ## GET /api/v1/cards/:id/text
 
-Returns a plain-text `text/plain` summary — name, type line, then rules text — suitable for copy-pasting into chat or a deck note.
+Returns a `text/plain` summary of an oracle: name, type line, then rules text.
 
 ```http
-GET /api/v1/cards/67f4064886be8495f7165dd7/text
+GET /api/v1/cards/3d8f2da9-9d2b-4a2c-a34d-6f08b54c9571/text
 ```
-
-Example output:
 
 ```text
 Sun Disc
@@ -190,60 +210,73 @@ Equipped Champion gains +2 Power and +2 Might.
 
 ---
 
-## GET /api/v1/cards/by-slug/*
+## GET /api/v1/cards/by-slug/\*
 
-Look up a single printing by its persisted `public_slug`.  The wildcard
-captures the full path (with slashes), so the route is shaped to match the
-public site URL:
+The wildcard accepts either an oracle slug or a multi-segment printing slug:
 
 ```http
-GET /api/v1/cards/by-slug/ogn/12a/signature/sun-disc
-GET /api/v1/cards/by-slug/ogn/21/sun-disc?include=prices
+GET /api/v1/cards/by-slug/sun-disc
+GET /api/v1/cards/by-slug/ogn/12a/signature/sun-disc?include=prices
 ```
 
-| Parameter | Type | Notes |
-| --- | --- | --- |
-| `*` (path) | string | Slug path, no leading slash |
-| `include` | string (optional) | Pass `prices` to include price data |
+Both forms return an oracle. A printing slug places that edition in `preferred_printing`; an oracle slug uses the oracle's preferred edition.
 
-Returns `404` when no card has the given slug. The Next.js card detail page
-uses this endpoint to render multi-segment URLs that mirror `public_slug`, for
-example `/card/ogn/21/sun-disc` or `/card/ogn/12a/signature/sun-disc` — i.e.
-`/card/<segment>/<segment>/…`, not a single opaque slug token.
+| Parameter  | Type              | Notes                                            |
+| ---------- | ----------------- | ------------------------------------------------ |
+| `*` (path) | string            | Oracle or printing slug without a leading slash. |
+| `include`  | string (optional) | Pass `prices` to include printing prices.        |
+
+Returns 404 when neither slug exists.
+
+---
+
+## GET /api/v1/printings/:id
+
+Returns one physical printing by its ObjectId. Use `/api/v1/cards/:id` for the oracle rules object.
+
+| Parameter | Type              | Notes                            |
+| --------- | ----------------- | -------------------------------- |
+| `include` | string (optional) | Pass `prices` to include prices. |
+
+```http
+GET /api/v1/printings/67f4064886be8495f7165dd7?include=prices
+```
+
+Returns 404 when the printing does not exist.
 
 ---
 
 ## POST /api/v1/cards/resolve
 
-Batch-resolves up to 20 card name strings. Used by the Discord and Reddit bots for `[[Card Name]]` triggers; also useful for any client that needs to go from human-readable names to card objects in one round-trip.
+Batch-resolves up to 20 request strings. Each lookup identifies an oracle and chooses the requested printing, or the oracle's preferred printing when no edition was specified.
 
 ```json
 POST /api/v1/cards/resolve
 {
-  "requests": ["Sun Disc", "Stalwart Poro", "[[Bard|OGN-001]]"],
+  "requests": ["Sun Disc", "Bard|OGN-001", "Card Name|VEN-SP3"],
   "include": "prices"
 }
 ```
 
-Pass `"include": "prices"` in the request body to include price data on resolved cards. Omit it (or pass any other value) to exclude prices.
+Request strings use the content inside a card token: `Name`, `Name|SET`, or `Name|SET-collector`. Collector prefixes such as `T03`, `SP3`, and `R01` are supported. The Discord and Reddit bots pass the inner text parsed from `[[Name|SET-collector]]` mentions.
 
-Each entry in `results` has:
+Each result contains:
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| `request` | object | The parsed request (`name`, `set`, `collector`) |
-| `card` | Card \| null | Matched card, or `null` if not found |
-| `matchType` | string | `"exact"`, `"fuzzy"`, or `"not-found"` |
+| Field       | Type                | Notes                                                           |
+| ----------- | ------------------- | --------------------------------------------------------------- |
+| `request`   | CardRequest         | Parsed `raw`, `name`, optional `set`, and optional `collector`. |
+| `oracle`    | Oracle \| null      | Matched rules object.                                           |
+| `printing`  | Printing \| null    | Requested or preferred physical edition.                        |
+| `matchType` | string              | `exact`, `fuzzy`, or `not-found`.                               |
+| `score`     | number \| undefined | Relevance score for a fuzzy match.                              |
 
-Requests accept plain names or `[[Name|SET-###]]` format — the same syntax the bots parse from messages.
+The response is `{ count, results }`. More than 20 entries returns HTTP 400 with `code: "TOO_MANY_REQUESTS"`.
 
 ---
 
 ## Prices
 
-Prices are **opt-in** — the `prices` field is omitted by default. Pass `?include=prices` (or `"include": "prices"` for the resolve endpoint) to receive price data. `purchase_uris` is always included when available.
-
-Price data is populated by the ingest pipeline from TCGPlayer via tcgcsv.com and stored in Supabase.
+Prices are printing-level and opt-in. Pass `?include=prices`, or `"include": "prices"` in a resolve body. Without it, `prices` is omitted. `purchase_uris` remains available when known.
 
 ```json
 {
@@ -268,4 +301,4 @@ Price data is populated by the ingest pipeline from TCGPlayer via tcgcsv.com and
 }
 ```
 
-All nested price fields are nullable. If a card has no listing for a given provider, those provider fields remain `null`.
+Every nested price is nullable. Price data comes from TCGPlayer through TCGCSV enrichment and does not affect oracle identity or rules.

@@ -2,7 +2,7 @@
  * Coerce a card/set date into the `YYYY-MM-DD` value an `<input type="date">`
  * expects.
  *
- * `Card.released_at` and `SetInfo.publishedOn` are typed as ISO date strings,
+ * `Printing.released_at` and `SetInfo.publishedOn` are typed as ISO date strings,
  * but they originate from Postgres `date` columns and have been observed
  * arriving as timestamps and as non-string values depending on the API build
  * behind `NEXT_PUBLIC_API_URL`. The admin forms must not crash on that, so this

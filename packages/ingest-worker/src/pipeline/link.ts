@@ -1,14 +1,19 @@
 /**
- * Linking passes for the ingest pipeline:
- *   1. linkTokens           — populate all_parts / used_by
- *   2. linkChampionsLegends — populate related_champions / related_legends
- *   3. linkSignatures       — populate related_signatures (+ reverse legend/champion links)
- *   4. linkRelatedPrintings — populate related_printings (same card, different art/print)
+ * Relationship linking: three passes over the oracles, each emitting
+ * oracle → oracle edges.
+ *
+ *   makes_token  maker → the token it creates
+ *   character    legend → champion (the same character in another role)
+ *   signature    legend/champion → its signature card
+ *
+ * Only one direction is emitted. The reverse of every edge is a query against
+ * `oracle_relationships`, not a second row — and "other printings of this card"
+ * is not an edge at all any more, it is `printings WHERE oracle_id = …`.
  */
 
-import { normalizeCardName, type Card, type RelatedCard } from "@riftseer/types";
-import { oracleKeyForName } from "@riftseer/types/oracle";
+import { normalizeCardName } from "../utils.ts";
 import { logger } from "../utils.ts";
+import type { IngestOracle, OracleEdge } from "./types.ts";
 
 // Matches a capitalized token name in rules text, optionally followed by a type
 // word before "token(s)" — upstream writes references as "Sprite unit token",
@@ -17,103 +22,13 @@ const TOKEN_REF_RE =
   /\b((?:[A-Z][a-zA-Z'/-]*)(?:\s+[A-Z][a-zA-Z'/-]*)*)\s+(?:(?:unit|gear|battlefield|spell|rune|counter)\s+)?[Tt]okens?\b/g;
 
 /**
- * Base name used to index a token card. Upstream names carry a face separator
- * and a collector disambiguator — e.g. "Sprite (274) // Buff" or "Gold // Buff".
- * The token itself is the first face with the "(NNN)" suffix stripped, so this
- * yields "sprite" / "gold" for matching against references in rules text.
+ * Base name used to index a token oracle. Oracle names have already had the
+ * face separator and collector disambiguator stripped, but older upstream data
+ * still ships "Gold // Buff" shapes; this is the belt to that braces.
  */
 function baseTokenName(name: string): string {
   const firstFace = name.split("//")[0];
   return normalizeCardName(firstFace.replace(/\s*\([^)]*\)\s*$/, "").trim());
-}
-
-export function linkTokens(cards: Card[]): void {
-  const tokenByNorm = new Map<string, Card[]>();
-  for (const card of cards) {
-    if (!card.is_token) continue;
-    const key = baseTokenName(card.name);
-    const existing = tokenByNorm.get(key);
-    if (existing) {
-      existing.push(card);
-    } else {
-      tokenByNorm.set(key, [card]);
-    }
-  }
-
-  if (tokenByNorm.size === 0) {
-    logger.info("No token cards found — skipping token linking");
-    return;
-  }
-
-  // Keyed by token *name*, not printing id. "Which cards make this token" is a
-  // fact about the token, but a reference in rules text resolves to exactly one
-  // printing — so accumulating by id left Recruit (273) with the whole list and
-  // its siblings 271/272 with nothing.
-  const usedByAccum = new Map<string, RelatedCard[]>();
-
-  for (const card of cards) {
-    if (card.is_token) continue;
-    const text = card.text?.plain ?? "";
-    if (!text) continue;
-
-    const seen = new Set<string>();
-    for (const match of text.matchAll(TOKEN_REF_RE)) {
-      // The capture greedily eats leading capitalized words ("Create a Sprite
-      // token" is fine, but "... Big Sprite token" would capture "Big Sprite").
-      // Try the full phrase first, then progressively shorter suffixes so a real
-      // token name like "Sprite" or "Gold" still resolves.
-      const words = match[1].trim().split(/\s+/);
-      let tokenKey: string | undefined;
-      let tokenCandidates: Card[] | undefined;
-      for (let start = 0; start < words.length; start++) {
-        const key = normalizeCardName(words.slice(start).join(" "));
-        const candidate = tokenByNorm.get(key);
-        if (candidate?.length) {
-          tokenKey = key;
-          tokenCandidates = candidate;
-          break;
-        }
-      }
-      if (!tokenKey || !tokenCandidates?.length) continue;
-
-      const token =
-        tokenCandidates.find((t) => t.set?.set_code === card.set?.set_code) ??
-        tokenCandidates[0];
-      if (seen.has(token.id)) continue;
-      seen.add(token.id);
-
-      card.all_parts.push({
-        object: "related_card",
-        id: token.id,
-        name: token.name,
-        component: "token",
-        uri: `/api/v1/cards/${token.id}`,
-      });
-
-      if (!usedByAccum.has(tokenKey)) usedByAccum.set(tokenKey, []);
-      usedByAccum.get(tokenKey)!.push({
-        object: "related_card",
-        id: card.id,
-        name: card.name,
-        component: "token_of",
-        uri: `/api/v1/cards/${card.id}`,
-      });
-    }
-  }
-
-  // Idempotent, like `linkRelatedPrintings`: every printing of a token is
-  // rewritten from this run's references, including back to `[]`.
-  for (const card of cards) {
-    if (!card.is_token) continue;
-    // Copied per printing so a later relationship override edits one token's
-    // list rather than every sibling's.
-    card.used_by = [...(usedByAccum.get(baseTokenName(card.name)) ?? [])];
-  }
-
-  logger.info("Token linking complete", {
-    tokens: tokenByNorm.size,
-    linkedTokens: usedByAccum.size,
-  });
 }
 
 /**
@@ -133,219 +48,173 @@ function characterPart(name: string): string {
  * `Demacia` and `Poppy` — and matching on any of them cross-links every
  * character that shares a region or species. Only the character tag is written
  * into the name, so intersecting the tags with the name's character half picks
- * it out: `Poppy` matches, `Yordle` and `Demacia` do not.
+ * it out: `Poppy` matches, `Yordle` and `Demacia` do not. RiftCodex also puts a
+ * species tag on some legends the printed card does not carry — Heart of the
+ * Tempest reads `LEGEND | KENNEN` but arrives tagged `Yordle, Kennen`, which
+ * used to link every Yordle champion to Kennen.
  *
  * Matching the *character half* rather than the whole name matters — "Nidalee -
  * Cat Form" and "Lillia - Fae Fawn" would otherwise claim the `Cat` and `Fae`
  * species tags out of their epithets.
  */
-function characterTags(card: Card): string[] {
-  const tags = card.classification?.tags ?? [];
-  const haystack = ` ${normalizeCardName(characterPart(card.name))} `;
-  const matched = tags.filter((tag) =>
+function characterTags(oracle: IngestOracle): string[] {
+  const haystack = ` ${normalizeCardName(characterPart(oracle.name))} `;
+  const matched = oracle.tags.filter((tag) =>
     haystack.includes(` ${normalizeCardName(tag)} `),
   );
   // No tag in the name is not a shape we have seen; fall back to the old
   // behaviour rather than silently dropping the card's links.
-  return matched.length > 0 ? matched : tags;
+  return matched.length > 0 ? matched : oracle.tags;
 }
 
-export function linkChampionsLegends(cards: Card[]): void {
-  const legendsByTag = new Map<string, Card[]>();
-  const championsByTag = new Map<string, Card[]>();
+/** Collects edges, discarding duplicates and self-edges. */
+export class EdgeSet {
+  private readonly seen = new Set<string>();
+  readonly edges: OracleEdge[] = [];
 
-  for (const card of cards) {
-    const type = card.classification?.type?.toLowerCase();
-    const supertype = card.classification?.supertype?.toLowerCase();
-    const tags = card.classification?.tags;
-    if (!tags?.length) continue;
+  add(from: string, to: string, kind: OracleEdge["kind"]): boolean {
+    if (from === to) return false;
+    const key = `${from}|${kind}|${to}`;
+    if (this.seen.has(key)) return false;
+    this.seen.add(key);
+    this.edges.push({ from_oracle_key: from, to_oracle_key: to, kind });
+    return true;
+  }
+}
 
-    if (type === "legend") {
-      // Indexed on every tag: a legend's own spurious species tag is harmless
-      // here, because the lookup key is always the champion's character tag.
-      for (const tag of tags) {
-        if (!legendsByTag.has(tag)) legendsByTag.set(tag, []);
-        legendsByTag.get(tag)!.push(card);
-      }
-    } else if (supertype === "champion") {
-      for (const tag of characterTags(card)) {
-        if (!championsByTag.has(tag)) championsByTag.set(tag, []);
-        championsByTag.get(tag)!.push(card);
+function isLegend(oracle: IngestOracle): boolean {
+  return oracle.card_type?.toLowerCase() === "legend";
+}
+
+function isChampion(oracle: IngestOracle): boolean {
+  return oracle.supertype?.toLowerCase() === "champion";
+}
+
+export function linkTokens(oracles: IngestOracle[], edges: EdgeSet): number {
+  const tokensByName = new Map<string, IngestOracle>();
+  for (const oracle of oracles) {
+    if (!oracle.is_token) continue;
+    const key = baseTokenName(oracle.name);
+    // First writer wins; oracle names are already deduplicated by key, so a
+    // collision here means two token cards genuinely share a base name.
+    if (!tokensByName.has(key)) tokensByName.set(key, oracle);
+  }
+
+  if (tokensByName.size === 0) {
+    logger.info("No token cards found — skipping token linking");
+    return 0;
+  }
+
+  let linked = 0;
+  for (const oracle of oracles) {
+    if (oracle.is_token) continue;
+    const text = oracle.text_plain;
+    if (!text) continue;
+
+    for (const match of text.matchAll(TOKEN_REF_RE)) {
+      // The capture greedily eats leading capitalized words ("Create a Sprite
+      // token" is fine, but "... Big Sprite token" would capture "Big Sprite").
+      // Try the full phrase first, then progressively shorter suffixes so a real
+      // token name like "Sprite" or "Gold" still resolves.
+      const words = match[1].trim().split(/\s+/);
+      for (let start = 0; start < words.length; start++) {
+        const token = tokensByName.get(normalizeCardName(words.slice(start).join(" ")));
+        if (!token) continue;
+        if (edges.add(oracle.oracle_key, token.oracle_key, "makes_token")) linked++;
+        break;
       }
     }
   }
 
-  let linkedLegends = 0;
-  let linkedChampions = 0;
+  logger.info("Token linking complete", { tokens: tokensByName.size, edges: linked });
+  return linked;
+}
 
-  for (const card of cards) {
-    const type = card.classification?.type?.toLowerCase();
-    const supertype = card.classification?.supertype?.toLowerCase();
-    const tags = card.classification?.tags;
-    if (!tags?.length) continue;
+export function linkChampionsLegends(
+  oracles: IngestOracle[],
+  edges: EdgeSet,
+): number {
+  const championsByTag = new Map<string, IngestOracle[]>();
+  for (const oracle of oracles) {
+    if (!isChampion(oracle) || oracle.tags.length === 0) continue;
+    for (const tag of characterTags(oracle)) {
+      const list = championsByTag.get(tag);
+      if (list) list.push(oracle);
+      else championsByTag.set(tag, [oracle]);
+    }
+  }
 
-    if (type === "legend") {
-      const seen = new Set<string>();
-      for (const tag of tags) {
-        for (const champion of championsByTag.get(tag) ?? []) {
-          if (seen.has(champion.id)) continue;
-          seen.add(champion.id);
-          card.related_champions.push({
-            object: "related_card",
-            id: champion.id,
-            name: champion.name,
-            component: "champion",
-            uri: `/api/v1/cards/${champion.id}`,
-          });
-          linkedChampions++;
-        }
-      }
-    } else if (supertype === "champion") {
-      const seen = new Set<string>();
-      for (const tag of characterTags(card)) {
-        for (const legend of legendsByTag.get(tag) ?? []) {
-          if (seen.has(legend.id)) continue;
-          seen.add(legend.id);
-          card.related_legends.push({
-            object: "related_card",
-            id: legend.id,
-            name: legend.name,
-            component: "legend",
-            uri: `/api/v1/cards/${legend.id}`,
-          });
-          linkedLegends++;
-        }
+  let linked = 0;
+  for (const oracle of oracles) {
+    if (!isLegend(oracle)) continue;
+    // Legends look up on every tag they carry, because the index key is always
+    // the champion's own character tag — a legend's spurious species tag simply
+    // finds nothing.
+    for (const tag of oracle.tags) {
+      for (const champion of championsByTag.get(tag) ?? []) {
+        if (edges.add(oracle.oracle_key, champion.oracle_key, "character")) linked++;
       }
     }
   }
 
-  logger.info("Champion/legend linking complete", { linkedChampions, linkedLegends });
+  logger.info("Champion/legend linking complete", { edges: linked });
+  return linked;
 }
 
 /**
- * Link signature cards (classification.supertype === "Signature") to the legend
- * and champion cards they belong to, matching on the shared character tag.
+ * Link signature cards (supertype "Signature") to the legend and champion they
+ * belong to, matching on the shared character tag.
  *
  * Signature cards (e.g. "Daisy!" for Ivern) carry the champion's tag plus, in a
  * few cases, region/group tags like "Ionia" or "Equipment". Those group tags
- * never identify a legend, so we only match on tags that appear on a Legend card
- * (`characterTags`) — this avoids cross-linking every card that shares a region.
- *
- * Populates `related_signatures` on each legend/champion and the reverse
- * `related_legends` / `related_champions` on the signature card, so the existing
- * card-detail rendering shows the relationship from both sides.
+ * never identify a legend, so only tags that appear on a Legend are matched.
+ * No `characterTags` filter is needed here: no signature carries more than one
+ * tag that also appears on a Legend.
  */
-export function linkSignatures(cards: Card[]): void {
-  const characterTags = new Set<string>();
-  const signaturesByTag = new Map<string, Card[]>();
+export function linkSignatures(oracles: IngestOracle[], edges: EdgeSet): number {
+  const legendTags = new Set<string>();
+  const signaturesByTag = new Map<string, IngestOracle[]>();
 
-  for (const card of cards) {
-    const tags = card.classification?.tags;
-    if (!tags?.length) continue;
-
-    if (card.classification?.type?.toLowerCase() === "legend") {
-      for (const tag of tags) characterTags.add(tag);
+  for (const oracle of oracles) {
+    if (oracle.tags.length === 0) continue;
+    if (isLegend(oracle)) {
+      for (const tag of oracle.tags) legendTags.add(tag);
     }
-    if (card.classification?.supertype?.toLowerCase() === "signature") {
-      for (const tag of tags) {
-        if (!signaturesByTag.has(tag)) signaturesByTag.set(tag, []);
-        signaturesByTag.get(tag)!.push(card);
+    if (oracle.supertype?.toLowerCase() === "signature") {
+      for (const tag of oracle.tags) {
+        const list = signaturesByTag.get(tag);
+        if (list) list.push(oracle);
+        else signaturesByTag.set(tag, [oracle]);
       }
     }
   }
 
   if (signaturesByTag.size === 0) {
     logger.info("No signature cards found — skipping signature linking");
-    return;
+    return 0;
   }
 
-  let linkedSignatures = 0;
-
-  for (const card of cards) {
-    const isLegend = card.classification?.type?.toLowerCase() === "legend";
-    const isChampion = card.classification?.supertype?.toLowerCase() === "champion";
-    if (!isLegend && !isChampion) continue;
-    const tags = card.classification?.tags;
-    if (!tags?.length) continue;
-
-    const seen = new Set<string>();
-    for (const tag of tags) {
-      if (!characterTags.has(tag)) continue; // skip region/group tags
+  let linked = 0;
+  for (const oracle of oracles) {
+    if (!isLegend(oracle) && !isChampion(oracle)) continue;
+    for (const tag of oracle.tags) {
+      if (!legendTags.has(tag)) continue; // skip region/group tags
       for (const signature of signaturesByTag.get(tag) ?? []) {
-        if (seen.has(signature.id)) continue;
-        seen.add(signature.id);
-
-        card.related_signatures.push({
-          object: "related_card",
-          id: signature.id,
-          name: signature.name,
-          component: "signature",
-          uri: `/api/v1/cards/${signature.id}`,
-        });
-
-        // Reverse link on the signature so its detail page lists the
-        // legend/champion, reusing the existing related_legends/champions render.
-        const back = isLegend ? signature.related_legends : signature.related_champions;
-        back.push({
-          object: "related_card",
-          id: card.id,
-          name: card.name,
-          component: isLegend ? "legend" : "champion",
-          uri: `/api/v1/cards/${card.id}`,
-        });
-        linkedSignatures++;
+        if (edges.add(oracle.oracle_key, signature.oracle_key, "signature")) linked++;
       }
     }
   }
 
-  logger.info("Signature linking complete", { linkedSignatures });
+  logger.info("Signature linking complete", { edges: linked });
+  return linked;
 }
 
-function toPrintingStub(other: Card): RelatedCard {
-  return {
-    object: "related_card",
-    id: other.id,
-    name: other.name,
-    component: "printing",
-    uri: `/api/v1/cards/${other.id}`,
-    set_code: other.set?.set_code,
-    collector_number: other.collector_number,
-    published_on: other.set?.published_on ?? other.released_at,
-    alternate_art: other.metadata?.alternate_art ?? false,
-  };
-}
-
-/**
- * Idempotent: every card's `related_printings` is rewritten from the current
- * names, including to `[]` when a card no longer has siblings. The override
- * overlay re-runs this after renames so the links agree with the final
- * `oracle_key`.
- */
-export function linkRelatedPrintings(cards: Card[]): void {
-  // Group all cards by oracle key — the same base-name derivation that keys
-  // rulings and legalities, so a printing's siblings here are exactly the
-  // printings that share its rulings. Tokens are included so variants such as
-  // "Recruit (271) // Buff" / "Recruit (272) // Buff" link to each other.
-  const byBase = new Map<string, Card[]>();
-  for (const card of cards) {
-    const key = oracleKeyForName(card.name);
-    if (!byBase.has(key)) byBase.set(key, []);
-    byBase.get(key)!.push(card);
-  }
-
-  let linked = 0;
-  for (const group of byBase.values()) {
-    if (group.length < 2) {
-      group[0]!.related_printings = [];
-      continue;
-    }
-    for (const card of group) {
-      card.related_printings = group
-        .filter((other) => other.id !== card.id)
-        .map((other) => toPrintingStub(other));
-      linked++;
-    }
-  }
-
-  logger.info("Related printing linking complete", { cardsWithPrintings: linked });
+/** Run all three passes and return the deduplicated edge list. */
+export function linkOracles(oracles: IngestOracle[]): OracleEdge[] {
+  const edges = new EdgeSet();
+  linkTokens(oracles, edges);
+  linkChampionsLegends(oracles, edges);
+  linkSignatures(oracles, edges);
+  logger.info("Relationship linking complete", { edges: edges.edges.length });
+  return edges.edges;
 }

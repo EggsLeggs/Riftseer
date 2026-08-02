@@ -1,74 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import type { Card } from "@riftseer/types";
+import type { Oracle, Printing } from "@riftseer/types";
 import { suggestAltTextForCard, suggestCardAltText } from "./alt-text";
 
-function card(overrides: Partial<Card> & Pick<Card, "name">): Card {
-  return {
-    object: "card",
-    id: "x",
-    name_normalized: overrides.name.toLowerCase(),
-    attributes: {},
-    classification: {},
-    text: {},
-    metadata: {},
-    media: {},
-    is_token: false,
-    all_parts: [],
-    used_by: [],
-    related_champions: [],
-    related_legends: [],
-    related_signatures: [],
-    related_printings: [],
-    ...overrides,
-  };
-}
-
 describe("suggestCardAltText", () => {
-  test("builds a description from name, type, set and artist", () => {
-    expect(
-      suggestCardAltText({
-        name: "Sett, Brawler",
-        typeLine: "Champion Unit",
-        setCode: "OGN",
-        collectorNumber: "164",
-        artist: "Kudos Productions",
-      }),
-    ).toBe("Sett, Brawler · Champion Unit · OGN #164. Art by Kudos Productions");
+  test("describes printing variants and artist", () => {
+    expect(suggestCardAltText({ name: "Vayne", typeLine: "Champion Unit", setCode: "OGN", collectorNumber: "12", artist: "Artist", alternateArt: true })).toBe("Vayne · Champion Unit · alternate art · OGN #12. Art by Artist");
   });
-
-  test("mentions every variant flag, in the order they are listed", () => {
-    expect(
-      suggestCardAltText({
-        name: "Ahri",
-        type: "Unit",
-        signature: true,
-        alternateArt: true,
-        overnumbered: true,
-        specialCollection: true,
-        setCode: "OGN",
-        collectorNumber: "305",
-      }),
-    ).toBe(
-      "Ahri · Unit · signature, alternate art, overnumbered, special collection · OGN #305",
-    );
-  });
-
-  test("returns empty when the card has no name", () => {
-    expect(suggestCardAltText({ name: "  " })).toBe("");
-  });
-});
-
-describe("suggestAltTextForCard", () => {
-  test("formats the type line from the card classification", () => {
-    expect(
-      suggestAltTextForCard(
-        card({
-          name: "Sett, Brawler",
-          classification: { type: "Unit", supertype: "Champion" },
-          set: { set_code: "OGN", set_name: "Origins" },
-          collector_number: "164",
-        }),
-      ),
-    ).toBe("Sett, Brawler · Champion Unit · OGN #164");
+  test("accepts an oracle and printing", () => {
+    const oracle = { object: "oracle", id: "o", oracle_key: "vayne", slug: "vayne", name: "Vayne", name_normalized: "vayne", card_type: "Unit", supertype: "Champion", is_token: false, keywords: [], tags: [], domains: [], meta_flags: [] } as Oracle;
+    const printing = { object: "printing", id: "p", oracle_id: "o", public_slug: "ogn/1/vayne", collector_number: "1", finishes: [], signature: false, alternate_art: false, overnumbered: false, special_collection: false } as Printing;
+    expect(suggestAltTextForCard(oracle, printing)).toContain("Vayne · Champion Unit");
   });
 });

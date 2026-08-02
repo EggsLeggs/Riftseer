@@ -14,8 +14,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Jimp from "jimp";
 import { CardDetail, formatTypeLine } from "./components/CardDetail";
 import { parseMaxRecentHistory, useRecentCardHistory } from "./recentHistory";
-import type { Card } from "@riftseer/types";
-import { cardImageUrl } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
+import { printingImageUrl } from "@riftseer/types";
 import type { CardsSearchResponse } from "./types";
 
 // Cache rotated images by URL to avoid re-processing on re-render
@@ -90,9 +90,9 @@ function parseErrorInfo(err: unknown): { message: string; code?: string } {
   return { message, code };
 }
 
-function cardTypeIcon(card: Card): Image.ImageLike | undefined {
-  const tl = card.classification?.type?.toLowerCase();
-  const st = card.classification?.supertype?.toLowerCase();
+function cardTypeIcon(card: Oracle): Image.ImageLike | undefined {
+  const tl = card.card_type?.toLowerCase();
+  const st = card.supertype?.toLowerCase();
   const key =
     st === "token" || st === "basic"
       ? tl === "token"
@@ -103,23 +103,24 @@ function cardTypeIcon(card: Card): Image.ImageLike | undefined {
   return src ? { source: src, tintColor: Color.PrimaryText } : undefined;
 }
 
-function cardAccessory(card: Card): List.Item.Accessory | null {
+function cardAccessory(card: Oracle): List.Item.Accessory | null {
   const icon = cardTypeIcon(card);
   if (icon) return { icon };
   return null;
 }
 
-function cardSiteUrl(card: Card, siteBaseUrl: string): string {
+function cardSiteUrl(card: Oracle, siteBaseUrl: string): string {
   return (
+    card.preferred_printing?.riftseer_uri ??
     card.riftseer_uri ??
-    `${siteBaseUrl.replace(/\/$/, "")}/card/${card.id}`
+    `${siteBaseUrl.replace(/\/$/, "")}/card/${card.preferred_printing?.id ?? card.id}`
   );
 }
 
 function cardActions(
-  card: Card,
+  card: Oracle,
   siteBaseUrl: string,
-  onViewCard: (c: Card) => void,
+  onViewCard: (c: Oracle) => void,
 ) {
   const siteUrl = cardSiteUrl(card, siteBaseUrl);
   return (
@@ -150,13 +151,14 @@ function CardSidebarDetail({
   card,
   siteBaseUrl,
 }: {
-  card: Card;
+  card: Oracle;
   siteBaseUrl: string;
 }) {
   const siteUrl = cardSiteUrl(card, siteBaseUrl);
-  const isLandscape = card.media?.orientation === "landscape";
-  const imgUrl = cardImageUrl(card.media, "small");
-  const altText = card.media?.accessibility_text ?? card.name;
+  const printing = card.preferred_printing;
+  const isLandscape = printing?.image_orientation === "landscape";
+  const imgUrl = printingImageUrl(printing, "small");
+  const altText = printing?.image_alt_text ?? card.name;
 
   const [displayUrl, setDisplayUrl] = useState<string | null>(
     isLandscape ? null : (imgUrl ?? null),
@@ -172,10 +174,7 @@ function CardSidebarDetail({
     }
   }, [imgUrl, isLandscape]);
 
-  const typeLine = formatTypeLine(
-    card.classification?.type,
-    card.classification?.supertype,
-  );
+  const typeLine = formatTypeLine(card.card_type, card.supertype);
 
   return (
     <List.Item.Detail
@@ -187,39 +186,39 @@ function CardSidebarDetail({
           {typeLine && (
             <List.Item.Detail.Metadata.Label title="Type" text={typeLine} />
           )}
-          {card.classification?.rarity && (
+          {printing?.rarity && (
             <List.Item.Detail.Metadata.Label
               title="Rarity"
-              text={card.classification.rarity}
+              text={printing.rarity}
             />
           )}
-          {card.set && (
+          {printing?.set && (
             <List.Item.Detail.Metadata.Label
               title="Set"
-              text={`${card.set.set_name}${card.collector_number ? ` #${card.collector_number}` : ""}`}
+              text={`${printing.set.set_name}${(printing.collector_label ?? printing.collector_number) ? ` #${printing.collector_label ?? printing.collector_number}` : ""}`}
             />
           )}
-          {card.attributes?.energy != null && (
+          {card.energy != null && (
             <List.Item.Detail.Metadata.Label
               title="Energy"
-              text={String(card.attributes.energy)}
+              text={String(card.energy)}
             />
           )}
-          {card.attributes?.power != null && (
+          {card.power != null && (
             <List.Item.Detail.Metadata.Label
               title="Power"
-              text={String(card.attributes.power)}
+              text={String(card.power)}
             />
           )}
-          {card.attributes?.might != null && (
+          {card.might != null && (
             <List.Item.Detail.Metadata.Label
               title="Might"
-              text={String(card.attributes.might)}
+              text={String(card.might)}
             />
           )}
-          {card.classification?.domains?.length ? (
+          {card.domains.length ? (
             <List.Item.Detail.Metadata.TagList title="Domains">
-              {card.classification.domains.map((d) => (
+              {card.domains.map((d) => (
                 <List.Item.Detail.Metadata.TagList.Item key={d} text={d} />
               ))}
             </List.Item.Detail.Metadata.TagList>
@@ -245,12 +244,13 @@ function GridCardItem({
   siteBaseUrl,
   onViewCard,
 }: {
-  card: Card;
+  card: Oracle;
   siteBaseUrl: string;
-  onViewCard: (c: Card) => void;
+  onViewCard: (c: Oracle) => void;
 }) {
-  const isLandscape = card.media?.orientation === "landscape";
-  const imgUrl = cardImageUrl(card.media, "normal");
+  const printing = card.preferred_printing;
+  const isLandscape = printing?.image_orientation === "landscape";
+  const imgUrl = printingImageUrl(printing, "normal");
   const [displayUrl, setDisplayUrl] = useState<string>(
     isLandscape ? TRANSPARENT : (imgUrl ?? TRANSPARENT),
   );
@@ -270,7 +270,7 @@ function GridCardItem({
       id={card.id}
       content={{ source: displayUrl }}
       title={card.name}
-      subtitle={card.set?.set_name}
+      subtitle={printing?.set?.set_name}
       actions={cardActions(card, siteBaseUrl, onViewCard)}
     />
   );
@@ -339,7 +339,7 @@ export default function SearchCards() {
     };
   }, []);
 
-  const displayCardsRef = useRef<Card[]>([]);
+  const displayCardsRef = useRef<Oracle[]>([]);
 
   const scheduleRecordSelection = useCallback(
     (id: string | null) => {
@@ -370,52 +370,49 @@ export default function SearchCards() {
     ? `${api}/api/v1/cards?q=${encodeURIComponent(trimmedQuery)}&fuzzy=true&limit=20`
     : "";
 
-  const { data, isLoading, error } = useFetch<CardsSearchResponse>(
-    searchPath,
-    {
-      execute: hasQuery,
-      parseResponse: async (response) => {
-        const rawText = await response.text();
-        let body: CardsSearchResponse | SearchApiError | null = null;
-        if (rawText) {
-          try {
-            body = JSON.parse(rawText) as CardsSearchResponse | SearchApiError;
-          } catch {
-            body = null;
-          }
+  const { data, isLoading, error } = useFetch<CardsSearchResponse>(searchPath, {
+    execute: hasQuery,
+    parseResponse: async (response) => {
+      const rawText = await response.text();
+      let body: CardsSearchResponse | SearchApiError | null = null;
+      if (rawText) {
+        try {
+          body = JSON.parse(rawText) as CardsSearchResponse | SearchApiError;
+        } catch {
+          body = null;
         }
-        if (response.ok) {
-          if (body) return body as CardsSearchResponse;
-          throw new Error(
-            `Request failed (${response.status}): ${rawText || "Empty response body"}`,
-          );
-        }
-        if (body && isSearchApiError(body)) {
-          const apiErr = new Error(body.error) as Error & { code?: string };
-          apiErr.code = body.code;
-          throw apiErr;
-        }
+      }
+      if (response.ok) {
+        if (body) return body as CardsSearchResponse;
         throw new Error(
           `Request failed (${response.status}): ${rawText || "Empty response body"}`,
         );
-      },
-      onError: (err) => {
-        const { message, code } = parseErrorInfo(err);
-        if (code === "BAD_QUERY") {
-          setQueryErrorMessage(message);
-          setRequestErrorMessage(null);
-          return;
-        }
-        setQueryErrorMessage(null);
-        setRequestErrorMessage(message);
-        showToast({
-          style: Toast.Style.Failure,
-          title: "Search failed",
-          message,
-        });
-      },
+      }
+      if (body && isSearchApiError(body)) {
+        const apiErr = new Error(body.error) as Error & { code?: string };
+        apiErr.code = body.code;
+        throw apiErr;
+      }
+      throw new Error(
+        `Request failed (${response.status}): ${rawText || "Empty response body"}`,
+      );
     },
-  );
+    onError: (err) => {
+      const { message, code } = parseErrorInfo(err);
+      if (code === "BAD_QUERY") {
+        setQueryErrorMessage(message);
+        setRequestErrorMessage(null);
+        return;
+      }
+      setQueryErrorMessage(null);
+      setRequestErrorMessage(message);
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Search failed",
+        message,
+      });
+    },
+  });
 
   useEffect(() => {
     if (!hasQuery) {
@@ -485,12 +482,15 @@ export default function SearchCards() {
             description={queryErrorMessage}
           />
         )}
-        {hasQuery && !isLoading && !queryErrorMessage && requestErrorMessage && (
-          <Grid.EmptyView
-            title="Search failed"
-            description={requestErrorMessage}
-          />
-        )}
+        {hasQuery &&
+          !isLoading &&
+          !queryErrorMessage &&
+          requestErrorMessage && (
+            <Grid.EmptyView
+              title="Search failed"
+              description={requestErrorMessage}
+            />
+          )}
         {showRecent && displayCards.length > 0 ? (
           <Grid.Section title="Recent">
             {displayCards.map((card) => (
@@ -558,7 +558,7 @@ export default function SearchCards() {
               key={card.id}
               id={card.id}
               title={card.name}
-              subtitle={card.set?.set_name}
+              subtitle={card.preferred_printing?.set?.set_name}
               accessories={[cardAccessory(card)].filter(
                 (a): a is List.Item.Accessory => a !== null,
               )}
@@ -573,7 +573,7 @@ export default function SearchCards() {
             key={card.id}
             id={card.id}
             title={card.name}
-            subtitle={card.set?.set_name}
+            subtitle={card.preferred_printing?.set?.set_name}
             accessories={[cardAccessory(card)].filter(
               (a): a is List.Item.Accessory => a !== null,
             )}

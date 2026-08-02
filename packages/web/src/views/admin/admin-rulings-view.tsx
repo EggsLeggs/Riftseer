@@ -47,7 +47,7 @@ const RULING_TYPE_OPTIONS = Object.entries(RULING_TYPE_LABELS).map(
 const KIND_FILTERS = [
   { value: "", label: "All targets" },
   { value: "printing", label: "Single printings" },
-  { value: "oracle", label: "Whole cards" },
+  { value: "oracle", label: "Oracles" },
   { value: "query", label: "Rules" },
 ] as const;
 
@@ -94,25 +94,25 @@ function draftFrom(ruling: AdminRuling): RulingDraft {
 
 function targetToInput(target: AdminRulingTarget): AdminRulingTargetInput {
   if (target.kind === "printing") {
-    return { kind: "printing", card_id: target.card_id ?? "" };
+    return { kind: "printing", printing_id: target.printing_id ?? "" };
   }
   if (target.kind === "query") {
     return { kind: "query", query: target.query ?? "" };
   }
-  return { kind: "oracle", oracle_key: target.oracle_key ?? "" };
+  return { kind: "oracle", oracle_id: target.oracle_id ?? "" };
 }
 
 function targetKey(target: AdminRulingTargetInput): string {
-  if (target.kind === "printing") return `printing:${target.card_id}`;
+  if (target.kind === "printing") return `printing:${target.printing_id}`;
   if (target.kind === "query") return `query:${target.query}`;
-  return `oracle:${target.oracle_key}`;
+  return `oracle:${target.oracle_id}`;
 }
 
 function describeTarget(target: AdminRulingTarget): string {
   if (target.kind === "printing") {
-    return target.card_name ?? target.card_id ?? "Unknown printing";
+    return target.printing_id ?? "Unknown printing";
   }
-  if (target.kind === "oracle") return target.oracle_key ?? "Unknown card";
+  if (target.kind === "oracle") return target.oracle_id ?? "Unknown card";
   return target.query ?? "";
 }
 
@@ -242,7 +242,7 @@ export function AdminRulingsView() {
     <>
       <AdminPageHeader
         title="Rulings"
-        description="Rulings and editorial notes, and what they apply to. A ruling can name one printing, a whole card, or a rule — a saved search that keeps matching cards as new sets are released."
+        description="Rulings and editorial notes, and what they apply to. A ruling can name one printing, an oracle, or a rule — a saved search that keeps matching cards as new sets are released."
         crumbs={[{ label: "Admin", href: "/admin" }, { label: "Rulings" }]}
         actions={
           <Button onClick={() => (draft ? closeEditor() : startCreate())}>
@@ -622,9 +622,9 @@ function TargetEditor({
                     }
                   >
                     {target.kind === "printing"
-                      ? target.card_id
+                      ? target.printing_id
                       : target.kind === "oracle"
-                        ? target.oracle_key
+                        ? target.oracle_id
                         : target.query}
                   </span>
                   <button
@@ -659,7 +659,7 @@ function TargetEditor({
               ? "Rule"
               : value === "printing"
                 ? "Single printing"
-                : "Whole card"}
+                : "Oracle"}
           </button>
         ))}
       </div>
@@ -803,7 +803,7 @@ function CardTargetInput({
   const results = useQuery({
     queryKey: ["admin", "rulings", "card-search", submitted],
     queryFn: () =>
-      cardsApi.searchByName(submitted, { limit: 10, unique: mode === "oracle" }),
+      cardsApi.searchByName(submitted, { limit: 10, unique: mode === "printing" }),
     enabled: submitted.length > 0,
     placeholderData: keepPreviousData,
     retry: false,
@@ -855,29 +855,25 @@ function CardTargetInput({
           <span className="text-muted-foreground">No cards match.</span>
         ) : (
           <ul className="flex flex-col gap-1">
-            {cards.map((card) => (
-              <li key={card.id}>
+            {cards.map(({ oracle, printing }) => (
+              <li key={printing.id}>
                 <button
                   type="button"
                   className="hover:bg-muted w-full rounded px-2 py-1 text-left"
                   onClick={() => {
                     onAdd(
                       mode === "printing"
-                        ? { kind: "printing", card_id: card.id }
-                        : {
-                            kind: "oracle",
-                            oracle_key:
-                              card.oracle_key ?? card.name_normalized,
-                          },
+                        ? { kind: "printing", printing_id: printing.id }
+                        : { kind: "oracle", oracle_id: oracle.id },
                     );
                     setQuery("");
                     setSubmitted("");
                   }}
                 >
-                  {card.name}
+                  {oracle.name}
                   <span className="text-muted-foreground ml-2">
-                    {card.set?.set_code}
-                    {card.collector_number ? ` ${card.collector_number}` : ""}
+                    {printing.set?.set_code}
+                    {printing.collector_number ? ` ${printing.collector_number}` : ""}
                   </span>
                 </button>
               </li>

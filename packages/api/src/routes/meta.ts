@@ -18,14 +18,16 @@ export function metaRoutes(cardProvider: CardDataProvider, startTime: number) {
     .get(
       "/meta",
       () => {
-        const { lastRefresh, cardCount } = cardProvider.getStats();
+        const { lastRefresh, oracleCount, printingCount } =
+          cardProvider.getStats();
         const cacheAgeSeconds = lastRefresh
           ? Math.floor(Date.now() / 1000 - lastRefresh)
           : null;
 
         return {
           provider: cardProvider.sourceName,
-          cardCount,
+          oracleCount,
+          printingCount,
           lastRefresh: lastRefresh
             ? new Date(lastRefresh * 1000).toISOString()
             : null,
@@ -36,7 +38,8 @@ export function metaRoutes(cardProvider: CardDataProvider, startTime: number) {
       {
         response: t.Object({
           provider: t.String(),
-          cardCount: t.Number(),
+          oracleCount: t.Number({ description: "Distinct cards" }),
+          printingCount: t.Number({ description: "Physical printings" }),
           lastRefresh: t.Nullable(t.String()),
           cacheAgeSeconds: t.Nullable(t.Number()),
           uptimeSeconds: t.Number(),
@@ -45,7 +48,7 @@ export function metaRoutes(cardProvider: CardDataProvider, startTime: number) {
           tags: ["Meta"],
           summary: "Provider metadata",
           description:
-            "Returns provider name, cache age, last refresh time, and card count.",
+            "Returns provider name, cache age, last refresh time, and catalogue sizes.",
         },
       },
     );

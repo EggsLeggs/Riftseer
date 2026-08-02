@@ -1,14 +1,16 @@
 import {
   parseCardSearchQuery,
-  type Card,
   type CardDataProvider,
   type CardLegality,
   type CardRequest,
   type CardRuling,
   type CardSearchAst,
   type CardSearchOptions,
-  type CardSearchResult,
   type Format,
+  type Oracle,
+  type OracleSearchResult,
+  type Printing,
+  type PrintingSearchResult,
   type ResolvedCard,
 } from "@riftseer/core";
 
@@ -21,11 +23,6 @@ export const STUB_FORMAT: Format = {
   active: true,
 };
 
-/**
- * The stub keeps a single ruling and a single banned format on STUB_CARD's
- * oracle group, so route tests can assert the card-detail payload carries them
- * through without standing up Postgres.
- */
 export const STUB_RULING: CardRuling = {
   object: "card_ruling",
   id: "ffffffff-0000-0000-0000-000000000001",
@@ -33,171 +30,139 @@ export const STUB_RULING: CardRuling = {
   text: "Sun Disc's ability resolves before the unit readies.",
   dated: "2026-03-14",
   source: "Rules team",
+  scope: "oracle",
 };
 
-export const STUB_PRINTING_ID = "bf1bafdc-2739-469b-bde6-c24a868f4980";
+export const STUB_ORACLE_ID = "bf1bafdc-2739-469b-bde6-c24a868f4979";
+export const STUB_PRINTING_ID = "aaaaaaaaaaaaaaaaaaaaaaa1";
+export const STUB_ALT_PRINTING_ID = "aaaaaaaaaaaaaaaaaaaaaaa2";
 export const STUB_TOKEN_ID = "cccccccc-0000-0000-0000-000000000001";
 export const STUB_CHAMPION_ID = "aaaaaaaa-0000-0000-0000-000000000001";
 export const STUB_SIGNATURE_ID = "dddddddd-0000-0000-0000-000000000001";
 
-export const STUB_CARD: Card = {
-  object: "card",
-  id: "bf1bafdc-2739-469b-bde6-c24a868f4979",
-  name: "Sun Disc",
-  name_normalized: "sun disc",
-  collector_number: "21",
-  external_ids: {
-    riftcodex_id: "bf1bafdc-2739-469b-bde6-c24a868f4979",
-    tcgplayer_id: "123456",
-  },
-  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
-  attributes: { energy: 2, might: null, power: 1 },
-  classification: { type: "Gear", supertype: null, rarity: "Uncommon", domains: ["Fury"] },
-  text: { plain: ":rb_exhaust:: Next unit ready. Create a Sprite Token." },
-  artist: "Envar Studio",
-  media: {
-    orientation: "portrait",
-    media_urls: { normal: "https://cdn.example.com/sun-disc.png" },
-  },
-  metadata: { alternate_art: false, overnumbered: false, signature: false },
+function printing(
+  id: string,
+  oracleId: string,
+  overrides: Partial<Printing> = {},
+): Printing {
+  return {
+    object: "printing",
+    id,
+    oracle_id: oracleId,
+    set: {
+      set_code: "OGN",
+      set_name: "Origins",
+      published_on: "2025-01-01",
+    },
+    collector_number: "21",
+    collector_label: "21",
+    rarity: "Uncommon",
+    artist: "Envar Studio",
+    finishes: ["Normal"],
+    signature: false,
+    alternate_art: false,
+    overnumbered: false,
+    special_collection: false,
+    public_slug: "ogn/21/sun-disc",
+    source: "riftcodex",
+    ...overrides,
+  };
+}
+
+export const STUB_PRINTING = printing(STUB_PRINTING_ID, STUB_ORACLE_ID, {
+  image: { normal: "https://cdn.example.com/sun-disc.png" },
   prices: { tcgplayer: { normal: 1.25, foil: 4.5 } },
-  is_token: false,
-  all_parts: [
-    {
-      object: "related_card",
-      id: STUB_TOKEN_ID,
-      name: "Sprite",
-      component: "token",
-      uri: `/api/v1/cards/${STUB_TOKEN_ID}`,
-    },
-  ],
-  used_by: [],
-  related_champions: [
-    {
-      object: "related_card",
-      id: STUB_CHAMPION_ID,
-      name: "Sun Disc, Champion",
-      component: "champion",
-      uri: `/api/v1/cards/${STUB_CHAMPION_ID}`,
-    },
-  ],
-  related_legends: [],
-  related_signatures: [
-    {
-      object: "related_card",
-      id: STUB_SIGNATURE_ID,
-      name: "Sun Disc, Signature",
-      component: "signature",
-      uri: `/api/v1/cards/${STUB_SIGNATURE_ID}`,
-    },
-  ],
-  related_printings: [
-    {
-      object: "related_card",
-      id: STUB_PRINTING_ID,
-      name: "Sun Disc",
-      component: "printing",
-      uri: `/api/v1/cards/${STUB_PRINTING_ID}`,
-    },
-  ],
-  public_slug: "ogn/21/sun-disc",
-};
+  purchase_uris: { tcgplayer: "https://www.tcgplayer.com/product/123456" },
+  external_ids: { riftcodex_id: STUB_PRINTING_ID, tcgplayer_id: "123456" },
+});
 
-/** Alternate-art reprint of {@link STUB_CARD}. */
-const STUB_PRINTING: Card = {
-  ...STUB_CARD,
-  id: STUB_PRINTING_ID,
+export const STUB_ALT_PRINTING = printing(STUB_ALT_PRINTING_ID, STUB_ORACLE_ID, {
   collector_number: "22",
-  metadata: { alternate_art: true, overnumbered: false, signature: false },
-  prices: { tcgplayer: { normal: 9.99 } },
-  all_parts: [],
-  related_champions: [],
-  related_printings: [
-    {
-      object: "related_card",
-      id: STUB_CARD.id,
-      name: STUB_CARD.name,
-      component: "printing",
-      uri: `/api/v1/cards/${STUB_CARD.id}`,
-    },
-  ],
+  collector_label: "22a",
+  alternate_art: true,
   public_slug: "ogn/22a/sun-disc",
-};
+  prices: { tcgplayer: { normal: 9.99 } },
+});
 
-const STUB_TOKEN: Card = {
-  object: "card",
-  id: STUB_TOKEN_ID,
-  name: "Sprite",
-  name_normalized: "sprite",
-  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
-  classification: { type: "Unit", supertype: "Token", rarity: "Common" },
-  is_token: true,
-  all_parts: [],
-  used_by: [
-    {
-      object: "related_card",
-      id: STUB_CARD.id,
-      name: STUB_CARD.name,
-      component: "token_of",
-      uri: `/api/v1/cards/${STUB_CARD.id}`,
-    },
-  ],
-  related_champions: [],
-  related_legends: [],
-  related_signatures: [],
-  related_printings: [],
+function oracle(
+  id: string,
+  name: string,
+  overrides: Partial<Oracle> = {},
+): Oracle {
+  return {
+    object: "oracle",
+    id,
+    oracle_key: name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    name,
+    name_normalized: name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+    card_type: "Unit",
+    supertype: null,
+    is_token: false,
+    keywords: [],
+    tags: [],
+    domains: [],
+    meta_flags: [],
+    source: "riftcodex",
+    ...overrides,
+  };
+}
+
+export const STUB_ORACLE = oracle(STUB_ORACLE_ID, "Sun Disc", {
+  card_type: "Gear",
+  energy: 2,
+  power: 1,
+  text: { plain: ":rb_exhaust:: Next unit ready. Create a Sprite Token." },
+  domains: ["Fury"],
+  preferred_printing: STUB_PRINTING,
+});
+
+/** Compatibility alias for the few route tests that use the old fixture name. */
+export const STUB_CARD = STUB_ORACLE;
+
+const TOKEN_PRINTING = printing("ccccccccccccccccccccccc1", STUB_TOKEN_ID, {
+  collector_number: "T1",
+  collector_label: "T1",
+  rarity: "Common",
   public_slug: "ogn/t1/sprite",
-};
-
-/** Deliberately has no public_slug so riftseer_uri hydration stays untested here. */
-const STUB_CHAMPION: Card = {
-  object: "card",
-  id: STUB_CHAMPION_ID,
-  name: "Sun Disc, Champion",
-  name_normalized: "sun disc champion",
+});
+const CHAMPION_PRINTING = printing("bbbbbbbbbbbbbbbbbbbbbbb1", STUB_CHAMPION_ID, {
   collector_number: "5",
-  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
-  classification: { type: "Unit", supertype: "Champion", rarity: "Rare" },
-  is_token: false,
-  all_parts: [],
-  used_by: [],
-  related_champions: [],
-  related_legends: [],
-  related_signatures: [],
-  related_printings: [],
-};
-
-/** Signature card tied to {@link STUB_CARD} via related_signatures. */
-const STUB_SIGNATURE: Card = {
-  object: "card",
-  id: STUB_SIGNATURE_ID,
-  name: "Sun Disc, Signature",
-  name_normalized: "sun disc signature",
-  collector_number: "21",
-  set: { set_code: "OGN", set_name: "Origins", published_on: "2025-01-01" },
-  classification: { type: "Spell", supertype: "Signature", rarity: "Rare" },
-  metadata: { alternate_art: false, overnumbered: false, signature: true },
-  is_token: false,
-  all_parts: [],
-  used_by: [],
-  related_champions: [],
-  related_legends: [],
-  related_signatures: [],
-  related_printings: [],
+  collector_label: "5",
+  rarity: "Rare",
+  public_slug: "ogn/5/sun-disc-champion",
+});
+const SIGNATURE_PRINTING = printing("ddddddddddddddddddddddd1", STUB_SIGNATURE_ID, {
+  signature: true,
+  rarity: "Rare",
   public_slug: "ogn/21/signature/sun-disc",
-};
+});
 
-const STUB_CARDS: Card[] = Array.from({ length: 5 }, (_, i) => ({
-  ...STUB_CARD,
-  id: `bf1bafdc-2739-469b-bde6-c24a868f49${70 + i}`,
-  collector_number: String(21 + i),
-}));
+const STUB_TOKEN = oracle(STUB_TOKEN_ID, "Sprite", {
+  is_token: true,
+  preferred_printing: TOKEN_PRINTING,
+});
+const STUB_CHAMPION = oracle(STUB_CHAMPION_ID, "Sun Disc, Champion", {
+  supertype: "Champion",
+  domains: ["Fury"],
+  preferred_printing: CHAMPION_PRINTING,
+});
+const STUB_SIGNATURE = oracle(STUB_SIGNATURE_ID, "Sun Disc, Signature", {
+  card_type: "Spell",
+  supertype: "Signature",
+  preferred_printing: SIGNATURE_PRINTING,
+});
 
-const CARDS_BY_ID = new Map<string, Card>(
-  [STUB_CARD, STUB_PRINTING, STUB_TOKEN, STUB_CHAMPION, STUB_SIGNATURE].map(
-    (c) => [c.id, c],
-  ),
-);
+const ORACLES = [STUB_ORACLE, STUB_TOKEN, STUB_CHAMPION, STUB_SIGNATURE];
+const PRINTINGS = [
+  STUB_PRINTING,
+  STUB_ALT_PRINTING,
+  TOKEN_PRINTING,
+  CHAMPION_PRINTING,
+  SIGNATURE_PRINTING,
+];
+const ORACLES_BY_ID = new Map(ORACLES.map((value) => [value.id, value]));
+const PRINTINGS_BY_ID = new Map(PRINTINGS.map((value) => [value.id, value]));
 
 export class StubProvider implements CardDataProvider {
   readonly sourceName = "stub";
@@ -205,231 +170,220 @@ export class StubProvider implements CardDataProvider {
   async warmup() {}
   async refresh() {}
 
-  async getCardById(id: string): Promise<Card | null> {
-    return CARDS_BY_ID.get(id) ?? null;
+  async getOracleById(id: string): Promise<Oracle | null> {
+    return ORACLES_BY_ID.get(id) ?? null;
   }
 
-  async getCardByPublicSlug(slug: string): Promise<Card | null> {
-    for (const card of CARDS_BY_ID.values()) {
-      if (card.public_slug === slug) return card;
+  async getOracleByKey(key: string): Promise<Oracle | null> {
+    return ORACLES.find((value) => value.oracle_key === key) ?? null;
+  }
+
+  async getOracleBySlug(slug: string): Promise<Oracle | null> {
+    return ORACLES.find((value) => value.slug === slug) ?? null;
+  }
+
+  async getOraclesByIds(ids: string[]): Promise<Oracle[]> {
+    return ids.flatMap((id) => ORACLES_BY_ID.get(id) ?? []);
+  }
+
+  async getPrintingsForOracle(oracleId: string): Promise<Printing[]> {
+    return PRINTINGS.filter((value) => value.oracle_id === oracleId);
+  }
+
+  async getOracleRelationships(oracleId: string) {
+    const empty = { makes_tokens: [], used_by: [], characters: [], signatures: [] };
+    if (oracleId === STUB_ORACLE_ID) {
+      return {
+        makes_tokens: [STUB_TOKEN],
+        used_by: [],
+        characters: [STUB_CHAMPION],
+        signatures: [STUB_SIGNATURE],
+      };
     }
-    return null;
+    if (oracleId === STUB_TOKEN_ID) return { ...empty, used_by: [STUB_ORACLE] };
+    return empty;
   }
 
-  async getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>> {
-    const result = new Map<string, string>();
-    for (const id of ids) {
-      const slug = CARDS_BY_ID.get(id)?.public_slug;
-      if (slug) result.set(id, slug);
-    }
-    return result;
+  async getPrintingById(id: string): Promise<Printing | null> {
+    return PRINTINGS_BY_ID.get(id) ?? null;
   }
 
-  async getCardsByIds(ids: string[]): Promise<Card[]> {
-    return ids.flatMap((id) => {
-      const card = CARDS_BY_ID.get(id);
-      return card ? [card] : [];
+  async getPrintingBySlug(slug: string): Promise<Printing | null> {
+    return PRINTINGS.find((value) => value.public_slug === slug) ?? null;
+  }
+
+  async getPrintingsByIds(ids: string[]): Promise<Printing[]> {
+    return ids.flatMap((id) => PRINTINGS_BY_ID.get(id) ?? []);
+  }
+
+  async getPrintingsBySet(setCode: string, opts?: { limit?: number }): Promise<Printing[]> {
+    const rows = PRINTINGS.filter(
+      (value) => value.set?.set_code.toLowerCase() === setCode.toLowerCase(),
+    );
+    return rows.slice(0, opts?.limit ?? rows.length);
+  }
+
+  async searchOracles(q: string, opts?: CardSearchOptions): Promise<OracleSearchResult> {
+    const parsed = parseCardSearchQuery(q).ast;
+    return parsed ? this.searchOraclesByAst(parsed, opts) : { oracles: [], total: 0 };
+  }
+
+  async searchOraclesByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<OracleSearchResult> {
+    const matches = ORACLES.filter((value) =>
+      matchAst(value, value.preferred_printing, ast),
+    );
+    const { offset, limit } = page(opts);
+    return { oracles: matches.slice(offset, offset + limit), total: matches.length };
+  }
+
+  async searchPrintingsByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<PrintingSearchResult> {
+    const matches = PRINTINGS.filter((value) => {
+      const owner = ORACLES_BY_ID.get(value.oracle_id);
+      return owner ? matchAst(owner, value, ast) : false;
     });
+    const { offset, limit } = page(opts);
+    const printings = matches.slice(offset, offset + limit);
+    const ownerIds = new Set(printings.map((value) => value.oracle_id));
+    return {
+      printings,
+      oracles: ORACLES.filter((value) => ownerIds.has(value.id)),
+      total: matches.length,
+    };
   }
 
-  async searchByName(q: string, opts?: CardSearchOptions): Promise<CardSearchResult> {
-    const { ast } = parseCardSearchQuery(q);
-    if (!ast) return { cards: [], total: 0 };
-    return this.searchByAst(ast, opts);
-  }
-
-  async searchByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<CardSearchResult> {
-    const matches = matchAst(STUB_CARD, ast) ? [STUB_CARD] : [];
-    const offset = Math.max(0, Math.floor(opts?.offset ?? 0));
-    const limit = Math.min(Math.max(Math.floor(Number(opts?.limit ?? 10)), 1), 100);
-    const total = matches.length;
-    const page = matches.slice(offset, offset + limit);
-    return { cards: page, total };
-  }
-
-  async resolveRequest(req: CardRequest): Promise<ResolvedCard> {
-    if (req.name.toLowerCase() === "sun disc") {
-      return { request: req, card: STUB_CARD, matchType: "exact" };
+  async resolveRequest(request: CardRequest): Promise<ResolvedCard> {
+    const oracle = ORACLES.find(
+      (value) => value.name_normalized === request.name.toLowerCase(),
+    );
+    if (!oracle) {
+      return { request, oracle: null, printing: null, matchType: "not-found" };
     }
-    return { request: req, card: null, matchType: "not-found" };
+    const candidates = PRINTINGS.filter((value) => value.oracle_id === oracle.id);
+    const scoped = candidates.find((value) => {
+      const setMatches = !request.set || value.set?.set_code.toLowerCase() === request.set.toLowerCase();
+      const collectorMatches = !request.collector || value.collector_number?.toLowerCase() === request.collector.toLowerCase();
+      return setMatches && collectorMatches;
+    });
+    return {
+      request,
+      oracle,
+      printing: scoped ?? oracle.preferred_printing ?? null,
+      matchType: "exact",
+    };
   }
 
-  async getSets(): Promise<
-    Array<{ setCode: string; setName: string; cardCount: number; isPromo: boolean; publishedOn: string | null }>
-  > {
-    return [{ setCode: "OGN", setName: "Origins", cardCount: 1, isPromo: false, publishedOn: null }];
+  async browseOracles(opts: { limit: number; offset: number }): Promise<OracleSearchResult> {
+    return {
+      oracles: ORACLES.slice(opts.offset, opts.offset + opts.limit),
+      total: ORACLES.length,
+    };
   }
 
-  async getCardsBySet(
-    setCode: string,
-    _opts?: { limit?: number }
-  ): Promise<Card[]> {
-    return setCode === "OGN" ? [STUB_CARD] : [];
+  async getRandomOracle(): Promise<Oracle | null> {
+    return STUB_ORACLE;
   }
 
-  async getRandomCard(): Promise<Card | null> {
-    return STUB_CARD;
-  }
-
-  async browseCards(opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }> {
-    const total = STUB_CARDS.length;
-    const start = opts.offset;
-    const end = opts.offset + opts.limit;
-    return { cards: STUB_CARDS.slice(start, end), total };
+  async getSets() {
+    return [{
+      setCode: "OGN",
+      setName: "Origins",
+      cardCount: PRINTINGS.length,
+      isPromo: false,
+      publishedOn: "2025-01-01",
+    }];
   }
 
   async getFormats(opts?: { includeInactive?: boolean }): Promise<Format[]> {
-    return opts?.includeInactive
-      ? [STUB_FORMAT, { ...STUB_FORMAT, id: "retired", code: "retired", name: "Retired", sort_order: 1, active: false }]
-      : [STUB_FORMAT];
+    const retired: Format = {
+      ...STUB_FORMAT,
+      id: "eeeeeeee-0000-0000-0000-000000000002",
+      code: "retired",
+      name: "Retired",
+      sort_order: 1,
+      active: false,
+    };
+    return opts?.includeInactive ? [STUB_FORMAT, retired] : [STUB_FORMAT];
   }
 
-  async getCardLegalities(
-    _oracleKey: string,
-    cardId: string,
-  ): Promise<CardLegality[]> {
-    return [
-      {
-        object: "card_legality",
-        format_id: STUB_FORMAT.id,
-        format_code: STUB_FORMAT.code,
-        format_name: STUB_FORMAT.name,
-        // Only the base printing is banned, so tests can tell the printing
-        // override apart from the shared oracle status.
-        status: cardId === STUB_CARD.id ? "banned" : "legal",
-        scope: cardId === STUB_CARD.id ? "oracle" : "default",
-      },
-    ];
+  async getLegalities(printingId: string): Promise<CardLegality[]> {
+    const base = printingId === STUB_PRINTING_ID;
+    return [{
+      object: "card_legality",
+      format_id: STUB_FORMAT.id,
+      format_code: STUB_FORMAT.code,
+      format_name: STUB_FORMAT.name,
+      status: base ? "banned" : "legal",
+      scope: base ? "oracle" : "printing",
+    }];
   }
 
-  async getCardRulings(
-    _oracleKey: string,
-    cardId: string,
-  ): Promise<CardRuling[]> {
-    return cardId === STUB_CARD.id ? [STUB_RULING] : [];
+  async getRulings(printingId: string): Promise<CardRuling[]> {
+    return printingId === STUB_PRINTING_ID ? [STUB_RULING] : [];
   }
 
   getStats() {
-    return { lastRefresh: 0, cardCount: 1 };
+    return { lastRefresh: 0, oracleCount: ORACLES.length, printingCount: PRINTINGS.length };
   }
 }
 
-/**
- * Tiny in-memory AST evaluator covering every leaf type the parser produces.
- * Keeps the stub provider faithful to the production semantics so API-route
- * tests can exercise the new query language without hitting Postgres.
- */
-function matchAst(card: Card, ast: CardSearchAst): boolean {
+function page(opts?: CardSearchOptions) {
+  return {
+    offset: Math.max(0, Math.floor(opts?.offset ?? 0)),
+    limit: Math.min(Math.max(Math.floor(Number(opts?.limit ?? 10)), 1), 100),
+  };
+}
+
+function matchAst(oracle: Oracle, printing: Printing | undefined, ast: CardSearchAst): boolean {
+  const includes = (value: string | null | undefined, needle: string) =>
+    (value ?? "").toLowerCase().includes(needle);
+  const equalsAny = (values: string[], needle: string) =>
+    values.some((value) => value.toLowerCase() === needle);
+
   switch (ast.op) {
-    case "and":
-      return ast.children.every((c) => matchAst(card, c));
-    case "or":
-      return ast.children.some((c) => matchAst(card, c));
-    case "not":
-      return !matchAst(card, ast.child);
-    case "text": {
-      const needle = ast.value.toLowerCase();
-      return card.name.toLowerCase().includes(needle);
-    }
-    case "exact_name":
-      return card.name_normalized === ast.value;
+    case "and": return ast.children.every((child) => matchAst(oracle, printing, child));
+    case "or": return ast.children.some((child) => matchAst(oracle, printing, child));
+    case "not": return !matchAst(oracle, printing, ast.child);
+    case "text": return includes(oracle.name, ast.value.toLowerCase());
+    case "exact_name": return oracle.name_normalized === ast.value;
     case "filter": {
       const needle = ast.value.toLowerCase();
-      const includes = (h: string | null | undefined) =>
-        (h ?? "").toLowerCase().includes(needle);
-      const equalsAny = (values: string[] | undefined) =>
-        (values ?? []).some((v) => v.toLowerCase() === needle);
       switch (ast.field) {
-        case "type": {
-          const haystacks = [
-            card.classification?.type ?? "",
-            card.classification?.supertype ?? "",
-            ...(card.classification?.tags ?? []),
-          ];
-          return haystacks.some(includes);
-        }
-        case "supertype":
-          return includes(card.classification?.supertype);
-        case "rarity":
-          return includes(card.classification?.rarity);
-        case "artist":
-          return includes(card.artist);
-        case "name":
-          return includes(card.name);
-        case "set":
-          return (card.set?.set_code ?? "").toLowerCase() === needle;
-        // Keyword and domain match exactly — see CardSearchField's doc comment.
-        case "keyword":
-          return equalsAny(card.keywords);
-        case "domain":
-          return equalsAny(card.classification?.domains);
-        case "tag":
-          return (card.classification?.tags ?? []).some(includes);
-        case "produces":
-          return card.all_parts.some((p) => includes(p.name));
-        default:
-          return false;
+        case "type": return [oracle.card_type, oracle.supertype, ...oracle.tags].some((v) => includes(v, needle));
+        case "supertype": return includes(oracle.supertype, needle);
+        case "rarity": return includes(printing?.rarity, needle);
+        case "artist": return includes(printing?.artist, needle);
+        case "keyword": return equalsAny(oracle.keywords, needle);
+        case "domain": return equalsAny(oracle.domains, needle);
+        case "tag": return oracle.tags.some((value) => includes(value, needle));
+        case "set": return printing?.set?.set_code.toLowerCase() === needle;
+        case "produces": return oracle.id === STUB_ORACLE_ID && includes(STUB_TOKEN.name, needle);
+        case "name": return includes(oracle.name, needle);
       }
     }
     case "numeric": {
-      const actual =
-        ast.field === "domain_count"
-          ? (card.classification?.domains ?? []).length
-          : (card.attributes?.[ast.field] ?? null);
-      // A null stat never satisfies a comparison — not even `!=`, matching the
-      // SQL, where every comparison against NULL is unknown.
-      if (actual === null || actual === undefined) return false;
-      switch (ast.cmp) {
-        case "eq":
-          return actual === ast.value;
-        case "ne":
-          return actual !== ast.value;
-        case "gt":
-          return actual > ast.value;
-        case "gte":
-          return actual >= ast.value;
-        case "lt":
-          return actual < ast.value;
-        case "lte":
-          return actual <= ast.value;
-      }
-      return false;
+      const actual = ast.field === "domain_count" ? oracle.domains.length : oracle[ast.field];
+      if (actual == null) return false;
+      if (ast.cmp === "eq") return actual === ast.value;
+      if (ast.cmp === "ne") return actual !== ast.value;
+      if (ast.cmp === "gt") return actual > ast.value;
+      if (ast.cmp === "gte") return actual >= ast.value;
+      if (ast.cmp === "lt") return actual < ast.value;
+      return actual <= ast.value;
     }
     case "legality": {
-      // The stub stores one banned format on STUB_CARD; everything else is
-      // default-legal, which is the production fallback too.
-      const banned =
-        card.id === STUB_CARD.id && ast.format === STUB_FORMAT.code;
-      const status = banned ? "banned" : "legal";
+      const status = printing?.id === STUB_PRINTING_ID && ast.format === STUB_FORMAT.code
+        ? "banned"
+        : "legal";
       return status === ast.status;
     }
-    case "flag":
-      switch (ast.value) {
-        case "token":
-          return card.is_token;
-        case "signature":
-          return card.metadata?.signature === true;
-        case "alternate":
-          return card.metadata?.alternate_art === true;
-        case "overnumbered":
-          return card.metadata?.overnumbered === true;
-        case "special":
-          return card.metadata?.special_collection === true;
-        case "manual":
-          return card.source === "manual";
-        case "foil":
-          return (card.metadata?.finishes ?? []).some(
-            (f) => f.toLowerCase() === "foil",
-          );
-      }
-      return false;
-    default: {
-      const unreachable: never = ast;
-      throw new Error(
-        `Unsupported card search AST op in stub provider: ${
-          (unreachable as { op?: string }).op ?? "unknown"
-        }`,
-      );
+    case "flag": {
+      if (ast.value === "token") return oracle.is_token;
+      if (ast.value === "signature") return printing?.signature === true;
+      if (ast.value === "alternate") return printing?.alternate_art === true;
+      if (ast.value === "overnumbered") return printing?.overnumbered === true;
+      if (ast.value === "special") return printing?.special_collection === true;
+      if (ast.value === "manual") return oracle.source === "manual" || printing?.source === "manual";
+      return printing?.finishes.some((value) => value.toLowerCase() === "foil") === true;
     }
   }
 }

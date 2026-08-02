@@ -1,13 +1,14 @@
 import { Deck } from "../deck";
 import { DeckSerializer } from "../serialiser";
-import { Card, SimplifiedDeck } from "../types";
+import type { DeckCard } from "../deck-card.ts";
+import type { SimplifiedDeck } from "../types.ts";
 import { SimplifiedDeckProvider } from "../provider";
 
 export class SimplifiedDeckProviderImpl implements SimplifiedDeckProvider {
   serialiser: DeckSerializer;
-  cardLookupFn: (id: string) => Promise<Card>;
+  cardLookupFn: (id: string) => Promise<DeckCard>;
 
-  constructor(serialiser: DeckSerializer, cardLookupFn: (id: string) => Promise<Card>) {
+  constructor(serialiser: DeckSerializer, cardLookupFn: (id: string) => Promise<DeckCard>) {
     this.serialiser = serialiser;
     this.cardLookupFn = cardLookupFn;
   }

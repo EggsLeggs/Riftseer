@@ -3,8 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { CardDetail } from "@riftseer/types";
-import { cardImageDownloadUrl, cardImageUrl } from "@riftseer/types";
+import type { OracleDetail } from "@riftseer/types";
+import { printingImageDownloadUrl, printingImageUrl } from "@riftseer/types";
 import {
   DownloadIcon,
   ExternalLinkIcon,
@@ -24,12 +24,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cardExportUrls } from "@/features/cards/api";
 import { CardArt } from "@/features/cards/card-art";
@@ -42,7 +37,10 @@ import {
   RarityIcon,
 } from "@/features/cards/card-icons";
 import { CardLegalityGrid } from "@/features/cards/card-legalities";
-import { CardPrintingsTable } from "@/features/cards/card-printings-table";
+import {
+  CardPrintingsTable,
+  OracleReferencesTable,
+} from "@/features/cards/card-printings-table";
 import { CardRulings } from "@/features/cards/card-rulings";
 import { CardTags } from "@/features/cards/card-tags";
 import { CardText } from "@/features/cards/card-text";
@@ -57,10 +55,7 @@ import {
 } from "@/features/cards/format";
 import { cardHref } from "@/features/cards/paths";
 import { reportCardIssueUrl } from "@/features/cards/report-issue";
-import {
-  artistSearchQuery,
-  searchHref,
-} from "@/features/cards/search-links";
+import { artistSearchQuery, searchHref } from "@/features/cards/search-links";
 import { ShareButton } from "@/features/cards/share-button";
 import {
   CARD_DETAIL_VIEW_OPTIONS,
@@ -79,63 +74,33 @@ export function CardDetailView({
   detail,
   isAdmin = false,
 }: {
-  detail: CardDetail;
-  /** Resolved server-side; gates the inline link into the admin card editor. */
+  detail: OracleDetail;
   isAdmin?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { accessibility, patchAccessibility } = useSitePreferences();
-  const view =
-    parseViewParam(searchParams.get("view")) ?? accessibility.cardDetailView;
+  const view = parseViewParam(searchParams.get("view")) ?? accessibility.cardDetailView;
+  const { oracle, printing } = detail;
+  const domains = meaningfulCardDomains(oracle);
+  const rulesText = meaningfulRulesText(oracle.text?.plain) ?? null;
+  const imageUrl = printingImageUrl(printing, "large");
 
   const setView = React.useCallback(
     (next: CardDetailViewPreference) => {
       patchAccessibility({ cardDetailView: next });
-      const p = new URLSearchParams(searchParams.toString());
-      if (next === "detailed") p.delete("view");
-      else p.set("view", next);
-      const qs = p.toString();
-      router.replace(qs ? `?${qs}` : "?", { scroll: false });
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "detailed") params.delete("view");
+      else params.set("view", next);
+      router.replace(params.size > 0 ? `?${params.toString()}` : "?", { scroll: false });
     },
     [patchAccessibility, router, searchParams],
   );
 
-  const { card } = detail;
-  const domains = meaningfulCardDomains(card);
-  const tags = card.classification?.tags ?? [];
-  const rulesText = meaningfulRulesText(card.text?.plain) ?? null;
-  const imageUrl = cardImageUrl(card.media, "large");
-
   return (
     <div className="container space-y-6 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link href="/">Home</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            {card.set?.set_code ? (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                  <BreadcrumbLink asChild>
-                    <Link href={`/sets/${card.set.set_code.toLowerCase()}`}>
-                      {card.set.set_name ?? card.set.set_code}
-                    </Link>
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-              </>
-            ) : null}
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{card.name}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
+        <CardBreadcrumb detail={detail} />
         <div className="flex flex-wrap items-center gap-2">
           <ToggleGroup
             type="single"
@@ -144,606 +109,263 @@ export function CardDetailView({
             size="sm"
             className="h-7 rounded-[min(var(--radius-md),12px)]"
             value={view}
-            onValueChange={(v: string) => {
-              if (!v) return;
-              setView(v as CardDetailViewPreference);
-            }}
+            onValueChange={(next) => next && setView(next as CardDetailViewPreference)}
             aria-label="Card page layout"
           >
-            <ToggleGroupItem
-              value="detailed"
-              className="h-7 gap-1 rounded-none px-2.5 text-[0.8rem] first:rounded-l-[min(var(--radius-md),12px)] last:rounded-r-[min(var(--radius-md),12px)]"
-            >
-              <LayoutList data-icon="inline-start" className="size-3.5" />
-              Detailed
+            <ToggleGroupItem value="detailed" className="h-7 gap-1 rounded-none px-2.5 text-[0.8rem] first:rounded-l-[min(var(--radius-md),12px)] last:rounded-r-[min(var(--radius-md),12px)]">
+              <LayoutList data-icon="inline-start" className="size-3.5" /> Detailed
             </ToggleGroupItem>
-            <ToggleGroupItem
-              value="simple"
-              className="h-7 gap-1 rounded-none px-2.5 text-[0.8rem] first:rounded-l-[min(var(--radius-md),12px)] last:rounded-r-[min(var(--radius-md),12px)]"
-            >
-              <Rows2 data-icon="inline-start" className="size-3.5" />
-              Simple
+            <ToggleGroupItem value="simple" className="h-7 gap-1 rounded-none px-2.5 text-[0.8rem] first:rounded-l-[min(var(--radius-md),12px)] last:rounded-r-[min(var(--radius-md),12px)]">
+              <Rows2 data-icon="inline-start" className="size-3.5" /> Simple
             </ToggleGroupItem>
           </ToggleGroup>
           {isAdmin ? (
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/admin/cards/${encodeURIComponent(card.id)}/edit`}>
-                <PencilLine aria-hidden="true" />
-                Edit
+              <Link href={`/admin/cards/${encodeURIComponent(printing.id)}/edit`}>
+                <PencilLine aria-hidden="true" /> Edit
               </Link>
             </Button>
           ) : null}
-          <ShareButton title={card.name} path={cardHref(card)} />
+          <ShareButton title={oracle.name} path={cardHref(printing)} />
         </div>
       </div>
 
       {view === "simple" ? (
-        <SimpleCardBody
-          detail={detail}
-          imageUrl={imageUrl}
-          domains={domains}
-          tags={tags}
-          rulesText={rulesText}
-        />
+        <SimpleCardBody detail={detail} imageUrl={imageUrl} domains={domains} rulesText={rulesText} />
       ) : (
-        <DetailedCardBody
-          detail={detail}
-          imageUrl={imageUrl}
-          domains={domains}
-          tags={tags}
-          rulesText={rulesText}
-        />
+        <DetailedCardBody detail={detail} imageUrl={imageUrl} domains={domains} rulesText={rulesText} />
       )}
 
       <Separator />
-
       <ToolsPanel detail={detail} imageUrl={imageUrl} />
-
-      {/* Rulings sit last and only appear when there are some, so the section
-          and its separator never show as an empty heading. */}
       {detail.rulings.length > 0 ? (
         <>
           <Separator />
-          <RulingsPanel detail={detail} />
+          <section aria-label={`Notes and rules information for ${oracle.name}`}>
+            <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
+              Notes &amp; rulings
+            </h2>
+            <CardRulings rulings={detail.rulings} />
+          </section>
         </>
       ) : null}
     </div>
   );
 }
 
-function RulingsPanel({ detail }: { detail: CardDetail }) {
+function CardBreadcrumb({ detail }: { detail: OracleDetail }) {
+  const { oracle, printing } = detail;
   return (
-    <section aria-label={`Notes and rules information for ${detail.card.name}`}>
-      <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
-        Notes &amp; rulings
-      </h2>
-      <CardRulings rulings={detail.rulings} />
-    </section>
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem><BreadcrumbLink asChild><Link href="/">Home</Link></BreadcrumbLink></BreadcrumbItem>
+        {printing.set?.set_code ? (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link href={`/sets/${printing.set.set_code.toLowerCase()}`}>
+                  {printing.set.set_name ?? printing.set.set_code}
+                </Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+          </>
+        ) : null}
+        <BreadcrumbSeparator />
+        <BreadcrumbItem><BreadcrumbPage>{oracle.name}</BreadcrumbPage></BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }
 
-// ─── Detailed (3-column) ──────────────────────────────────────────────────────
-
-function DetailedCardBody({
-  detail,
-  imageUrl,
-  domains,
-  tags,
-  rulesText,
-}: {
-  detail: CardDetail;
+interface CardBodyProps {
+  detail: OracleDetail;
   imageUrl: string | undefined;
   domains: string[];
-  tags: string[];
   rulesText: string | null;
-}) {
-  const { card } = detail;
+}
 
+function DetailedCardBody({ detail, imageUrl, domains, rulesText }: CardBodyProps) {
+  const { oracle, printing } = detail;
   return (
     <div className="grid gap-6 lg:grid-cols-12">
       <div className="lg:col-span-3">
         <CardArt
           imageUrl={imageUrl}
-          name={card.media?.accessibility_text ?? card.name}
-          isLandscape={cardIsLandscapeOriented(card)}
+          name={printing.image_alt_text ?? oracle.name}
+          isLandscape={cardIsLandscapeOriented(printing)}
         />
       </div>
-
       <section className="lg:col-span-5" aria-label="Card details">
         <Table>
           <TableBody>
             <DetailRow label="Name">
               <div className="flex items-center justify-between gap-3">
-                <h1 className="tk-arpona text-lg font-bold">{card.name}</h1>
-                <span className="inline-flex shrink-0 items-center gap-2">
-                  {card.attributes?.energy != null ? (
-                    <EnergyCost
-                      energy={card.attributes.energy}
-                      card={card}
-                    />
-                  ) : null}
-                  {card.attributes?.power != null ? (
-                    <PowerStat power={card.attributes.power} />
-                  ) : null}
-                </span>
+                <h1 className="tk-arpona text-lg font-bold">{oracle.name}</h1>
+                <CardStats detail={detail} />
               </div>
             </DetailRow>
-
-            <DetailRow label="Type">
-              <span className="inline-flex flex-wrap items-center gap-1.5">
-                <CardTypeLine card={card} badge linked />
-              </span>
-            </DetailRow>
-
-            {domains.length > 0 ? (
-              <DetailRow label="Domain">
-                <DomainRunes domains={domains} linked />
-              </DetailRow>
-            ) : null}
-
-            {tags.length > 0 ? (
-              <DetailRow label="Tags">
-                <CardTags tags={tags} linked />
-              </DetailRow>
-            ) : null}
-
-            {rulesText ? (
-              <DetailRow label="Ability" alignTop>
-                <CardText text={rulesText} rich={card.text?.rich} linkKeywords />
-              </DetailRow>
-            ) : null}
-
-            {/* An [Equip] gear's second text box: what the equipped unit gets.
-                A bonus of +0 with no effect is still printed on the card, so
-                the row keys off `might_bonus` being present, not truthy. */}
-            {card.attributes?.might_bonus != null ? (
+            <DetailRow label="Type"><CardTypeLine oracle={oracle} rarity={printing.rarity} badge linked /></DetailRow>
+            {domains.length > 0 ? <DetailRow label="Domain"><DomainRunes domains={domains} linked /></DetailRow> : null}
+            {oracle.tags.length > 0 ? <DetailRow label="Tags"><CardTags tags={oracle.tags} linked /></DetailRow> : null}
+            {rulesText ? <DetailRow label="Ability" alignTop><CardText text={rulesText} rich={oracle.text?.rich} linkKeywords /></DetailRow> : null}
+            {oracle.might_bonus != null ? (
               <DetailRow label="Equipped" alignTop>
                 <div className="space-y-1.5">
-                  <MightStat might={card.attributes.might_bonus} signed />
-                  {card.text?.equipment?.trim() ? (
-                    <CardText text={card.text.equipment} linkKeywords />
-                  ) : null}
+                  <MightStat might={oracle.might_bonus} signed />
+                  {oracle.text?.equipment?.trim() ? <CardText text={oracle.text.equipment} linkKeywords /> : null}
                 </div>
               </DetailRow>
             ) : null}
-
-            {card.text?.flavour?.trim() ? (
+            {printing.flavour_text?.trim() ? (
               <DetailRow label="Flavour" alignTop>
-                {/* Flavour carries the line break before its attribution
-                    ("…!\n- Vi"), which HTML would otherwise collapse. */}
-                <p className="text-muted-foreground text-sm italic whitespace-pre-line">
-                  {card.text.flavour}
-                </p>
+                <p className="text-muted-foreground text-sm italic whitespace-pre-line">{printing.flavour_text}</p>
               </DetailRow>
             ) : null}
-
-            {card.attributes?.might != null ? (
-              <DetailRow label="Might">
-                <MightStat might={card.attributes.might} />
-              </DetailRow>
-            ) : null}
-
-            <DetailRow label="Artist">
-              {card.artist ? (
-                <Link
-                  href={searchHref(artistSearchQuery(card.artist))}
-                  className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
-                  aria-label={`Search for cards illustrated by ${card.artist}`}
-                  title={`Search for cards illustrated by ${card.artist}`}
-                >
-                  <span className="icon-artist" aria-hidden="true" />
-                  {card.artist}
-                </Link>
-              ) : (
-                "—"
-              )}
-            </DetailRow>
-
+            {oracle.might != null ? <DetailRow label="Might"><MightStat might={oracle.might} /></DetailRow> : null}
+            <DetailRow label="Artist"><ArtistLink artist={printing.artist} /></DetailRow>
             <DetailRow label="Rarity">
-              {card.classification?.rarity ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <RarityIcon rarity={card.classification.rarity} />
-                  {card.classification.rarity}
-                </span>
-              ) : (
-                "—"
-              )}
+              {printing.rarity ? <span className="inline-flex items-center gap-1.5"><RarityIcon rarity={printing.rarity} />{printing.rarity}</span> : "—"}
             </DetailRow>
-
-            <DetailRow label="Set">
-              {card.set?.set_code ? (
-                <Link
-                  href={`/sets/${card.set.set_code.toLowerCase()}`}
-                  className="hover:text-primary underline-offset-4 hover:underline"
-                >
-                  <span className="uppercase">{card.set.set_code}</span>
-                  {card.set.set_name ? ` · ${card.set.set_name}` : null}
-                </Link>
-              ) : (
-                "—"
-              )}
-            </DetailRow>
-
-            <DetailRow label="Collector number">
-              <span className="tabular-nums">
-                {detail.printings.find((p) => p.is_current)?.collector_label ??
-                  card.collector_number ??
-                  "—"}
-              </span>
-            </DetailRow>
-
-            {detail.legalities.length > 0 ? (
-              <DetailRow label="Legality" alignTop>
-                {/* Single column here: this cell is the narrower two-thirds of a
-                    5-of-12 column, too tight for a badge plus a full format name
-                    twice over. */}
-                <CardLegalityGrid
-                  legalities={detail.legalities}
-                  className="sm:grid-cols-1"
-                />
-              </DetailRow>
-            ) : null}
+            <DetailRow label="Set"><SetLink detail={detail} /></DetailRow>
+            <DetailRow label="Collector number"><span className="tabular-nums">{printing.collector_label ?? printing.collector_number ?? "—"}</span></DetailRow>
+            {detail.legalities.length > 0 ? <DetailRow label="Legality" alignTop><CardLegalityGrid legalities={detail.legalities} className="sm:grid-cols-1" /></DetailRow> : null}
           </TableBody>
         </Table>
       </section>
-
-      <div className="space-y-6 lg:col-span-4">
-        <RelatedTables detail={detail} />
-        <BuyPanel detail={detail} />
-      </div>
+      <aside className="space-y-6 lg:col-span-4"><RelatedTables detail={detail} /><BuyPanel detail={detail} /></aside>
     </div>
   );
 }
 
-// ─── Simple (MTG-style text block) ────────────────────────────────────────────
-
-function SimpleCardBody({
-  detail,
-  imageUrl,
-  domains,
-  tags,
-  rulesText,
-}: {
-  detail: CardDetail;
-  imageUrl: string | undefined;
-  domains: string[];
-  tags: string[];
-  rulesText: string | null;
-}) {
-  const { card } = detail;
-  const { accessibility } = useSitePreferences();
-  const preferText = accessibility.preferTextOverSymbols;
-
+function SimpleCardBody({ detail, imageUrl, domains, rulesText }: CardBodyProps) {
+  const { oracle, printing } = detail;
   return (
     <div className="grid gap-6 lg:grid-cols-12">
       <div className="lg:col-span-3">
-        <CardArt
-          imageUrl={imageUrl}
-          name={card.media?.accessibility_text ?? card.name}
-          isLandscape={cardIsLandscapeOriented(card)}
-        />
+        <CardArt imageUrl={imageUrl} name={printing.image_alt_text ?? oracle.name} isLandscape={cardIsLandscapeOriented(printing)} />
       </div>
-
-      <section
-        className="flex min-w-0 flex-col lg:col-span-5"
-        aria-label="Card details"
-      >
-        {/* Name + energy/power — same row, costs flush right */}
+      <section className="flex min-w-0 flex-col lg:col-span-5" aria-label="Card details">
         <div className="flex items-start justify-between gap-4">
-          <h1 className="tk-arpona min-w-0 text-xl font-bold tracking-tight sm:text-2xl">
-            {card.name}
-          </h1>
-          <span className="inline-flex shrink-0 items-center gap-2 pt-0.5">
-            {card.attributes?.energy != null ? (
-              <EnergyCost energy={card.attributes.energy} card={card} />
-            ) : null}
-            {card.attributes?.power != null ? (
-              <PowerStat power={card.attributes.power} />
-            ) : null}
-          </span>
+          <h1 className="tk-arpona min-w-0 text-xl font-bold tracking-tight sm:text-2xl">{oracle.name}</h1>
+          <CardStats detail={detail} />
         </div>
-
-        {/* Type + tags; domain sits opposite as the "color" signal */}
-        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-          <div
-            className={`inline-flex min-w-0 flex-wrap items-center text-sm ${
-              preferText ? "gap-x-0" : "gap-x-2 gap-y-1"
-            }`}
-          >
-            <CardTypeLine card={card} badge linked />
-            {tags.length > 0 ? (
-              <>
-                {preferText ? (
-                  <span className="text-muted-foreground px-1.5" aria-hidden="true">
-                    ·
-                  </span>
-                ) : null}
-                <CardTags tags={tags} linked />
-              </>
-            ) : null}
+        <div className="mt-1.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex min-w-0 flex-wrap items-center gap-2 text-sm">
+            <CardTypeLine oracle={oracle} rarity={printing.rarity} badge linked />
+            {oracle.tags.length > 0 ? <CardTags tags={oracle.tags} linked /> : null}
           </div>
-          {domains.length > 0 ? (
-            <DomainRunes domains={domains} className="shrink-0" linked />
-          ) : null}
+          {domains.length > 0 ? <DomainRunes domains={domains} className="shrink-0" linked /> : null}
         </div>
-
-        {/* Rules text — breathing room like Scryfall's oracle block */}
-        {rulesText ? (
-          <CardText
-            text={rulesText}
-            rich={card.text?.rich}
-            className="text-foreground mt-6 max-w-prose text-[0.95rem] leading-relaxed"
-            linkKeywords
-          />
-        ) : null}
-
-        {/* The [Equip] gear's second text box, set apart the way the card
-            prints it — below the gear's own rules, above the flavour. */}
-        {card.attributes?.might_bonus != null ? (
+        {rulesText ? <CardText text={rulesText} rich={oracle.text?.rich} className="text-foreground mt-6 max-w-prose text-[0.95rem] leading-relaxed" linkKeywords /> : null}
+        {oracle.might_bonus != null ? (
           <div className="border-border/60 mt-6 max-w-prose border-l-2 pl-4">
-            <h2 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wider uppercase">
-              Equipped unit
-            </h2>
-            <MightStat might={card.attributes.might_bonus} signed />
-            {card.text?.equipment?.trim() ? (
-              <CardText
-                text={card.text.equipment}
-                className="text-foreground mt-1.5 text-[0.95rem] leading-relaxed"
-                linkKeywords
-              />
-            ) : null}
+            <h2 className="text-muted-foreground mb-1.5 text-xs font-medium tracking-wider uppercase">Equipped unit</h2>
+            <MightStat might={oracle.might_bonus} signed />
+            {oracle.text?.equipment?.trim() ? <CardText text={oracle.text.equipment} className="text-foreground mt-1.5 text-[0.95rem] leading-relaxed" linkKeywords /> : null}
           </div>
         ) : null}
-
-        {/* Might sits where P/T would on an MTG card */}
-        {card.attributes?.might != null ? (
-          <div className="mt-4 flex justify-end">
-            <MightStat might={card.attributes.might} />
-          </div>
-        ) : null}
-
-        {card.text?.flavour?.trim() ? (
-          <p className="text-muted-foreground mt-6 max-w-prose text-sm italic whitespace-pre-line">
-            {card.text.flavour}
-          </p>
-        ) : null}
-
+        {oracle.might != null ? <div className="mt-4 flex justify-end"><MightStat might={oracle.might} /></div> : null}
+        {printing.flavour_text?.trim() ? <p className="text-muted-foreground mt-6 max-w-prose text-sm italic whitespace-pre-line">{printing.flavour_text}</p> : null}
         {detail.legalities.length > 0 ? (
           <div className="mt-8">
-            <h2 className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">
-              Legality
-            </h2>
+            <h2 className="text-muted-foreground mb-2 text-xs font-medium tracking-wider uppercase">Legality</h2>
             <CardLegalityGrid legalities={detail.legalities} />
           </div>
         ) : null}
       </section>
-
-      <div className="space-y-6 lg:col-span-4">
-        <RelatedTables detail={detail} />
-        <BuyPanel detail={detail} />
-      </div>
+      <aside className="space-y-6 lg:col-span-4"><RelatedTables detail={detail} /><BuyPanel detail={detail} /></aside>
     </div>
   );
 }
 
-// ─── Shared pieces ────────────────────────────────────────────────────────────
+function CardStats({ detail }: { detail: OracleDetail }) {
+  const { oracle } = detail;
+  return (
+    <span className="inline-flex shrink-0 items-center gap-2">
+      {oracle.energy != null ? <EnergyCost energy={oracle.energy} oracle={oracle} /> : null}
+      {oracle.power != null ? <PowerStat power={oracle.power} /> : null}
+    </span>
+  );
+}
 
-function DetailRow({
-  label,
-  alignTop = false,
-  children,
-}: {
-  label: string;
-  alignTop?: boolean;
-  children: React.ReactNode;
-}) {
+function DetailRow({ label, alignTop = false, children }: { label: string; alignTop?: boolean; children: React.ReactNode }) {
   return (
     <TableRow className="hover:bg-transparent">
-      <TableCell
-        className={`text-muted-foreground w-1/3 font-semibold ${alignTop ? "align-top" : ""}`}
-      >
-        {label}
-      </TableCell>
-      <TableCell
-        className={`min-w-0 whitespace-normal wrap-break-word ${alignTop ? "align-top" : ""}`}
-      >
-        {children}
-      </TableCell>
+      <TableCell className={`text-muted-foreground w-1/3 font-semibold ${alignTop ? "align-top" : ""}`}>{label}</TableCell>
+      <TableCell className={`min-w-0 whitespace-normal wrap-break-word ${alignTop ? "align-top" : ""}`}>{children}</TableCell>
     </TableRow>
   );
 }
 
-function RelatedSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function ArtistLink({ artist }: { artist?: string }) {
+  if (!artist) return <>—</>;
   return (
-    <section>
-      <h2 className="text-muted-foreground mb-2 text-sm font-semibold tracking-wide uppercase">
-        {title}
-      </h2>
-      {children}
-    </section>
+    <Link href={searchHref(artistSearchQuery(artist))} className="inline-flex items-center gap-1 underline-offset-4 hover:underline">
+      <span className="icon-artist" aria-hidden="true" />{artist}
+    </Link>
   );
 }
 
-function RelatedTables({ detail }: { detail: CardDetail }) {
-  const { card } = detail;
+function SetLink({ detail }: { detail: OracleDetail }) {
+  const set = detail.printing.set;
+  if (!set?.set_code) return <>—</>;
+  return (
+    <Link href={`/sets/${set.set_code.toLowerCase()}`} className="hover:text-primary underline-offset-4 hover:underline">
+      <span className="uppercase">{set.set_code}</span>{set.set_name ? ` · ${set.set_name}` : null}
+    </Link>
+  );
+}
 
+function RelatedTables({ detail }: { detail: OracleDetail }) {
+  const { oracle, printing } = detail;
   return (
     <div className="space-y-6">
-      {detail.printings.length > 0 ? (
-        <CardPrintingsTable
-          rows={detail.printings}
-          label="Prints"
-          showRarity
-          showPrices
-          caption={`All printings of ${card.name}`}
-        />
-      ) : null}
-
-      {detail.tokens.length > 0 ? (
-        <CardPrintingsTable
-          rows={detail.tokens}
-          label="Tokens used"
-          showName
-          caption={`Tokens used by ${card.name}`}
-        />
-      ) : null}
-
-      {detail.used_by.length > 0 ? (
-        <CardPrintingsTable
-          rows={detail.used_by}
-          label="Used by"
-          showName
-          caption={`Cards that use ${card.name}`}
-        />
-      ) : null}
-
-      {detail.champions.length > 0 ? (
-        <CardPrintingsTable
-          rows={detail.champions}
-          label="Champions"
-          showName
-          caption={`Champions linked to ${card.name}`}
-        />
-      ) : null}
-
-      {detail.legends.length > 0 ? (
-        <CardPrintingsTable
-          rows={detail.legends}
-          label="Legends"
-          showName
-          caption={`Legends linked to ${card.name}`}
-        />
-      ) : null}
-
-      {detail.signatures.length > 0 ? (
-        <CardPrintingsTable
-          rows={detail.signatures}
-          label="Signature cards"
-          showName
-          caption={`Signature cards linked to ${card.name}`}
-        />
-      ) : null}
+      <CardPrintingsTable rows={detail.printings} oracleName={oracle.name} currentPrintingId={printing.id} showPrices />
+      {detail.tokens.length > 0 ? <OracleReferencesTable rows={detail.tokens} label="Tokens made" caption={`Tokens made by ${oracle.name}`} /> : null}
+      {detail.used_by.length > 0 ? <OracleReferencesTable rows={detail.used_by} label="Used by" caption={`Cards that use ${oracle.name}`} /> : null}
+      {detail.characters.length > 0 ? <OracleReferencesTable rows={detail.characters} label="Related characters" caption={`Characters linked to ${oracle.name}`} /> : null}
+      {detail.signatures.length > 0 ? <OracleReferencesTable rows={detail.signatures} label="Signature cards" caption={`Signature cards linked to ${oracle.name}`} /> : null}
     </div>
   );
 }
 
-function BuyPanel({ detail }: { detail: CardDetail }) {
-  const current = detail.printings.find((p) => p.is_current);
-  const markets: Array<{
-    name: string;
-    logoSrc: string;
-    url: string | undefined;
-    price: string;
-  }> = [
-    {
-      name: "TCGPlayer",
-      logoSrc: "/icons/markets/tcgplayer.png",
-      url: detail.purchase.tcgplayer,
-      price: formatUsd(tcgplayerUsdPrice(current?.prices?.tcgplayer)),
-    },
-    {
-      name: "Cardmarket",
-      logoSrc: "/icons/markets/cardmarket.png",
-      url: detail.purchase.cardmarket,
-      price: formatEur(current?.prices?.cardmarket?.normal),
-    },
-  ];
-
-  const available = markets.filter((market) => market.url);
-
-  if (available.length === 0) return null;
-
+function BuyPanel({ detail }: { detail: OracleDetail }) {
+  const { printing } = detail;
+  const markets = [
+    { name: "TCGPlayer", logoSrc: "/icons/markets/tcgplayer.png", url: detail.purchase.tcgplayer, price: formatUsd(tcgplayerUsdPrice(printing.prices?.tcgplayer)) },
+    { name: "Cardmarket", logoSrc: "/icons/markets/cardmarket.png", url: detail.purchase.cardmarket, price: formatEur(printing.prices?.cardmarket?.normal) },
+  ].filter((market) => market.url);
+  if (markets.length === 0) return null;
   return (
-    <RelatedSection title="Buy">
+    <section>
+      <h2 className="text-muted-foreground mb-2 text-sm font-semibold tracking-wide uppercase">Buy</h2>
       <div className="flex flex-col gap-2">
-        {available.map((market) => (
-          <Button
-            key={market.name}
-            variant="outline"
-            size="sm"
-            className="h-9 w-full justify-between gap-3 px-3"
-            asChild
-          >
+        {markets.map((market) => (
+          <Button key={market.name} variant="outline" size="sm" className="h-9 w-full justify-between gap-3 px-3" asChild>
             <a href={market.url} target="_blank" rel="noreferrer nofollow">
-              <span className="inline-flex min-w-0 items-center gap-2">
-                <img
-                  src={market.logoSrc}
-                  alt=""
-                  width={16}
-                  height={16}
-                  className="size-4 shrink-0"
-                  aria-hidden="true"
-                />
-                <span className="truncate">{market.name}</span>
-              </span>
-              <span className="inline-flex shrink-0 items-center gap-2">
-                <span className="text-muted-foreground tabular-nums">
-                  {market.price}
-                </span>
-                <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
-              </span>
+              <span className="inline-flex min-w-0 items-center gap-2"><img src={market.logoSrc} alt="" width={16} height={16} className="size-4 shrink-0" />{market.name}</span>
+              <span className="inline-flex shrink-0 items-center gap-2"><span className="text-muted-foreground tabular-nums">{market.price}</span><ExternalLinkIcon className="size-3.5" /></span>
             </a>
           </Button>
         ))}
       </div>
-      <p className="text-muted-foreground mt-2 text-xs">
-        Prices are provided for reference and may be out of date. Purchases through
-        these links may earn Riftseer a commission.
-      </p>
-    </RelatedSection>
+      <p className="text-muted-foreground mt-2 text-xs">Prices are provided for reference and may be out of date. Purchases through these links may earn Riftseer a commission.</p>
+    </section>
   );
 }
 
-function ToolsPanel({
-  detail,
-  imageUrl,
-}: {
-  detail: CardDetail;
-  imageUrl: string | undefined;
-}) {
-  const { card } = detail;
-  const downloadUrl = cardImageDownloadUrl(card.media) ?? imageUrl;
-
+function ToolsPanel({ detail, imageUrl }: { detail: OracleDetail; imageUrl: string | undefined }) {
+  const { oracle, printing } = detail;
+  const downloadUrl = printingImageDownloadUrl(printing) ?? imageUrl;
   return (
     <section aria-label="Images and data">
-      <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">
-        Images &amp; data
-      </h2>
+      <h2 className="text-muted-foreground mb-3 text-sm font-semibold tracking-wide uppercase">Images &amp; data</h2>
       <div className="flex flex-wrap items-center gap-2">
-        {downloadUrl ? (
-          <Button variant="outline" size="sm" asChild>
-            <a href={downloadUrl} target="_blank" rel="noreferrer" download>
-              <DownloadIcon aria-hidden="true" />
-              Download image
-            </a>
-          </Button>
-        ) : null}
-        <CopyButton
-          url={cardExportUrls.text(card.id)}
-          label="Copy card text"
-          variant="outline"
-        />
-        <CopyButton
-          url={cardExportUrls.json(card.id)}
-          label="Copy card JSON"
-          variant="outline"
-        />
-        <Button variant="ghost" size="sm" asChild>
-          <a
-            href={reportCardIssueUrl(card)}
-            target="_blank"
-            rel="noreferrer nofollow"
-          >
-            <FlagIcon aria-hidden="true" />
-            Report card issue
-          </a>
-        </Button>
+        {downloadUrl ? <Button variant="outline" size="sm" asChild><a href={downloadUrl} target="_blank" rel="noreferrer" download><DownloadIcon />Download image</a></Button> : null}
+        <CopyButton url={cardExportUrls.text(oracle.id)} label="Copy card text" variant="outline" />
+        <CopyButton url={cardExportUrls.json(oracle.id)} label="Copy card JSON" variant="outline" />
+        <Button variant="ghost" size="sm" asChild><a href={reportCardIssueUrl(oracle, printing)} target="_blank" rel="noreferrer nofollow"><FlagIcon />Report card issue</a></Button>
       </div>
     </section>
   );

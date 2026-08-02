@@ -1,29 +1,6 @@
-// Types
-export type {
-  Card,
-  CardDetail,
-  CardPrintingSummary,
-  CardRequest,
-  ResolvedCard,
-  CardSearchOptions,
-  CardSearchResult,
-  RelatedCard,
-  CardExternalIds,
-  CardSet,
-  CardLegality,
-  CardLegalityStatus,
-  CardRuling,
-  Format,
-  CardAttributes,
-  CardClassification,
-  CardText,
-  CardMetadata,
-  CardMediaUrls,
-  CardMedia,
-  CardPurchaseUris,
-  CardPrices,
-  SimplifiedDeck
-} from "./types.ts";
+// The canonical card model, re-exported wholesale so this barrel cannot drift
+// from `@riftseer/types`.
+export * from "./types.ts";
 
 // Deck and serialiser
 export { Deck } from "./deck.ts";
@@ -42,27 +19,33 @@ export {
   joinPublicSlug,
   withNameCollisionSuffix,
   generatePublicSlug,
+  generateOracleSlug,
   absoluteRiftseerUri,
   normalizeSiteOrigin,
   MISSING_COLLECTOR_SEGMENT,
 } from "@riftseer/types/slug";
 export { autocompleteSearch, scoreCard, rankIds } from "./search.ts";
 export type { Nameable } from "./search.ts";
-export { SupabaseCardProvider } from "./providers/supabase.ts";
 export {
-  finalizeCard,
-  finalizeCards,
-  enrichRelatedCardsSiteUris,
+  SupabaseCardProvider,
+  collectorLabel,
+  comparePrintings,
+  pickRequestedPrinting,
+} from "./providers/supabase.ts";
+export {
+  finalizeOracle,
+  finalizeOracles,
+  finalizePrinting,
+  finalizePrintings,
 } from "./hydrate.ts";
 
-// Card detail aggregation
+// Oracle detail aggregation
 export {
-  buildCardDetail,
-  collectorLabel,
-  tcgplayerUrlForCard,
-  cardmarketUrlForCard,
+  buildOracleDetail,
+  tcgplayerUrlForPrinting,
+  cardmarketUrlForPrinting,
 } from "./card-detail.ts";
-export type { BuildCardDetailOptions } from "./card-detail.ts";
+export type { BuildOracleDetailOptions } from "./card-detail.ts";
 
 // Deck provider interface + implementation
 export type { SimplifiedDeckProvider } from "./provider.ts";
@@ -79,12 +62,9 @@ export {
   exactNameLeaf,
   filterLeaf,
   findTextLeafValue,
-  isExactNameOnly,
-  isLegacyTextOnly,
   notAst,
   orAst,
   parseCardSearchQuery,
-  requiresRpc,
   textLeaf,
   validateCardSearchAst,
 } from "./card-search-query.ts";

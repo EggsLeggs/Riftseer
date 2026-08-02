@@ -1,91 +1,25 @@
-# packages/reddit-bot — Context for Claude
+# packages/reddit-bot
 
-## Purpose
-Devvit Reddit app that listens for `[[Card Name]]` mentions in comments and posts, resolves them via the Riftseer API, and replies with a formatted Markdown card summary.
+Standalone Devvit app that replies to `[[Card Name]]` tokens in new comments and self-posts. It is outside the root Bun workspace.
 
-## Important: Standalone Project
-This is **NOT** part of the root Bun workspace. It is a separate npm project managed with `npx devvit` tooling.
+## Commands
 
 ```bash
-cd packages/reddit-bot
-npm install                          # Install deps (not bun install)
-npx devvit upload                    # Deploy to Reddit
-npx devvit settings set apiBaseUrl   # Set API base URL for the subreddit
-npx devvit settings set siteBaseUrl  # Set site base URL for card links
-npx devvit playtest <subreddit>      # Live testing against a real subreddit
+npm install
+npm run dev
+npm run type-check
+npx devvit settings set apiBaseUrl
+npx devvit settings set siteBaseUrl
+npm run deploy
 ```
 
-## Key Files
-| File | Purpose |
-|------|---------|
-| `src/main.ts` | Devvit entry point — registers triggers and settings |
-| `src/handler.ts` | `buildReply()` — calls API, formats Markdown response |
-| `src/parser.ts` | `parseCardRequests()` — mirrors `packages/core/src/parser.ts` |
-| `devvit.json` | App manifest (name, permissions, HTTP domains, marketing assets) |
+## Invariants
 
-## Triggers
-- **`CommentCreate`** — fires on new comments; checks `.body` for `[[...]]` tokens
-- **`PostCreate`** — fires on new posts; checks `.title` + `.selftext` (self-posts only)
+- Import token parsing from `@riftseer/types`; do not maintain a Reddit-specific parser.
+- Resolve batches through `POST /api/v1/cards/resolve`. Each result is an oracle plus a selected printing, and the printing id remains the compatibility fallback for public links.
+- The API origin must appear in `devvit.json` HTTP permissions. An origin change requires both the manifest update and a redeploy.
+- Skip spam, deleted content, bot authors and ids already recorded in KV. Comment authors are usernames; post usernames come from the event author, not `authorId`.
+- Devvit KV uses `put`, `get` and `delete`. Reply ids need the `t1_` prefix for comments and `t3_` for posts.
+- Keep the empty TypeScript `types` override: it prevents Devvit's base configuration from introducing conflicting Vitest globals.
 
-Both triggers skip: spam, deleted content, bot accounts (configurable list), already-replied IDs.
-
-## Devvit API Gotchas
-These differ from standard Node/Bun patterns — always use these forms:
-
-```typescript
-// KV store (NOT .set/.del)
-await kvStore.put(key, value)
-await kvStore.get(key)
-await kvStore.delete(key)
-
-// CommentV2 fields
-comment.id              // string
-comment.body            // string
-comment.author          // string (username)
-comment.spam            // boolean
-comment.deleted         // boolean
-comment.lastModifiedAt  // Date
-
-// PostV2 fields
-post.id                 // string
-post.title              // string
-post.selftext           // string
-post.isSelf             // boolean
-post.authorId           // string (ID, NOT username)
-// For username on posts: use event.author?.name
-
-// Submitting a reply
-await reddit.submitComment({
-  id: 't1_' + commentId,   // comment reply
-  // or
-  id: 't3_' + postId,      // post reply (top-level comment)
-  text: markdownString,
-})
-```
-
-## Settings (per-install, configured by mod)
-| Key | Description |
-|-----|-------------|
-| `apiBaseUrl` | Base URL of the Riftseer API (e.g., `https://api.riftseer.com`) |
-| `siteBaseUrl` | Base URL of the Riftseer site for card links |
-
-Settings are accessed via `context.settings.get('apiBaseUrl')`.
-
-## HTTP Fetch
-The bot calls `/api/v1/cards/resolve` on the external API. The fetch domain must be listed in `devvit.json` under `permissions.http`. If the API domain changes, update `devvit.json` **and** redeploy.
-
-## Deduplication
-Replied comment/post IDs are stored in the KV store to prevent duplicate replies across restarts and re-deploys. The KV key pattern is `replied:<type>:<id>`.
-
-## TypeScript Config
-`tsconfig.json` overrides `"types": []` to suppress a vitest/globals conflict that Devvit's base tsconfig introduces. Do not remove this override.
-
-## Privacy Implications
-If the bot begins storing new data in the KV store or logging additional fields (e.g., user IDs, subreddit names, card request text), update `packages/web/src/views/privacy-view.tsx` to reflect what is collected, why, and how long it is retained.
-
-The current data stored:
-- **KV store**: Replied comment/post IDs only (for deduplication)
-- **API logs**: Card name + subreddit logged server-side for analytics (not stored by the bot itself)
-
-## Documentation
-Doc pages for this bot live in `packages/reddit-bot/docs/reddit-bot.md`. The dev docs site copies this file into `docs/doc-pages/clients-bots/` when you run `bun run build` or `bun run start` in `docs/` (see `sync-clients-bots-docs`). Keep the doc up to date when triggers, KV key patterns, settings, or the API call change.
+The bot persists only replied comment/post ids for deduplication. Its API requests may be logged by Riftseer. If stored fields, logs, retention or request payloads change, update the privacy policy and `docs/reddit-bot.md`.

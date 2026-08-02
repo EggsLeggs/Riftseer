@@ -10,7 +10,12 @@ The deck endpoints allow clients to build, share, and modify decks using a compa
 
 ## The short form
 
-A short form is a base64url-encoded binary string that represents the full state of a deck. It is the primary identifier — there is no separate deck ID or database row. Decks are entirely stateless: the short form *is* the deck.
+A short form is a base64url-encoded binary string that represents the full state
+of a deck. It is the primary identifier — there is no separate deck ID or
+database row. Decks are entirely stateless: the short form *is* the deck.
+
+Every encoded card ID is a physical printing's stable text ObjectId, not an
+oracle UUID. Existing short forms depend on those IDs remaining unchanged.
 
 Encoding and decoding is handled by `DeckSerializerV1` in `packages/core/src/serialiser.ts`. The format uses a compact binary layout with XOR obfuscation. Clients treat it as an opaque string.
 
@@ -39,7 +44,9 @@ A decoded deck has the following slots:
 | `runes` | string[] | `id:qty` entries |
 | `battlegrounds` | string[] | Card IDs (no quantity) |
 
-Card entries in `mainDeck`, `sideboard`, and `runes` use the format `<uuid>:<quantity>`, e.g. `123e4567-e89b-12d3-a456-426614174000:2`.
+Card entries in `mainDeck`, `sideboard`, and `runes` use the format
+`<printing-id>:<quantity>`, for example
+`67f4064886be8495f7165dd7:2`.
 
 ---
 
@@ -51,15 +58,19 @@ Create a new deck from a list of card IDs and quantities.
 POST /api/v1/decks/u
 {
   "cardsToAdd": [
-    "123e4567-e89b-12d3-a456-426614174000:1",
-    "987fbc97-4bed-5078-9f07-9141ba07c9f3:3"
+    "67f4064886be8495f7165dd7:1",
+    "67f4064886be8495f7165abc:3"
   ]
 }
 ```
 
-The API resolves each ID, determines the card's role (legend, rune, battleground, main deck) from its `classification`, and builds the deck accordingly. Returns the full deck object and the short form string.
+The API resolves each printing and reads its owning oracle's `card_type`,
+`supertype`, and domains to determine the deck slot. It returns the full deck
+object and the short form string.
 
-`cardsToRemove` is not valid on a new deck — it will return 400.
+`cardsToRemove` is not valid on a new deck and returns 400. Both create and
+update endpoints require authentication; decoding an existing short form is
+public.
 
 ---
 
@@ -82,8 +93,8 @@ Add or remove cards from an existing deck. Pass the current short form as the pa
 ```json
 POST /api/v1/decks/u/abc123XYZ...
 {
-  "cardsToAdd": ["new-card-uuid:2"],
-  "cardsToRemove": ["old-card-uuid:1"]
+  "cardsToAdd": ["67f4064886be8495f7165abc:2"],
+  "cardsToRemove": ["67f4064886be8495f7165dd7:1"]
 }
 ```
 

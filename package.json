@@ -1,8 +1,16 @@
 {
   "name": "riftseer",
   "private": true,
-  "workspaces": ["packages/types", "packages/core", "packages/api", "packages/frontend", "packages/discord-bot", "packages/ingest-worker", "packages/web", "docs"],
-  "_workspacesExcluded": "packages/reddit-bot (Devvit/npm standalone) and packages/raycast-extension (Raycast/npm standalone) are intentionally excluded — both require npm and are not Bun workspace members.",
+  "workspaces": [
+    "packages/types",
+    "packages/core",
+    "packages/api",
+    "packages/discord-bot",
+    "packages/ingest-worker",
+    "packages/web",
+    "docs"
+  ],
+  "_workspacesExcluded": "packages/reddit-bot (Devvit/npm standalone) and packages/raycast-extension (Raycast/npm standalone) are intentionally excluded \u2014 both require npm and are not Bun workspace members.",
   "overrides": {
     "@sinclair/typebox": "0.34.48",
     "elysia": "1.4.28",
@@ -10,19 +18,25 @@
   },
   "scripts": {
     "dev": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait",
-    "dev:api": "cd packages/api && wrangler dev --persist-to ../../.wrangler/shared",
-    "dev:ingest": "cd packages/ingest-worker && wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
-    "dev:frontend": "cd packages/frontend && bun run dev",
+    "dev:local": "bun run dev:api:local & bun run dev:web & wait",
+    "dev:api": "cd packages/api && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared",
+    "dev:api:local": "cd packages/api && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared --env-file .dev.vars.local",
+    "dev:ingest": "cd packages/ingest-worker && ./node_modules/.bin/wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
+    "dev:ingest:local": "cd packages/ingest-worker && ./node_modules/.bin/wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared --env-file .dev.vars.local",
     "dev:raycast": "cd packages/raycast-extension && npm run dev",
-    "build:frontend": "cd packages/frontend && bun run build",
     "dev:web": "cd packages/web && bun run --env-file ../../.env dev",
     "build:web": "cd packages/web && bun run build",
     "preview:web": "cd packages/web && bun run --env-file ../../.env preview",
-    "test": "bun test packages/core/src/__tests__ packages/api/src/__tests__ packages/ingest-worker/src/__tests__",
+    "test": "bun test packages/types/src/__tests__ packages/core/src/__tests__ packages/api/src/__tests__ packages/ingest-worker/src/__tests__ packages/web/src packages/discord-bot/src",
     "test:core": "bun test packages/core/src/__tests__",
     "test:api": "bun test packages/api/src/__tests__",
     "typecheck": "./node_modules/.bin/tsc --noEmit -p packages/types/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/core/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/api/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/api/tsconfig.test.json && ./node_modules/.bin/tsc --noEmit -p packages/ingest-worker/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/ingest-worker/tsconfig.test.json",
-    "lint:md": "bunx --yes markdownlint-cli2"
+    "lint:md": "bunx --yes markdownlint-cli2",
+    "db:local:up": "docker compose up -d postgres postgrest supabase-proxy",
+    "db:local:down": "docker compose stop postgres postgrest supabase-proxy",
+    "db:local:reset": "docker compose rm -sfv postgres >/dev/null && docker volume rm -f riftseer_postgres_data >/dev/null && docker compose up -d postgres postgrest supabase-proxy && echo 'schema rebuilt from supabase/migrations'",
+    "db:local:psql": "docker compose exec postgres psql -U postgres -d riftseer",
+    "test:db": "RIFTSEER_DATABASE_TESTS=1 RIFTSEER_DATABASE_URL=postgres://postgres:postgres@localhost:55432/riftseer_test RIFTSEER_POSTGREST_URL=http://localhost:54322/rest/v1 bun test packages/core/src/__tests__/database.integration.test.ts"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",

@@ -6,15 +6,15 @@
  * for: the Might a Gear grants the unit it is attached to, plus the effect that
  * comes with it.
  *
- * Applied by **oracle key**, not by printing. The gallery covers the numbered
- * sets only, so the JDG and OPP promo printings of an equipment card are not in
- * it — and an equipment effect is a property of the card, identical on every
- * printing. Keying on the shared name is what carries the effect across.
+ * These are oracle fields — an equipment effect is a property of the card, not
+ * of a piece of cardboard — which is also why the gallery covering the numbered
+ * sets only does not matter: the JDG and OPP promo printings share the oracle
+ * and inherit it.
  */
 
-import type { Card } from "@riftseer/types";
 import { oracleKeyForName } from "@riftseer/types/oracle";
 import { logger } from "../utils.ts";
+import type { IngestOracle } from "./types.ts";
 import {
   galleryEquipment,
   normalizeGalleryId,
@@ -53,37 +53,29 @@ export function buildGalleryIndex(cards: RawGalleryCard[]): GalleryIndex {
 }
 
 /**
- * Stamp `attributes.might_bonus` and `text.equipment` onto every printing of
- * each equipment card.
+ * Write `might_bonus` and `equipment_text` onto every oracle the gallery marks
+ * as equipment.
  *
- * Idempotent and self-clearing: a printing that is no longer equipment upstream
- * has both fields removed rather than keeping a stale bonus. The card upsert
- * writes `attributes` and `text` wholesale, so an absent key really does clear.
+ * Self-clearing: a card that is no longer equipment upstream has both fields set
+ * to null, and the ingest RPC assigns rather than coalesces them so the clear
+ * actually lands. `might_bonus` of `0` is a real printed value, so presence —
+ * never truthiness — decides whether a card is equipment.
  */
 export function applyGalleryEquipment(
-  cards: Card[],
+  oracles: IngestOracle[],
   index: GalleryIndex,
 ): { equipped: number } {
   let equipped = 0;
 
-  for (const card of cards) {
-    const equipment = index.equipmentByOracleKey.get(
-      card.oracle_key ?? oracleKeyForName(card.name),
-    );
-
+  for (const oracle of oracles) {
+    const equipment = index.equipmentByOracleKey.get(oracle.oracle_key);
     if (!equipment) {
-      if (card.attributes) delete card.attributes.might_bonus;
-      if (card.text) delete card.text.equipment;
+      oracle.might_bonus = null;
+      oracle.equipment_text = undefined;
       continue;
     }
-
-    card.attributes = { ...card.attributes, might_bonus: equipment.mightBonus };
-    card.text = { ...card.text };
-    if (equipment.effect) {
-      card.text.equipment = equipment.effect;
-    } else {
-      delete card.text.equipment;
-    }
+    oracle.might_bonus = equipment.mightBonus;
+    oracle.equipment_text = equipment.effect;
     equipped++;
   }
 

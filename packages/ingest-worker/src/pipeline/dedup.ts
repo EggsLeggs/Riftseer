@@ -14,50 +14,23 @@
  * on the lexicographically smallest id so the choice is stable across runs.
  */
 
-import type { Card, CardMediaUrls } from "@riftseer/types";
+import type { IngestPrinting } from "./types.ts";
 import { logger } from "../utils.ts";
 
-const MEDIA_URL_SIZES = [
-  "small",
-  "normal",
-  "large",
-  "original",
-  "png",
-] as const satisfies readonly (keyof CardMediaUrls)[];
-
-/**
- * Fill only the sizes the survivor lacks. Replacing the whole map would drop a
- * survivor's own `small`/`large` merely because a duplicate carried a `normal`.
- */
-function fillMissingMediaUrls(survivor: Card, other: Card): void {
-  const otherUrls = other.media?.media_urls;
-  if (!otherUrls) return;
-
-  const merged: CardMediaUrls = { ...survivor.media?.media_urls };
-  let filled = false;
-  for (const size of MEDIA_URL_SIZES) {
-    if (!merged[size] && otherUrls[size]) {
-      merged[size] = otherUrls[size];
-      filled = true;
-    }
-  }
-  if (filled) survivor.media = { ...survivor.media, media_urls: merged };
-}
-
-function printedCollectorKey(card: Card): string {
+function printedCollectorKey(printing: IngestPrinting): string {
   const [, fromRiftboundId] =
-    card.external_ids?.riftbound_id?.match(/^[^-]+-([^-]+)-/i) ?? [];
+    printing.riftbound_id?.match(/^[^-]+-([^-]+)-/i) ?? [];
   if (fromRiftboundId) return fromRiftboundId.toLowerCase();
 
-  const base = card.collector_number ?? "";
-  if (card.metadata?.alternate_art && /^\d+$/.test(base)) return `${base}a`;
-  if (card.metadata?.signature && base) return `${base}*`;
+  const base = printing.collector_number ?? "";
+  if (printing.is_alternate_art && /^\d+$/.test(base)) return `${base}a`;
+  if (printing.is_signature && base) return `${base}*`;
   return base.toLowerCase();
 }
 
-function dedupKey(card: Card): string {
-  const set = card.set?.set_code ?? "";
-  const riftboundId = card.external_ids?.riftbound_id?.trim().toLowerCase();
+function dedupKey(printing: IngestPrinting): string {
+  const set = printing.set_code ?? "";
+  const riftboundId = printing.riftbound_id?.trim().toLowerCase();
   if (riftboundId) {
     // The full Riftbound id identifies the printing. Promo collections can
     // reuse collector numbers across unrelated cards, so the printed collector
@@ -65,73 +38,70 @@ function dedupKey(card: Card): string {
     return `${set}|${riftboundId}`;
   }
 
-  const collector = printedCollectorKey(card);
-  return `${set}|${collector}|${card.name_normalized}`;
-}
-
-/** True when this record already has a TCGPlayer id (preferred survivor). */
-function hasTcgId(card: Card): boolean {
-  return Boolean(card.external_ids?.tcgplayer_id);
+  const collector = printedCollectorKey(printing);
+  return `${set}|${collector}|${printing.name_normalized}`;
 }
 
 /** Prefer records whose variant metadata agrees with the printed collector id. */
-function variantSignalScore(card: Card): number {
-  const collector = printedCollectorKey(card);
+function variantSignalScore(printing: IngestPrinting): number {
+  const collector = printedCollectorKey(printing);
   let score = 0;
   if (
     collector.endsWith("a") &&
-    (card.metadata?.alternate_art || /\balternate art\b/i.test(card.name))
+    (printing.is_alternate_art || /\balternate art\b/i.test(printing.name))
   ) {
     score += 2;
   }
   if (
     collector.endsWith("*") &&
-    (card.metadata?.signature || /\bsignature\b/i.test(card.name))
+    (printing.is_signature || /\bsignature\b/i.test(printing.name))
   ) {
     score += 2;
   }
-  if (card.metadata?.overnumbered || /\bovernumbered\b/i.test(card.name)) {
+  if (printing.is_overnumbered || /\bovernumbered\b/i.test(printing.name)) {
     score += 1;
   }
   return score;
 }
 
 /** Pick the survivor of a duplicate group and fold in data the survivor lacks. */
-function collapseGroup(group: Card[]): Card {
+function collapseGroup(group: IngestPrinting[]): IngestPrinting {
   const sorted = [...group].sort((a, b) => {
     const signalDifference = variantSignalScore(b) - variantSignalScore(a);
     if (signalDifference !== 0) return signalDifference;
-    if (hasTcgId(a) !== hasTcgId(b)) return hasTcgId(a) ? -1 : 1;
+    const aHasTcg = Boolean(a.tcgplayer_id);
+    const bHasTcg = Boolean(b.tcgplayer_id);
+    if (aHasTcg !== bHasTcg) return aHasTcg ? -1 : 1;
     return a.id.localeCompare(b.id);
   });
   const [survivor, ...dropped] = sorted;
 
   for (const other of dropped) {
-    if (!survivor.external_ids?.tcgplayer_id && other.external_ids?.tcgplayer_id) {
-      survivor.external_ids = {
-        ...survivor.external_ids,
-        tcgplayer_id: other.external_ids.tcgplayer_id,
-      };
+    if (!survivor.tcgplayer_id && other.tcgplayer_id) {
+      survivor.tcgplayer_id = other.tcgplayer_id;
     }
-    fillMissingMediaUrls(survivor, other);
+    if (!survivor.image_source_url && other.image_source_url) {
+      survivor.image_source_url = other.image_source_url;
+      survivor.image_source_provider = other.image_source_provider;
+    }
   }
   return survivor;
 }
 
 /**
- * Collapse duplicate printings in place-preserving input order of survivors.
+ * Collapse duplicate printings, preserving input order of survivors.
  * Returns the deduped list; logs how many rows were removed.
  */
-export function collapseDuplicates(cards: Card[]): Card[] {
-  const groups = new Map<string, Card[]>();
-  for (const card of cards) {
-    const key = dedupKey(card);
+export function collapseDuplicates(printings: IngestPrinting[]): IngestPrinting[] {
+  const groups = new Map<string, IngestPrinting[]>();
+  for (const printing of printings) {
+    const key = dedupKey(printing);
     const g = groups.get(key);
-    if (g) g.push(card);
-    else groups.set(key, [card]);
+    if (g) g.push(printing);
+    else groups.set(key, [printing]);
   }
 
-  const out: Card[] = [];
+  const out: IngestPrinting[] = [];
   let removed = 0;
   for (const group of groups.values()) {
     if (group.length === 1) {
@@ -144,7 +114,7 @@ export function collapseDuplicates(cards: Card[]): Card[] {
 
   if (removed > 0) {
     logger.info("Collapsed duplicate printings", {
-      input: cards.length,
+      input: printings.length,
       output: out.length,
       removed,
     });

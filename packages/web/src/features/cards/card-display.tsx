@@ -4,8 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImageOffIcon, LayoutGrid, LayoutList, Table2 } from "lucide-react";
-import type { Card } from "@riftseer/types";
-import { cardImageUrl, isReprintPrinting } from "@riftseer/types";
+import { printingImageUrl } from "@riftseer/types";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -37,6 +36,7 @@ import {
   tcgplayerUsdPrice,
 } from "@/features/cards/format";
 import { cn } from "@/lib/utils";
+import type { CardResult } from "./api";
 
 // Re-exported so existing client views keep their single import site. Server
 // components must import from ./format directly — this module is client-only.
@@ -170,74 +170,73 @@ export function SearchSkeleton({
 
 // ─── CardDetailsResults ───────────────────────────────────────────────────────
 
-export function CardDetailsResults({ cards }: { cards: Card[] }) {
+export function CardDetailsResults({ cards }: { cards: CardResult[] }) {
   return (
     <div className="flex flex-col">
-      {cards.map((card, index) => {
-        const domains = meaningfulCardDomains(card);
-        const tags = card.classification?.tags ?? [];
-        const rulesText = meaningfulRulesText(card.text?.plain);
+      {cards.map(({ oracle, printing }, index) => {
+        const domains = meaningfulCardDomains(oracle);
+        const rulesText = meaningfulRulesText(oracle.text?.plain);
         return (
-          <React.Fragment key={card.id}>
+          <React.Fragment key={printing.id}>
             {index > 0 ? <Separator className="my-8" /> : null}
             <article>
               <Link
-                href={cardHref(card)}
+                href={cardHref(printing)}
                 className="hover:bg-muted/35 -mx-3 flex items-start gap-6 rounded-xl px-3 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring sm:gap-8"
               >
-                <DetailsCardArt card={card} />
+                <DetailsCardArt printing={printing} />
                 <div className="flex min-w-0 flex-1 flex-col gap-3">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                     <h2 className="text-lg font-semibold tracking-tight text-primary sm:text-xl">
-                      {card.name}
+                      {oracle.name}
                     </h2>
                     <span className="inline-flex shrink-0 items-center gap-2">
-                      {card.attributes?.energy != null ? (
+                      {oracle.energy != null ? (
                         <EnergyCost
-                          energy={card.attributes.energy}
-                          card={card}
+                          energy={oracle.energy}
+                          oracle={oracle}
                         />
                       ) : null}
-                      {card.attributes?.power != null ? (
-                        <PowerStat power={card.attributes.power} />
+                      {oracle.power != null ? (
+                        <PowerStat power={oracle.power} />
                       ) : null}
-                      {card.attributes?.might != null ? (
-                        <MightStat might={card.attributes.might} />
+                      {oracle.might != null ? (
+                        <MightStat might={oracle.might} />
                       ) : null}
                     </span>
                   </div>
                   <div className="text-muted-foreground inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    <CardTypeLine card={card} />
+                    <CardTypeLine oracle={oracle} rarity={printing.rarity} />
                     {domains.length > 0 ? (
                       <DomainRunes domains={domains} />
                     ) : null}
                   </div>
-                  {tags.length > 0 ? <CardTags tags={tags} /> : null}
+                  {oracle.tags.length > 0 ? <CardTags tags={oracle.tags} /> : null}
                   {rulesText ? (
                     <CardText
                       text={rulesText}
-                      rich={card.text?.rich}
+                      rich={oracle.text?.rich}
                       className="text-foreground/90 max-w-prose"
                     />
                   ) : null}
                   <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
                     <span className="tabular-nums">
-                      USD {formatUsd(tcgplayerUsdPrice(card.prices?.tcgplayer))}
+                      USD {formatUsd(tcgplayerUsdPrice(printing.prices?.tcgplayer))}
                     </span>
                     <span className="tabular-nums">
                       EUR{" "}
-                      {formatEur(card.prices?.cardmarket?.normal ?? undefined)}
+                      {formatEur(printing.prices?.cardmarket?.normal ?? undefined)}
                     </span>
-                    {card.set?.set_code ? (
-                      <span className="uppercase">{card.set.set_code}</span>
+                    {printing.set?.set_code ? (
+                      <span className="uppercase">{printing.set.set_code}</span>
                     ) : null}
-                    {card.collector_number ? (
+                    {printing.collector_number ? (
                       <span className="tabular-nums">
-                        #{card.collector_number}
+                        #{printing.collector_number}
                       </span>
                     ) : null}
                   </div>
-                  <DetailMetaChips card={card} />
+                  <DetailMetaChips printing={printing} />
                 </div>
               </Link>
             </article>
@@ -249,15 +248,15 @@ export function CardDetailsResults({ cards }: { cards: Card[] }) {
 }
 
 /** Foil / variant chips (classification tags use CardTags rhombuses). */
-function DetailMetaChips({ card }: { card: Card }) {
+function DetailMetaChips({ printing }: { printing: CardResult["printing"] }) {
   const chips: string[] = [];
-  const finishes = card.metadata?.finishes ?? [];
+  const finishes = printing.finishes;
   if (finishes.includes("Foil")) chips.push("Foil");
-  if (card.metadata?.alternate_art) chips.push("Alt art");
-  if (card.metadata?.signature) chips.push("Signature");
-  if (card.metadata?.overnumbered) chips.push("Overnumbered");
-  if (card.metadata?.special_collection) chips.push("Special collection");
-  if (isReprintPrinting(card)) chips.push("Reprint");
+  if (printing.alternate_art) chips.push("Alt art");
+  if (printing.signature) chips.push("Signature");
+  if (printing.overnumbered) chips.push("Overnumbered");
+  if (printing.special_collection) chips.push("Special collection");
+  if (printing.differs_from_oracle) chips.push("Printing variant");
 
   if (chips.length === 0) return null;
 
@@ -275,10 +274,10 @@ function DetailMetaChips({ card }: { card: Card }) {
   );
 }
 
-function DetailsCardArt({ card }: { card: Card }) {
-  const imageUrl = cardImageUrl(card.media, "normal");
+function DetailsCardArt({ printing }: { printing: CardResult["printing"] }) {
+  const imageUrl = printingImageUrl(printing, "normal");
   const [failed, setFailed] = React.useState(false);
-  const isLandscape = cardIsLandscapeOriented(card);
+  const isLandscape = cardIsLandscapeOriented(printing);
 
   React.useEffect(() => {
     setFailed(false);
@@ -320,7 +319,7 @@ function DetailsCardArt({ card }: { card: Card }) {
 
 // ─── CardTableResults ─────────────────────────────────────────────────────────
 
-export function CardTableResults({ cards }: { cards: Card[] }) {
+export function CardTableResults({ cards }: { cards: CardResult[] }) {
   const router = useRouter();
 
   return (
@@ -346,24 +345,24 @@ export function CardTableResults({ cards }: { cards: Card[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {cards.map((card) => {
-          const rowHref = cardHref(card);
-          const usdText = formatUsd(tcgplayerUsdPrice(card.prices?.tcgplayer));
-          const eurText = formatEur(card.prices?.cardmarket?.normal ?? undefined);
-          const usdMarketUrl = card.purchase_uris?.tcgplayer;
-          const eurMarketUrl = card.purchase_uris?.cardmarket;
+        {cards.map(({ oracle, printing }) => {
+          const rowHref = cardHref(printing);
+          const usdText = formatUsd(tcgplayerUsdPrice(printing.prices?.tcgplayer));
+          const eurText = formatEur(printing.prices?.cardmarket?.normal ?? undefined);
+          const usdMarketUrl = printing.purchase_uris?.tcgplayer;
+          const eurMarketUrl = printing.purchase_uris?.cardmarket;
 
           return (
             <TableRow
-              key={card.id}
+              key={printing.id}
               className="cursor-pointer"
               onClick={() => router.push(rowHref)}
             >
               <TableCell className="max-w-[120px] truncate font-medium uppercase">
-                {card.set?.set_code ?? "—"}
+                {printing.set?.set_code ?? "—"}
               </TableCell>
               <TableCell className="tabular-nums text-muted-foreground">
-                {card.collector_number ?? "—"}
+                {printing.collector_number ?? "—"}
               </TableCell>
               <TableCell className="max-w-[220px] whitespace-normal font-medium">
                 <Link
@@ -371,18 +370,18 @@ export function CardTableResults({ cards }: { cards: Card[] }) {
                   className="text-primary no-underline hover:no-underline"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {card.name}
+                  {oracle.name}
                 </Link>
               </TableCell>
               <TableCell className="max-w-[180px] whitespace-normal">
-                <CardTypeLine card={card} />
+                <CardTypeLine oracle={oracle} rarity={printing.rarity} />
               </TableCell>
               <TableCell className="max-w-[200px] whitespace-normal text-sm">
-                {(card.classification?.tags ?? []).join(", ") || "—"}
+                {oracle.tags.join(", ") || "—"}
               </TableCell>
-              <TableCell>{card.classification?.rarity ?? "—"}</TableCell>
+              <TableCell>{printing.rarity ?? "—"}</TableCell>
               <TableCell className="max-w-[160px] whitespace-normal text-sm">
-                {card.artist ?? "—"}
+                {printing.artist ?? "—"}
               </TableCell>
               <TableCell className="tabular-nums">
                 {usdMarketUrl ? (
@@ -415,7 +414,7 @@ export function CardTableResults({ cards }: { cards: Card[] }) {
                 )}
               </TableCell>
               <TableCell className="max-w-[160px] whitespace-normal text-sm">
-                {meaningfulCardDomains(card).join(", ") || "—"}
+                {meaningfulCardDomains(oracle).join(", ") || "—"}
               </TableCell>
             </TableRow>
           );
@@ -431,11 +430,11 @@ export function CardGrid({
   cards,
   cardNamePlacement,
 }: {
-  cards: Card[];
+  cards: CardResult[];
   cardNamePlacement: "overlay" | "below";
 }) {
   const allLandscapeOriented =
-    cards.length > 0 && cards.every(cardIsLandscapeOriented);
+    cards.length > 0 && cards.every(({ printing }) => cardIsLandscapeOriented(printing));
 
   return (
     <ul
@@ -447,7 +446,7 @@ export function CardGrid({
       )}
     >
       {cards.map((card) => (
-        <li key={card.id}>
+        <li key={card.printing.id}>
           <CardGridLink
             card={card}
             naturalLandscapeLayout={allLandscapeOriented}
@@ -464,25 +463,25 @@ function CardGridLink({
   naturalLandscapeLayout,
   cardNamePlacement,
 }: {
-  card: Card;
+  card: CardResult;
   naturalLandscapeLayout: boolean;
   cardNamePlacement: "overlay" | "below";
 }) {
-  const href = cardHref(card);
-  const isLandscape = cardIsLandscapeOriented(card);
+  const href = cardHref(card.printing);
+  const isLandscape = cardIsLandscapeOriented(card.printing);
 
   return (
     <Link
       href={href}
-      title={card.name}
-      aria-label={card.name}
+      title={card.oracle.name}
+      aria-label={card.oracle.name}
       className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <CardThumbnail
         card={card}
         isLandscape={isLandscape}
         naturalLandscapeLayout={naturalLandscapeLayout}
-        cardName={card.name}
+        cardName={card.oracle.name}
         cardNamePlacement={cardNamePlacement}
       />
     </Link>
@@ -496,13 +495,13 @@ function CardThumbnail({
   cardName,
   cardNamePlacement,
 }: {
-  card: Card;
+  card: CardResult;
   isLandscape: boolean;
   naturalLandscapeLayout: boolean;
   cardName?: string;
   cardNamePlacement: "overlay" | "below";
 }) {
-  const imageUrl = cardImageUrl(card.media, "normal");
+  const imageUrl = printingImageUrl(card.printing, "normal");
   const [failed, setFailed] = React.useState(false);
   const aspectClass = naturalLandscapeLayout ? "aspect-[7/5]" : "aspect-[5/7]";
   const showOverlayName =

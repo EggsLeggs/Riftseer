@@ -15,8 +15,8 @@ import { unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { useEffect } from "react";
-import type { Card } from "@riftseer/types";
-import { cardImageDownloadUrl, cardImageUrl } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
+import { printingImageDownloadUrl, printingImageUrl } from "@riftseer/types";
 
 function tinted(source: string): Image.ImageLike {
   return { source, tintColor: Color.PrimaryText };
@@ -116,13 +116,7 @@ function normalizeCardTextLayout(
   const depthMap = buildParenDepthMap(normalized);
   normalized = normalized.replace(
     /([.)—])(\s*)(?=(?:[A-Z[]|:rb_))/g,
-    (
-      match: string,
-      punct: string,
-      spacing: string,
-      index: number,
-      fullText: string,
-    ) => {
+    (match: string, punct: string, spacing: string, index: number) => {
       const depthAfterPunct =
         punct === ")" ? (depthMap[index + 1] ?? 0) : (depthMap[index] ?? 0);
       if (depthAfterPunct > 0) return match;
@@ -280,26 +274,24 @@ export function formatTypeLine(
 }
 
 interface CardDetailProps {
-  card: Card;
+  card: Oracle;
   siteBaseUrl: string;
   /** Called when this detail view is shown (full-screen detail, random card, or push from search). */
-  onView?: (card: Card) => void;
+  onView?: (card: Oracle) => void;
 }
 
-function buildMarkdown(card: Card): string {
+function buildMarkdown(card: Oracle): string {
   const lines: string[] = [];
+  const printing = card.preferred_printing;
 
   // Card image — height=300 for portrait cards; landscape cards use height=200
   // (200 ≈ the pixel-width of a portrait card rendered at height=300 with a 2:3 ratio)
   // Portrait cards: 300 tall (matches lotus-mtg-companion); width=200 preserves 2:3 ratio.
   // Landscape cards: height=200 (= width of a portrait card at height=300 with 2:3 ratio); width=300.
-  const isLandscape = card.media?.orientation === "landscape";
-  const imageUrl = cardImageUrl(card.media, "normal");
+  const isLandscape = printing?.image_orientation === "landscape";
+  const imageUrl = printingImageUrl(printing, "normal");
   if (imageUrl) {
-    const altText = (card.media?.accessibility_text ?? card.name).replace(
-      /\n/g,
-      " ",
-    );
+    const altText = (printing?.image_alt_text ?? card.name).replace(/\n/g, " ");
     try {
       const url = new URL(imageUrl);
       if (isLandscape) {
@@ -323,19 +315,16 @@ function buildMarkdown(card: Card): string {
   }
 
   // Flavour text
-  if (card.text?.flavour?.trim()) {
-    lines.push(`*${renderTextForRaycast(card.text.flavour.trim())}*`);
+  if (printing?.flavour_text?.trim()) {
+    lines.push(`*${renderTextForRaycast(printing.flavour_text.trim())}*`);
   }
 
   return lines.join("\n");
 }
 
-function buildCopyableText(card: Card): string {
+function buildCopyableText(card: Oracle): string {
   const lines: string[] = [card.name];
-  const typeLine = formatTypeLine(
-    card.classification?.type,
-    card.classification?.supertype,
-  );
+  const typeLine = formatTypeLine(card.card_type, card.supertype);
   if (typeLine) lines.push(typeLine);
   if (card.text?.plain?.trim()) {
     if (lines.length > 1) lines.push("");
@@ -346,12 +335,14 @@ function buildCopyableText(card: Card): string {
 
 export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
   const site = siteBaseUrl.replace(/\/$/, "");
-  const siteUrl = card.riftseer_uri ?? `${site}/card/${card.id}`;
+  const printing = card.preferred_printing;
+  const siteUrl =
+    printing?.riftseer_uri ??
+    card.riftseer_uri ??
+    `${site}/card/${printing?.id ?? card.id}`;
   const markdown = buildMarkdown(card);
-  const typeLine = formatTypeLine(
-    card.classification?.type,
-    card.classification?.supertype,
-  );
+  const typeLine = formatTypeLine(card.card_type, card.supertype);
+  const imageDownloadUrl = printingImageDownloadUrl(printing);
 
   useEffect(() => {
     onView?.(card);
@@ -365,34 +356,25 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
         <Detail.Metadata.Label
           title="Type"
           text={typeLine}
-          icon={getTypeIcon(
-            card.classification?.type,
-            card.classification?.supertype,
-          )}
+          icon={getTypeIcon(card.card_type, card.supertype)}
         />
       )}
-      {card.attributes?.energy != null && (
-        <Detail.Metadata.Label
-          title="Energy"
-          text={String(card.attributes.energy)}
-        />
+      {card.energy != null && (
+        <Detail.Metadata.Label title="Energy" text={String(card.energy)} />
       )}
-      {card.attributes?.power != null && (
-        <Detail.Metadata.Label
-          title="Power"
-          text={String(card.attributes.power)}
-        />
+      {card.power != null && (
+        <Detail.Metadata.Label title="Power" text={String(card.power)} />
       )}
-      {card.attributes?.might != null && (
+      {card.might != null && (
         <Detail.Metadata.Label
           title="Might"
-          text={String(card.attributes.might)}
+          text={String(card.might)}
           icon={tinted("icons/stats/might.svg")}
         />
       )}
-      {card.classification?.domains?.length ? (
+      {card.domains.length ? (
         <Detail.Metadata.TagList title="Domains">
-          {card.classification.domains.map((d) => (
+          {card.domains.map((d) => (
             <Detail.Metadata.TagList.Item
               key={d}
               text={d}
@@ -401,9 +383,9 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
           ))}
         </Detail.Metadata.TagList>
       ) : null}
-      {card.classification?.tags?.length ? (
+      {card.tags.length ? (
         <Detail.Metadata.TagList title="Tags">
-          {card.classification.tags.map((t) => (
+          {card.tags.map((t) => (
             <Detail.Metadata.TagList.Item key={t} text={t} />
           ))}
         </Detail.Metadata.TagList>
@@ -411,30 +393,30 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
 
       {/* ── Section 2: printing ── */}
       <Detail.Metadata.Separator />
-      {card.classification?.rarity && (
+      {printing?.rarity && (
         <Detail.Metadata.Label
           title="Rarity"
-          text={card.classification.rarity}
-          icon={getRarityIcon(card.classification.rarity)}
+          text={printing.rarity}
+          icon={getRarityIcon(printing.rarity)}
         />
       )}
-      {card.set && (
-        <Detail.Metadata.Label title="Set" text={card.set.set_name} />
+      {printing?.set && (
+        <Detail.Metadata.Label title="Set" text={printing.set.set_name} />
       )}
-      {card.collector_number && (
+      {(printing?.collector_label ?? printing?.collector_number) && (
         <Detail.Metadata.Label
           title="Collector #"
-          text={card.collector_number}
+          text={printing?.collector_label ?? printing?.collector_number}
         />
       )}
 
       {/* ── Section 3: credits ── */}
-      {card.artist && (
+      {printing?.artist && (
         <>
           <Detail.Metadata.Separator />
           <Detail.Metadata.Label
             title="Artist"
-            text={card.artist}
+            text={printing.artist}
             icon={tinted("icons/misc/artist.svg")}
           />
         </>
@@ -462,31 +444,33 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
                 shortcut={{ modifiers: ["cmd", "shift"], key: "c" }}
               />
             )}
-            {cardImageDownloadUrl(card.media) && (
+            {imageDownloadUrl && (
               <Action
                 title="Copy Card Image"
                 shortcut={{ modifiers: ["cmd", "opt"], key: "c" }}
                 onAction={async () => {
-                  const imageUrl = cardImageDownloadUrl(card.media)!;
                   const toast = await showToast({
                     style: Toast.Style.Animated,
                     title: "Copying image…",
                   });
                   let tempPath: string | undefined;
                   try {
-                    const res = await fetch(imageUrl);
+                    const res = await fetch(imageDownloadUrl);
                     if (!res.ok) {
                       throw new Error(`HTTP ${res.status}: ${res.statusText}`);
                     }
                     const buf = Buffer.from(await res.arrayBuffer());
                     // Determine extension from URL pathname
-                    const url = new URL(imageUrl);
+                    const url = new URL(imageDownloadUrl);
                     const lastDot = url.pathname.lastIndexOf(".");
                     const ext =
                       lastDot >= 0 && lastDot < url.pathname.length - 1
                         ? url.pathname.substring(lastDot + 1)
                         : "png";
-                    tempPath = join(tmpdir(), `riftseer-${card.id}.${ext}`);
+                    tempPath = join(
+                      tmpdir(),
+                      `riftseer-${printing?.id ?? card.id}.${ext}`,
+                    );
                     await writeFile(tempPath, buf);
                     await Clipboard.copy({ file: tempPath });
                     toast.style = Toast.Style.Success;

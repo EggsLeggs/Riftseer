@@ -1,4 +1,4 @@
-import type { Card, CardPriceEntry } from "@riftseer/types";
+import type { CardPriceEntry, Oracle, Printing } from "@riftseer/types";
 
 /**
  * What these formatters render when there is nothing to show. Exported so code
@@ -33,9 +33,9 @@ export function formatEur(n: number | null | undefined): string {
  * Legends keep a lone "Legend" — upstream stores Champion as affiliation,
  * not a printed type prefix.
  */
-export function cardTypeLine(card: Card): string {
-  const type = card.classification?.type?.trim() || undefined;
-  const special = card.classification?.supertype?.trim() || undefined;
+export function cardTypeLine(oracle: Oracle): string {
+  const type = oracle.card_type?.trim() || undefined;
+  const special = oracle.supertype?.trim() || undefined;
   const typeKey = type?.toLowerCase();
 
   if (typeKey === "legend") return type!;
@@ -49,9 +49,9 @@ export function cardTypeLine(card: Card): string {
  * legends use the legend icon. Every other special (Signature, Token, …)
  * keeps the base type's glyph.
  */
-export function cardTypeIconKey(card: Card): string | null {
-  const type = card.classification?.type?.trim();
-  const special = card.classification?.supertype?.trim();
+export function cardTypeIconKey(oracle: Oracle): string | null {
+  const type = oracle.card_type?.trim();
+  const special = oracle.supertype?.trim();
   const typeKey = type?.toLowerCase();
   const specialKey = special?.toLowerCase();
 
@@ -64,19 +64,19 @@ export function cardTypeIconKey(card: Card): string | null {
   return base;
 }
 
-export function cardIsLandscapeOriented(card: Card): boolean {
-  const orientation = card.media?.orientation;
+export function cardIsLandscapeOriented(printing: Printing): boolean {
+  const orientation = printing.image_orientation;
   return orientation === "landscape" || orientation === "horizontal";
 }
 
 /** Gear printings show card energy cost in a diamond, not a circle. */
-export function cardIsGear(card: Pick<Card, "classification">): boolean {
-  return card.classification?.type?.trim().toLowerCase() === "gear";
+export function cardIsGear(oracle: Pick<Oracle, "card_type">): boolean {
+  return oracle.card_type?.trim().toLowerCase() === "gear";
 }
 
 /** Drops the placeholder "Colorless" domain, which has no rune of its own. */
-export function meaningfulCardDomains(card: Card): string[] {
-  return (card.classification?.domains ?? []).filter(
+export function meaningfulCardDomains(oracle: Oracle): string[] {
+  return oracle.domains.filter(
     (d) => d.trim() !== "" && d.trim().toLowerCase() !== "colorless",
   );
 }
@@ -121,13 +121,16 @@ export interface TypeBadgeStyle {
  * Label: rune → black; battlefield / token → grey; legend / multi-domain → gold;
  * single domain → that domain's colour; otherwise grey.
  */
-export function typeBadgeStyle(card: Card): TypeBadgeStyle {
-  const typeKey = card.classification?.type?.trim().toLowerCase();
-  const specialKey = card.classification?.supertype?.trim().toLowerCase();
-  const rarityColor = typeBadgeRarityColor(card.classification?.rarity);
-  const domains = meaningfulCardDomains(card);
+export function typeBadgeStyle(
+  oracle: Oracle,
+  rarity?: string | null,
+): TypeBadgeStyle {
+  const typeKey = oracle.card_type?.trim().toLowerCase();
+  const specialKey = oracle.supertype?.trim().toLowerCase();
+  const rarityColor = typeBadgeRarityColor(rarity);
+  const domains = meaningfulCardDomains(oracle);
   const isToken =
-    card.is_token === true || typeKey === "token" || specialKey === "token";
+    oracle.is_token || typeKey === "token" || specialKey === "token";
 
   if (typeKey === "rune") {
     return {

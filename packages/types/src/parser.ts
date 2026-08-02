@@ -61,13 +61,26 @@ function parseToken(inner: string): CardRequest {
   const name = inner.slice(0, sepIdx).trim();
   const rest = inner.slice(sepIdx + 1).trim();
 
-  // Collector format: "SET-123" or "SET 123" — last segment must be digits
-  const collectorMatch = rest.match(/^([A-Z0-9]+)[- ](\d+)$/i);
+  // Collector format: "SET-123" or "SET 123".
+  //
+  // The collector segment is NOT plain digits. Several numbering tracks print a
+  // letter prefix — `T03` tokens, `SP3` special collections, `R01` runes — and
+  // variants print a suffix (`42a` alternate art, `21*` signature). A `\d+`
+  // pattern silently parsed `VEN-SP3` as a *set* named "VEN-SP3", which matched
+  // nothing, so the request quietly fell back to the preferred printing instead
+  // of the one that was asked for.
+  //
+  // Requiring at least one digit is what keeps this from swallowing a
+  // hyphenated set code.
+  const collectorMatch = rest.match(/^([A-Z0-9]+)[- ]([A-Z]*\d+[A-Za-z*★]*)$/i);
   if (collectorMatch) {
     return {
       raw: inner,
       name,
       set: collectorMatch[1].toUpperCase(),
+      // Left as typed: `42a` and `42A` are different suffixes to uppercase
+      // blindly. Both the SQL filter and pickRequestedPrinting compare
+      // case-insensitively instead.
       collector: collectorMatch[2],
     };
   }

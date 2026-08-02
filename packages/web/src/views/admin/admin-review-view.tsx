@@ -46,7 +46,8 @@ const STATUS_TABS: Array<{ value: AdminReviewStatus; label: string }> = [
 const KIND_LABELS: Record<AdminReviewKind, string> = {
   unmatched_product: "Unmatched product",
   field_diff: "Field difference",
-  missing_card: "Missing card",
+  missing_printing: "Missing printing",
+  unmatched_oracle: "Unmatched oracle",
 };
 
 const SOURCE_LABELS: Record<AdminReviewSource, string> = {
@@ -173,7 +174,8 @@ export function AdminReviewView() {
             <option value="">All types</option>
             <option value="unmatched_product">Unmatched products</option>
             <option value="field_diff">Field differences</option>
-            <option value="missing_card">Missing cards</option>
+            <option value="missing_printing">Missing printings</option>
+            <option value="unmatched_oracle">Unmatched oracles</option>
           </select>
         </div>
 
@@ -234,8 +236,8 @@ export function AdminReviewView() {
                   entry={entry}
                   editable={status === "pending"}
                   pending={confirm.isPending || dismiss.isPending}
-                  onConfirm={(cardId) =>
-                    confirm.mutate([entry.id, cardId || undefined])
+                  onConfirm={(printingId, oracleId) =>
+                    confirm.mutate([entry.id, printingId || undefined, oracleId || undefined])
                   }
                   onDismiss={() => dismiss.mutate([entry.id])}
                 />
@@ -273,7 +275,7 @@ export function AdminReviewView() {
         Prices are never queued here — they change every run and are applied
         automatically. Confirming an unmatched product stores its TCGPlayer ID on
         the card, so later ingests match and price it without asking again.
-        Missing cards: use Create to open a prefilled form; confirming stamps the
+        Missing printings: use Create to open a prefilled form; confirming stamps the
         gallery&apos;s Riftbound ID onto the card.
       </p>
     </>
@@ -290,7 +292,7 @@ function ReviewRow({
   entry: AdminReviewEntry;
   editable: boolean;
   pending: boolean;
-  onConfirm: (cardId: string) => void;
+  onConfirm: (printingId: string, oracleId: string) => void;
   onDismiss: () => void;
 }) {
   const router = useRouter();
@@ -300,7 +302,9 @@ function ReviewRow({
   // missing card both need a target chosen, so the suggestion (where there is
   // one) is pre-filled and stays editable.
   const fixedCard = entry.kind === "field_diff";
-  const [cardId, setCardId] = React.useState(entry.proposed_card_id ?? "");
+  const [printingId, setPrintingId] = React.useState(entry.proposed_printing_id ?? "");
+  const [oracleId, setOracleId] = React.useState(entry.proposed_oracle_id ?? "");
+  const oracleField = ["type", "energy", "might", "power"].includes(field ?? "");
 
   // A diff on a field the API cannot patch is dismiss-only; there is nothing
   // for confirming to write.
@@ -309,16 +313,19 @@ function ReviewRow({
   const unconfirmableId = `review-unconfirmable-${entry.id}`;
 
   function confirmEntry() {
-    const trimmed = cardId.trim();
-    if (!fixedCard && !trimmed) {
+    const printing = printingId.trim();
+    const oracle = oracleId.trim();
+    if (entry.kind === "unmatched_product" && !printing) {
       toast.error(
-        entry.kind === "missing_card"
-          ? "Create the card first, then enter its ID"
-          : "Enter the card ID this product belongs to",
+        "Enter the printing ID this product belongs to",
       );
       return;
     }
-    onConfirm(trimmed);
+    if (entry.kind === "field_diff" && oracleField && !oracle) {
+      toast.error("Enter the oracle ID to update");
+      return;
+    }
+    onConfirm(printing, oracle);
   }
 
   function createMissingCard() {
@@ -396,12 +403,12 @@ function ReviewRow({
 
       <TableCell className="max-w-64">
         {fixedCard || !editable ? (
-          entry.proposed_card_id ? (
+          entry.proposed_printing_id ? (
             <Link
-              href={`/admin/cards/${encodeURIComponent(entry.proposed_card_id)}/edit`}
+              href={`/admin/cards/${encodeURIComponent(entry.proposed_printing_id)}/edit`}
               className="font-mono text-xs underline-offset-4 hover:underline"
             >
-              {card_name ?? entry.proposed_card_id}
+              {card_name ?? entry.proposed_printing_id}
             </Link>
           ) : (
             <span className="text-muted-foreground text-xs">No card</span>
@@ -409,26 +416,19 @@ function ReviewRow({
         ) : (
           <div className="flex flex-col gap-1">
             <Input
-              aria-label={
-                entry.kind === "missing_card"
-                  ? "Card ID to confirm against"
-                  : "Card ID to link"
-              }
-              value={cardId}
-              onChange={(e) => setCardId(e.target.value)}
-              placeholder={
-                entry.kind === "missing_card"
-                  ? "Card ID (after create)"
-                  : "Card ID"
-              }
+              aria-label="Printing ID"
+              value={printingId}
+              onChange={(e) => setPrintingId(e.target.value)}
+              placeholder="Printing ID"
               className="font-mono text-xs"
             />
-            {card_name && entry.kind !== "missing_card" && (
+            {(oracleField || entry.kind === "unmatched_oracle") ? <Input aria-label="Oracle ID" value={oracleId} onChange={(event) => setOracleId(event.target.value)} placeholder="Oracle UUID" className="font-mono text-xs" /> : null}
+            {card_name && entry.kind !== "missing_printing" && entry.kind !== "unmatched_oracle" && (
               <span className="text-muted-foreground text-xs">
                 Suggested: {card_name}
               </span>
             )}
-            {entry.kind === "missing_card" && (
+            {(entry.kind === "missing_printing" || entry.kind === "unmatched_oracle") && (
               <span className="text-muted-foreground text-xs">
                 Prefer Create — it prefills from the gallery.
               </span>
@@ -445,7 +445,7 @@ function ReviewRow({
         <TableCell>
           <div className="flex flex-col items-end gap-1">
           <div className="flex justify-end gap-1">
-            {entry.kind === "missing_card" && gallery && (
+            {(entry.kind === "missing_printing" || entry.kind === "unmatched_oracle") && gallery && (
               <Button
                 variant="ghost"
                 size="sm"

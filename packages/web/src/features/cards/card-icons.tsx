@@ -2,7 +2,7 @@
 
 import type * as React from "react";
 import Link from "next/link";
-import type { Card } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
 
 import { cardIsGear, cardTypeIconKey, cardTypeLine, typeBadgeStyle } from "@/features/cards/format";
 import {
@@ -35,18 +35,18 @@ const DOMAINS_WITH_GLYPHS = new Set([
 /** Energy cost bubble. Gear cards show a diamond instead of a circle. */
 export function EnergyCost({
   energy,
-  card,
+  oracle,
   className,
 }: {
   energy: number;
-  card: Pick<Card, "classification">;
+  oracle: Pick<Oracle, "card_type">;
   className?: string;
 }) {
   return (
     <span
       className={cn(
         "icon-energy-value",
-        cardIsGear(card) && "icon-energy-gear",
+        cardIsGear(oracle) && "icon-energy-gear",
         className,
       )}
       data-value={energy}
@@ -170,11 +170,13 @@ const TYPE_ICON_KEYS = new Set([
  * Falls back to plain text when text-over-symbols is on.
  */
 export function CardTypeLine({
-  card,
+  oracle,
+  rarity,
   badge = false,
   linked = false,
 }: {
-  card: Card;
+  oracle: Oracle;
+  rarity?: string | null;
   /** Capsule + rhombus chrome (simple card detail). Plain icon+text otherwise. */
   badge?: boolean;
   /**
@@ -185,10 +187,10 @@ export function CardTypeLine({
   linked?: boolean;
 }) {
   const { accessibility } = useSitePreferences();
-  const label = cardTypeLine(card);
+  const label = cardTypeLine(oracle);
   if (label === "—") return <span>—</span>;
 
-  const query = linked ? cardTypeLineSearchQuery(card) : null;
+  const query = linked ? cardTypeLineSearchQuery(oracle) : null;
   // Wrap whatever the chrome turned out to be, so the link never changes layout.
   const withLink = (content: React.ReactNode) =>
     query ? (
@@ -208,9 +210,9 @@ export function CardTypeLine({
     return withLink(<span className="font-medium">{label}</span>);
   }
 
-  const iconKey = cardTypeIconKey(card);
+  const iconKey = cardTypeIconKey(oracle);
   const showIcon = iconKey != null && TYPE_ICON_KEYS.has(iconKey);
-  const style = typeBadgeStyle(card);
+  const style = typeBadgeStyle(oracle, rarity);
 
   if (!badge) {
     return withLink(

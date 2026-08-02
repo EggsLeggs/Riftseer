@@ -1,5 +1,11 @@
-export const CARD_IMAGE_JOB_VERSION = 1 as const;
-export const CARD_IMAGE_CATALOG_JOB_VERSION = 1 as const;
+/**
+ * Version 2: the oracle/printing split renamed the subject of every job from a
+ * card to a printing. Bumping rather than aliasing means an in-flight v1 message
+ * fails validation and is discarded, instead of being read against the wrong id
+ * space.
+ */
+export const CARD_IMAGE_JOB_VERSION = 2 as const;
+export const CARD_IMAGE_CATALOG_JOB_VERSION = 2 as const;
 
 /** Lowercase hex SHA-256 — the only shape `hashImageSourceUrl` produces. */
 export const SOURCE_HASH_PATTERN = /^[a-f0-9]{64}$/;
@@ -11,7 +17,7 @@ export type CardImageSourceProvider =
 
 export interface CardImageJob {
   version: typeof CARD_IMAGE_JOB_VERSION;
-  cardId: string;
+  printingId: string;
   sourceUrl: string;
   sourceHash: string;
   sourceProvider: CardImageSourceProvider;
@@ -27,7 +33,7 @@ export type CardImageVariantName = "small" | "normal" | "large";
 export interface CardImageVariantJob {
   version: typeof CARD_IMAGE_JOB_VERSION;
   type: "variant";
-  cardId: string;
+  printingId: string;
   sourceHash: string;
   variant: CardImageVariantName;
   orientation: "portrait" | "landscape";
@@ -54,8 +60,8 @@ export function isCardImageJob(value: unknown): value is CardImageJob {
   const job = value as Partial<CardImageJob>;
   return (
     job.version === CARD_IMAGE_JOB_VERSION &&
-    typeof job.cardId === "string" &&
-    job.cardId.length > 0 &&
+    typeof job.printingId === "string" &&
+    job.printingId.length > 0 &&
     typeof job.sourceUrl === "string" &&
     job.sourceUrl.length > 0 &&
     typeof job.sourceHash === "string" &&
@@ -74,8 +80,8 @@ export function isCardImageVariantJob(
   return (
     job.version === CARD_IMAGE_JOB_VERSION &&
     job.type === "variant" &&
-    typeof job.cardId === "string" &&
-    job.cardId.length > 0 &&
+    typeof job.printingId === "string" &&
+    job.printingId.length > 0 &&
     typeof job.sourceHash === "string" &&
     SOURCE_HASH_PATTERN.test(job.sourceHash) &&
     (job.variant === "small" ||

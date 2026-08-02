@@ -1,81 +1,29 @@
-# packages/types — Context for Claude
+# packages/types
 
-## Purpose
-Zero-dependency package that owns the canonical Riftbound card types, the `[[Card Name]]` token parser, and the icon token map. It is the single source of truth for the card data shape across the monorepo.
+Zero-dependency canonical types and runtime-neutral helpers shared by Bun, Node, Cloudflare Workers and browser builds. Do not add a runtime dependency; this package is safe to import everywhere precisely because it has none.
 
-Because it has no runtime dependencies it can safely be imported from anywhere — Bun, Node, Cloudflare Workers, and browser builds.
+## Card model
 
-`@riftseer/core` depends on this package and re-exports its full surface, so existing code importing from `@riftseer/core` is unaffected.
+- `src/card.ts` owns `Oracle`, `Printing`, resolution/search types and deck wire types. `src/card-detail.ts` owns the aggregate `OracleDetail` payload.
+- Oracle fields describe the rules object. Printing fields describe one physical card. Rarity is printing-level; deck ids are printing ids.
+- `oracle_key` is a name-derived lookup slug, never identity. `oracleKeyForName()` in `src/oracle.ts` is used only when ingest guesses which oracle a new printing belongs to; unmatched printings go to review.
+- `OracleRef` is the relationship shape. Relationships are oracle edges; sibling printings are a foreign-key traversal, not a relationship array.
+- `might_bonus` uses presence to identify equipment. Zero is a real printed bonus.
 
-## Key Files
+## Shared derivations
 
-| File | Purpose |
-|------|---------|
-| `src/card.ts` | Canonical `Card`, all sub-interfaces, `CardRequest`, `ResolvedCard`, `CardSearchOptions`, `SimplifiedDeck` |
-| `src/card-detail.ts` | `CardDetail` and `CardPrintingSummary` — the aggregate payload behind `GET /api/v1/cards/detail` |
-| `src/card-image.ts` | `cardImageUrl()` / `cardImageDownloadUrl()` — pick CDN size variants (`small` 200 / `normal` 400 / `large` 1000) when media is on `img.riftseer.com`; unmigrated upstream art keeps the legacy URL chain |
-| `src/card-text.ts` | `normalizeCardTextLayout()` — paragraph splitting for rules text, shared by every renderer |
-| `src/keywords.ts` | `[Keyword]` badge helpers — `KEYWORD_STYLES`, `styleForKeyword()`, `isKeywordTag()` — plus `extractCardKeywords()`, the searchable base-key list mirrored by `card_keywords_from_text()` in SQL |
-| `src/oracle.ts` | `oracleKeyForName()` — the base-name key that groups printings for rulings and legalities |
-| `src/parser.ts` | `parseCardRequests()` and `normalizeCardName()` |
-| `src/icons.ts` | `TOKEN_REGEX`, `TOKEN_ICON_MAP`, and `tokenPlainLabel()` (copy-paste stand-ins for icon tokens) |
-| `src/slug.ts` | Public-URL slug rules — `slugifyCardName`, `buildPublicSlugSegments`, `joinPublicSlug`, `withNameCollisionSuffix`, `generatePublicSlug`, `absoluteRiftseerUri` |
-| `index.ts` | Default export — re-exports all of the above |
+- `src/card-image.ts` is the sole derivation of hosted image URLs and R2 keys. URLs are derived from printing id and optional source hash, never stored.
+- `src/slug.ts` owns oracle and printing URL slugs. Both are pinned on first insert. Printing slugs include set/collector/variant shape; oracle slugs are single name segments. Collision suffixes change only the final name segment.
+- `src/keywords.ts` contains the TypeScript keyword extractor used outside Postgres. The database trigger remains the write-time authority.
+- `src/parser.ts` owns both `[[Name|SET-123]]` token parsing and name normalization. Consumers import it rather than maintaining client-specific parsers.
+- `src/reconciliation.ts` owns the shared set of reconciliation fields the API can confirm, so API and admin UI exhaustiveness checks derive from one value.
 
-## Exports
-```typescript
-// Default — all types + functions
-import type { Card, CardRequest } from "@riftseer/types";
-import { parseCardRequests, normalizeCardName } from "@riftseer/types";
+## Working here
 
-// Sub-path exports (tree-shakeable)
-import { normalizeCardTextLayout } from "@riftseer/types/card-text";
-import { cardImageUrl } from "@riftseer/types/card-image";
-import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types/icons";
-import { oracleKeyForName } from "@riftseer/types/oracle";
-import { parseCardRequests, normalizeCardName } from "@riftseer/types/parser";
-import {
-  buildPublicSlugSegments,
-  generatePublicSlug,
-  absoluteRiftseerUri,
-} from "@riftseer/types/slug";
+```bash
+bun test packages/types
 ```
 
-## Card Token Syntax (parser)
-- `[[Card Name]]` — fuzzy name search
-- `[[Card Name|SET-001]]` — exact set + collector lookup (preferred)
-- `[[Card Name|set-id]]` — set-scoped name search
-- `parseCardRequests(text: string): CardRequest[]`
+Exports are declared in `package.json` and re-exported from `index.ts`. Add a subpath export only for a runtime module that consumers benefit from importing directly.
 
-## Adding/Changing Data Fields
-If a new field is added to the canonical `Card` type:
-- Update `src/card.ts` here first
-- Update `packages/ingest-worker/src/riftcodex.ts` (`rawToCard`)
-- Update the row mapping in `packages/core/src/providers/supabase.ts` (`dbRowToCard`)
-- Update the field table in `packages/api/docs/cards.md`
-- Check `packages/web/src/views/privacy-view.tsx` if the field affects what data is stored or shown
-
-## Public URL slugs
-
-`src/slug.ts` is the single source of truth for the public site-URL shape:
-
-```text
-<set>/<collector>(/signature)?/<name>(-<n>)?
-```
-
-- `<set>` — lowercase `set.set_code`
-- `<collector>` — `collector_number`, with literal `a` appended for
-  alternate-art numeric collectors (`12` → `12a`); the sentinel `x` when
-  there is no collector number
-- `signature` — present iff `metadata.signature === true`
-- `<name>` — `slugifyCardName(name)` (lowercased, ASCII-folded, hyphenated,
-  apostrophes stripped, stars/ornaments stripped)
-- `-<n>` — collision suffix on the name segment only
-
-Slugs are persisted in `cards.public_slug` on first insert and never
-overwritten by ingest, so URLs do not drift when upstream data changes.
-The API computes `riftseer_uri = ${SITE_ORIGIN}/card/${public_slug}` at
-response time.
-
-## Documentation
-Doc pages live in `packages/types/docs/`. Keep them up to date when making changes to types, parser behaviour, or the icon map.
+When the public shape changes, update the type first, then compile its API schema, provider/ingest writers and clients. Update the relevant card documentation and review the privacy page if the change affects collected or stored user data.

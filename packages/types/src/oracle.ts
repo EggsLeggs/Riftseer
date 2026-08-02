@@ -1,15 +1,18 @@
-// ─── Oracle grouping ───────────────────────────────────────────────────────────
-// An "oracle key" identifies the *card* rather than the printing, so rulings and
-// format legalities can be authored once and shared across every printing.
+// ─── Oracle matching ───────────────────────────────────────────────────────────
 //
-// This is the single source of truth for that derivation. It is used by:
-//   • the ingest worker, to stamp `cards.oracle_key` on every upserted row
-//   • the admin API, to resolve the oracle key when a card is renamed
-//   • `linkRelatedPrintings`, which groups printings by exactly the same key
+// An oracle key is a stable, name-derived *lookup slug*. It is emphatically NOT
+// the identity of an oracle: oracles have a surrogate `id`, and printings carry
+// a foreign key to it.
 //
-// Keep it name-derived and pure: the SQL backfill in
-// `supabase/migrations/20260731000000_phase5_rulings_legalities_formats.sql`
-// mirrors this function, and the two must agree.
+// This function is a **matching heuristic**, used at exactly one moment — when
+// ingest meets a printing it has not seen before and has to decide which
+// existing oracle it belongs to. A printing whose key matches nothing is filed
+// in the review queue rather than silently creating a second oracle, because
+// two names differing only by punctuation used to split a card in half and two
+// unrelated names could merge one.
+//
+// Nothing downstream groups by this. Rulings, legalities and relationships all
+// hang off `oracle_id`.
 
 import { normalizeCardName } from "./parser.ts";
 

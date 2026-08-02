@@ -1,6 +1,6 @@
-import type { Card } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
 
 export interface CardsSearchResponse {
   count: number;
-  cards: Card[];
+  cards: Oracle[];
 }

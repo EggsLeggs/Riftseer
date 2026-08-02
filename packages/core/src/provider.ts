@@ -1,14 +1,14 @@
-import { Deck } from "./deck.ts";
-import { DeckSerializer } from "./serialiser.ts";
 import type { CardSearchAst } from "./card-search-query.ts";
 import type {
-  Card,
   CardLegality,
   CardRequest,
   CardRuling,
   CardSearchOptions,
-  CardSearchResult,
   Format,
+  Oracle,
+  OracleSearchResult,
+  Printing,
+  PrintingSearchResult,
   ResolvedCard,
   SimplifiedDeck,
 } from "./types.ts";
@@ -16,9 +16,17 @@ import type {
 /**
  * The canonical provider interface.
  *
- * The rest of the app (API, bot) ONLY depends on this interface — not on any
- * concrete provider. The only implementation is SupabaseCardProvider
- * (data populated by the ingest pipeline).
+ * The rest of the app (API, bots) depends ONLY on this interface, never on a
+ * concrete provider. The only implementation is SupabaseCardProvider.
+ *
+ * Read it as two families:
+ *
+ *   getOracle*   "what is this card"     — the rules object
+ *   getPrinting* "this piece of cardboard" — one physical printing
+ *
+ * Search is oracle-shaped by default: a result row is a card, carrying its
+ * preferred printing. `searchPrintings` is the escape hatch for genuinely
+ * printing-level questions (`is:alternate`, a set/collector filter).
  */
 export interface CardDataProvider {
   /**
@@ -27,97 +35,113 @@ export interface CardDataProvider {
    */
   readonly sourceName: string;
 
-  /**
-   * Called once at startup.  Should:
-   *   1. Load the card cache from SQLite (fast path).
-   *   2. If the cache is stale or missing, call refresh().
-   *   3. Schedule background refreshes.
-   */
+  /** Called once at startup; verifies connectivity and seeds cached stats. */
   warmup(): Promise<void>;
 
-  /**
-   * Pull fresh card data from the upstream API and rebuild the in-memory index.
-   * Falls back to the existing cache if the upstream is unreachable.
-   */
+  /** Re-read cached stats from upstream. */
   refresh(): Promise<void>;
 
-  /**
-   * Look up a single card by its provider-assigned stable ID.
-   * Returns null if not found.
-   */
-  getCardById(id: string): Promise<Card | null>;
+  // ── Oracles ────────────────────────────────────────────────────────────────
+
+  /** Look up one oracle by its surrogate id. */
+  getOracleById(id: string): Promise<Oracle | null>;
 
   /**
-   * Look up a single card by its persisted public_slug (relative path, no
-   * leading slash, e.g. "ogn/12a/signature/sun-disc"). Returns null if not
-   * found.
+   * Look up one oracle by its name-derived lookup key. Distinct from
+   * `getOracleBySlug`: the key is `oracleKeyForName(name)`, the slug is a
+   * URL segment that may carry a collision suffix.
    */
-  getCardByPublicSlug(slug: string): Promise<Card | null>;
+  getOracleByKey(oracleKey: string): Promise<Oracle | null>;
+
+  /** Look up one oracle by its public slug, e.g. "brush". */
+  getOracleBySlug(slug: string): Promise<Oracle | null>;
 
   /**
-   * Look up `public_slug` values for many card IDs in one round-trip — used to
-   * hydrate `riftseer_uri` on related-card stubs.  IDs without a stored slug
-   * are simply omitted from the result map.
+   * Fetch many oracles in one round-trip, in the order the ids were given.
+   * Unknown ids are omitted rather than returned as null.
    */
-  getPublicSlugsByIds(ids: string[]): Promise<Map<string, string>>;
+  getOraclesByIds(ids: string[]): Promise<Oracle[]>;
 
   /**
-   * Fetch many full cards in one round-trip, in the order the IDs were given.
-   * Unknown IDs are omitted rather than returned as null.  Used to expand
-   * related-card stubs for the card detail payload.
+   * Every printing of one oracle, oldest set first. This is a plain foreign-key
+   * traversal — it is what replaced the denormalised `related_printings` array.
    */
-  getCardsByIds(ids: string[]): Promise<Card[]>;
+  getPrintingsForOracle(oracleId: string): Promise<Printing[]>;
+
+  /** The oracles on the other end of this oracle's relationship edges. */
+  getOracleRelationships(oracleId: string): Promise<{
+    makes_tokens: Oracle[];
+    used_by: Oracle[];
+    characters: Oracle[];
+    signatures: Oracle[];
+  }>;
+
+  // ── Printings ──────────────────────────────────────────────────────────────
+
+  /** Look up one printing by its RiftCodex ObjectId. */
+  getPrintingById(id: string): Promise<Printing | null>;
 
   /**
-   * Full-text + optional set/collector search.
+   * Look up one printing by its pinned public slug (relative path, no leading
+   * slash, e.g. "ogn/12a/signature/sun-disc").
+   */
+  getPrintingBySlug(slug: string): Promise<Printing | null>;
+
+  /** Fetch many printings in one round-trip, in the order the ids were given. */
+  getPrintingsByIds(ids: string[]): Promise<Printing[]>;
+
+  /** Printings in a set, ordered by collector number. */
+  getPrintingsBySet(setCode: string, opts?: { limit?: number }): Promise<Printing[]>;
+
+  // ── Search ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Raw-query search. Parses with {@link parseCardSearchQuery} and delegates to
+   * {@link searchOraclesByAst}.
+   */
+  searchOracles(q: string, opts?: CardSearchOptions): Promise<OracleSearchResult>;
+
+  /**
+   * Structured-AST search returning one row per card, each carrying the
+   * matching printing (the preferred one when it matched).
+   */
+  searchOraclesByAst(
+    ast: CardSearchAst,
+    opts?: CardSearchOptions,
+  ): Promise<OracleSearchResult>;
+
+  /** Structured-AST search returning one row per matching printing. */
+  searchPrintingsByAst(
+    ast: CardSearchAst,
+    opts?: CardSearchOptions,
+  ): Promise<PrintingSearchResult>;
+
+  /**
+   * Resolve a `[[Name|SET-123]]` request.
    *
-   * Compatibility wrapper: parses the raw query into a CardSearchAst with
-   * {@link parseCardSearchQuery} and delegates to {@link searchByAst}.
-   * Performs exact match first; fuzzy fallback if opts.fuzzy !== false.
-   * Honors {@link CardSearchOptions.offset} and {@link CardSearchOptions.limit} for paging.
-   */
-  searchByName(q: string, opts?: CardSearchOptions): Promise<CardSearchResult>;
-
-  /**
-   * Structured-AST search — primary entry point used by the HTTP layer once
-   * the user query and any explicit URL filters have been merged.
-   *
-   * Implementations route between fast paths and an RPC depending on AST
-   * shape (see `requiresRpc` / `isExactNameOnly` / `isLegacyTextOnly`).
-   * Same paging / dedup semantics as {@link searchByName}.
-   */
-  searchByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<CardSearchResult>;
-
-  /**
-   * Resolve a structured CardRequest to the single best matching printing.
-   * Handles set/collector fallback logic.
-   * Never throws — returns { card: null, matchType: "not-found" } on miss.
+   * This is an *oracle* lookup that also picks a printing: the one the request
+   * named, or the oracle's preferred one. Never throws — returns
+   * `{ oracle: null, printing: null, matchType: "not-found" }` on a miss.
    */
   resolveRequest(req: CardRequest): Promise<ResolvedCard>;
 
-  /**
-   * Return all known sets with their code, name, and card count.
-   * Optional — providers that don't support this may return [].
-   */
-  getSets(): Promise<Array<{ setCode: string; setName: string; cardCount: number; isPromo: boolean; publishedOn: string | null }>>;
+  /** All oracles, paginated, for the browse-everything view. */
+  browseOracles(opts: { limit: number; offset: number }): Promise<OracleSearchResult>;
 
-  /**
-   * Return cards in a set, ordered by collector number.
-   * Used when browsing a set without a name search.
-   */
-  getCardsBySet(setCode: string, opts?: { limit?: number }): Promise<Card[]>;
+  /** One random oracle, or null when the catalogue is empty. */
+  getRandomOracle(): Promise<Oracle | null>;
 
-  /**
-   * Return all cards paginated, ordered by release date then collector number.
-   * No deduplication — all printings are included.
-   */
-  browseCards(opts: { limit: number; offset: number }): Promise<{ cards: Card[]; total: number }>;
+  // ── Sets, formats, rulings ─────────────────────────────────────────────────
 
-  /**
-   * Return a single random card from the provider's index.
-   * Returns null if the index is empty.
-   */
-  getRandomCard(): Promise<Card | null>;
+  getSets(): Promise<
+    Array<{
+      setCode: string;
+      setName: string;
+      cardCount: number;
+      isPromo: boolean;
+      publishedOn: string | null;
+    }>
+  >;
 
   /**
    * Return the admin-managed play formats in display order. Retired
@@ -126,38 +150,48 @@ export interface CardDataProvider {
   getFormats(opts?: { includeInactive?: boolean }): Promise<Format[]>;
 
   /**
-   * Resolve one printing's legality in every active format.
-   *
-   * `oracleKey` selects the shared card-level statuses and `cardId` the
-   * per-printing overrides; precedence is printing → oracle → default `legal`.
-   * Every active format is represented, so callers never have to assume.
+   * Resolve one printing's legality in every active format, with precedence
+   * printing → oracle → default `legal`. Every active format is represented,
+   * so callers never have to assume.
    */
-  getCardLegalities(oracleKey: string, cardId: string): Promise<CardLegality[]>;
+  getLegalities(printingId: string): Promise<CardLegality[]>;
 
   /**
-   * Return the rulings and notes visible on one printing: those shared across
-   * the oracle group plus any scoped to this printing, oldest first.
+   * Rulings and notes visible on one printing: those scoped to its oracle,
+   * those scoped to the printing, and every rule that matches it — oldest
+   * first.
    */
-  getCardRulings(oracleKey: string, cardId: string): Promise<CardRuling[]>;
+  getRulings(printingId: string): Promise<CardRuling[]>;
 
   /**
-   * Return provider stats for the /meta endpoint.
-   * lastRefresh is a Unix timestamp (seconds); cardCount is the index size.
+   * Provider stats for the /meta endpoint. `lastRefresh` is a Unix timestamp
+   * in seconds; `oracleCount` and `printingCount` are catalogue sizes.
    */
-  getStats(): { lastRefresh: number; cardCount: number };
+  getStats(): { lastRefresh: number; oracleCount: number; printingCount: number };
 }
 
 export interface SimplifiedDeckProvider {
   /**
-   * Add cards to the deck given by deckShortForm, or create a new deck if not provided. Returns the updated deck and a new shortForm.
+   * Add printings to the deck given by deckShortForm, or create a new deck if
+   * not provided. Returns the updated deck and a new shortForm.
    */
-  addCards(cards: {id: string, quantity: number}[], deckShortForm?: string): Promise<{ deck: SimplifiedDeck; shortForm: string}>;
+  addCards(
+    cards: { id: string; quantity: number }[],
+    deckShortForm?: string,
+  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
   /**
-   * Remove cards from the deck given by deckShortForm. Returns the updated deck and a new shortForm.
+   * Remove printings from the deck given by deckShortForm. Returns the updated
+   * deck and a new shortForm.
    */
-  removeCards(cards: {id: string, quantity: number}[], deckShortForm: string): Promise<{deck: SimplifiedDeck, shortForm: string}>;
+  removeCards(
+    cards: { id: string; quantity: number }[],
+    deckShortForm: string,
+  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
   /**
-   * Get the deck represented by the shortForm string. Returns the deck and the same shortForm if valid.
+   * Get the deck represented by the shortForm string. Returns the deck and the
+   * same shortForm if valid.
    */
-  getDeckFromShortForm(deckShortForm: string): Promise<{deck: SimplifiedDeck, shortForm: string}>;
+  getDeckFromShortForm(
+    deckShortForm: string,
+  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
 }

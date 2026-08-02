@@ -4,26 +4,26 @@
  * RiftCodex is authoritative, so nothing another source says is applied
  * automatically — but two sources watch us, and what they see is worth a human
  * look. This module records those findings; an admin confirms an entry (which
- * writes a durable card override) or dismisses it (which is remembered across
- * ingests). Nothing here mutates a card.
+ * writes the value and locks the column) or dismisses it (which is remembered
+ * across ingests). Nothing here mutates a printing.
  *
- *   • **TCGPlayer** — a product that matches no card, and fields where a linked
- *     product disagrees with us.
- *   • **Riot's official gallery** — printings it lists that we hold no card
- *     for, and fields where it disagrees with us. It covers the numbered sets
- *     only, so it can never testify about a promo printing.
+ *   • **TCGPlayer** — a product that matches no printing, and fields where a
+ *     linked product disagrees with us.
+ *   • **Riot's official gallery** — printings it lists that we do not hold, and
+ *     fields where it disagrees with us. It covers the numbered sets only, so it
+ *     can never testify about a promo printing.
  *
  * Prices are never queued: they legitimately change every run and are applied
  * automatically anyway.
  *
- * Detection runs *after* the DB override overlay, so it sees each card's final
- * values. That is what makes a confirmed link stick: confirming writes
- * `external_ids.tcgplayer_id` into `card_overrides`, the overlay applies it, and
- * the product is no longer unmatched on the next run.
+ * Detection runs on the printings this run is about to write, *after* the
+ * admin-confirmed TCGPlayer links have been seeded back onto them. That is what
+ * makes a confirmation stick — comparing against un-seeded printings would
+ * re-file the same "unmatched product" on every run.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Card } from "@riftseer/types";
+import { oracleKeyForName } from "@riftseer/types/oracle";
 import { logger } from "../utils.ts";
 import { callRpcWithRetry } from "./retry.ts";
 import {
@@ -33,6 +33,7 @@ import {
   type ProductMaps,
 } from "./enrich.ts";
 import type { GalleryIndex } from "./gallery.ts";
+import type { IngestPrinting } from "./types.ts";
 import { printedVariantSignals } from "../sources/riftcodex.ts";
 import {
   galleryEquipment,
@@ -48,7 +49,10 @@ export const RECONCILIATION_BATCH_SIZE = 250;
 export type ReconciliationKind =
   | "unmatched_product"
   | "field_diff"
-  | "missing_card";
+  /** The gallery lists a printing of a card we hold, and we have no such printing. */
+  | "missing_printing"
+  /** The gallery lists a printing whose name matches no oracle we hold at all. */
+  | "unmatched_oracle";
 
 /** Which upstream raised the entry. Decides how `payload` is read. */
 export type ReconciliationSource = "tcgplayer" | "gallery";
@@ -124,10 +128,14 @@ export interface ReconciliationEntry {
     field?: ReconciliationField;
     current_value?: string | null;
     proposed_value?: string | null;
-    card_id?: string;
-    card_name?: string;
+    printing_id?: string;
+    printing_name?: string;
+    /** The matching key of the oracle a missing printing belongs to. */
+    oracle_key?: string;
   };
-  proposed_card_id: string | null;
+  proposed_printing_id: string | null;
+  /** Resolved after the catalogue upsert — a uuid only exists once written. */
+  proposed_oracle_id?: string | null;
 }
 
 /**
@@ -151,67 +159,75 @@ function toDatePart(value: string | null | undefined): string | null {
 }
 
 /**
- * Cards the admin has already linked to a product, by TCGPlayer product id.
- * `enrichCards` backfills `tcgplayer_id` whenever it matches by name, so this
- * covers automatic matches and confirmed manual ones alike.
+ * Printings already linked to a product, by TCGPlayer product id.
+ * `enrichPrintings` writes `tcgplayer_id` whenever it matches, so this covers
+ * automatic matches and admin-confirmed ones alike.
  */
-function claimedProductIds(cards: Card[]): Set<number> {
+function claimedProductIds(printings: IngestPrinting[]): Set<number> {
   const claimed = new Set<number>();
-  for (const card of cards) {
-    const raw = card.external_ids?.tcgplayer_id;
-    if (!raw) continue;
-    const productId = parseInt(raw, 10);
+  for (const printing of printings) {
+    if (!printing.tcgplayer_id) continue;
+    const productId = parseInt(printing.tcgplayer_id, 10);
     if (Number.isFinite(productId)) claimed.add(productId);
   }
   return claimed;
 }
 
 /**
- * `set_code|collector_number` → the single card holding it, or null when more
- * than one does. An ambiguous key (alternate art sharing a number) yields no
- * suggestion rather than a wrong one.
+ * `set_code|collector_number` → the single printing holding it, or null when
+ * more than one does. An ambiguous key (alternate art sharing a number) yields
+ * no suggestion rather than a wrong one.
  */
-function buildCollectorIndex(cards: Card[]): Map<string, Card | null> {
-  const index = new Map<string, Card | null>();
-  for (const card of cards) {
-    const setCode = card.set?.set_code;
-    const collector = normalizeCollectorNumber(card.collector_number);
+function buildCollectorIndex(
+  printings: IngestPrinting[],
+): Map<string, IngestPrinting | null> {
+  const index = new Map<string, IngestPrinting | null>();
+  for (const printing of printings) {
+    const setCode = printing.set_code;
+    const collector = normalizeCollectorNumber(printing.collector_number);
     if (!setCode || !collector) continue;
     const key = `${setCode}|${collector}`;
-    index.set(key, index.has(key) ? null : card);
+    index.set(key, index.has(key) ? null : printing);
   }
   return index;
+}
+
+function productPayload(
+  product: EnrichedProduct,
+  setCode: string | null,
+): ReconciliationProduct {
+  return {
+    product_id: product.productId,
+    name: product.name,
+    url: product.url,
+    image_url: product.imageUrl,
+    collector_number: product.collectorNumber,
+    group_id: product.groupId,
+    set_code: setCode,
+  };
 }
 
 function unmatchedEntry(
   product: EnrichedProduct,
   setCode: string | null,
-  proposed: Card | null,
+  proposed: IngestPrinting | null,
 ): ReconciliationEntry {
   return {
     fingerprint: `product:${product.productId}`,
     kind: "unmatched_product",
     source: "tcgplayer",
     payload: {
-      product: {
-        product_id: product.productId,
-        name: product.name,
-        url: product.url,
-        image_url: product.imageUrl,
-        collector_number: product.collectorNumber,
-        group_id: product.groupId,
-        set_code: setCode,
-      },
+      product: productPayload(product, setCode),
       ...(proposed
-        ? { card_id: proposed.id, card_name: proposed.name }
+        ? { printing_id: proposed.id, printing_name: proposed.name }
         : {}),
     },
-    proposed_card_id: proposed?.id ?? null,
+    proposed_printing_id: proposed?.id ?? null,
   };
 }
 
 function diffEntry(
-  card: Card,
+  printing: IngestPrinting,
   product: EnrichedProduct,
   setCode: string | null,
   field: ReconciliationField,
@@ -221,37 +237,29 @@ function diffEntry(
   return {
     // The proposed value is part of the identity: dismissing "TCGPlayer says
     // 2025-06-01" must not also dismiss a later, different claim.
-    fingerprint: `diff:${field}:${card.id}:${proposedValue}`,
+    fingerprint: `diff:${field}:${printing.id}:${proposedValue}`,
     kind: "field_diff",
     source: "tcgplayer",
     payload: {
-      product: {
-        product_id: product.productId,
-        name: product.name,
-        url: product.url,
-        image_url: product.imageUrl,
-        collector_number: product.collectorNumber,
-        group_id: product.groupId,
-        set_code: setCode,
-      },
+      product: productPayload(product, setCode),
       field,
       current_value: currentValue,
       proposed_value: proposedValue,
-      card_id: card.id,
-      card_name: card.name,
+      printing_id: printing.id,
+      printing_name: printing.name,
     },
-    proposed_card_id: card.id,
+    proposed_printing_id: printing.id,
   };
 }
 
 /**
- * Everything this run observed, ready for `syncReconciliationQueue`.
+ * Everything TCGPlayer let us observe, ready for `syncReconciliationQueue`.
  *
- * Pass the *final* cards (post-override) and the product map built during
- * enrichment.
+ * Pass the printings this run is about to write and the product map built
+ * during enrichment.
  */
 export function buildReconciliationEntries(
-  cards: Card[],
+  printings: IngestPrinting[],
   maps: ProductMaps,
   setGroupMap: Map<string, number>,
 ): ReconciliationEntry[] {
@@ -260,8 +268,8 @@ export function buildReconciliationEntries(
     setCodeByGroup.set(groupId, setCode);
   }
 
-  const claimed = claimedProductIds(cards);
-  const collectorIndex = buildCollectorIndex(cards);
+  const claimed = claimedProductIds(printings);
+  const collectorIndex = buildCollectorIndex(printings);
   const entries: ReconciliationEntry[] = [];
 
   // ── Products no card claims ────────────────────────────────────────────────
@@ -282,10 +290,9 @@ export function buildReconciliationEntries(
   }
 
   // ── Fields where a linked product disagrees with us ────────────────────────
-  for (const card of cards) {
-    const raw = card.external_ids?.tcgplayer_id;
-    if (!raw) continue;
-    const productId = parseInt(raw, 10);
+  for (const printing of printings) {
+    if (!printing.tcgplayer_id) continue;
+    const productId = parseInt(printing.tcgplayer_id, 10);
     if (!Number.isFinite(productId)) continue;
     const product = maps.byId.get(productId);
     if (!product) continue;
@@ -295,48 +302,60 @@ export function buildReconciliationEntries(
     // A variant suffix (`12a`, `12*`) is how TCGPlayer spells our number, not a
     // disagreement — compare against every candidate the matcher accepts.
     if (product.collectorNumber) {
-      const candidates = collectorCandidates(card);
+      const candidates = collectorCandidates(printing);
       if (
         candidates.length > 0 &&
         !candidates.includes(product.collectorNumber)
       ) {
         entries.push(
           diffEntry(
-            card,
+            printing,
             product,
             setCode,
             "collector_number",
-            card.collector_number ?? null,
+            printing.collector_number ?? null,
             product.collectorNumber,
           ),
         );
       }
     }
 
-    // RiftCodex reports the base card's rarity for a Showcase printing and has
-    // been observed plainly wrong on a handful of ordinary cards, so what a
-    // linked product prints is worth a look. Compared case-insensitively:
-    // both sides title-case it, and casing alone is not a disagreement.
-    const cardRarity = comparableValue(card.classification?.rarity);
+    // Rarity is a printing-level field, and the sources genuinely disagree:
+    // TCGPlayer treats Showcase as a rarity while RiftCodex reports the base
+    // card's on an alternate-art or showcase printing. Compared
+    // case-insensitively — both sides title-case it, and casing alone is not a
+    // disagreement.
+    const printingRarity = comparableValue(printing.rarity);
     if (
       product.rarity &&
-      cardRarity?.toLowerCase() !== product.rarity.toLowerCase()
+      printingRarity?.toLowerCase() !== product.rarity.toLowerCase()
     ) {
       entries.push(
-        diffEntry(card, product, setCode, "rarity", cardRarity, product.rarity),
+        diffEntry(
+          printing,
+          product,
+          setCode,
+          "rarity",
+          printingRarity,
+          product.rarity,
+        ),
       );
     }
 
     const productReleased = toDatePart(product.releasedOn);
-    const cardReleased = toDatePart(card.released_at);
-    if (productReleased && cardReleased && productReleased !== cardReleased) {
+    const printingReleased = toDatePart(printing.released_at);
+    if (
+      productReleased &&
+      printingReleased &&
+      productReleased !== printingReleased
+    ) {
       entries.push(
         diffEntry(
-          card,
+          printing,
           product,
           setCode,
           "released_at",
-          cardReleased,
+          printingReleased,
           productReleased,
         ),
       );
@@ -422,43 +441,43 @@ function galleryCardPayload(
  * printings that have none rather than sending null.
  */
 function galleryFieldPairs(
-  card: Card,
+  printing: IngestPrinting,
   raw: RawGalleryCard,
 ): Array<[ReconciliationField, string | null, string | null]> {
   return [
     [
       "collector_number",
-      comparableValue(card.collector_number),
+      comparableValue(printing.collector_number),
       comparableValue(galleryPrintedCollectorNumber(raw)),
     ],
     [
       "rarity",
-      comparableValue(card.classification?.rarity),
+      comparableValue(printing.rarity),
       comparableValue(raw.rarity?.value?.label),
     ],
     [
       "type",
-      comparableValue(card.classification?.type),
+      comparableValue(printing.card_type),
       comparableValue(raw.cardType?.type?.[0]?.label),
     ],
     [
       "energy",
-      comparableValue(card.attributes?.energy),
+      comparableValue(printing.energy),
       comparableValue(raw.energy?.value?.id),
     ],
     [
       "might",
-      comparableValue(card.attributes?.might),
+      comparableValue(printing.might),
       comparableValue(raw.might?.value?.id),
     ],
     [
       "power",
-      comparableValue(card.attributes?.power),
+      comparableValue(printing.power),
       comparableValue(raw.power?.value?.id),
     ],
     [
       "text",
-      comparableText(card.text?.rich),
+      comparableText(printing.text_rich),
       comparableText(raw.text?.richText?.body),
     ],
   ];
@@ -467,50 +486,63 @@ function galleryFieldPairs(
 /**
  * What Riot's official gallery says we got wrong or are missing.
  *
- * Two kinds of finding, neither of which changes anything by itself:
+ * Three kinds of finding, none of which changes anything by itself:
  *
- *   • `missing_card` — the gallery lists a printing we hold no card for. Nine
- *     exist today (Unleashed's T01-T08 tokens and Vendetta's Recruit (NX)).
- *     RiftCodex stays authoritative for what exists, so an admin creates the
- *     card by hand and confirms against it, or dismisses.
+ *   • `missing_printing` — the gallery lists a printing of a card we do hold.
+ *     An admin adds the printing to that oracle, or dismisses.
+ *   • `unmatched_oracle` — the gallery lists a printing whose name matches no
+ *     oracle at all. That is a whole card we do not have, and it is filed rather
+ *     than created: two names differing only by punctuation used to split a card
+ *     in half, and two unrelated names could merge one.
  *   • `field_diff` — a printing we both hold, where a value disagrees.
  *
  * The gallery covers the numbered sets only. Every promo printing is absent
- * from it, so a card it does not list is *not* evidence of anything — only the
- * ids it does list are checked in reverse.
+ * from it, so a printing it does not list is *not* evidence of anything — only
+ * the ids it does list are checked in reverse.
  */
 export function buildGalleryReconciliationEntries(
-  cards: Card[],
+  printings: IngestPrinting[],
   index: GalleryIndex,
 ): ReconciliationEntry[] {
-  const cardsByRiftboundId = new Map<string, Card>();
-  for (const card of cards) {
-    const id = card.external_ids?.riftbound_id;
-    if (id) cardsByRiftboundId.set(normalizeGalleryId(id), card);
+  const byRiftboundId = new Map<string, IngestPrinting>();
+  const oracleKeys = new Set<string>();
+  for (const printing of printings) {
+    if (printing.riftbound_id) {
+      byRiftboundId.set(normalizeGalleryId(printing.riftbound_id), printing);
+    }
+    oracleKeys.add(oracleKeyForName(printing.name));
   }
 
   const entries: ReconciliationEntry[] = [];
 
   for (const [riftboundId, raw] of index.byRiftboundId) {
-    const card = cardsByRiftboundId.get(riftboundId);
+    const printing = byRiftboundId.get(riftboundId);
 
-    if (!card) {
+    if (!printing) {
+      const oracleKey = oracleKeyForName(raw.name);
+      const known = oracleKeys.has(oracleKey);
       entries.push({
         fingerprint: `gallery-missing:${riftboundId}`,
-        kind: "missing_card",
+        kind: known ? "missing_printing" : "unmatched_oracle",
         source: "gallery",
-        payload: { gallery: galleryCardPayload(raw, riftboundId) },
-        proposed_card_id: null,
+        payload: {
+          gallery: galleryCardPayload(raw, riftboundId),
+          oracle_key: oracleKey,
+        },
+        proposed_printing_id: null,
+        // Filled in after the catalogue upsert: the oracle's uuid does not
+        // exist until the run that creates it has committed.
+        proposed_oracle_id: null,
       });
       continue;
     }
 
-    for (const [field, ours, theirs] of galleryFieldPairs(card, raw)) {
+    for (const [field, ours, theirs] of galleryFieldPairs(printing, raw)) {
       if (theirs === null || ours === theirs) continue;
       entries.push({
         // The observed value is part of the identity, so a dismissal sticks
         // while a genuinely new claim re-surfaces — as for TCGPlayer diffs.
-        fingerprint: `gallery-diff:${field}:${card.id}:${theirs}`,
+        fingerprint: `gallery-diff:${field}:${printing.id}:${theirs}`,
         kind: "field_diff",
         source: "gallery",
         payload: {
@@ -518,20 +550,39 @@ export function buildGalleryReconciliationEntries(
           field,
           current_value: ours,
           proposed_value: theirs,
-          card_id: card.id,
-          card_name: card.name,
+          printing_id: printing.id,
+          printing_name: printing.name,
         },
-        proposed_card_id: card.id,
+        proposed_printing_id: printing.id,
       });
     }
   }
 
   logger.info("Built gallery reconciliation entries", {
     total: entries.length,
-    missingCards: entries.filter((e) => e.kind === "missing_card").length,
+    missingPrintings: entries.filter((e) => e.kind === "missing_printing").length,
+    unmatchedOracles: entries.filter((e) => e.kind === "unmatched_oracle").length,
     fieldDiffs: entries.filter((e) => e.kind === "field_diff").length,
   });
   return entries;
+}
+
+/**
+ * Attach the surrogate oracle id to every entry that named an oracle key.
+ *
+ * Runs after the catalogue upsert for the obvious reason: an oracle created by
+ * this run has no id before it. Missing ids are left null — the entry is still
+ * useful without one.
+ */
+export function attachProposedOracleIds(
+  entries: ReconciliationEntry[],
+  oracleIdsByKey: Map<string, string>,
+): void {
+  for (const entry of entries) {
+    const key = entry.payload.oracle_key;
+    if (!key) continue;
+    entry.proposed_oracle_id = oracleIdsByKey.get(key) ?? null;
+  }
 }
 
 function chunk<T>(items: T[], size: number): T[][] {

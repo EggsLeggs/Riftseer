@@ -74,11 +74,11 @@ export function SetDetailView({ code }: { code: string }) {
   const cards = order ? sortCards(rawCards, order, direction) : rawCards;
 
   const totalUsd = rawCards.reduce(
-    (sum, c) => sum + (tcgplayerUsdPrice(c.prices?.tcgplayer) ?? 0),
+    (sum, card) => sum + (tcgplayerUsdPrice(card.printing.prices?.tcgplayer) ?? 0),
     0,
   );
   const totalEur = rawCards.reduce(
-    (sum, c) => sum + (c.prices?.cardmarket?.normal ?? 0),
+    (sum, card) => sum + (card.printing.prices?.cardmarket?.normal ?? 0),
     0,
   );
 

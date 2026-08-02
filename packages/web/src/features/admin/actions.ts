@@ -7,12 +7,16 @@ import { detectImageContentType, extensionForImageType } from "./image-type";
 import type {
   AdminAuditFilters,
   AdminAuditPage,
-  AdminCardDefinition,
-  AdminCardLegalities,
-  AdminCardMutationResult,
-  AdminCardPatch,
-  AdminCardRelationships,
-  AdminCardRulings,
+  AdminOracleDefinition,
+  AdminOracleMutationResult,
+  AdminOraclePatch,
+  AdminOracleRelationships,
+  AdminPrintingDefinition,
+  AdminPrintingDelta,
+  AdminPrintingLegalities,
+  AdminPrintingMutationResult,
+  AdminPrintingPatch,
+  AdminPrintingRulings,
   AdminFormatDeleteResult,
   AdminFormatInput,
   AdminFormatListResult,
@@ -29,9 +33,6 @@ import type {
   AdminReviewPage,
   AdminRuling,
   AdminRulingCreateInput,
-  AdminRulingInput,
-  AdminRulingMutationResult,
-  AdminRulingPatch,
   AdminRulingRecordPatch,
   AdminRulingsPage,
   AdminRulingsQuery,
@@ -62,8 +63,8 @@ async function withToken<T>(
 }
 
 /** Drop the caches that can still show the pre-edit card after a mutation. */
-function revalidateCard(cardId: string, publicSlug?: string) {
-  revalidatePath(`/card/${cardId}`);
+function revalidatePrinting(printingId: string, publicSlug?: string) {
+  revalidatePath(`/card/${printingId}`);
   if (publicSlug) revalidatePath(`/card/${publicSlug}`);
   revalidatePath("/admin/cards");
 }
@@ -84,16 +85,17 @@ export async function listReviewAction(
 
 export async function confirmReviewEntryAction(
   entryId: string,
-  cardId?: string,
+  printingId?: string,
+  oracleId?: string,
   note?: string,
 ): Promise<AdminResult<AdminReviewMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.confirmReviewEntry(token, entryId, cardId, note),
+    adminApi.confirmReviewEntry(token, entryId, printingId, oracleId, note),
   );
   if (result.ok) {
     revalidatePath("/admin/review");
-    // Confirming writes a card override, so the affected card page is stale.
-    if (result.data.card_id) revalidateCard(result.data.card_id);
+    if (result.data.printing_id) revalidatePrinting(result.data.printing_id);
+    if (result.data.oracle_id) revalidatePath("/card", "layout");
   }
   return result;
 }
@@ -109,37 +111,83 @@ export async function dismissReviewEntryAction(
   return result;
 }
 
-export async function createCardAction(
-  id: string,
-  definition: AdminCardDefinition,
-): Promise<AdminResult<AdminCardMutationResult>> {
+export async function createOracleAction(
+  definition: AdminOracleDefinition,
+): Promise<AdminResult<AdminOracleMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.createCard(token, id, definition),
+    adminApi.createOracle(token, definition),
   );
   if (result.ok) revalidatePath("/admin/cards");
   return result;
 }
 
-export async function patchCardAction(
-  cardId: string,
-  patch: AdminCardPatch,
-  options: { note?: string; publicSlug?: string } = {},
-): Promise<AdminResult<AdminCardMutationResult>> {
+export async function patchOracleAction(
+  oracleId: string,
+  patch: AdminOraclePatch,
+): Promise<AdminResult<AdminOracleMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.patchCard(token, cardId, patch, options.note),
+    adminApi.patchOracle(token, oracleId, patch),
   );
-  if (result.ok) revalidateCard(cardId, options.publicSlug);
+  if (result.ok) revalidatePath("/card", "layout");
   return result;
 }
 
-export async function deleteCardAction(
-  cardId: string,
+export async function deleteOracleAction(
+  oracleId: string,
   reason?: string,
-): Promise<AdminResult<AdminCardMutationResult>> {
+): Promise<AdminResult<AdminOracleMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.deleteCard(token, cardId, reason),
+    adminApi.deleteOracle(token, oracleId, reason),
   );
-  if (result.ok) revalidateCard(cardId);
+  if (result.ok) revalidatePath("/card", "layout");
+  return result;
+}
+
+export async function createPrintingAction(
+  id: string,
+  oracleId: string,
+  setCode: string,
+  definition: AdminPrintingDefinition,
+): Promise<AdminResult<AdminPrintingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.createPrinting(token, id, oracleId, setCode, definition),
+  );
+  if (result.ok) revalidatePath("/admin/cards");
+  return result;
+}
+
+export async function patchPrintingAction(
+  printingId: string,
+  patch: AdminPrintingPatch,
+  publicSlug?: string,
+): Promise<AdminResult<AdminPrintingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.patchPrinting(token, printingId, patch),
+  );
+  if (result.ok) revalidatePrinting(printingId, publicSlug);
+  return result;
+}
+
+export async function deletePrintingAction(
+  printingId: string,
+  reason?: string,
+): Promise<AdminResult<AdminPrintingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.deletePrinting(token, printingId, reason),
+  );
+  if (result.ok) revalidatePrinting(printingId);
+  return result;
+}
+
+export async function setPrintingDeltaAction(
+  printingId: string,
+  delta: AdminPrintingDelta | null,
+  publicSlug?: string,
+): Promise<AdminResult<AdminPrintingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.setPrintingDelta(token, printingId, delta),
+  );
+  if (result.ok) revalidatePrinting(printingId, publicSlug);
   return result;
 }
 
@@ -151,47 +199,27 @@ export async function regenerateSlugAction(
     adminApi.regenerateSlug(token, cardId),
   );
   if (result.ok) {
-    revalidateCard(cardId, previousSlug);
+    revalidatePrinting(cardId, previousSlug);
     revalidatePath(`/card/${result.data.public_slug}`);
   }
   return result;
 }
 
-export async function moveCardAction(
-  cardId: string,
-  setCode: string,
-  publicSlug?: string,
-): Promise<AdminResult<AdminCardMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.moveCard(token, cardId, setCode),
-  );
-  if (result.ok) {
-    revalidateCard(cardId, publicSlug);
-    revalidatePath(`/sets/${setCode.toLowerCase()}`);
-  }
-  return result;
-}
-
-export async function listCardRelationshipsAction(
-  cardId: string,
-): Promise<AdminResult<AdminCardRelationships>> {
-  return withToken((token) => adminApi.listCardRelationships(token, cardId));
+export async function listOracleRelationshipsAction(
+  oracleId: string,
+): Promise<AdminResult<AdminOracleRelationships>> {
+  return withToken((token) => adminApi.listOracleRelationships(token, oracleId));
 }
 
 export async function setRelationshipsAction(
-  cardId: string,
+  oracleId: string,
   entries: AdminRelationshipEntry[],
-  applyToAllPrintings: boolean,
-  publicSlug?: string,
-): Promise<AdminResult<AdminCardMutationResult>> {
+): Promise<AdminResult<AdminOracleMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.setRelationships(token, cardId, entries, applyToAllPrintings),
+    adminApi.setRelationships(token, oracleId, entries),
   );
   if (result.ok) {
-    // Oracle-scoped overrides change every printing in the group; sibling
-    // slugs are not known here, so revalidate the whole card subtree.
-    if (applyToAllPrintings) revalidatePath("/card", "layout");
-    else revalidateCard(cardId, publicSlug);
+    revalidatePath("/card", "layout");
     revalidatePath("/admin/cards");
   }
   return result;
@@ -204,7 +232,7 @@ export async function uploadCardImageAction(
   const result = await withToken((token) =>
     adminApi.uploadCardImage(token, cardId, formData),
   );
-  if (result.ok) revalidateCard(cardId);
+  if (result.ok) revalidatePrinting(cardId);
   return result;
 }
 
@@ -215,7 +243,7 @@ const MAX_IMPORT_REDIRECTS = 3;
 
 /**
  * Hosts this action may fetch from. The only caller imports the card art on a
- * gallery `missing_card` payload, which Riot's CMS serves from its Sanity CDN
+ * gallery `missing_printing` payload, which Riot's CMS serves from its Sanity CDN
  * (`cmsassets.rgpub.io`); `assetcdn.rgpub.io` carries the same assets. Keeping
  * it to a list means a poisoned payload cannot turn this Worker into a probe
  * for arbitrary internal addresses.
@@ -394,9 +422,11 @@ export async function importCardImageFromUrlAction(
   const formData = new FormData();
   formData.append(
     "file",
-    new File([bytes], `gallery.${extensionForImageType(contentType)}`, {
-      type: contentType,
-    }),
+    new File(
+      [Uint8Array.from(bytes)],
+      `gallery.${extensionForImageType(contentType)}`,
+      { type: contentType },
+    ),
   );
   const alt = accessibilityText?.trim();
   if (alt) formData.append("accessibility_text", alt);
@@ -505,10 +535,10 @@ export async function reorderFormatsAction(
 
 // ─── Legalities and rulings ───────────────────────────────────────────────────
 
-export async function listCardLegalitiesAction(
-  cardId: string,
-): Promise<AdminResult<AdminCardLegalities>> {
-  return withToken((token) => adminApi.listCardLegalities(token, cardId));
+export async function listPrintingLegalitiesAction(
+  printingId: string,
+): Promise<AdminResult<AdminPrintingLegalities>> {
+  return withToken((token) => adminApi.listPrintingLegalities(token, printingId));
 }
 
 export async function setCardLegalityAction(
@@ -528,68 +558,18 @@ export async function setCardLegalityAction(
     ),
   );
   if (result.ok) {
-    // A card-level status changes every printing's page, and the sibling slugs
+    // An oracle-level status changes every printing's page, and the sibling slugs
     // are not known here, so revalidate the whole card subtree in that case.
     if (applyToAllPrintings) revalidatePath("/card", "layout");
-    else revalidateCard(cardId, publicSlug);
+    else revalidatePrinting(cardId, publicSlug);
   }
   return result;
 }
 
-export async function listCardRulingsAction(
-  cardId: string,
-): Promise<AdminResult<AdminCardRulings>> {
-  return withToken((token) => adminApi.listCardRulings(token, cardId));
-}
-
-export async function createCardRulingAction(
-  cardId: string,
-  input: AdminRulingInput,
-  publicSlug?: string,
-): Promise<AdminResult<AdminRulingMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.createCardRuling(token, cardId, input),
-  );
-  if (result.ok) revalidateRuling(cardId, input.apply_to_all_printings, publicSlug);
-  return result;
-}
-
-export async function patchCardRulingAction(
-  cardId: string,
-  rulingId: string,
-  patch: AdminRulingPatch,
-  publicSlug?: string,
-): Promise<AdminResult<AdminRulingMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.patchCardRuling(token, cardId, rulingId, patch),
-  );
-  if (result.ok) revalidateRuling(cardId, true, publicSlug);
-  return result;
-}
-
-export async function deleteCardRulingAction(
-  cardId: string,
-  rulingId: string,
-  publicSlug?: string,
-): Promise<AdminResult<AdminRulingMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.deleteCardRuling(token, cardId, rulingId),
-  );
-  if (result.ok) revalidateRuling(cardId, true, publicSlug);
-  return result;
-}
-
-/**
- * A card-wide ruling shows on every printing, so drop the whole `/card`
- * subtree unless the entry is known to be scoped to this printing alone.
- */
-function revalidateRuling(
-  cardId: string,
-  cardWide: boolean | undefined,
-  publicSlug?: string,
-) {
-  if (cardWide === false) revalidateCard(cardId, publicSlug);
-  else revalidatePath("/card", "layout");
+export async function listPrintingRulingsAction(
+  printingId: string,
+): Promise<AdminResult<AdminPrintingRulings>> {
+  return withToken((token) => adminApi.listPrintingRulings(token, printingId));
 }
 
 // ─── Rulings tab ──────────────────────────────────────────────────────────────

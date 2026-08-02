@@ -1,8 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  buildDefinitionFromPrefill,
-  galleryToPrefill,
-} from "./review-draft";
+import { galleryToPrefill } from "./review-draft";
 import type { AdminReviewGalleryCard } from "./types";
 
 function gallery(
@@ -107,41 +104,5 @@ describe("galleryToPrefill", () => {
       image_url: null,
     });
     expect(alternate.alternateArt).toBe(true);
-  });
-});
-
-describe("buildDefinitionFromPrefill", () => {
-  test("includes identity, external id, stats and text", () => {
-    const definition = buildDefinitionFromPrefill(
-      galleryToPrefill(
-        gallery({
-          energy: 1,
-          text: "[Assault]",
-          equipment: "Equipped unit has…",
-          might_bonus: 2,
-        }),
-      ),
-      { setCode: "UNL", setName: "Unleashed" },
-    );
-
-    expect(definition).toEqual({
-      name: "Baron Pit",
-      is_token: true,
-      collector_number: "T01",
-      metadata: {
-        signature: false,
-        alternate_art: false,
-        special_collection: false,
-      },
-      set: { set_code: "UNL", set_name: "Unleashed" },
-      external_ids: { riftbound_id: "unl-t01" },
-      attributes: { energy: 1, might_bonus: 2 },
-      classification: { type: "Battlefield" },
-      text: {
-        rich: "[Assault]",
-        plain: "[Assault]",
-        equipment: "Equipped unit has…",
-      },
-    });
   });
 });

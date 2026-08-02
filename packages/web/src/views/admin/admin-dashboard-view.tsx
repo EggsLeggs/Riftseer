@@ -122,9 +122,8 @@ export function AdminDashboardView({ stats, email }: Props) {
       <div className="text-muted-foreground mt-8 flex items-start gap-2 text-xs">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <p className="leading-relaxed">
-          Card and set edits are applied to the live row and stored as a durable
-          override in the same transaction, so the scheduled RiftCodex ingest
-          re-applies them instead of overwriting them.
+          Oracle, printing and set edits lock the fields an admin chose, so the
+          scheduled RiftCodex ingest cannot overwrite those decisions.
         </p>
       </div>
     </>

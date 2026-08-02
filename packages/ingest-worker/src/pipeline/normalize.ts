@@ -1,11 +1,11 @@
 /**
- * Normalize raw RiftCodex data → IngestSet + Card, applying overrides.
+ * Normalize raw RiftCodex data → IngestSet + IngestPrinting, applying the
+ * file overrides in `src/overrides/`.
  */
 
 import type { RawSetInfo, RawCard } from "../sources/riftcodex.ts";
-import type { IngestSet } from "./types.ts";
-import type { Card } from "@riftseer/types";
-import { rawToCard } from "../sources/riftcodex.ts";
+import type { IngestPrinting, IngestSet } from "./types.ts";
+import { rawToPrinting } from "../sources/riftcodex.ts";
 import { overrides } from "../overrides/index.ts";
 
 const PROMO_NAME_PATTERN = /\bpromotional\b/i;
@@ -23,6 +23,14 @@ function normalizeDate(value: string | null | undefined): string | null {
   return match?.[0] ?? null;
 }
 
+/** Cardmarket occasionally lists several expansion ids; only one fits a column. */
+function firstCardmarketId(
+  value: string | string[] | null | undefined,
+): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value ?? undefined;
+}
+
 export function normalizeSets(rawSets: RawSetInfo[]): IngestSet[] {
   return rawSets.map((raw) => {
     const setCode = raw.set_id.toUpperCase();
@@ -36,20 +44,18 @@ export function normalizeSets(rawSets: RawSetInfo[]): IngestSet[] {
       published_on: normalizeDate(override.published_on ?? raw.published_on),
       is_promo: override.is_promo ?? PROMO_NAME_PATTERN.test(name),
       parent_set_code: override.parent_set_code ?? null,
-      external_ids: {
-        riftcodex_set_id: raw.set_id,
-        tcgplayer_group_id: parseTcgplayerGroupId(raw.tcgplayer_id),
-        cardmarket_id: raw.cardmarket_id ?? undefined,
-      },
+      riftcodex_set_id: raw.set_id,
+      tcgplayer_group_id: parseTcgplayerGroupId(raw.tcgplayer_id),
+      cardmarket_id: firstCardmarketId(raw.cardmarket_id),
     };
   });
 }
 
-export function normalizeCards(rawCards: RawCard[]): Card[] {
+export function normalizePrintings(rawCards: RawCard[]): IngestPrinting[] {
   return rawCards.map((raw) => {
-    const card = rawToCard(raw);
+    const printing = rawToPrinting(raw);
     const override = overrides.cards[raw.id] ?? {};
-    if (override.released_at) card.released_at = override.released_at;
-    return card;
+    if (override.released_at) printing.released_at = override.released_at;
+    return printing;
   });
 }

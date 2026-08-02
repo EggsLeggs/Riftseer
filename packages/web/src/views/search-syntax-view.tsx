@@ -66,7 +66,7 @@ export function SearchSyntaxView() {
               <Code>a:value</Code> or <Code>artist:value</Code>: matches the illustrator name.
             </ListItem>
             <ListItem>
-              <Code>r:value</Code> or <Code>rarity:value</Code>: matches print rarity text.
+              <Code>r:value</Code> or <Code>rarity:value</Code>: matches rarity on the physical printing, not the shared oracle.
             </ListItem>
             <ListItem>
               <Code>name:value</Code>: matches the card name as a substring, unlike plain words which use full text matching.
@@ -240,8 +240,9 @@ export function SearchSyntaxView() {
         <div className="mb-6">
           <SubHeading>All printings</SubHeading>
           <Text>
-            By default, results are deduplicated to show one printing per card. To include all art variants and
-            reprints, add <Code>unique:prints</Code> or the shorthand <Code>++</Code> anywhere in the query.
+            By default, results contain one oracle per card, displayed through the printing that matched. To return
+            one result per physical printing — including art variants and reprints — add <Code>unique:prints</Code> or
+            the shorthand <Code>++</Code> anywhere in the query.
           </Text>
           <Text>
             Examples: <Code>poro unique:prints</Code>, <Code>poro ++</Code>.

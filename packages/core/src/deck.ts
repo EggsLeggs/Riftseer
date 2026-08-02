@@ -1,14 +1,17 @@
-import { Card, SimplifiedDeck } from "./types";
-import { BadRequestError } from "./errors";
+import { BadRequestError } from "./errors.ts";
+import type { DeckCard } from "./deck-card.ts";
+import type { SimplifiedDeck } from "./types.ts";
+
+export type { DeckCard };
 
 export class Deck {
   id: string | null;
-  legend: Card | null;
-  chosenChampion: Card | null;
-  cards: { card: Card; quantity: number }[];
-  sideboard: { card: Card; quantity: number }[];
-  runes: { card: Card; quantity: number }[];
-  battlegrounds: Card[];
+  legend: DeckCard | null;
+  chosenChampion: DeckCard | null;
+  cards: { card: DeckCard; quantity: number }[];
+  sideboard: { card: DeckCard; quantity: number }[];
+  runes: { card: DeckCard; quantity: number }[];
+  battlegrounds: DeckCard[];
 
   constructor() {
     this.id = null;
@@ -23,10 +26,10 @@ export class Deck {
   /**
    * General card-adding method that differentiates based on supertype.
    */
-  addCard(card: Card, quantity: number = 1) {
+  addCard(card: DeckCard, quantity: number = 1) {
     if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
-    const supertype = card.classification?.supertype;
-    if (card.classification?.type === "Legend") {
+    const supertype = card.supertype;
+    if (card.card_type === "Legend") {
       if (quantity !== 1) throw new Error("Legend cards must be added with quantity 1");
       this.addLegend(card);
     } else if (supertype === "Battleground") {
@@ -50,8 +53,8 @@ export class Deck {
    * Set the legend for this deck.
    * Throws if the card is not a Legend or a legend is already chosen.
    */
-  addLegend(card: Card) {
-    if (card.classification?.type !== "Legend") {
+  addLegend(card: DeckCard) {
+    if (card.card_type !== "Legend") {
       throw new Error(`${card.name} is not a legend and cannot be added as the legend.`);
     }
     if (this.legend) {
@@ -67,10 +70,10 @@ export class Deck {
    * - The first eligible Champion linked to the legend is stored as chosenChampion.
    * - Enforces a 3-copy limit per card and a 40-card main deck cap.
    */
-  addMainCard(card: Card, quantity: number = 1, toSideboard: boolean = false) {
+  addMainCard(card: DeckCard, quantity: number = 1, toSideboard: boolean = false) {
     if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
-    const cardType = card.classification?.type;
-    const cardSupertype = card.classification?.supertype;
+    const cardType = card.card_type;
+    const cardSupertype = card.supertype;
     if (cardType === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
       throw new Error(`${card.name} can not be added into the main deck or sideboard.`);
     }
@@ -80,9 +83,9 @@ export class Deck {
       throw new Error("Cannot add cards before a legend is chosen.");
     }
 
-    const cardDomains = card.classification?.domains || [];
+    const cardDomains = card.domains;
     if (cardDomains.some(domain => !legendDomains.includes(domain))) {
-      throw new Error(`${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. Card domains: ${cardDomains.join(", ")}`);
+      throw new Error(`${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. DeckCard domains: ${cardDomains.join(", ")}`);
     }
 
     const currentCount = this.getCountOfMainCard(card);
@@ -126,8 +129,8 @@ export class Deck {
    * Add a battleground to the deck.
    * Enforces a maximum of 3 unique battlegrounds and rejects duplicates.
    */
-  addBattleground(card: Card) {
-    if (card.classification?.supertype !== "Battleground") {
+  addBattleground(card: DeckCard) {
+    if (card.supertype !== "Battleground") {
       throw new Error(`${card.name} is not a Battleground and cannot be added as a battleground.`);
     }
     if (this.battlegrounds.length === 3) {
@@ -144,9 +147,9 @@ export class Deck {
    * Add rune(s) to the deck.
    * Enforces domain matching against the legend and a 12-rune total cap.
    */
-  addRune(card: Card, quantity: number = 1) {
+  addRune(card: DeckCard, quantity: number = 1) {
     if (!Number.isInteger(quantity) || quantity <= 0) throw new Error("quantity must be a positive integer");
-    if (card.classification?.supertype !== "Rune") {
+    if (card.supertype !== "Rune") {
       throw new Error(`${card.name} is not a Rune and cannot be added as a rune.`);
     }
 
@@ -154,9 +157,9 @@ export class Deck {
     if (!legendDomains || legendDomains.length === 0) {
       throw new Error("Cannot add runes before a legend is chosen.");
     }
-    const cardDomains = card.classification?.domains || [];
+    const cardDomains = card.domains;
     if (cardDomains.some(domain => !legendDomains.includes(domain))) {
-      throw new Error(`${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. Card domains: ${cardDomains.join(", ")}`);
+      throw new Error(`${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. DeckCard domains: ${cardDomains.join(", ")}`);
     }
 
     const totalRunes = this.runes.reduce((count, c) => count + c.quantity, 0);
@@ -186,11 +189,11 @@ export class Deck {
     ];
     const card = allCards.find(c => c.id === cardId);
     if (!card) {
-      throw new Error(`Card with id ${cardId} not found in the deck.`);
+      throw new Error(`DeckCard with id ${cardId} not found in the deck.`);
     }
 
-    const type = card.classification?.type;
-    const supertype = card.classification?.supertype;
+    const type = card.card_type;
+    const supertype = card.supertype;
     if (type === "Legend") {
       this.removeLegend(cardId);
     } else if (supertype === "Battleground") {
@@ -255,7 +258,7 @@ export class Deck {
     }
 
     if (!removed) {
-      throw new Error(`Card with id ${cardId} not found.`);
+      throw new Error(`DeckCard with id ${cardId} not found.`);
     }
   }
 
@@ -316,7 +319,7 @@ export class Deck {
   }
 
   /** Total copies of a card across main, sideboard, and the champion slot. */
-  private getCountOfMainCard(card: Card): number {
+  private getCountOfMainCard(card: DeckCard): number {
     const chosenChampCount = (this.chosenChampion && this.chosenChampion.id === card.id) ? 1 : 0;
     const mainCount = this.cards.find(c => c.card.id === card.id)?.quantity || 0;
     const sideboardCount = this.sideboard.find(c => c.card.id === card.id)?.quantity || 0;
@@ -331,7 +334,7 @@ export class Deck {
   /** Returns the legend's domain list, or null if no legend is set. */
   private getLegendDomains(): string[] | null {
     if (!this.legend) return null;
-    return this.legend.classification?.domains || null;
+    return this.legend.domains || null;
   }
 
   // Methods for serializing/deserializing the deck to/from the simplified format in types.ts
@@ -347,11 +350,11 @@ export class Deck {
     };
   }
 
-  static async fromSimplifiedDeck(simplified: SimplifiedDeck, cardLookup: (id: string) => Promise<Card>): Promise<Deck> {
+  static async fromSimplifiedDeck(simplified: SimplifiedDeck, cardLookup: (id: string) => Promise<DeckCard>): Promise<Deck> {
     const deck = new Deck();
     deck.id = simplified.id;
 
-    const lookup = async (section: string, ref: string, id: string): Promise<Card> => {
+    const lookup = async (section: string, ref: string, id: string): Promise<DeckCard> => {
       try {
         return await cardLookup(id);
       } catch (e) {
@@ -414,7 +417,7 @@ export class Deck {
    * after loading from {@link SimplifiedDeck} (direct field assignment bypasses those methods).
    */
   private validateFromSimplifiedConstraints(): void {
-    if (this.legend && this.legend.classification?.type !== "Legend") {
+    if (this.legend && this.legend.card_type !== "Legend") {
       throw new BadRequestError(`${this.legend.name} is not a legend and cannot be added as the legend.`);
     }
 
@@ -422,7 +425,7 @@ export class Deck {
       if (!this.legend) {
         throw new BadRequestError("Invalid deck: chosen champion requires a legend");
       }
-      if (this.chosenChampion.classification?.supertype !== "Champion") {
+      if (this.chosenChampion.supertype !== "Champion") {
         throw new BadRequestError(
           `${this.chosenChampion.name} cannot be the chosen champion (not a Champion).`,
         );
@@ -434,9 +437,9 @@ export class Deck {
       throw new BadRequestError("Invalid deck: main deck, sideboard, or runes require a legend");
     }
 
-    const assertMainOrSideCard = (card: Card) => {
-      const cardType = card.classification?.type;
-      const cardSupertype = card.classification?.supertype;
+    const assertMainOrSideCard = (card: DeckCard) => {
+      const cardType = card.card_type;
+      const cardSupertype = card.supertype;
       if (cardType === "Legend" || cardSupertype === "Battleground" || cardSupertype === "Rune") {
         throw new BadRequestError(`${card.name} can not be added into the main deck or sideboard.`);
       }
@@ -445,10 +448,10 @@ export class Deck {
       if (!legendDomains) {
         throw new BadRequestError("Cannot add cards before a legend is chosen.");
       }
-      const cardDomains = card.classification?.domains || [];
+      const cardDomains = card.domains;
       if (cardDomains.some(domain => !legendDomains.includes(domain))) {
         throw new BadRequestError(
-          `${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. Card domains: ${cardDomains.join(", ")}`,
+          `${card.name} does not match all domains of the legend. Legend domains: ${legendDomains.join(", ")}. DeckCard domains: ${cardDomains.join(", ")}`,
         );
       }
     };
@@ -492,13 +495,13 @@ export class Deck {
         throw new BadRequestError("Cannot add runes before a legend is chosen.");
       }
       for (const { card } of this.runes) {
-        if (card.classification?.supertype !== "Rune") {
+        if (card.supertype !== "Rune") {
           throw new BadRequestError(`${card.name} is not a Rune and cannot be added as a rune.`);
         }
-        const cardDomains = card.classification?.domains || [];
+        const cardDomains = card.domains;
         if (cardDomains.some(domain => !legendDomainsForRunes.includes(domain))) {
           throw new BadRequestError(
-            `${card.name} does not match all domains of the legend. Legend domains: ${legendDomainsForRunes.join(", ")}. Card domains: ${cardDomains.join(", ")}`,
+            `${card.name} does not match all domains of the legend. Legend domains: ${legendDomainsForRunes.join(", ")}. DeckCard domains: ${cardDomains.join(", ")}`,
           );
         }
       }
@@ -511,7 +514,7 @@ export class Deck {
 
     const seenBg = new Set<string>();
     for (const card of this.battlegrounds) {
-      if (card.classification?.supertype !== "Battleground") {
+      if (card.supertype !== "Battleground") {
         throw new BadRequestError(`${card.name} is not a Battleground and cannot be added as a battleground.`);
       }
       if (seenBg.has(card.id)) {

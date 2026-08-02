@@ -3,14 +3,17 @@
  *
  * Flow:
  *   1. Fetch RiftCodex /sets + /cards
- *   2. Normalize to IngestSet + Card; apply file overrides; collapse duplicates
- *   3. Enrich only from TCGPlayer (prices, purchase URIs, fallback images)
- *   4. Link tokens, champions/legends, signatures, related printings
- *   5. Overlay DB overrides (manual cards, patches, relationship edits, deletions)
- *   6. File unmatched TCGPlayer products and field disagreements for admin review
- *   7. Preserve unchanged hosted media; prepare jobs for changed source URLs
- *   8. Atomic upsert + prune
- *   9. Re-match rule-scoped rulings, then enqueue image jobs for the consumer
+ *   2. Normalize to IngestSet + IngestPrinting; apply file overrides; collapse
+ *      genuine upstream duplicates
+ *   3. Seed admin-confirmed TCGPlayer links from the durable printing rows
+ *   4. Enrich only from TCGPlayer (prices, purchase URIs, fallback images)
+ *   5. Group printings into oracles; record what they disagree about as deltas
+ *   6. Write the official gallery's equipment onto the oracles
+ *   7. Link tokens, characters and signatures as oracle → oracle edges
+ *   8. Hash image sources; leave hosted art alone; queue the rest
+ *   9. Batched catalogue upsert, then a final prune carrying the relationships
+ *  10. File what could not be reconciled for admin review
+ *  11. Re-match rule-scoped rulings, then enqueue the image catalogue scan
  */
 
 import type { Env } from "./env.ts";
@@ -23,30 +26,36 @@ import {
   buildGalleryIndex,
   type GalleryIndex,
 } from "./pipeline/gallery.ts";
-import { normalizeSets, normalizeCards } from "./pipeline/normalize.ts";
+import { normalizeSets, normalizePrintings } from "./pipeline/normalize.ts";
 import {
-  backfillLinkedPrices,
   buildProductMap,
-  enrichCards,
+  enrichPrintings,
   matchTcgGroupsToSets,
   type ProductMaps,
 } from "./pipeline/enrich.ts";
 import {
+  attachProposedOracleIds,
   buildGalleryReconciliationEntries,
   buildReconciliationEntries,
   syncReconciliationQueue,
 } from "./pipeline/reconcile.ts";
-import { linkTokens, linkChampionsLegends, linkSignatures, linkRelatedPrintings } from "./pipeline/link.ts";
-import { ingestCardData, refreshRulingRuleMatches } from "./pipeline/db.ts";
+import { linkOracles } from "./pipeline/link.ts";
+import { buildOracles } from "./pipeline/oracles.ts";
+import {
+  ingestCatalogue,
+  loadOracleIdsByKey,
+  refreshRulingRuleMatches,
+} from "./pipeline/db.ts";
 import { collapseDuplicates } from "./pipeline/dedup.ts";
 import {
-  overlayDbOverrides,
-  overlayDbSetOverrides,
-} from "./pipeline/overrides-db.ts";
+  applyLockedProductLinks,
+  loadDurablePrintings,
+  type DurablePrinting,
+} from "./pipeline/durable.ts";
 import { createSupabase } from "./supabase.ts";
 import {
   enqueueCardImageCatalogJob,
-  prepareCardImageJobs,
+  preparePrintingImageJobs,
   type PreparedImageJobs,
 } from "./images/catalog.ts";
 
@@ -61,10 +70,13 @@ function getTimeoutMs(env: Env): number {
 }
 
 export interface IngestResult {
-  cardsCount: number;
+  oraclesCount: number;
+  printingsCount: number;
   setsCount: number;
   imageJobsCount: number;
-  /** Unmatched TCGPlayer products and field disagreements awaiting admin review. */
+  /** Fields where printings of one card disagree about the card itself. */
+  divergenceCount: number;
+  /** Unmatched products, catalogue gaps and field diffs awaiting review. */
   reviewEntriesCount: number;
   elapsedMs: number;
   ok: boolean;
@@ -91,33 +103,48 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     ]);
 
     // 2. Normalize + collapse genuine upstream duplicate printings
-    const ingestSets = normalizeSets(rawSets);
-    const cards = collapseDuplicates(normalizeCards(rawCards));
+    const sets = normalizeSets(rawSets);
+    const printings = collapseDuplicates(normalizePrintings(rawCards));
     logger.info("Normalized RiftCodex data", {
-      sets: ingestSets.length,
+      sets: sets.length,
       rawCards: rawCards.length,
-      cards: cards.length,
+      printings: printings.length,
     });
 
-    // 3. TCGPlayer enrichment (non-fatal if it fails). TCGPlayer never creates
-    // sets or cards; it only enriches the RiftCodex-authoritative records.
-    // The product map is kept so step 6 can review what enrichment could not
-    // reconcile; a failure here leaves it null and skips that step entirely.
+    const supabase = createSupabase(env);
+
+    // 3. The durable admin layer. Nearly all of it is enforced inside the ingest
+    // RPC by `locked_fields`; the two locks ingest must *read* are the confirmed
+    // TCGPlayer link — upstream does not know it, so enrichment cannot match
+    // without it — and an admin image upload, handled at step 8. Non-fatal: the
+    // run proceeds on upstream data alone, which the locks protect at write time
+    // regardless.
+    let durable = new Map<string, DurablePrinting>();
+    try {
+      durable = await loadDurablePrintings(supabase);
+      applyLockedProductLinks(printings, durable);
+    } catch (err) {
+      logger.warn("Durable printing state unavailable — continuing", {
+        error: String(err),
+      });
+    }
+
+    // 4. TCGPlayer enrichment (non-fatal if it fails). TCGPlayer never creates
+    // sets or printings; it only enriches the RiftCodex-authoritative records.
+    // The product map is kept so step 10 can review what enrichment could not
+    // reconcile; a failure here leaves it null and skips that half entirely.
     let productMap: ProductMaps | null = null;
     let setGroupMap = new Map<string, number>();
     try {
       const tcgGroups = await fetchGroups(timeoutMs);
-      setGroupMap = matchTcgGroupsToSets(ingestSets, tcgGroups);
+      setGroupMap = matchTcgGroupsToSets(sets, tcgGroups);
       const matchedGroupIds = new Set(setGroupMap.values());
       const matchedGroups = tcgGroups.filter((group) =>
         matchedGroupIds.has(group.groupId)
       );
-      const groupResults = await fetchAllGroupResults(
-        matchedGroups,
-        timeoutMs,
-      );
+      const groupResults = await fetchAllGroupResults(matchedGroups, timeoutMs);
       productMap = buildProductMap(groupResults);
-      const enrichment = enrichCards(cards, productMap, setGroupMap);
+      const enrichment = enrichPrintings(printings, productMap, setGroupMap);
       logger.info("TCGPlayer enrichment complete", enrichment);
     } catch (err) {
       productMap = null;
@@ -126,11 +153,15 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       });
     }
 
-    // 3b. Official gallery: the equipment section RiftCodex has no field for,
-    // plus the index step 6 uses to spot cards we are missing. Non-fatal for
+    // 5. Group into oracles. Every printing restates the whole card upstream, so
+    // this is where the rules object is separated from the cardboard — and where
+    // printings that disagree about the card are recorded as deltas.
+    const { oracles, deltas, divergences } = buildOracles(printings);
+
+    // 6. Official gallery: the equipment section RiftCodex has no field for,
+    // plus the index step 10 uses to spot cards we are missing. Non-fatal for
     // the same reason TCGPlayer is — an outage upstream must not cost us the
-    // authoritative card data this run already fetched. Runs before the
-    // override overlay so an admin-written equipment effect still wins.
+    // authoritative card data this run already fetched.
     let galleryIndex: GalleryIndex | null = null;
     try {
       const galleryCards = await fetchGalleryCards({
@@ -138,7 +169,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
         timeoutMs,
       });
       galleryIndex = buildGalleryIndex(galleryCards);
-      applyGalleryEquipment(cards, galleryIndex);
+      applyGalleryEquipment(oracles, galleryIndex);
     } catch (err) {
       galleryIndex = null;
       logger.warn("Official gallery unavailable — continuing without it", {
@@ -146,44 +177,69 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       });
     }
 
-    // 4. Link relationships
-    linkTokens(cards);
-    linkChampionsLegends(cards);
-    linkSignatures(cards);
-    linkRelatedPrintings(cards);
+    // 7. Relationships, as oracle → oracle edges.
+    const relationships = linkOracles(oracles);
 
-    // 5–8. Overlay DB overrides, review what TCGPlayer could not be reconciled
-    // with, preserve unchanged R2 media, then atomic upsert + prune.
-    // Changed/missing images are processed asynchronously.
-    const supabase = createSupabase(env);
-    // Independent reads over different tables — no ordering between them.
-    const [finalSets, finalCards] = await Promise.all([
-      overlayDbSetOverrides(supabase, ingestSets),
-      overlayDbOverrides(supabase, cards),
-    ]);
+    // 8. Image preparation is advisory next to the catalogue upsert: it only
+    // hashes sources and decides what to queue. A failure costs one cycle of
+    // R2-hosted art — printings upsert with upstream sources and no hash, and
+    // the next run re-hashes and re-queues them — which is far cheaper than
+    // discarding the authoritative RiftCodex data this run already fetched.
+    let preparedImages: PreparedImageJobs = {
+      jobs: [],
+      reused: 0,
+      withoutSource: 0,
+      adminPreserved: 0,
+    };
+    try {
+      preparedImages = await preparePrintingImageJobs(
+        printings,
+        durable,
+        env.CARD_IMAGE_BASE_URL,
+      );
+    } catch (err) {
+      logger.warn("Image preparation failed — upserting without image hashes", {
+        error: String(err),
+      });
+    }
 
-    // 6. Reconciliation runs on the final cards so it sees admin-confirmed
-    // links, which is what stops a confirmed entry re-surfacing next run. Those
-    // links land too late for enrichment, so their prices are backfilled here.
-    // The whole step is advisory — a failure must not cost us the ingest.
+    // 9. The one step that must succeed.
+    const written = await ingestCatalogue(
+      supabase,
+      sets,
+      oracles,
+      deltas,
+      relationships,
+    );
+
+    // 10. Reconciliation runs after the upsert: `proposed_oracle_id` is a uuid,
+    // and an oracle this run created has none until it commits. Both observers
+    // fail independently, and the whole step is advisory — a failure must not
+    // cost us an ingest that already committed.
     let reviewEntriesCount = 0;
-    if (productMap) backfillLinkedPrices(finalCards, productMap);
-
-    // Both observers fail independently, and the prune is queue-wide: it drops
-    // every pending row this run did not re-observe. Pruning on one source's
-    // findings would therefore delete the other's, so it runs only when both
-    // reported — the same reasoning that already gated it on TCGPlayer alone.
+    // The queue prune is queue-wide: it drops every pending row this run did not
+    // re-observe. Pruning on one source's findings would therefore delete the
+    // other's, so it runs only when both reported.
     const observedBothSources = Boolean(productMap && galleryIndex);
     if (productMap || galleryIndex) {
       try {
         const entries = [
           ...(productMap
-            ? buildReconciliationEntries(finalCards, productMap, setGroupMap)
+            ? buildReconciliationEntries(printings, productMap, setGroupMap)
             : []),
           ...(galleryIndex
-            ? buildGalleryReconciliationEntries(finalCards, galleryIndex)
+            ? buildGalleryReconciliationEntries(printings, galleryIndex)
             : []),
         ];
+        const proposedKeys = entries
+          .map((entry) => entry.payload.oracle_key)
+          .filter((key): key is string => Boolean(key));
+        if (proposedKeys.length > 0) {
+          attachProposedOracleIds(
+            entries,
+            await loadOracleIdsByKey(supabase, proposedKeys),
+          );
+        }
         await syncReconciliationQueue(supabase, entries, observedBothSources);
         reviewEntriesCount = entries.length;
       } catch (err) {
@@ -193,39 +249,14 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       }
     }
 
-    // Image preparation is advisory next to the card upsert: it only carries
-    // hosted URLs forward and hashes sources. A failure costs one cycle of
-    // R2-hosted URLs — cards upsert with upstream media and no `source_hash`,
-    // and the next run re-hashes and re-queues them — which is far cheaper than
-    // discarding the authoritative RiftCodex data this run already fetched.
-    let preparedImages: PreparedImageJobs = {
-      jobs: [],
-      reused: 0,
-      withoutSource: 0,
-      adminPreserved: 0,
-    };
-    try {
-      preparedImages = await prepareCardImageJobs(
-        supabase,
-        finalCards,
-        env.CARD_IMAGE_BASE_URL,
-      );
-    } catch (err) {
-      logger.warn("Image preparation failed — upserting without media hashes", {
-        error: String(err),
-      });
-    }
-
-    await ingestCardData(supabase, finalSets, finalCards);
-
-    // 9. Rule-scoped rulings are re-materialised against the catalogue we just
+    // 11. Rule-scoped rulings are re-materialised against the catalogue we just
     // wrote, so a rule written months ago picks up this run's new printings.
-    // Must follow the upsert — it reads `cards`, not the in-memory list.
+    // Must follow the upsert — it reads the projection, not the in-memory list.
     const ruleMatches = await refreshRulingRuleMatches(supabase);
 
-    // The card data is committed by this point. Enqueuing the catalogue scan is
-    // only a prompt to go host images, and the next scheduled run re-sends it,
-    // so a queue failure must not report an ingest that succeeded as failed.
+    // The catalogue is committed by this point. Enqueuing the scan is only a
+    // prompt to go host images, and the next scheduled run re-sends it, so a
+    // queue failure must not report an ingest that succeeded as failed.
     try {
       await enqueueCardImageCatalogJob(env.CARD_IMAGE_QUEUE);
     } catch (err) {
@@ -236,21 +267,27 @@ export async function runIngest(env: Env): Promise<IngestResult> {
 
     const elapsedMs = Date.now() - t0;
     logger.info("Ingestion complete", {
-      sets: finalSets.length,
-      cards: finalCards.length,
+      sets: sets.length,
+      oracles: written.oracles,
+      printings: written.printings,
+      deltas: deltas.length,
+      divergences: divergences.length,
+      relationships: relationships.length,
       imageJobs: preparedImages.jobs.length,
       reusedImages: preparedImages.reused,
       adminImagesPreserved: preparedImages.adminPreserved,
-      cardsWithoutQueueSource: preparedImages.withoutSource,
+      printingsWithoutQueueSource: preparedImages.withoutSource,
       reviewEntries: reviewEntriesCount,
       rulingRuleTargets: ruleMatches?.targets ?? 0,
       rulingRuleMatches: ruleMatches?.matches ?? 0,
       elapsedMs,
     });
     return {
-      cardsCount: finalCards.length,
-      setsCount: finalSets.length,
+      oraclesCount: written.oracles,
+      printingsCount: written.printings,
+      setsCount: sets.length,
       imageJobsCount: preparedImages.jobs.length,
+      divergenceCount: divergences.length,
       reviewEntriesCount,
       elapsedMs,
       ok: true,
@@ -260,9 +297,11 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     const error = err instanceof Error ? err.message : String(err);
     logger.error("Ingestion pipeline failed", { error });
     return {
-      cardsCount: 0,
+      oraclesCount: 0,
+      printingsCount: 0,
       setsCount: 0,
       imageJobsCount: 0,
+      divergenceCount: 0,
       reviewEntriesCount: 0,
       elapsedMs,
       ok: false,

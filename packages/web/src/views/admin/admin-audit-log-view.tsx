@@ -18,48 +18,14 @@ import {
 import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
 import { listAuditLogAction } from "@/features/admin/actions";
 import type { AdminAuditEntry, AdminAuditPage } from "@/features/admin/types";
+import { ADMIN_AUDIT_ACTIONS } from "@riftseer/types/admin-actions";
 import { AdminPageHeader } from "./admin-page-header";
 
 const PAGE_SIZE = 50;
 
-/**
- * The exact `action` values the admin RPCs write (see the Phase 3 migration
- * `20260730120000_phase3_admin_api.sql`, the Phase 5 migration
- * `20260731000000_phase5_rulings_legalities_formats.sql`, and the Phase 6
- * migration `20260801000000_phase6_reconciliation_queue.sql`). Keep in sync when
- * an admin RPC is added — a stale entry here silently filters to nothing.
- */
-const ACTIONS = [
-  "card.create_manual",
-  "card.patch",
-  "card.delete",
-  "card.restore",
-  "card.move",
-  "card.regenerate_slug",
-  "card.image",
-  "card.relationships",
-  "card.legality",
-  "card.ruling.create",
-  "card.ruling.patch",
-  "card.ruling.delete",
-  // Detaching a shared ruling from one card, rather than deleting it outright.
-  "card.ruling.detach",
-  // The card-independent Rulings tab.
-  "ruling.create",
-  "ruling.patch",
-  "ruling.delete",
-  "set.create",
-  "set.patch",
-  "set.delete",
-  "format.create",
-  "format.patch",
-  "format.delete",
-  "format.reorder",
-  "reconciliation.confirm",
-  // The card patch a confirmation applies is logged separately, against the card.
-  "reconciliation.confirm.patch",
-  "reconciliation.dismiss",
-] as const;
+// The database decides these; a copy beside the filter silently returns
+// nothing when it drifts. `admin-actions.test.ts` holds the two together.
+const ACTIONS = ADMIN_AUDIT_ACTIONS;
 
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);

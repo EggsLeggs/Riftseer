@@ -54,10 +54,24 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<Response> {
     if (request.method === "GET" && new URL(request.url).pathname === "/") {
+      // `target` is the host this worker would write to, reported before
+      // anyone can trigger a run. An ingest prunes and rewrites the whole
+      // catalogue, so "am I pointed at production or at my local stack?" needs
+      // an answer that does not involve reading a gitignored file or trusting
+      // wrangler's variable precedence. Host only — never the service key.
+      let target = "unset";
+      try {
+        target = new URL(env.SUPABASE_URL).host;
+      } catch {
+        /* leave "unset": a malformed URL is as good as none for this purpose */
+      }
+
       return new Response(
         JSON.stringify({
           worker: "riftseer-ingest",
           cron: "0 */6 * * *",
+          target,
+          local: target.startsWith("localhost") || target.startsWith("127.0.0.1"),
           hint: "Trigger scheduled run locally: GET /cdn-cgi/mf/scheduled",
         }),
         { headers: { "Content-Type": "application/json" } },
@@ -81,9 +95,12 @@ export default {
       return new Response(
         JSON.stringify({
           ok: result.ok,
-          cardsCount: result.cardsCount,
+          oraclesCount: result.oraclesCount,
+          printingsCount: result.printingsCount,
           setsCount: result.setsCount,
           imageJobsCount: result.imageJobsCount,
+          divergenceCount: result.divergenceCount,
+          reviewEntriesCount: result.reviewEntriesCount,
           elapsedMs: result.elapsedMs,
           ...(result.error && { error: result.error }),
         }),
