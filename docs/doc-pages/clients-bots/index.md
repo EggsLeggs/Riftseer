@@ -4,7 +4,7 @@ sidebar_label: Overview
 sidebar_position: 1
 ---
 
-This section covers **first-party clients and bots** that use the [Riftseer API](/api/). The React web app lives under [Frontend](/frontend/).
+This section covers **first-party clients and bots** that use the [Riftseer API](/api/). The Next.js site lives under [Web](/web/).
 
 | Doc | Description |
 | --- | --- |

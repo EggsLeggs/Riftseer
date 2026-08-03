@@ -16,12 +16,15 @@ The docs package is a Bun workspace member. Its prestart and prebuild hooks copy
 
 | Section | Source | URL prefix |
 | --- | --- | --- |
-| Getting Started | `doc-pages/getting-started/` | `/getting-started/` |
-| Ingest | `../packages/ingest-worker/docs/` | `/` |
-| Clients & Bots | package docs copied into `doc-pages/clients-bots/` | `/bots/` |
+| Getting Started | `doc-pages/getting-started/` | `/` |
+| API | `../packages/api/docs/` | `/api/` |
+| Web | `../packages/web/docs/` | `/web/` |
 | Core | `../packages/core/docs/` | `/core/` |
 | Types | `../packages/types/docs/` | `/types/` |
+| Clients & Bots | package docs copied into `doc-pages/clients-bots/` | `/bots/` |
+| Ingest | `../packages/ingest-worker/docs/` | `/ingest-worker/` |
 | Supabase | `../supabase/docs/` | `/supabase/` |
+| Infrastructure | `doc-pages/infrastructure/` | `/infrastructure/` |
 
 Each section is a separate Docusaurus plugin instance. Relative links cannot cross plugin boundaries even when the source files are near each other on disk; Docusaurus resolves them inside the current plugin and fails the build. Use absolute site paths for cross-section links, and relative links only within a section.
 

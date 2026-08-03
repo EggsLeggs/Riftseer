@@ -4,7 +4,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Riftseer Dev Docs',
-  tagline: 'Riftbound TCG API, frontend, and workers',
+  tagline: 'Riftbound TCG API, web site, and workers',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -72,10 +72,11 @@ const config: Config = {
     [
       '@docusaurus/plugin-content-docs',
       {
-        id: 'frontend',
-        path: '../packages/frontend/docs',
-        routeBasePath: 'frontend',
-        sidebarPath: './sidebarsFrontend.ts',
+        id: 'web',
+        path: '../packages/web/docs',
+        routeBasePath: 'web',
+        sidebarPath: './sidebarsWeb.ts',
+        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/web/docs/',
       },
     ],
     [
@@ -164,9 +165,9 @@ const config: Config = {
         {
           type: 'doc',
           docId: 'index',
-          docsPluginId: 'frontend',
+          docsPluginId: 'web',
           position: 'left',
-          label: 'Frontend',
+          label: 'Web',
         },
         {
           type: 'doc',
