@@ -42,9 +42,11 @@ export function NewDeckView() {
   }, [wantsSave]);
 
   const save = React.useCallback(
-    async (target: GuestDeck) => {
+    // `existingDeckId` carries a deck a previous attempt already created, so a
+    // retry resumes at the cards rather than minting a second deck row.
+    async (target: GuestDeck, existingDeckId?: string) => {
       setSaving(true);
-      const result = await saveGuestDeck(target);
+      const result = await saveGuestDeck(target, existingDeckId);
       setSaving(false);
       setOutcome(result);
       if (result.ok) {
@@ -83,7 +85,7 @@ export function NewDeckView() {
                 : "Your deck is still here in this browser. Nothing has been lost."}
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <Button disabled={saving} onClick={() => void save(deck)}>
+              <Button disabled={saving} onClick={() => void save(deck, failed.deckId)}>
                 {saving ? "Saving…" : "Try again"}
               </Button>
               {failed.deckId && (

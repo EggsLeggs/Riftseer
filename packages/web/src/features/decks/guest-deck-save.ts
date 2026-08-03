@@ -20,8 +20,15 @@ import {
  * real and has to be survivable: a deck row can be created and its cards then
  * rejected, and a user who watched their list vanish into a deck that does not
  * contain it has lost work Riftseer promised to keep. So the blob stays put
- * until the cards are confirmed, `deckId` is reported either way, and a retry
- * is safe — absolute quantities mean re-applying the same batch is idempotent.
+ * until the cards are confirmed, and `deckId` is reported either way.
+ *
+ * That reported id is what makes the retry safe, and it has to be passed back
+ * in. Only the cards call is naturally idempotent — absolute quantities mean
+ * re-applying the same batch converges. `createDeckAction` is not: retrying
+ * from the top mints a second deck and strands the first, so a user clicking
+ * "Try again" three times would own three decks and populate one. Given an
+ * `existingDeckId`, the create step is skipped and the retry resumes at the
+ * step that actually failed.
  */
 export type GuestDeckSaveOutcome =
   | { ok: true; deckId: string; name: string }
@@ -33,23 +40,27 @@ export type GuestDeckSaveOutcome =
       name?: string;
     };
 
-export async function saveGuestDeck(deck: GuestDeck): Promise<GuestDeckSaveOutcome> {
-  const created = await createDeckAction(guestDeckCreateInput(deck));
-  if (!created.ok) return { ok: false, error: created.error };
+export async function saveGuestDeck(
+  deck: GuestDeck,
+  /** A deck already created by a previous attempt whose cards failed. */
+  existingDeckId?: string,
+): Promise<GuestDeckSaveOutcome> {
+  let deckId = existingDeckId;
+  let name = deck.name;
+
+  if (!deckId) {
+    const created = await createDeckAction(guestDeckCreateInput(deck));
+    if (!created.ok) return { ok: false, error: created.error };
+    deckId = created.data.id;
+    name = created.data.name;
+  }
 
   const changes = guestDeckToChanges(deck);
   if (changes.length > 0) {
-    const applied = await applyDeckCardChangesAction(created.data.id, changes);
-    if (!applied.ok) {
-      return {
-        ok: false,
-        error: applied.error,
-        deckId: created.data.id,
-        name: created.data.name,
-      };
-    }
+    const applied = await applyDeckCardChangesAction(deckId, changes);
+    if (!applied.ok) return { ok: false, error: applied.error, deckId, name };
   }
 
   clearGuestDeck();
-  return { ok: true, deckId: created.data.id, name: created.data.name };
+  return { ok: true, deckId, name };
 }
