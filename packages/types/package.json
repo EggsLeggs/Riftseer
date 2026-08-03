@@ -13,6 +13,7 @@
     "./oracle": "./src/oracle.ts",
     "./parser": "./src/parser.ts",
     "./admin-actions": "./src/admin-actions.ts",
+    "./admin-printing": "./src/admin-printing.ts",
     "./reconciliation": "./src/reconciliation.ts",
     "./slug": "./src/slug.ts",
     "./social-links": "./src/social-links.ts"

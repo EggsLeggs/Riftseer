@@ -54,6 +54,12 @@ interface FieldChromeProps {
   hint?: string;
   error?: string;
   className?: string;
+  /**
+   * Keep the label for screen readers but drop it visually — for a control in a
+   * table cell, where the column header already names it and a second visible
+   * label would just repeat the row.
+   */
+  labelHidden?: boolean;
 }
 
 function FieldShell({
@@ -62,11 +68,14 @@ function FieldShell({
   hint,
   error,
   className,
+  labelHidden,
   children,
 }: FieldChromeProps & { children: React.ReactNode }) {
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className={labelHidden ? "sr-only" : undefined}>
+        {label}
+      </Label>
       {children}
       {error ? (
         <p id={fieldMessageId(id)} className="text-destructive text-xs">
@@ -87,11 +96,12 @@ export function TextField({
   hint,
   error,
   className,
+  labelHidden,
   ...inputProps
 }: FieldChromeProps &
   Omit<React.ComponentProps<typeof Input>, "id" | "className" | "children">) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} className={className}>
+    <FieldShell id={id} label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
       <Input
         id={id}
         aria-invalid={!!error}
@@ -108,11 +118,12 @@ export function TextAreaField({
   hint,
   error,
   className,
+  labelHidden,
   ...textareaProps
 }: FieldChromeProps &
   Omit<React.ComponentProps<typeof Textarea>, "id" | "className" | "children">) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} className={className}>
+    <FieldShell id={id} label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
       <Textarea
         id={id}
         aria-invalid={!!error}
@@ -129,6 +140,7 @@ export function SelectField({
   hint,
   error,
   className,
+  labelHidden,
   options,
   ...selectProps
 }: FieldChromeProps &
@@ -136,7 +148,7 @@ export function SelectField({
     options: Array<{ value: string; label: string }>;
   }) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} className={className}>
+    <FieldShell id={id} label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
       <select
         id={id}
         aria-invalid={!!error}

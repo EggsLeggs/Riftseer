@@ -19,6 +19,7 @@ import {
 import { setsApi, setsQueryKeys, type SetInfo } from "@/features/sets/api";
 import { toDateInputValue } from "@/features/admin/dates";
 import { useSetMutations } from "@/features/admin/hooks/use-admin-mutations";
+import { useInlineRowEdit } from "@/features/admin/hooks/use-inline-row-edit";
 import type { AdminSetPatch } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
 import { CheckboxField } from "./admin-form-field";
@@ -41,8 +42,10 @@ function draftFrom(info: SetInfo): SetDraft {
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function AdminSetsView() {
-  const [editing, setEditing] = React.useState<string | null>(null);
-  const [draft, setDraft] = React.useState<SetDraft | null>(null);
+  const { editing, draft, setDraft, startEdit, cancelEdit } = useInlineRowEdit<
+    SetInfo,
+    SetDraft
+  >(draftFrom, (info) => info.setCode);
   const [pendingDelete, setPendingDelete] = React.useState<SetInfo | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [newCode, setNewCode] = React.useState("");
@@ -59,16 +62,6 @@ export function AdminSetsView() {
     queryFn: () => setsApi.getSets(),
     retry: false,
   });
-
-  function startEdit(info: SetInfo) {
-    setEditing(info.setCode);
-    setDraft(draftFrom(info));
-  }
-
-  function cancelEdit() {
-    setEditing(null);
-    setDraft(null);
-  }
 
   async function saveEdit(info: SetInfo) {
     if (!draft) return;

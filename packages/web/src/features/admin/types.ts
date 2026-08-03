@@ -14,6 +14,11 @@
 
 import type { treaty } from "@elysiajs/eden";
 import type { App } from "@riftseer/api";
+// Eden types a query parameter as a plain string, so the state union cannot
+// ride across the wire the way the response shapes below do.
+import type { AdminPrintingState } from "@riftseer/types/admin-printing";
+
+export type { AdminPrintingState };
 
 type AdminRoutes = ReturnType<typeof treaty<App>>["api"]["v1"]["admin"];
 type OracleById = ReturnType<AdminRoutes["oracles"]>;
@@ -44,6 +49,36 @@ export type AdminPrintingDefinition = Body<AdminRoutes["printings"]["post"]>["de
 export type AdminPrintingDelta = NonNullable<
   NonNullable<Body<PrintingById["deltas"]["put"]>>["delta"]
 >;
+
+/**
+ * The stored delta the editor loads before authoring one. `delta` is null when
+ * the printing inherits its oracle wholesale, and only ever carries the
+ * admin-authored row — an ingest delta records genuine upstream divergence, not
+ * an admin decision, so the editor is never offered it to overwrite.
+ */
+export type AdminPrintingDeltaRead = Ok<PrintingById["deltas"]["get"]>;
+
+/**
+ * The admin card list. Distinct from public search because it can see the
+ * catalogue's bookkeeping — soft deletes, manual rows, admin locks, deltas,
+ * un-hosted images — which the search grammar deliberately does not express.
+ */
+export type AdminPrintingListPage = Ok<AdminRoutes["printings"]["get"]>;
+
+export type AdminPrintingListEntry = AdminPrintingListPage["printings"][number];
+
+export type AdminStats = Ok<AdminRoutes["stats"]["get"]>;
+
+export interface AdminPrintingListFilters {
+  limit?: number;
+  offset?: number;
+  state?: AdminPrintingState;
+  /** Substring of the card name. */
+  q?: string;
+  set?: string;
+  /** Exact printing id — how the editor reads one row's locks and delta. */
+  id?: string;
+}
 
 export type AdminOracleRelationships = Ok<OracleById["relationships"]["get"]>;
 
@@ -103,41 +138,26 @@ export type AdminRulingTargetKind =
   (typeof ADMIN_RULING_TARGET_KINDS)[number];
 
 /**
- * A stored target. `query` targets carry the search string the admin typed plus
- * the AST the API parsed it to; `match_count` is how many cards it currently
- * covers, refreshed on save and after every ingest.
+ * Derived, like every other response shape here, rather than restated.
+ *
+ * These were hand-written, and drifted the moment the API started resolving a
+ * target's card name: the extra fields simply never appeared, with nothing to
+ * report the mismatch. Deriving them makes that a compile error instead.
+ *
+ * A `query` target carries the search string the admin typed plus the AST the
+ * API parsed it to; `match_count` is how many cards it currently covers,
+ * refreshed on save and after every ingest.
  */
-export interface AdminRulingTarget {
-  id: string;
-  kind: AdminRulingTargetKind;
-  oracle_id: string | null;
-  printing_id: string | null;
-  query: string | null;
-  match_count: number | null;
-}
+export type AdminRulingsPage = Ok<AdminRoutes["rulings"]["get"]>;
+
+export type AdminRuling = AdminRulingsPage["rulings"][number];
+
+export type AdminRulingTarget = AdminRuling["targets"][number];
 
 /** Target input — the API derives the AST, so only the query text is sent. */
-export type AdminRulingTargetInput =
-  | { kind: "oracle"; oracle_id: string }
-  | { kind: "printing"; printing_id: string }
-  | { kind: "query"; query: string };
-
-export interface AdminRuling {
-  id: string;
-  type: AdminRulingType;
-  text: string;
-  dated: string | null;
-  source: string | null;
-  active: boolean;
-  targets: AdminRulingTarget[];
-  created_at: string | null;
-  updated_at: string | null;
-}
-
-export interface AdminRulingsPage {
-  rulings: AdminRuling[];
-  total: number;
-}
+export type AdminRulingTargetInput = Body<
+  AdminRoutes["rulings"]["post"]
+>["targets"][number];
 
 export interface AdminRulingsQuery {
   q?: string;
@@ -146,23 +166,10 @@ export interface AdminRulingsQuery {
   offset?: number;
 }
 
-export interface AdminRulingCreateInput {
-  type: AdminRulingType;
-  text: string;
-  dated?: string;
-  source?: string;
-  targets: AdminRulingTargetInput[];
-}
+export type AdminRulingCreateInput = Body<AdminRoutes["rulings"]["post"]>;
 
-export interface AdminRulingRecordPatch {
-  type?: AdminRulingType;
-  text?: string;
-  dated?: Nullable<string>;
-  source?: Nullable<string>;
-  active?: boolean;
-  /** Replaces the entire target list; omit to leave targeting unchanged. */
-  targets?: AdminRulingTargetInput[];
-}
+/** `targets` replaces the entire list; omit it to leave targeting unchanged. */
+export type AdminRulingRecordPatch = Body<RulingById["patch"]>["patch"];
 
 export interface AdminRulePreviewCard {
   id: string;

@@ -22,11 +22,26 @@ for database in "$POSTGRES_DB" riftseer_test; do
 
   # `auth` is a schema, so unlike the roles it has to exist in each database
   # the migrations are applied to — `profiles` references auth.users.
+  #
+  # The default privileges mirror what a real Supabase project already has, and
+  # matter more than they look. The baseline grants the card tables to
+  # service_role explicitly, but says nothing about `profiles`, `follows` or
+  # `linked_accounts` — in production those inherit Supabase's defaults, and
+  # here they inherited nothing, so reading a profile failed with `permission
+  # denied` (42501). The users route reads that as a schema mismatch rather
+  # than a missing row and answers 503, which surfaces as "Profile
+  # unavailable". Setting the defaults before the migrations run fixes every
+  # future table too, instead of this one symptom.
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$database" -q <<'SQL'
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY);
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT NULL::uuid $$;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 SQL
 
   for migration in /migrations/*.sql; do

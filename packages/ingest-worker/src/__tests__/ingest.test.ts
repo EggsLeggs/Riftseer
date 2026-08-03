@@ -249,13 +249,25 @@ describe("reconciliation queue", () => {
     expect(entries.map((entry) => entry.payload.product?.product_id)).toEqual([1]);
   });
 
-  test("files printing-level rarity and release disagreements without variant collector noise", () => {
+  // "Showcase" is TCGPlayer spelling a variant, not claiming a rarity — this
+  // model records that on the printing's variant flags, so both sides are
+  // already right and there is nothing for an admin to resolve.
+  test("does not file Showcase as a rarity disagreement", () => {
     const p = product(1, "Alt Card", "12a", "Showcase");
     p.presaleInfo = { releasedOn: "2026-02-01T00:00:00Z" };
     const entries = buildReconciliationEntries([
       printing("alt", { name: "Alt Card", set_code: "TST", collector_number: "12", is_alternate_art: true, tcgplayer_id: "1", rarity: "Rare", released_at: "2026-01-01" }),
     ], maps([p]), new Map([["TST", 1]]));
-    expect(entries.map((entry) => entry.payload.field)).toEqual(["rarity", "released_at"]);
+    expect(entries.map((entry) => entry.payload.field)).toEqual(["released_at"]);
+  });
+
+  test("still files a real rarity disagreement", () => {
+    const entries = buildReconciliationEntries([
+      printing("base", { name: "Base Card", set_code: "TST", collector_number: "12", tcgplayer_id: "1", rarity: "Common" }),
+    ], maps([product(1, "Base Card", "12", "Uncommon")]), new Map([["TST", 1]]));
+    expect(entries.map((entry) => [entry.payload.field, entry.payload.proposed_value])).toEqual([
+      ["rarity", "Uncommon"],
+    ]);
   });
 
   test("upserts bounded reconciliation batches before the one final prune", async () => {

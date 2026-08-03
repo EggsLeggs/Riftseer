@@ -46,6 +46,7 @@ Paths in the tables below are relative to `/api/v1/admin`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/stats` | Dashboard totals: sets, oracles, printings, pending review |
 | `GET` | `/audit-log` | List mutations, newest first |
 | `GET` | `/reconciliation` | List ingest review entries |
 | `POST` | `/reconciliation/:id/confirm` | Apply a supported proposal and close it |
@@ -66,6 +67,7 @@ Paths in the tables below are relative to `/api/v1/admin`.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
+| `GET` | `/printings` | List the catalogue, including rows public search cannot see |
 | `POST` | `/printings` | Add a physical printing to an oracle |
 | `PATCH` | `/printings/:id` | Patch printed fields; `set_code` moves sets |
 | `DELETE` | `/printings/:id` | Soft-delete one printing |
@@ -184,6 +186,36 @@ Self-edges and duplicate kind/target pairs are rejected.
 
 ## Printings
 
+### Listing
+
+`GET /printings` is the admin catalogue list, and exists because public search
+cannot answer the questions an admin opens the list to ask. The search grammar
+is deliberately a language about *cards*; every filter here is a fact about the
+*catalogue*:
+
+| `state` | Selects |
+| --- | --- |
+| `live` (default) | Everything not soft-deleted |
+| `deleted` | Soft-deleted rows — the only way to find one to restore |
+| `manual` | `source = 'manual'`, the rows ingest's prune skips |
+| `locked` | Rows carrying at least one admin-locked column |
+| `delta` | Rows carrying a printing delta, from either layer |
+| `no_image` | Rows with no hosted R2 variant set |
+
+Also accepts `q` (card-name substring), `set` (set code, upper-cased), `id`
+(exact printing id), `limit` (max 200) and `offset`.
+
+`deleted` is the reason this reads the `printings` table rather than the
+`resolved_printings` projection: the projection excludes soft-deleted rows,
+which is exactly what makes `deleted_at` a real delete for every other reader,
+and leaves this endpoint as the only way back.
+
+Each entry carries `locked_fields` and `oracle_locked_fields` — locks are per
+row, so the two levels are reported separately — plus `delta_source`
+(`ingest`, `admin` or null) and `has_hosted_image`.
+
+### Creating and editing
+
 Create a printing with a caller-supplied text ID, an existing oracle UUID, a
 set code, and physical-card fields:
 
@@ -288,6 +320,17 @@ empty queries are rejected before any write. `POST /rulings/preview` evaluates
 `{ query, limit? }` without storing it. Saved query targets are materialized
 when the ruling changes, after ingest, and inside card mutations that can change
 whether a printing matches.
+
+A returned target carries `label`, the resolved card name, so a stored target
+reads as a card rather than as the id it is keyed on. It also carries `deleted`:
+a soft-deleted oracle or printing keeps its target row — the cascade only fires
+on a hard delete — while dropping out of both card-page read paths, so the
+ruling stops reaching anything with nothing else to say why.
+
+A ruling always has at least one target at write time, but `ON DELETE CASCADE`
+can empty one afterwards. `GET /rulings` uses a left join and still returns
+those; `GET /printings/:id/rulings` and the public read path both inner-join
+targets and cannot. The central list is the only place such a ruling surfaces.
 
 ## Formats
 

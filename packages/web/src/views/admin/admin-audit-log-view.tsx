@@ -3,10 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Loader2, RotateCw } from "lucide-react";
+import { ChevronDown, ChevronRight, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -15,11 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
 import { listAuditLogAction } from "@/features/admin/actions";
 import type { AdminAuditEntry, AdminAuditPage } from "@/features/admin/types";
 import { ADMIN_AUDIT_ACTIONS } from "@riftseer/types/admin-actions";
 import { AdminPageHeader } from "./admin-page-header";
+import { SelectField, TextField } from "./admin-form-field";
+import { AdminListState, AdminPager } from "./admin-list";
 
 const PAGE_SIZE = 50;
 
@@ -95,32 +94,24 @@ export function AdminAuditLogView() {
         }}
         className="mb-6 flex flex-wrap items-end gap-3"
       >
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="audit-action">Action</Label>
-          <select
-            id="audit-action"
-            value={action}
-            onChange={(e) => setAction(e.target.value)}
-            className={CARD_BROWSE_SELECT_CLASS}
-          >
-            <option value="">All actions</option>
-            {ACTIONS.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex min-w-56 flex-1 flex-col gap-1.5">
-          <Label htmlFor="audit-target">Card ID or set code</Label>
-          <Input
-            id="audit-target"
-            value={targetIdInput}
-            onChange={(e) => setTargetIdInput(e.target.value)}
-            placeholder="67f4064886be8495f7165dd7"
-            className="font-mono text-xs"
-          />
-        </div>
+        <SelectField
+          id="audit-action"
+          label="Action"
+          value={action}
+          onChange={(e) => setAction(e.target.value)}
+          options={[
+            { value: "", label: "All actions" },
+            ...ACTIONS.map((value) => ({ value, label: value })),
+          ]}
+        />
+        <TextField
+          id="audit-target"
+          label="Printing or oracle ID, set or format code"
+          className="min-w-56 flex-1"
+          value={targetIdInput}
+          onChange={(e) => setTargetIdInput(e.target.value)}
+          placeholder="67f4064886be8495f7165dd7"
+        />
         <Button type="submit" variant="outline">
           Filter
         </Button>
@@ -139,23 +130,18 @@ export function AdminAuditLogView() {
         )}
       </form>
 
-      {log.isError ? (
-        <p className="text-destructive text-sm">
-          {log.error instanceof Error
+      <AdminListState
+        isError={log.isError}
+        isPending={log.isPending}
+        isEmpty={entries.length === 0}
+        errorMessage={
+          log.error instanceof Error
             ? log.error.message
-            : "Couldn't load the audit log."}
-        </p>
-      ) : log.isPending ? (
-        <p className="text-muted-foreground flex items-center gap-2 text-sm">
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          Loading audit log…
-        </p>
-      ) : entries.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No admin changes recorded yet.
-        </p>
-      ) : (
-        <>
+            : "Couldn't load the audit log."
+        }
+        loadingMessage="Loading audit log…"
+        emptyMessage="No admin changes recorded yet."
+      >
           <p className="text-muted-foreground mb-3 text-sm">
             {total.toLocaleString()} {total === 1 ? "entry" : "entries"}
             {totalPages > 1 ? ` · page ${page + 1} of ${totalPages}` : ""}
@@ -186,31 +172,8 @@ export function AdminAuditLogView() {
             </TableBody>
           </Table>
 
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                Previous
-              </Button>
-              <span className="text-muted-foreground text-sm">
-                Page {page + 1} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page + 1 >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </>
-      )}
+          <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
+      </AdminListState>
     </>
   );
 }
@@ -224,7 +187,9 @@ function AuditRow({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const isCard = entry.target_type === "card" && entry.target_id;
+  // `printing` specifically, not any card-ish target: the editor route resolves
+  // its id as a printing, so an `oracle` target_id — a UUID — would 404 there.
+  const linksToEditor = entry.target_type === "printing" && entry.target_id;
 
   return (
     <>
@@ -249,7 +214,7 @@ function AuditRow({
         </TableCell>
         <TableCell className="font-medium">{entry.action}</TableCell>
         <TableCell className="max-w-56 truncate font-mono text-xs">
-          {isCard ? (
+          {linksToEditor ? (
             <Link
               href={`/admin/cards/${encodeURIComponent(entry.target_id!)}/edit`}
               className="underline-offset-4 hover:underline"

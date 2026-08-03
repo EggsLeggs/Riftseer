@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SlugPrinting } from "@riftseer/types";
+import type { AdminPrintingState } from "@riftseer/types/admin-printing";
 
 export interface AdminRpcResult {
   ok: boolean;
@@ -215,7 +216,7 @@ export interface AdminReconciliationPayload {
   proposed_value?: string | null;
   printing_id?: string;
   oracle_id?: string;
-  card_name?: string;
+  printing_name?: string;
 }
 
 export interface AdminReconciliationEntry {
@@ -251,6 +252,77 @@ export interface AdminReconciliationPage {
   counts: Record<AdminReconciliationStatus, number>;
 }
 
+// ─── Printing list ────────────────────────────────────────────────────────────
+
+/**
+ * The list reads `printings` rather than the `resolved_printings` projection
+ * precisely because the projection excludes soft-deleted rows — that exclusion
+ * is what makes `deleted_at` a real delete for every ordinary reader, and the
+ * restore screen is the one place that has to see past it. The state vocabulary
+ * itself is shared with the admin UI via `@riftseer/types/admin-printing`.
+ */
+export interface AdminPrintingListQuery {
+  limit: number;
+  offset: number;
+  state: AdminPrintingState;
+  /** Case-insensitive substring of the oracle name. */
+  q?: string;
+  setCode?: string;
+  /**
+   * Exact printing id — how the editor reads one row's bookkeeping. It replaces
+   * the state filter rather than narrowing it, so a soft-deleted printing still
+   * answers its own lookup.
+   */
+  id?: string;
+}
+
+export interface AdminPrintingListEntry {
+  id: string;
+  name: string;
+  oracle_id: string;
+  is_token: boolean;
+  set_code: string | null;
+  collector_number: string | null;
+  rarity: string | null;
+  public_slug: string;
+  source: string;
+  deleted_at: string | null;
+  /**
+   * Columns an admin decided, which ingest must not undo. Surfaced because it
+   * is the model's whole durability mechanism and an editor otherwise has no
+   * way to tell a value that will survive the next ingest from one that will
+   * not. Two levels, because a lock is per row: the oracle's are separate.
+   */
+  locked_fields: string[];
+  oracle_locked_fields: string[];
+  /** Which layer authored the delta, or null when the printing has none. */
+  delta_source: "ingest" | "admin" | null;
+  has_hosted_image: boolean;
+}
+
+export interface AdminPrintingListPage {
+  printings: AdminPrintingListEntry[];
+  total: number;
+}
+
+/**
+ * Dashboard totals.
+ *
+ * Counted from the tables rather than summed from `sets.card_count`, which the
+ * dashboard used to do client-side: that column counts printings, so the tile
+ * was mislabelled, and it went blank whenever the public sets call failed —
+ * turning a display detail into a dead dashboard. Oracles and printings are
+ * separately meaningful now, since one card can carry several printings.
+ *
+ * Live rows only: a soft-deleted row should not inflate a catalogue total.
+ */
+export interface AdminStats {
+  sets: number;
+  oracles: number;
+  printings: number;
+  pendingReview: number;
+}
+
 // ─── Rulings tab ──────────────────────────────────────────────────────────────
 
 /**
@@ -268,6 +340,13 @@ export interface AdminRulingTarget {
   query: string | null;
   /** Materialised match count — query targets only, null for the others. */
   match_count: number | null;
+  /** Resolved card name, so a saved target is not just an opaque id. Null for a query. */
+  label: string | null;
+  /**
+   * The targeted card is soft-deleted, so the ruling silently stops reaching
+   * any card page. The target row survives — the cascade is only on hard delete.
+   */
+  deleted: boolean;
 }
 
 export interface AdminRuling {
@@ -347,6 +426,8 @@ export interface AdminDataRepository {
   ): Promise<boolean>;
   listAuditLog(query: AdminAuditQuery): Promise<AdminAuditPage>;
   listFormats(): Promise<AdminFormat[]>;
+  listPrintings(query: AdminPrintingListQuery): Promise<AdminPrintingListPage>;
+  getStats(): Promise<AdminStats>;
   /**
    * Return null when the printing does not exist, so callers can 404 rather
    * than render an empty table for an id that never existed.
@@ -392,6 +473,71 @@ export class AdminRepositoryError extends Error {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+/** `%` and `_` are wildcards in an admin's search box only by accident. */
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (match) => `\\${match}`);
+}
+
+/**
+ * `oracles` names its foreign key because two relate the tables — printings'
+ * `oracle_id` and oracles' `preferred_printing_id` — and PostgREST refuses the
+ * ambiguity (PGRST201).
+ *
+ * Both `oracles` and `sets` are `!inner`, and not only for the join: a filter on
+ * an *outer* embedded column does not restrict the parent rows, it just nulls
+ * the embed. Written without `!inner`, the name search returned the entire
+ * catalogue. Every printing has an oracle and a set, so `!inner` drops nothing.
+ */
+const ADMIN_PRINTING_LIST_COLUMNS = `
+  id, collector_number, rarity, public_slug, source, deleted_at, locked_fields,
+  image_hosted_at,
+  oracles!printings_oracle_id_fkey!inner ( id, name, is_token, locked_fields ),
+  sets!inner ( set_code ),
+  printing_deltas ( source )
+`;
+
+/**
+ * `oracles`, `sets` and `printing_deltas` all arrive as a single object or
+ * null, never an array: each is keyed one-to-one from this row. Reading them as
+ * arrays is the bug this shape has already produced once — a `.length` check on
+ * `printing_deltas` evaluated false for every printing that really had one.
+ */
+function parseAdminPrintingListEntry(
+  row: Record<string, unknown>,
+): AdminPrintingListEntry {
+  const oracle = isRecord(row.oracles) ? row.oracles : {};
+  const set = isRecord(row.sets) ? row.sets : {};
+  const delta = isRecord(row.printing_deltas) ? row.printing_deltas : null;
+  const deltaSource = delta?.source;
+
+  return {
+    id: String(row.id ?? ""),
+    name: typeof oracle.name === "string" ? oracle.name : "",
+    oracle_id: typeof oracle.id === "string" ? oracle.id : "",
+    is_token: oracle.is_token === true,
+    set_code: typeof set.set_code === "string" ? set.set_code : null,
+    collector_number:
+      typeof row.collector_number === "string" ? row.collector_number : null,
+    rarity: typeof row.rarity === "string" ? row.rarity : null,
+    public_slug: String(row.public_slug ?? ""),
+    source: String(row.source ?? "riftcodex"),
+    deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
+    locked_fields: stringArray(row.locked_fields),
+    oracle_locked_fields: stringArray(oracle.locked_fields),
+    delta_source:
+      deltaSource === "ingest" || deltaSource === "admin" ? deltaSource : null,
+    // A row is hosted only once the full R2 variant set exists, which is what
+    // `image_hosted_at` records — a source URL alone is not a hosted image.
+    has_hosted_image: typeof row.image_hosted_at === "string",
+  };
 }
 
 export function createAdminDataRepository(
@@ -695,6 +841,101 @@ export function createAdminDataRepository(
       };
     },
 
+    async listPrintings(query) {
+      // `oracles` needs the FK named: printings.oracle_id and
+      // oracles.preferred_printing_id both relate the two tables, and PostgREST
+      // refuses an ambiguous embed (PGRST201).
+      let request = client
+        .from("printings")
+        .select(ADMIN_PRINTING_LIST_COLUMNS, { count: "exact" });
+
+      // An exact-id read is a row lookup, not a browse: it is how the editor
+      // reads one printing's bookkeeping, and a soft-deleted row is precisely
+      // the one whose locks and `deleted_at` an admin needs to see. Applying the
+      // list's default live filter there returns nothing for a deleted printing,
+      // which reads as "no locked fields" rather than "deleted".
+      if (query.id) {
+        request = request.eq("id", query.id);
+      } else {
+        switch (query.state) {
+          case "deleted":
+            request = request.not("deleted_at", "is", null);
+            break;
+          case "manual":
+            request = request.is("deleted_at", null).eq("source", "manual");
+            break;
+          case "locked":
+            request = request.is("deleted_at", null).neq("locked_fields", "{}");
+            break;
+          case "delta":
+            request = request.is("deleted_at", null).not("printing_deltas", "is", null);
+            break;
+          case "no_image":
+            request = request.is("deleted_at", null).is("image_hosted_at", null);
+            break;
+          default:
+            request = request.is("deleted_at", null);
+        }
+      }
+
+      if (query.setCode) request = request.eq("sets.set_code", query.setCode);
+      if (query.q) {
+        request = request.ilike(
+          "oracles.name",
+          `%${escapeLikePattern(query.q)}%`,
+        );
+      }
+
+      const { data, error, count } = await request
+        // Set then collector then id: a stable order for paging, and the one an
+        // admin scanning a set expects to read in.
+        .order("set_id", { ascending: true })
+        .order("collector_number", { ascending: true })
+        .order("id", { ascending: true })
+        .range(query.offset, query.offset + query.limit - 1);
+      if (error) throw new AdminRepositoryError(error.message, error.code);
+
+      return {
+        printings: (data ?? []).filter(isRecord).map(parseAdminPrintingListEntry),
+        total: count ?? 0,
+      };
+    },
+
+    async getStats() {
+      // head:true — the counts are the whole point, the rows are not.
+      const [sets, oracles, printings, pending] = await Promise.all([
+        client
+          .from("sets")
+          .select("id", { count: "exact", head: true })
+          .is("deleted_at", null),
+        client
+          .from("oracles")
+          .select("id", { count: "exact", head: true })
+          .is("deleted_at", null),
+        client
+          .from("printings")
+          .select("id", { count: "exact", head: true })
+          .is("deleted_at", null),
+        client
+          .from("reconciliation_queue")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending"),
+      ]);
+
+      for (const result of [sets, oracles, printings, pending]) {
+        if (result.error) {
+          throw new AdminRepositoryError(result.error.message, result.error.code);
+        }
+      }
+
+      return {
+        sets: sets.count ?? 0,
+        oracles: oracles.count ?? 0,
+        printings: printings.count ?? 0,
+        pendingReview: pending.count ?? 0,
+      };
+    },
+
     async listReconciliation(query) {
       let request = client
         .from("reconciliation_queue")
@@ -863,6 +1104,8 @@ function parseRulingTarget(row: Record<string, unknown>): AdminRulingTarget {
     printing_id: typeof row.printing_id === "string" ? row.printing_id : null,
     query: typeof row.query === "string" ? row.query : null,
     match_count: typeof row.match_count === "number" ? row.match_count : null,
+    label: typeof row.label === "string" ? row.label : null,
+    deleted: row.deleted === true,
   };
 }
 
@@ -1004,8 +1247,8 @@ function parseReconciliationEntry(
       ...(typeof payload.oracle_id === "string"
         ? { oracle_id: payload.oracle_id }
         : {}),
-      ...(typeof payload.card_name === "string"
-        ? { card_name: payload.card_name }
+      ...(typeof payload.printing_name === "string"
+        ? { printing_name: payload.printing_name }
         : {}),
     },
     proposed_printing_id:

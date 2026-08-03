@@ -4,13 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Check, ExternalLink, Loader2, Plus, RotateCw, X } from "lucide-react";
+import { Check, ExternalLink, Plus, RotateCw, X } from "lucide-react";
 import { toast } from "sonner";
-import { CONFIRMABLE_RECONCILIATION_FIELDS } from "@riftseer/types/reconciliation";
+import {
+  isConfirmableReconciliationField,
+  reconciliationFieldScope,
+} from "@riftseer/types/reconciliation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -19,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
 import { listReviewAction } from "@/features/admin/actions";
 import {
   adminReviewQueryKey,
@@ -34,6 +35,8 @@ import type {
   AdminReviewStatus,
 } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
+import { SelectField } from "./admin-form-field";
+import { AdminListState, AdminPager } from "./admin-list";
 
 const PAGE_SIZE = 50;
 
@@ -65,13 +68,6 @@ const FIELD_LABELS: Record<string, string> = {
   power: "Power",
   text: "Rules text",
 };
-
-/**
- * Fields `buildConfirmPatch` in the API can turn into a card patch, from the
- * list both sides share. Confirming anything else answers
- * `REVIEW_FIELD_UNSUPPORTED`, so Confirm is disabled rather than left to error.
- */
-const CONFIRMABLE_FIELDS = new Set<string>(CONFIRMABLE_RECONCILIATION_FIELDS);
 
 function formatTimestamp(value: string): string {
   const parsed = new Date(value);
@@ -163,56 +159,47 @@ export function AdminReviewView() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="review-kind">Type</Label>
-          <select
-            id="review-kind"
-            value={kind}
-            onChange={(e) => setKind(e.target.value as AdminReviewKind | "")}
-            className={CARD_BROWSE_SELECT_CLASS}
-          >
-            <option value="">All types</option>
-            <option value="unmatched_product">Unmatched products</option>
-            <option value="field_diff">Field differences</option>
-            <option value="missing_printing">Missing printings</option>
-            <option value="unmatched_oracle">Unmatched oracles</option>
-          </select>
-        </div>
+        <SelectField
+          id="review-kind"
+          label="Type"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as AdminReviewKind | "")}
+          options={[
+            { value: "", label: "All types" },
+            // Built from the label maps so a new kind cannot be added to one and
+            // forgotten in the other.
+            ...Object.entries(KIND_LABELS).map(([value, label]) => ({ value, label })),
+          ]}
+        />
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="review-source">Source</Label>
-          <select
-            id="review-source"
-            value={source}
-            onChange={(e) => setSource(e.target.value as AdminReviewSource | "")}
-            className={CARD_BROWSE_SELECT_CLASS}
-          >
-            <option value="">All sources</option>
-            <option value="tcgplayer">TCGPlayer</option>
-            <option value="gallery">Official gallery</option>
-          </select>
-        </div>
+        <SelectField
+          id="review-source"
+          label="Source"
+          value={source}
+          onChange={(e) => setSource(e.target.value as AdminReviewSource | "")}
+          options={[
+            { value: "", label: "All sources" },
+            ...Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label })),
+          ]}
+        />
       </div>
 
-      {review.isError ? (
-        <p className="text-destructive text-sm">
-          {review.error instanceof Error
+      <AdminListState
+        isError={review.isError}
+        isPending={review.isPending}
+        isEmpty={entries.length === 0}
+        errorMessage={
+          review.error instanceof Error
             ? review.error.message
-            : "Couldn't load the review queue."}
-        </p>
-      ) : review.isPending ? (
-        <p className="text-muted-foreground flex items-center gap-2 text-sm">
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          Loading review queue…
-        </p>
-      ) : entries.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {status === "pending"
+            : "Couldn't load the review queue."
+        }
+        loadingMessage="Loading review queue…"
+        emptyMessage={
+          status === "pending"
             ? "Nothing to review — every product matched a card and both sources agree with us."
-            : `No ${status} entries.`}
-        </p>
-      ) : (
-        <>
+            : `No ${status} entries.`
+        }
+      >
           <p className="text-muted-foreground mb-3 text-sm">
             {total.toLocaleString()} {total === 1 ? "entry" : "entries"}
             {totalPages > 1 ? ` · page ${page + 1} of ${totalPages}` : ""}
@@ -245,31 +232,8 @@ export function AdminReviewView() {
             </TableBody>
           </Table>
 
-          {totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                Previous
-              </Button>
-              <span className="text-muted-foreground text-sm">
-                Page {page + 1} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={page + 1 >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </>
-      )}
+          <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
+      </AdminListState>
 
       <p className="text-muted-foreground mt-8 text-xs leading-relaxed">
         Prices are never queued here — they change every run and are applied
@@ -296,7 +260,7 @@ function ReviewRow({
   onDismiss: () => void;
 }) {
   const router = useRouter();
-  const { product, gallery, field, current_value, proposed_value, card_name } =
+  const { product, gallery, field, current_value, proposed_value, printing_name } =
     entry.payload;
   // Field diffs are anchored to a known card; an unmatched product and a
   // missing card both need a target chosen, so the suggestion (where there is
@@ -304,12 +268,17 @@ function ReviewRow({
   const fixedCard = entry.kind === "field_diff";
   const [printingId, setPrintingId] = React.useState(entry.proposed_printing_id ?? "");
   const [oracleId, setOracleId] = React.useState(entry.proposed_oracle_id ?? "");
-  const oracleField = ["type", "energy", "might", "power"].includes(field ?? "");
+  // Shown as context only. The API derives the oracle from the printing when the
+  // entry does not name one, so this no longer gates Confirm.
+  const oracleField =
+    isConfirmableReconciliationField(field) &&
+    reconciliationFieldScope(field) === "oracle";
 
   // A diff on a field the API cannot patch is dismiss-only; there is nothing
-  // for confirming to write.
+  // for confirming to write. `buildConfirmPatch` answers REVIEW_FIELD_UNSUPPORTED
+  // for exactly these, so the button never promises a write the API rejects.
   const unconfirmable =
-    entry.kind === "field_diff" && !CONFIRMABLE_FIELDS.has(field ?? "");
+    entry.kind === "field_diff" && !isConfirmableReconciliationField(field);
   const unconfirmableId = `review-unconfirmable-${entry.id}`;
 
   function confirmEntry() {
@@ -319,10 +288,6 @@ function ReviewRow({
       toast.error(
         "Enter the printing ID this product belongs to",
       );
-      return;
-    }
-    if (entry.kind === "field_diff" && oracleField && !oracle) {
-      toast.error("Enter the oracle ID to update");
       return;
     }
     onConfirm(printing, oracle);
@@ -408,7 +373,7 @@ function ReviewRow({
               href={`/admin/cards/${encodeURIComponent(entry.proposed_printing_id)}/edit`}
               className="font-mono text-xs underline-offset-4 hover:underline"
             >
-              {card_name ?? entry.proposed_printing_id}
+              {printing_name ?? entry.proposed_printing_id}
             </Link>
           ) : (
             <span className="text-muted-foreground text-xs">No card</span>
@@ -423,9 +388,9 @@ function ReviewRow({
               className="font-mono text-xs"
             />
             {(oracleField || entry.kind === "unmatched_oracle") ? <Input aria-label="Oracle ID" value={oracleId} onChange={(event) => setOracleId(event.target.value)} placeholder="Oracle UUID" className="font-mono text-xs" /> : null}
-            {card_name && entry.kind !== "missing_printing" && entry.kind !== "unmatched_oracle" && (
+            {printing_name && entry.kind !== "missing_printing" && entry.kind !== "unmatched_oracle" && (
               <span className="text-muted-foreground text-xs">
-                Suggested: {card_name}
+                Suggested: {printing_name}
               </span>
             )}
             {(entry.kind === "missing_printing" || entry.kind === "unmatched_oracle") && (

@@ -9,6 +9,10 @@ import type {
   AdminOracleRelationships,
   AdminPrintingDefinition,
   AdminPrintingDelta,
+  AdminPrintingDeltaRead,
+  AdminPrintingListFilters,
+  AdminPrintingListPage,
+  AdminStats,
   AdminPrintingLegalities,
   AdminPrintingMutationResult,
   AdminPrintingPatch,
@@ -255,6 +259,29 @@ export const adminApi = {
     });
   },
 
+  /** Dashboard totals, counted server-side from the tables. */
+  getStats(accessToken: string): Promise<AdminResult<AdminStats>> {
+    return request({ method: "GET", path: "/stats", accessToken });
+  },
+
+  /** The admin catalogue list. See `AdminPrintingListPage` for why it is not public search. */
+  listPrintings(
+    accessToken: string,
+    filters: AdminPrintingListFilters = {},
+  ): Promise<AdminResult<AdminPrintingListPage>> {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      const raw = typeof value === "number" ? String(value) : value?.trim();
+      if (raw) params.set(key, raw);
+    }
+    const search = params.toString();
+    return request({
+      method: "GET",
+      path: search ? `/printings?${search}` : "/printings",
+      accessToken,
+    });
+  },
+
   createPrinting(
     accessToken: string,
     id: string,
@@ -283,12 +310,38 @@ export const adminApi = {
     return request({ method: "DELETE", path: printingPath(printingId), accessToken, body: reason ? { reason } : {} });
   },
 
+  /**
+   * Read before write. `PUT /deltas` replaces the row wholesale, so the editor
+   * has to start from what is stored or saving one field would drop the rest.
+   */
+  getPrintingDelta(
+    accessToken: string,
+    printingId: string,
+  ): Promise<AdminResult<AdminPrintingDeltaRead>> {
+    return request({ method: "GET", path: printingPath(printingId, "/deltas"), accessToken });
+  },
+
   setPrintingDelta(
     accessToken: string,
     printingId: string,
     delta: AdminPrintingDelta | null,
   ): Promise<AdminResult<AdminPrintingMutationResult>> {
     return request({ method: "PUT", path: printingPath(printingId, "/deltas"), accessToken, body: { delta } });
+  },
+
+  /** Lift a soft delete. The row was never removed; `deleted_at` just hid it. */
+  restorePrinting(
+    accessToken: string,
+    printingId: string,
+  ): Promise<AdminResult<AdminPrintingMutationResult>> {
+    return request({ method: "POST", path: printingPath(printingId, "/restore"), accessToken });
+  },
+
+  restoreOracle(
+    accessToken: string,
+    oracleId: string,
+  ): Promise<AdminResult<AdminOracleMutationResult>> {
+    return request({ method: "POST", path: oraclePath(oracleId, "/restore"), accessToken });
   },
 
   regenerateSlug(

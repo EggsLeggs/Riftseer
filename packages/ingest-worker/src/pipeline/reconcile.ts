@@ -325,9 +325,16 @@ export function buildReconciliationEntries(
     // card's on an alternate-art or showcase printing. Compared
     // case-insensitively — both sides title-case it, and casing alone is not a
     // disagreement.
+    //
+    // "Showcase" itself is not queued. It is not a claim about the card's
+    // rarity but TCGPlayer's way of spelling a variant, which this model
+    // records on the printing's own variant flags. Filing it drowned the queue:
+    // 113 of 119 rarity entries were this one substitution, and no admin can
+    // resolve them because both sides are already right.
     const printingRarity = comparableValue(printing.rarity);
     if (
       product.rarity &&
+      product.rarity.toLowerCase() !== "showcase" &&
       printingRarity?.toLowerCase() !== product.rarity.toLowerCase()
     ) {
       entries.push(

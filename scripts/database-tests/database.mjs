@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import pg from "pg";
@@ -12,6 +12,26 @@ const databaseUrl =
 async function runFile(client, relativePath) {
   const sql = await readFile(path.join(repoRoot, relativePath), "utf8");
   await client.query(sql);
+}
+
+/**
+ * Every migration, in order — not a named baseline.
+ *
+ * This used to run one hard-coded filename, so the contract tests kept passing
+ * against a schema that no longer existed: the first migration after the
+ * baseline simply never reached this database. Migrations are append-only and
+ * their timestamp prefixes sort lexically, so the directory listing *is* the
+ * schema and cannot fall behind it.
+ */
+async function runMigrations(client) {
+  const dir = path.join(repoRoot, "supabase/migrations");
+  const files = (await readdir(dir))
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+  if (files.length === 0) throw new Error("no migrations found");
+  for (const name of files) {
+    await runFile(client, path.join("supabase/migrations", name));
+  }
 }
 
 function printable(value) {
@@ -29,10 +49,7 @@ try {
 
   if (mode === "setup") {
     await runFile(client, "scripts/database-tests/auth-stubs.sql");
-    await runFile(
-      client,
-      "supabase/migrations/20260810000000_oracle_printing_baseline.sql",
-    );
+    await runMigrations(client);
     await runFile(client, "scripts/database-tests/fixture.sql");
     await client.query("NOTIFY pgrst, 'reload schema'");
   } else if (mode === "reseed") {

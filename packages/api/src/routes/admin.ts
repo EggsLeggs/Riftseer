@@ -11,6 +11,7 @@ import {
 } from "@riftseer/types";
 import { authAdminClient } from "../lib/supabase";
 import { oracleKeyForName } from "@riftseer/types/oracle";
+import { ADMIN_PRINTING_STATES } from "@riftseer/types/admin-printing";
 import { isConfirmableReconciliationField } from "@riftseer/types/reconciliation";
 import {
   AdminRepositoryError,
@@ -35,6 +36,7 @@ const NON_BLANK_PATTERN = ".*\\S.*";
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
 const AUDIT_LOG_MAX_LIMIT = 200;
 const RECONCILIATION_MAX_LIMIT = 200;
+const PRINTING_LIST_MAX_LIMIT = 200;
 const ADMIN_IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 const NullableStringSchema = t.Nullable(t.String());
@@ -385,6 +387,8 @@ const RulingTargetSchema = t.Object({
   printing_id: t.Nullable(t.String()),
   query: t.Nullable(t.String()),
   match_count: t.Nullable(t.Number()),
+  label: t.Nullable(t.String()),
+  deleted: t.Boolean(),
 });
 
 const RulingSchema = t.Object({
@@ -597,7 +601,7 @@ const ReconciliationEntrySchema = t.Object({
     proposed_value: t.Optional(NullableStringSchema),
     printing_id: t.Optional(t.String()),
     oracle_id: t.Optional(t.String()),
-    card_name: t.Optional(t.String()),
+    printing_name: t.Optional(t.String()),
   }),
   proposed_printing_id: NullableStringSchema,
   proposed_oracle_id: NullableStringSchema,
@@ -606,6 +610,43 @@ const ReconciliationEntrySchema = t.Object({
   resolved_at: NullableStringSchema,
   created_at: t.String(),
   last_seen_at: t.String(),
+});
+
+// A union of literals, not t.UnionEnum: Elysia fills a UnionEnum's first member
+// in when the key is absent, which would silently filter an unfiltered request.
+const PrintingStateQuerySchema = t.Union(
+  ADMIN_PRINTING_STATES.map((state) => t.Literal(state)),
+);
+
+const PrintingListEntrySchema = t.Object({
+  id: t.String(),
+  name: t.String(),
+  oracle_id: t.String(),
+  is_token: t.Boolean(),
+  set_code: NullableStringSchema,
+  collector_number: NullableStringSchema,
+  rarity: NullableStringSchema,
+  public_slug: t.String(),
+  source: t.String(),
+  deleted_at: NullableStringSchema,
+  locked_fields: t.Array(t.String()),
+  oracle_locked_fields: t.Array(t.String()),
+  delta_source: t.Union([t.Literal("ingest"), t.Literal("admin"), t.Null()]),
+  has_hosted_image: t.Boolean(),
+});
+
+const StatsResponseSchema = t.Object({
+  sets: t.Number(),
+  oracles: t.Number(),
+  printings: t.Number(),
+  pending_review: t.Number(),
+});
+
+const PrintingListResponseSchema = t.Object({
+  printings: t.Array(PrintingListEntrySchema),
+  total: t.Number(),
+  limit: t.Number(),
+  offset: t.Number(),
 });
 
 const ReconciliationListResponseSchema = t.Object({
@@ -1218,8 +1259,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
 
         const printingId =
           body?.printing_id?.trim() || entry.proposed_printing_id || null;
-        const oracleId =
-          body?.oracle_id?.trim() || entry.proposed_oracle_id || null;
+        let oracleId = body?.oracle_id?.trim() || entry.proposed_oracle_id || null;
 
         const hasOraclePatch = Object.keys(patch.oracle).length > 0;
         const hasPrintingPatch = Object.keys(patch.printing).length > 0;
@@ -1229,6 +1269,21 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
             code: "REVIEW_TARGET_REQUIRED",
           });
         }
+
+        // A field_diff names one printing and never carries proposed_oracle_id,
+        // so an oracle-level field (type, energy, might, power) would otherwise
+        // be unconfirmable no matter what the admin chose. The printing knows
+        // its oracle; ask it rather than making the queue carry the id.
+        if (hasOraclePatch && !oracleId && printingId) {
+          const derived = await safely("reconciliation.confirm.oracle-lookup", () =>
+            repository.getPrintingOracleId(printingId),
+          );
+          if ("error" in derived) {
+            return status(derived.error.status, derived.error.body);
+          }
+          oracleId = derived.data;
+        }
+
         if (hasOraclePatch && !oracleId) {
           return status(400, {
             error: "Choose a card to apply this to",
@@ -1650,7 +1705,96 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
       },
     )
 
+    .get(
+      "/stats",
+      async ({ status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const result = await safely("stats.read", () => repository.getStats());
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+        return {
+          sets: result.data.sets,
+          oracles: result.data.oracles,
+          printings: result.data.printings,
+          pending_review: result.data.pendingReview,
+        };
+      },
+      {
+        response: { 200: StatsResponseSchema, ...AdminErrorResponses },
+        detail: {
+          tags: ["Admin"],
+          summary: "Dashboard totals",
+          description:
+            "Live counts of sets, oracles and printings, plus the pending review backlog. Oracles and printings are counted separately because one card carries many printings — a single catalogue number would answer neither question.",
+        },
+      },
+    )
+
     // ── Printings ─────────────────────────────────────────────────────────────
+    .get(
+      "/printings",
+      async ({ query, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+
+        const limit = Math.min(
+          Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
+          PRINTING_LIST_MAX_LIMIT,
+        );
+        const offset = Math.max(Number.parseInt(query.offset ?? "0", 10) || 0, 0);
+
+        const result = await safely("printing.list", () =>
+          repository.listPrintings({
+            limit,
+            offset,
+            state: query.state ?? "live",
+            q: query.q?.trim() || undefined,
+            setCode: query.set?.trim().toUpperCase() || undefined,
+            id: query.id?.trim() || undefined,
+          }),
+        );
+        if ("error" in result) {
+          return status(result.error.status, result.error.body);
+        }
+
+        return {
+          printings: result.data.printings,
+          total: result.data.total,
+          limit,
+          offset,
+        };
+      },
+      {
+        query: t.Object({
+          limit: t.Optional(t.String()),
+          offset: t.Optional(t.String()),
+          state: t.Optional(PrintingStateQuerySchema),
+          q: t.Optional(t.String()),
+          set: t.Optional(t.String()),
+          id: t.Optional(t.String()),
+        }),
+        response: {
+          200: PrintingListResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "List printings for the admin catalogue",
+          description:
+            "The admin card list. Unlike public search this can see the catalogue's bookkeeping — soft-deleted rows, manually created rows, admin-locked columns, printings carrying a delta, and printings with no hosted image — none of which the search grammar expresses, because that grammar is a language about cards rather than about the catalogue. Defaults to live printings.",
+        },
+      },
+    )
     .post(
       "/printings",
       async ({ body, adminUser, status }) => {

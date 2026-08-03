@@ -13,6 +13,7 @@ import {
   createSetAction,
   deleteOracleAction,
   deletePrintingAction,
+  restorePrintingAction,
   deleteFormatAction,
   deleteRulingAction,
   deleteSetAction,
@@ -55,6 +56,17 @@ export const ADMIN_CARD_RELATIONSHIPS_KEY = ["admin", "card-relationships"] as c
 
 export const adminCardRelationshipsQueryKey = (cardId: string) =>
   [...ADMIN_CARD_RELATIONSHIPS_KEY, cardId] as const;
+
+/** Printing-keyed, unlike the relationships key above: a delta is per printing. */
+export const ADMIN_PRINTING_DELTA_KEY = ["admin", "printing-delta"] as const;
+
+/**
+ * Locks are per row, and every admin save adds to them, so this rides on
+ * `cardsQueryKeys.all` — which every card mutation already invalidates — rather
+ * than needing each of them to remember a second key.
+ */
+export const adminPrintingLocksQueryKey = (printingId: string) =>
+  [...cardsQueryKeys.all, "admin", "locks", printingId] as const;
 
 /**
  * Admin server actions resolve with `{ ok: false }` instead of throwing, so
@@ -140,6 +152,9 @@ export function useOracleMutations() {
   };
 }
 
+export const adminPrintingDeltaQueryKey = (printingId: string) =>
+  [...ADMIN_PRINTING_DELTA_KEY, printingId] as const;
+
 export function usePrintingMutations() {
   const queryClient = useQueryClient();
   const invalidateCards = () => {
@@ -159,10 +174,19 @@ export function usePrintingMutations() {
       [printingId: string, reason?: string],
       { printing_id: string }
     >(deletePrintingAction, "Printing deleted", invalidateCards),
+    restore: useToastMutation<
+      [printingId: string, publicSlug?: string],
+      { printing_id: string }
+    >(restorePrintingAction, "Printing restored", invalidateCards),
+    // The panel authors against the stored row, so the read has to be refetched
+    // too — otherwise the next save starts from a stale draft and drops fields.
     delta: useToastMutation<
       [printingId: string, delta: AdminPrintingDelta | null, publicSlug?: string],
       { printing_id: string }
-    >(setPrintingDeltaAction, "Printing delta saved", invalidateCards),
+    >(setPrintingDeltaAction, "Printing delta saved", () => {
+      invalidateCards();
+      void queryClient.invalidateQueries({ queryKey: ADMIN_PRINTING_DELTA_KEY });
+    }),
     regenerateSlug: useToastMutation<
       [printingId: string, previousSlug?: string],
       { public_slug: string }
