@@ -29,6 +29,16 @@ export function AdminLockedFieldsNotice({ printingId }: { printingId: string }) 
     retry: false,
   });
 
+  // A failed read and a card with no locks otherwise look identical, which is
+  // the reading that gets an admin's edit silently overwritten six hours later.
+  if (locks.isError) {
+    return (
+      <p className="text-muted-foreground mb-4 text-xs">
+        Could not read this card&rsquo;s admin-locked fields.
+      </p>
+    );
+  }
+
   const row = locks.data;
   if (!row) return null;
 

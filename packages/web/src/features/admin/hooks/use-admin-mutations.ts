@@ -175,7 +175,7 @@ export function usePrintingMutations() {
       { printing_id: string }
     >(deletePrintingAction, "Printing deleted", invalidateCards),
     restore: useToastMutation<
-      [printingId: string],
+      [printingId: string, publicSlug?: string],
       { printing_id: string }
     >(restorePrintingAction, "Printing restored", invalidateCards),
     // The panel authors against the stored row, so the read has to be refetched

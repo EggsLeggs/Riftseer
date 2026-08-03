@@ -55,11 +55,12 @@ $$;
 -- Statement-level would need transition tables for the same information and
 -- admin writes are one row at a time, so row-level is both simpler and no
 -- costlier here. Ranking inputs only: an image, a rarity, the variant flags,
--- the set, and whether the row is live.
+-- the set, the collector number that breaks ties within one set, and whether
+-- the row is live.
 DROP TRIGGER IF EXISTS printings_preferred_sync ON printings;
 CREATE TRIGGER printings_preferred_sync
   AFTER INSERT OR DELETE OR UPDATE OF
-    oracle_id, set_id, deleted_at, rarity, image_hosted_at,
+    oracle_id, set_id, deleted_at, rarity, image_hosted_at, collector_number,
     is_signature, is_alternate_art, is_overnumbered, is_special_collection
   ON printings
   FOR EACH ROW EXECUTE FUNCTION preferred_printing_sync();

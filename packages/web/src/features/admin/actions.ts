@@ -159,11 +159,12 @@ export async function listPrintingsAction(
 
 export async function restorePrintingAction(
   printingId: string,
+  publicSlug?: string,
 ): Promise<AdminResult<AdminPrintingMutationResult>> {
   const result = await withToken((token) =>
     adminApi.restorePrinting(token, printingId),
   );
-  if (result.ok) revalidatePrinting(printingId);
+  if (result.ok) revalidatePrinting(printingId, publicSlug);
   return result;
 }
 

@@ -44,6 +44,19 @@ const EMPTY: Draft = {
 
 const ARRAY_FIELDS = ["tags", "domains", "keywords", "meta_flags"] as const;
 
+type ArrayField = (typeof ARRAY_FIELDS)[number];
+
+/**
+ * The stored row, restated as the shape this panel indexes into. Assigning the
+ * API's delta type to it is the assertion: the derived keys this file builds by
+ * template literal have to exist on the wire type, or the assignment fails.
+ */
+type DeltaRow = NonNullable<AdminPrintingDeltaRead["delta"]> &
+  Record<`${ScalarField}_override`, string | number | null> &
+  Record<`${ArrayField}_${"added" | "removed"}`, string[]> & {
+    cleared_fields: string[];
+  };
+
 const list = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
 
 /**
@@ -52,7 +65,10 @@ const list = (value: string) => value.split(",").map((item) => item.trim()).filt
  */
 function draftFromDelta(delta: AdminPrintingDeltaRead["delta"]): Draft {
   if (!delta) return EMPTY;
-  const row = delta as unknown as Record<string, unknown>;
+  // Read through the API's own row type rather than a Record cast, so a field
+  // renamed on the wire fails to compile here instead of quietly reconstructing
+  // an empty draft and dropping every override on the next save.
+  const row: DeltaRow = delta;
   const draft: Draft = { ...EMPTY };
 
   for (const [field] of SCALAR_FIELDS) {
@@ -61,12 +77,9 @@ function draftFromDelta(delta: AdminPrintingDeltaRead["delta"]): Draft {
     draft[field] = stored === null || stored === undefined ? "" : String(stored);
   }
 
-  const cleared = row.cleared_fields;
-  if (Array.isArray(cleared)) {
-    draft.cleared = cleared.filter((item): item is ScalarField =>
-      SCALAR_FIELDS.some(([field]) => field === item),
-    );
-  }
+  draft.cleared = row.cleared_fields.filter((item): item is ScalarField =>
+    SCALAR_FIELDS.some(([field]) => field === item),
+  );
 
   for (const group of ARRAY_FIELDS) {
     for (const direction of ["added", "removed"] as const) {

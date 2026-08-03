@@ -89,7 +89,7 @@ export function AdminDashboardView({ stats, email }: Props) {
           different questions: one card can be printed many times, so neither
           number answers the other. */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatTile label="Sets" value={stats ? String(stats.sets) : "—"} />
+        <StatTile label="Sets" value={stats ? stats.sets.toLocaleString() : "—"} />
         <StatTile
           label="Oracles"
           value={stats ? stats.oracles.toLocaleString() : "—"}

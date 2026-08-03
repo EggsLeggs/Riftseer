@@ -223,7 +223,9 @@ export function AdminCardsView() {
                         variant="ghost"
                         size="sm"
                         disabled={restore.isPending}
-                        onClick={() => restore.mutate([printing.id])}
+                        onClick={() =>
+                          restore.mutate([printing.id, printing.public_slug])
+                        }
                       >
                         <RotateCcw aria-hidden="true" />
                         Restore

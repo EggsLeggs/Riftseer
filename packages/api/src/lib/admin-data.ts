@@ -268,7 +268,11 @@ export interface AdminPrintingListQuery {
   /** Case-insensitive substring of the oracle name. */
   q?: string;
   setCode?: string;
-  /** Exact printing id — how the editor reads one row's bookkeeping. */
+  /**
+   * Exact printing id — how the editor reads one row's bookkeeping. It replaces
+   * the state filter rather than narrowing it, so a soft-deleted printing still
+   * answers its own lookup.
+   */
   id?: string;
 }
 
@@ -845,27 +849,35 @@ export function createAdminDataRepository(
         .from("printings")
         .select(ADMIN_PRINTING_LIST_COLUMNS, { count: "exact" });
 
-      switch (query.state) {
-        case "deleted":
-          request = request.not("deleted_at", "is", null);
-          break;
-        case "manual":
-          request = request.is("deleted_at", null).eq("source", "manual");
-          break;
-        case "locked":
-          request = request.is("deleted_at", null).neq("locked_fields", "{}");
-          break;
-        case "delta":
-          request = request.is("deleted_at", null).not("printing_deltas", "is", null);
-          break;
-        case "no_image":
-          request = request.is("deleted_at", null).is("image_hosted_at", null);
-          break;
-        default:
-          request = request.is("deleted_at", null);
+      // An exact-id read is a row lookup, not a browse: it is how the editor
+      // reads one printing's bookkeeping, and a soft-deleted row is precisely
+      // the one whose locks and `deleted_at` an admin needs to see. Applying the
+      // list's default live filter there returns nothing for a deleted printing,
+      // which reads as "no locked fields" rather than "deleted".
+      if (query.id) {
+        request = request.eq("id", query.id);
+      } else {
+        switch (query.state) {
+          case "deleted":
+            request = request.not("deleted_at", "is", null);
+            break;
+          case "manual":
+            request = request.is("deleted_at", null).eq("source", "manual");
+            break;
+          case "locked":
+            request = request.is("deleted_at", null).neq("locked_fields", "{}");
+            break;
+          case "delta":
+            request = request.is("deleted_at", null).not("printing_deltas", "is", null);
+            break;
+          case "no_image":
+            request = request.is("deleted_at", null).is("image_hosted_at", null);
+            break;
+          default:
+            request = request.is("deleted_at", null);
+        }
       }
 
-      if (query.id) request = request.eq("id", query.id);
       if (query.setCode) request = request.eq("sets.set_code", query.setCode);
       if (query.q) {
         request = request.ilike(
