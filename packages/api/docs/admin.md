@@ -89,6 +89,9 @@ Paths in the tables below are relative to `/api/v1/admin`.
 | `PUT` | `/formats/order` | Replace format order |
 | `PATCH` | `/formats/:code` | Patch name, order, or active state |
 | `DELETE` | `/formats/:code` | Delete a format and its legality rows |
+| `PUT` | `/formats/:code/zone-rules/:zone` | Set what the format demands of one deck zone |
+| `DELETE` | `/formats/:code/zone-rules/:zone` | Leave that zone unconstrained |
+| `PUT` | `/formats/:code/severities/:legality_status` | Override how loudly a status reads |
 | `GET` | `/rulings` | List rulings and targets |
 | `POST` | `/rulings/preview` | Evaluate a query target without storing it |
 | `POST` | `/rulings` | Create a ruling and its targets |
@@ -278,20 +281,24 @@ the next ingest scan.
 
 Legality precedence is **printing row → oracle row → legal by default**.
 `GET /printings/:id/legalities` returns one entry per active format with
-`status` and `scope` (`printing`, `oracle`, or `default`).
+`status`, `scope` (`printing`, `oracle`, or `default`) and `note` — the
+admin-authored explanation stored on whichever row decided the status, and null
+at `default` scope.
 
 `PUT /printings/:id/legalities` accepts:
 
 ```json
 {
   "format_code": "standard",
-  "status": "banned",
+  "status": "restricted",
+  "note": "One copy as of the 2026-07 update",
   "apply_to_all_printings": true
 }
 ```
 
-Statuses are `legal`, `not_legal`, `banned`, or `default`. `default` deletes the
-stored row. Without `apply_to_all_printings`, the route writes a printing
+Statuses are `legal`, `restricted`, `not_legal`, `banned`, or `default`.
+`default` deletes the stored row, and the note goes with it: a note explains a
+status and has nowhere to live without one. Without `apply_to_all_printings`, the route writes a printing
 exception. With it, the route writes the owning oracle's status and clears all
 printing exceptions for that oracle and format. At oracle scope, `legal` is
 represented by no row; at printing scope it can be an explicit exception to an
@@ -342,6 +349,26 @@ Create with `{ code, name, sort_order?, active? }`; patch with
 Unknown codes are rejected. Deleting a format cascades its oracle and printing
 legality rows and reports their counts. Retiring with `active: false` preserves
 those rows while removing the format from public active-format responses.
+
+### Deck construction rules
+
+`GET /formats` also returns each format's `zone_rules` and `severity_overrides`.
+
+`PUT /formats/:code/zone-rules/:zone` upserts one zone's constraints with
+`{ "min_count"?, "max_count"?, "copy_limit"? }`. Zones are `legend`, `main`,
+`sideboard`, `runes`, `battlefields` and `considering`. **Null (or an omitted
+bound) means unconstrained, not zero** — a format with no rules at all enforces
+nothing, which is how the sandbox format works. `copy_limit` applies across the
+zone's counting group, so `main` and `sideboard` share one limit. `DELETE` on
+the same path returns the zone to unconstrained and is idempotent, reporting
+`deleted: false` when there was no rule.
+
+`PUT /formats/:code/severities/:legality_status` stores this format's departure
+from the default severity mapping in `@riftseer/types`
+(`legal → none`, `restricted → warning`, `not_legal → error`,
+`banned → error`). `severity` is `none`, `warning`, `error`, or `default`;
+`default` deletes the override and falls back, while `none` is a stored decision
+that the status should say nothing.
 
 ## Sets
 

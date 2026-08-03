@@ -19,6 +19,8 @@ Copy `.dev.vars.example` to `.dev.vars` for local secrets. Treat `wrangler.jsonc
 - Public endpoint documentation lives in `docs/`. Update the relevant page when a route contract changes.
 - `src/routes/cards.ts` owns oracle search/detail, printing lookup and batch resolve. `/cards` is oracle-shaped by default; `unique=prints` is the explicit printing-shaped mode.
 - `src/routes/admin.ts` owns oracle, printing, delta, relationship, legality, ruling, set and reconciliation mutations. Database access is isolated behind `src/lib/admin-data.ts` and admin RPCs.
+- `src/routes/decks.ts` owns decks, zones, collaborators, revisions and text import/export, isolated behind `src/lib/deck-data.ts` and `deck_apply_card_changes`. It is the **real** authorisation boundary: the Worker's service-role key bypasses RLS, so the deck policies in the migration are defence in depth and `unlisted`-by-link access exists only here. A deck the caller may not read returns 404, never 403.
+- Deck tokens are derived from `makes_token` edges, never stored membership; a `deck_token_printings` row whose oracle has dropped out of the derived set is ignored and pruned in passing, because ingest changing an edge is normal and must not fail a read.
 - Elysia response schemas in `src/schemas.ts` are necessarily hand-written, but bidirectional compile-time assertions guard them against drift from `@riftseer/types`. Preserve both directions: Elysia strips response fields that its schema omits.
 - Keep the versioned sub-app under `/api/v1`; CORS belongs on the root app.
 

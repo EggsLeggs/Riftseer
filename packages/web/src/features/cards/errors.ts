@@ -1,13 +1,7 @@
-/** Thrown by {@link cardsApi} when the upstream API fails or times out. */
-export class CardApiError extends Error {
-  constructor(
-    message: string,
-    readonly code: "timeout" | "http" | "network",
-    readonly status?: number,
-    /** Human-readable detail from the API response body, if available. */
-    readonly detail?: string,
-  ) {
-    super(message);
-    this.name = "CardApiError";
-  }
-}
+/**
+ * The site's API error type now lives in `lib/api`, beside the request helper
+ * that raises it, so features other than cards share both rather than copying
+ * either. Re-exported here because `@/features/cards/errors` is the path the
+ * card error boundary and views already import.
+ */
+export { CardApiError } from "@/lib/api/errors";

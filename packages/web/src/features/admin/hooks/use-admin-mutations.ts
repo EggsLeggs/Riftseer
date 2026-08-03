@@ -15,6 +15,7 @@ import {
   deletePrintingAction,
   restorePrintingAction,
   deleteFormatAction,
+  deleteFormatZoneRuleAction,
   deleteRulingAction,
   deleteSetAction,
   dismissReviewEntryAction,
@@ -26,11 +27,17 @@ import {
   regenerateSlugAction,
   reorderFormatsAction,
   setCardLegalityAction,
+  setFormatLegalitySeverityAction,
+  setFormatZoneRuleAction,
   setPrintingDeltaAction,
   setRelationshipsAction,
   uploadCardImageAction,
 } from "../actions";
 import type {
+  AdminDeckZone,
+  AdminFormatZoneRuleInput,
+  AdminLegalityStatus,
+  AdminViolationSeverityInput,
   AdminOracleDefinition,
   AdminOraclePatch,
   AdminPrintingDefinition,
@@ -273,6 +280,42 @@ export function useFormatMutations() {
       "Format order saved",
       invalidateFormats,
     ),
+
+    setZoneRule: useToastMutation<
+      [code: string, zone: AdminDeckZone, rule: AdminFormatZoneRuleInput],
+      { zone: AdminDeckZone }
+    >(
+      setFormatZoneRuleAction,
+      (data) => `${data.zone} rule saved`,
+      invalidateFormats,
+    ),
+
+    // Idempotent by design, so a delete that found nothing still succeeds — the
+    // zone is unconstrained either way, which is what the message says.
+    deleteZoneRule: useToastMutation<
+      [code: string, zone: AdminDeckZone],
+      { zone: AdminDeckZone }
+    >(
+      deleteFormatZoneRuleAction,
+      (data) => `${data.zone} is now unconstrained`,
+      invalidateFormats,
+    ),
+
+    setSeverity: useToastMutation<
+      [
+        code: string,
+        legalityStatus: AdminLegalityStatus,
+        severity: AdminViolationSeverityInput,
+      ],
+      { status: AdminLegalityStatus; severity: string | null }
+    >(
+      setFormatLegalitySeverityAction,
+      (data) =>
+        data.severity === null
+          ? `${data.status} follows the default severity again`
+          : `${data.status} now reads as ${data.severity}`,
+      invalidateFormats,
+    ),
   };
 }
 
@@ -334,6 +377,7 @@ export function useCardLegalityMutations(cardId: string) {
         status: AdminLegalityStatusInput,
         applyToAllPrintings: boolean,
         publicSlug?: string,
+        note?: string | null,
       ],
       { scope: "printing" | "oracle" }
     >(

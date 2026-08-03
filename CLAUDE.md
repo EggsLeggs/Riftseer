@@ -5,8 +5,8 @@ Riftseer is a Riftbound TCG data platform: a shared card model, REST API, Next.j
 ## Repository
 
 ```text
-packages/types/          Zero-dependency shared types, parser, icons, slug and image helpers
-packages/core/           Provider interface, Supabase provider, search, deck model
+packages/types/          Zero-dependency shared types, parser, deck model, icons, slug and image helpers
+packages/core/           Provider interface, Supabase provider, search
 packages/api/            Elysia REST API on Cloudflare Workers
 packages/web/            Next.js App Router site on Cloudflare Workers
 packages/discord-bot/    Cloudflare Worker Discord bot
@@ -63,7 +63,7 @@ Two levels. A field belongs to exactly one of them.
 - RiftCodex is authoritative for cards and sets. TCGCSV only enriches existing records with prices, purchase links and fallback images. Riot's official card gallery (`content.publishing.riotgames.com`) supplies only the `[Equip]` section RiftCodex has no field for, and reports what it thinks we are missing or have wrong. Neither source creates a card.
 - `CardDataProvider` lives in `packages/core`; `SupabaseCardProvider` is the production implementation.
 - Bots resolve cards through `/api/v1/cards/resolve`, not their own databases.
-- Printing ids are text MongoDB ObjectIds, not UUIDs. Deck short-form strings already in the wild encode them, so they must stay stable across a rebuild. Oracle ids are UUIDs.
+- Printing ids are text MongoDB ObjectIds, not UUIDs. They must stay stable across a rebuild because `deck_cards` rows and hosted image URLs are both keyed on them. Oracle ids are UUIDs.
 - **Two mechanisms that look similar and are not.** A `printing_deltas` row means the card genuinely differs from its oracle on that printing — Vayne carries `Sentinel` on newer printings but not the original, so the oracle has the tag and the old printing carries a `remove`, and printings that arrive later inherit correctly with no action. `locked_fields` means an admin decided a value and ingest must not undo it. Ingest owns `source='ingest'` delta rows and never touches `source='admin'` ones.
 - That pairing, plus `deleted_at` soft deletes and `source='manual'` rows the prune skips, is the *whole* durability story. There is no override overlay and no tombstone table.
 - Relationships are **oracle → oracle edges, stored once**, in three directed kinds: `makes_token`, `character`, `signature`. `used_by` is the reverse of `makes_token`, read by querying the other column. There is no printing-scoped relationship override — a relationship is a property of the rules object.
@@ -72,7 +72,8 @@ Two levels. A field belongs to exactly one of them.
 - **Rarity is printing-level.** TCGPlayer treats Showcase as a rarity while RiftCodex and the gallery report the base card's rarity on an alternate-art or showcase printing. That disagreement is real data, not review-queue noise.
 - An `[Equip]` gear's Might bonus is `oracles.might_bonus`, and `0` is a real printed value — **presence, never truthiness**, decides whether a card is equipment.
 - `oracles.keywords` is derived by a **database trigger** from the rules text, so ingest, admin patches and manual creation all stay in sync without each remembering to recompute it. `extractCardKeywords()` in `packages/types/src/keywords.ts` is the TypeScript mirror, covered against the SQL function by shared conformance cases.
-- Legality is **default-legal**: only non-legal statuses are stored at oracle level, and precedence is printing row → oracle row → legal.
+- Legality is **default-legal**: only non-legal statuses are stored at oracle level, and precedence is printing row → oracle row → legal. Statuses are `legal`, `restricted`, `not_legal`, `banned`; severity is a function of status, defaulted in `packages/types/src/deck.ts` and overridable per format by a `format_legality_severities` row. A warning names which rung fired, because a banned printing under a legal oracle is fixed by swapping the art, not cutting the card.
+- **A deck is a row, not a string.** Decks are account-owned, and a `deck_cards` row carries both `oracle_id` and `printing_id` behind a composite foreign key, so "this printing belongs to this oracle" is a schema fact. Counting is by oracle, display is by printing. Format limits live in `format_zone_rules` as data — a format that enforces nothing simply has no rows — and are **never** database constraints, so changing a format cannot make an existing deck unloadable. `validateDeck()` in `packages/types` is the single evaluator, shared by the builder and the API.
 - Hosted image URLs are **derived** from the printing id, never stored. The database keeps `image_hosted_at` (is the full R2 variant set present?) and `image_source_hash` (which source were the variants built from?). `packages/types/src/card-image.ts` is the single derivation, shared by the worker that writes the objects and the API that hands out the URLs.
 - RiftCodex types `collector_number` as an integer, which drops the letter prefix several numbering tracks print — `T03` (tokens), `SP3` (special collections), `R01` (runes). `printedCollectorNumber()` in `packages/ingest-worker/src/sources/riftcodex.ts` restores it from the `riftbound_id` collector segment, and only when a prefix is actually present: the id zero-pads plain numbers (`ogn-042a-298`) where the card and every existing slug do not.
 - Slugs are pinned on first insert and never overwritten, so public URLs do not drift as upstream data is corrected. Because the derivation is pure, a catalogue rebuilt from the same upstream data regenerates identical slugs. Prefer API-provided `riftseer_uri` over constructing card URLs.

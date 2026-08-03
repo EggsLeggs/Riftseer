@@ -2,11 +2,6 @@
 // from `@riftseer/types`.
 export * from "./types.ts";
 
-// Deck and serialiser
-export { Deck } from "./deck.ts";
-export type { DeckSerializer } from "./serialiser.ts";
-export { DeckSerializerV1 } from "./serialiser.ts";
-
 // Card provider interface + factory
 export type { CardDataProvider } from "./provider.ts";
 export { createProvider } from "./providers/index.ts";
@@ -46,10 +41,6 @@ export {
   cardmarketUrlForPrinting,
 } from "./card-detail.ts";
 export type { BuildOracleDetailOptions } from "./card-detail.ts";
-
-// Deck provider interface + implementation
-export type { SimplifiedDeckProvider } from "./provider.ts";
-export { SimplifiedDeckProviderImpl } from "./providers/simplified_deck_provider.ts";
 
 // Parser
 export { parseCardRequests } from "./parser.ts";

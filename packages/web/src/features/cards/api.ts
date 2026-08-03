@@ -2,11 +2,15 @@ import type { Oracle, OracleDetail, Printing } from "@riftseer/types";
 import { env } from "@/lib/env";
 import { createApiClient } from "@/lib/api/client";
 
+import {
+  getJsonFromTreaty,
+  handleRequestFailure,
+  requestFetchInit,
+} from "@/lib/api/request";
 import { CardApiError } from "./errors";
 
 export { CardApiError } from "./errors";
 
-const DEFAULT_FETCH_TIMEOUT_MS = 12_000;
 const MAX_SEARCH_LIMIT = 100;
 
 const cardsClient = createApiClient();
@@ -15,43 +19,6 @@ const API_BASE = env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "");
 export interface CardResult {
   oracle: Oracle;
   printing: Printing;
-}
-
-function requestFetchInit(): RequestInit {
-  return {
-    cache: "no-store",
-    signal: AbortSignal.timeout(DEFAULT_FETCH_TIMEOUT_MS),
-  };
-}
-
-function handleRequestFailure(err: unknown): never {
-  if (err instanceof CardApiError) throw err;
-  const name = err instanceof Error ? err.name : "";
-  if (name === "TimeoutError" || name === "AbortError") {
-    throw new CardApiError(
-      `Request timed out after ${DEFAULT_FETCH_TIMEOUT_MS}ms`,
-      "timeout",
-    );
-  }
-  throw new CardApiError(
-    err instanceof Error ? err.message : String(err),
-    "network",
-  );
-}
-
-async function getJsonFromTreaty<T>(
-  run: () => Promise<{ data: unknown; error: unknown; status: number }>,
-): Promise<T | null> {
-  try {
-    const { data, error, status } = await run();
-    if (error != null) {
-      if (status === 404) return null;
-      throw new CardApiError(`Riftseer API ${status}`, "http", status);
-    }
-    return data as T;
-  } catch (err) {
-    handleRequestFailure(err);
-  }
 }
 
 /**

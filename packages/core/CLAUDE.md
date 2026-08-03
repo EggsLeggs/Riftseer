@@ -1,6 +1,6 @@
 # packages/core
 
-Shared data-access and deck library consumed by the API. Canonical wire types, parser primitives, icons, slugs and image helpers live in `@riftseer/types` and are re-exported where useful.
+Shared data-access library consumed by the API. Canonical wire types, parser primitives, deck model, icons, slugs and image helpers live in `@riftseer/types` and are re-exported where useful.
 
 ## Boundaries
 
@@ -9,7 +9,7 @@ Shared data-access and deck library consumed by the API. Canonical wire types, p
 - Search parses once, renders the AST to SQL and scans `resolved_printings`, where printing deltas are already applied. Oracle search collapses by `oracle_id`; printing search returns physical rows plus their owning oracles.
 - `src/card-detail.ts` assembles the public `OracleDetail`. Relationships arrive as oracle edges, printings through the foreign key, and marketplace links are accepted only from recognised HTTPS hosts.
 - Rulings and legalities are supplementary to a card page. Their read failures are logged and degrade to empty lists rather than making the primary card lookup fail.
-- Decks remain keyed by printing id because published short-form strings encode those ids. Deck construction rules may read oracle fields, but serialized ids must never change to oracle UUIDs.
+- The deck model lives entirely in `@riftseer/types` (`deck.ts`, `deck-validate.ts`, `deck-text.ts`) and its storage in the deck routes. Nothing deck-shaped belongs here: this package is the card provider.
 
 ## Working here
 

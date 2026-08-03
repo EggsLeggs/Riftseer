@@ -104,44 +104,6 @@ Returns `{ lastRefresh: number, cardCount: number }` for the `/meta` endpoint. `
 
 ---
 
-## SimplifiedDeckProvider
-
-Interface for deck storage operations. Works with `SimplifiedDeck` (the compact, serialisable deck format) and a `shortForm` string used as the URL-safe deck identifier.
-
-```typescript
-interface SimplifiedDeckProvider {
-  addCards(
-    cards: { id: string; quantity: number }[],
-    deckShortForm?: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
-
-  removeCards(
-    cards: { id: string; quantity: number }[],
-    deckShortForm: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
-
-  getDeckFromShortForm(
-    deckShortForm: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
-}
-```
-
-### SimplifiedDeckProvider methods
-
-#### `addCards(cards, deckShortForm?)`
-
-Adds cards to an existing deck or creates a new one if `deckShortForm` is omitted. Returns the updated deck and the new short form string.
-
-#### `removeCards(cards, deckShortForm)`
-
-Removes the specified quantities from an existing deck. Returns the updated deck and short form.
-
-#### `getDeckFromShortForm(deckShortForm)`
-
-Decodes and returns the deck represented by a short form string. Throws if the string is invalid.
-
----
-
 ## Factory
 
 `src/providers/index.ts` exports `createProvider()`, which reads `CARD_PROVIDER` from the environment and returns the appropriate `CardDataProvider`. Only `"supabase"` is supported. See [Supabase Provider](./supabase-provider.md) for implementation details.

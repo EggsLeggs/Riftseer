@@ -4,7 +4,7 @@ sidebar_label: Overview
 sidebar_position: 1
 ---
 
-`@riftseer/core` is the shared library that everything else in the monorepo depends on. It owns the provider interface all data access goes through, the autocomplete search engine, and the deck model. Card types and the parser live in [`@riftseer/types`](../types/) and are re-exported here for convenience.
+`@riftseer/core` is the shared library that everything else in the monorepo depends on. It owns the provider interface all data access goes through, and the autocomplete search engine. Card types and the parser live in [`@riftseer/types`](../types/) and are re-exported here for convenience.
 
 Nothing in core is runtime-specific — it runs in Bun, Node, and Cloudflare Workers alike (except the server-only entry point, which is Bun/Node).
 
@@ -14,15 +14,13 @@ Nothing in core is runtime-specific — it runs in Bun, Node, and Cloudflare Wor
 
 | Module | File | Purpose |
 | --- | --- | --- |
-| Types | `src/types.ts` | Re-exports `Card`, `CardRequest`, `ResolvedCard`, `SimplifiedDeck`, and all sub-interfaces from `@riftseer/types` |
-| Provider interface | `src/provider.ts` | `CardDataProvider` and `SimplifiedDeckProvider` — the only contracts the API cares about |
+| Types | `src/types.ts` | Re-exports `Card`, `CardRequest`, `ResolvedCard`, and all sub-interfaces from `@riftseer/types` |
+| Provider interface | `src/provider.ts` | `CardDataProvider` — the only contract the API cares about |
 | Parser | `src/parser.ts` | Re-exports `parseCardRequests()` from `@riftseer/types` |
 | Icons | `src/icons.ts` | Re-exports `TOKEN_REGEX` and `TOKEN_ICON_MAP` from `@riftseer/types` |
 | Search | `src/search.ts` | `autocompleteSearch()` — deterministic, position-aware name ranking |
 | Normalize | `src/normalize.ts` | Re-exports `normalizeCardName()` from `@riftseer/types` |
 | Supabase provider | `src/providers/supabase.ts` | `SupabaseCardProvider` — the only `CardDataProvider` implementation |
-| Deck | `src/deck.ts` | `Deck` class — in-memory deck model with rule enforcement |
-| Serialiser | `src/serialiser.ts` | `DeckSerializerV1` — compact binary + base64url deck encoding |
 | Logger | `src/logger.ts` | Lightweight structured logger |
 | Server entry | `src/server.ts` | Re-exports Supabase and Redis clients (server-side only) |
 
@@ -43,11 +41,9 @@ The [ElysiaJS](https://elysiajs.com) API server calls `provider.warmup()` on sta
 The public surface is `src/index.ts`. Import from `@riftseer/core`:
 
 ```typescript
-import type { Card, CardRequest, ResolvedCard, SimplifiedDeck } from "@riftseer/core";
+import type { Card, CardRequest, ResolvedCard } from "@riftseer/core";
 import { parseCardRequests } from "@riftseer/core";
 import { autocompleteSearch } from "@riftseer/core";
-import { Deck, DeckIssue } from "@riftseer/core";
-import { DeckSerializerV1 } from "@riftseer/core";
 ```
 
 Server-side clients (Supabase, Redis) are exported from `@riftseer/core/server` — do not import these in Workers or browser builds.

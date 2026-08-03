@@ -257,7 +257,12 @@ const AuditLogResponseSchema = t.Object({
  */
 const FORMAT_CODE_PATTERN = "^[A-Za-z0-9][A-Za-z0-9_-]*$";
 
-const LegalityStatusSchema = t.UnionEnum(["legal", "not_legal", "banned"]);
+const LegalityStatusSchema = t.UnionEnum([
+  "legal",
+  "restricted",
+  "not_legal",
+  "banned",
+]);
 
 /**
  * `default` clears the stored row rather than writing a status: absence of an
@@ -265,10 +270,50 @@ const LegalityStatusSchema = t.UnionEnum(["legal", "not_legal", "banned"]);
  */
 const LegalityStatusInputSchema = t.UnionEnum([
   "legal",
+  "restricted",
   "not_legal",
   "banned",
   "default",
 ]);
+
+const DeckZoneSchema = t.UnionEnum([
+  "legend",
+  "main",
+  "sideboard",
+  "runes",
+  "battlefields",
+  "considering",
+]);
+
+const ViolationSeveritySchema = t.UnionEnum(["none", "warning", "error"]);
+
+/**
+ * `default` deletes the override so the status falls back to
+ * `DEFAULT_LEGALITY_SEVERITY` in `@riftseer/types`. It is distinct from
+ * `"none"`, which is a stored decision that this status should say nothing.
+ */
+const ViolationSeverityInputSchema = t.UnionEnum([
+  "none",
+  "warning",
+  "error",
+  "default",
+]);
+
+/**
+ * A zone's bounds. Every one is nullable and null means **unconstrained**, not
+ * zero: a format that says nothing about a zone allows anything there.
+ */
+const FormatZoneRuleSchema = t.Object({
+  zone: DeckZoneSchema,
+  min_count: t.Nullable(t.Number()),
+  max_count: t.Nullable(t.Number()),
+  copy_limit: t.Nullable(t.Number()),
+});
+
+const FormatSeverityOverrideSchema = t.Object({
+  status: LegalityStatusSchema,
+  severity: ViolationSeveritySchema,
+});
 
 const RulingTypeSchema = t.UnionEnum(["ruling", "note"]);
 
@@ -283,6 +328,14 @@ const AdminFormatSchema = t.Object({
   }),
   override_count: t.Number({
     description: "Per-printing exception rows a delete would cascade away.",
+  }),
+  zone_rules: t.Array(FormatZoneRuleSchema, {
+    description:
+      "What this format demands of each zone. An empty array is a format that constrains nothing — that absence is how the sandbox format works.",
+  }),
+  severity_overrides: t.Array(FormatSeverityOverrideSchema, {
+    description:
+      "Only the statuses whose severity this format disagrees with; the rest fall through to the default mapping in @riftseer/types.",
   }),
 });
 
@@ -315,6 +368,10 @@ const AdminPrintingLegalitiesResponseSchema = t.Object({
         description:
           "Which layer decided the status: this printing's exception, the oracle row, or the default.",
       }),
+      note: t.Nullable(t.String(), {
+        description:
+          "Admin-authored explanation stored on the row that decided the status, shown in the deck builder's legality tooltip. Null at default scope.",
+      }),
     }),
   ),
 });
@@ -325,6 +382,33 @@ const LegalityMutationResponseSchema = t.Object({
   format_code: t.String(),
   scope: t.UnionEnum(["printing", "oracle"]),
   status: t.Nullable(LegalityStatusSchema),
+  note: t.Nullable(t.String()),
+});
+
+const FormatZoneRuleMutationResponseSchema = t.Object({
+  ok: t.Literal(true),
+  code: t.String(),
+  zone: DeckZoneSchema,
+  min_count: t.Nullable(t.Number()),
+  max_count: t.Nullable(t.Number()),
+  copy_limit: t.Nullable(t.Number()),
+});
+
+const FormatZoneRuleDeleteResponseSchema = t.Object({
+  ok: t.Literal(true),
+  code: t.String(),
+  zone: DeckZoneSchema,
+  deleted: t.Boolean({
+    description:
+      "False when there was no rule to remove. The zone is unconstrained either way, so this is reported rather than treated as an error.",
+  }),
+});
+
+const FormatSeverityMutationResponseSchema = t.Object({
+  ok: t.Literal(true),
+  code: t.String(),
+  status: LegalityStatusSchema,
+  severity: t.Nullable(ViolationSeveritySchema),
 });
 
 const AdminPrintingRulingsResponseSchema = t.Object({
@@ -842,6 +926,37 @@ function mutationFailure(result: AdminRpcResult): FailureResponse | null {
         body: {
           error: "A card cannot be related to itself",
           code: "SELF_RELATIONSHIP",
+        },
+      };
+    case "invalid_zone":
+      return {
+        status: 400,
+        body: { error: "Unknown deck zone", code: "INVALID_ZONE" },
+      };
+    case "invalid_status":
+      return {
+        status: 400,
+        body: { error: "Unknown legality status", code: "INVALID_STATUS" },
+      };
+    case "invalid_severity":
+      return {
+        status: 400,
+        body: { error: "Unknown violation severity", code: "INVALID_SEVERITY" },
+      };
+    case "invalid_count":
+      return {
+        status: 400,
+        body: {
+          error: "Zone counts cannot be negative. Leave a bound empty to make it unconstrained.",
+          code: "INVALID_COUNT",
+        },
+      };
+    case "invalid_range":
+      return {
+        status: 400,
+        body: {
+          error: "A zone's minimum cannot exceed its maximum",
+          code: "INVALID_RANGE",
         },
       };
     default:
@@ -2353,6 +2468,9 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           oracleId = owner.data;
         }
 
+        // The note lives on the stored row, so clearing the status discards it
+        // with the row rather than orphaning an explanation of nothing.
+        const note = body.note?.trim() || null;
         const rpcResult = await safely("printing.legality", () =>
           repository.callRpc("admin_set_legality", {
             p_oracle_id: oracleId,
@@ -2360,6 +2478,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
             p_format_code: formatCode,
             // `default` clears the row; every other value is stored as-is.
             p_status: body.status === "default" ? null : body.status,
+            p_note: note,
             p_actor: adminUser.id,
           }),
         );
@@ -2374,6 +2493,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           format_code: formatCode,
           scope: applyToAll ? ("oracle" as const) : ("printing" as const),
           status: body.status === "default" ? null : body.status,
+          note: body.status === "default" ? null : note,
         };
       },
       {
@@ -2384,6 +2504,15 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
             pattern: FORMAT_CODE_PATTERN,
           }),
           status: LegalityStatusInputSchema,
+          note: t.Optional(
+            t.Nullable(
+              t.String({
+                maxLength: 500,
+                description:
+                  "Admin-facing explanation shown wherever this status is reported — e.g. “restricted to 1 copy as of the 2026-07 update”.",
+              }),
+            ),
+          ),
           apply_to_all_printings: t.Optional(t.Boolean()),
         }),
         response: {
@@ -2394,7 +2523,7 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           tags: ["Admin"],
           summary: "Set a legality in one format",
           description:
-            "With apply_to_all_printings the status is stored on the card and every per-printing exception for that format is cleared; without it, only this printing is affected. `default` removes the stored status (absence means legal).",
+            "With apply_to_all_printings the status is stored on the card and every per-printing exception for that format is cleared; without it, only this printing is affected. `default` removes the stored status (absence means legal), and takes any note with it.",
         },
       },
     )
@@ -2670,6 +2799,167 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
           summary: "Delete a format",
           description:
             "Deletes a format and cascades away its legality rows. The response reports how many were removed.",
+        },
+      },
+    )
+
+    // ── Format construction rules ─────────────────────────────────────────────
+    //
+    // A rule per zone, and a format with no rules constrains nothing. Every
+    // bound is nullable, and an omitted or null bound is *unconstrained* — the
+    // reason these are three nullable numbers rather than three numbers with a
+    // sentinel is that `0` is a legitimate limit and must not read as "any".
+    .put(
+      "/formats/:code/zone-rules/:zone",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const code = params.code.trim().toLowerCase();
+        const rpcResult = await safely("format.zone_rule", () =>
+          repository.callRpc("admin_set_format_zone_rule", {
+            p_code: code,
+            p_zone: params.zone,
+            p_min_count: body.min_count ?? null,
+            p_max_count: body.max_count ?? null,
+            p_copy_limit: body.copy_limit ?? null,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          code,
+          zone: params.zone,
+          min_count: body.min_count ?? null,
+          max_count: body.max_count ?? null,
+          copy_limit: body.copy_limit ?? null,
+        };
+      },
+      {
+        params: t.Object({
+          code: t.String({ minLength: 1, maxLength: 64 }),
+          zone: DeckZoneSchema,
+        }),
+        body: t.Object({
+          min_count: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
+          max_count: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
+          copy_limit: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
+        }),
+        response: {
+          200: FormatZoneRuleMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Set a format's rule for one zone",
+          description:
+            "Upserts the zone's minimum, maximum and per-oracle copy limit. Send null (or omit) a bound to leave that aspect unconstrained — null is not zero.",
+        },
+      },
+    )
+    .delete(
+      "/formats/:code/zone-rules/:zone",
+      async ({ params, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const code = params.code.trim().toLowerCase();
+        const rpcResult = await safely("format.zone_rule.delete", () =>
+          repository.callRpc("admin_delete_format_zone_rule", {
+            p_code: code,
+            p_zone: params.zone,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          code,
+          zone: params.zone,
+          deleted: rpcResult.data.deleted === true,
+        };
+      },
+      {
+        params: t.Object({
+          code: t.String({ minLength: 1, maxLength: 64 }),
+          zone: DeckZoneSchema,
+        }),
+        response: {
+          200: FormatZoneRuleDeleteResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Remove a format's rule for one zone",
+          description:
+            "Leaves the zone unconstrained. Idempotent: removing a rule that is not there succeeds with deleted=false.",
+        },
+      },
+    )
+    .put(
+      "/formats/:code/severities/:legality_status",
+      async ({ params, body, adminUser, status }) => {
+        if (!repository) {
+          return status(503, {
+            error: "Admin data service unavailable",
+            code: "SERVICE_UNAVAILABLE",
+          });
+        }
+        const code = params.code.trim().toLowerCase();
+        // `default` is not a severity: it removes the override so the status
+        // falls back to DEFAULT_LEGALITY_SEVERITY, rather than storing a row
+        // that duplicates the shared mapping and then drifts from it.
+        const severity = body.severity === "default" ? null : body.severity;
+        const rpcResult = await safely("format.legality_severity", () =>
+          repository.callRpc("admin_set_format_legality_severity", {
+            p_code: code,
+            p_status: params.legality_status,
+            p_severity: severity,
+            p_actor: adminUser.id,
+          }),
+        );
+        if ("error" in rpcResult) {
+          return status(rpcResult.error.status, rpcResult.error.body);
+        }
+        const failure = mutationFailure(rpcResult.data);
+        if (failure) return status(failure.status, failure.body);
+        return {
+          ok: true as const,
+          code,
+          status: params.legality_status,
+          severity,
+        };
+      },
+      {
+        params: t.Object({
+          code: t.String({ minLength: 1, maxLength: 64 }),
+          legality_status: LegalityStatusSchema,
+        }),
+        body: t.Object({ severity: ViolationSeverityInputSchema }),
+        response: {
+          200: FormatSeverityMutationResponseSchema,
+          ...AdminErrorResponses,
+        },
+        detail: {
+          tags: ["Admin"],
+          summary: "Override how loudly a status reads in one format",
+          description:
+            "Stores this format's departure from the shared default severity mapping. `default` deletes the override and falls back; `none` is a stored decision that the status should say nothing.",
         },
       },
     )

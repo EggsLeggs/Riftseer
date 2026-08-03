@@ -73,11 +73,16 @@ GET /api/v1/cards/detail?slug=ogn/21/sun-disc
       "format_code": "standard",
       "format_name": "Standard",
       "status": "banned",
-      "scope": "oracle"
+      "scope": "oracle",
+      "note": "Banned in the 2026-07 update."
     }
   ]
 }
 ```
+
+Statuses are `legal`, `restricted`, `not_legal` and `banned` — the same set deck
+validation uses. `note` is the admin's explanation and comes from whichever row
+decided the status, so it is absent on a `default` entry.
 
 **Absence of a stored status means legal.** Only non-legal statuses are
 persisted, so a format with nothing recorded still appears with

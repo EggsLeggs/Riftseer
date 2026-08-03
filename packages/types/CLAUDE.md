@@ -4,11 +4,18 @@ Zero-dependency canonical types and runtime-neutral helpers shared by Bun, Node,
 
 ## Card model
 
-- `src/card.ts` owns `Oracle`, `Printing`, resolution/search types and deck wire types. `src/card-detail.ts` owns the aggregate `OracleDetail` payload.
-- Oracle fields describe the rules object. Printing fields describe one physical card. Rarity is printing-level; deck ids are printing ids.
+- `src/card.ts` owns `Oracle`, `Printing` and resolution/search types. `src/card-detail.ts` owns the aggregate `OracleDetail` payload.
+- Oracle fields describe the rules object. Printing fields describe one physical card. Rarity is printing-level.
 - `oracle_key` is a name-derived lookup slug, never identity. `oracleKeyForName()` in `src/oracle.ts` is used only when ingest guesses which oracle a new printing belongs to; unmatched printings go to review.
 - `OracleRef` is the relationship shape. Relationships are oracle edges; sibling printings are a foreign-key traversal, not a relationship array.
 - `might_bonus` uses presence to identify equipment. Zero is a real printed bonus.
+
+## Deck model
+
+- `src/deck.ts` owns the zone vocabulary, `zoneForCard()`, the counting groups and `DEFAULT_LEGALITY_SEVERITY`. `src/deck-validate.ts` owns `validateDeck()`. `src/deck-text.ts` owns text import/export.
+- A deck entry carries **both** `oracle_id` and `printing_id`. Counting is by oracle, display is by printing: three copies across two arts is three toward the copy limit and two rows.
+- `validateDeck()` is advisory and non-throwing. Format rules are never database constraints, so a deck saved under one set of rules stays loadable after they change.
+- `zoneForCard()` keys off `card_type` (`Legend`, `Rune`, `Battlefield`), never `supertype`. The pre-oracle-rewrite deck model used `supertype` and silently routed every rune and battlefield into the main deck.
 
 ## Shared derivations
 

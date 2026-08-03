@@ -16,6 +16,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { printingImageUrls } from "@riftseer/types/card-image";
+import { LEGALITY_STATUSES } from "@riftseer/types/deck";
 import { repairFlavourText } from "@riftseer/types/card-text";
 import { oracleKeyForName } from "@riftseer/types/oracle";
 import {
@@ -285,6 +286,20 @@ function printingRowToPrinting(row: PrintingRow): Printing {
  * normalises to nothing can match nothing, so the leaf is dropped and the
  * surrounding AND/OR still holds.
  */
+/**
+ * Narrow a stored legality status, defaulting rather than trusting the cast.
+ *
+ * The database's CHECK constraints and `LegalityStatus` are two spellings of
+ * one set, and a status only one of them knows about used to reach the card
+ * page and index an exhaustive label map — rendering an empty badge. Falling
+ * back to `legal` matches what absence of a row already means.
+ */
+function legalityStatus(value: unknown): CardLegality["status"] {
+  return (LEGALITY_STATUSES as readonly string[]).includes(value as string)
+    ? (value as CardLegality["status"])
+    : "legal";
+}
+
 function exactNameOnly(ast: CardSearchAst): CardSearchAst {
   switch (ast.op) {
     case "text":
@@ -837,8 +852,13 @@ export class SupabaseCardProvider implements CardDataProvider {
       format_id: String(row.format_id),
       format_code: String(row.format_code),
       format_name: String(row.name),
-      status: row.status as CardLegality["status"],
+      // The RPC's CHECK constraints and this union are two definitions of the
+      // same set, so a status this build does not know about renders as the
+      // safe default rather than as a blank badge.
+      status: legalityStatus(row.status),
       scope: row.scope as CardLegality["scope"],
+      // Whichever rung decided the status, per the RPC's own precedence.
+      note: typeof row.note === "string" ? row.note : null,
     }));
   }
 

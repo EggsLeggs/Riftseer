@@ -13,12 +13,7 @@ import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import { writeFileSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
-import {
-  createProvider,
-  DeckSerializerV1,
-  NotFoundError,
-  SimplifiedDeckProviderImpl,
-} from "@riftseer/core";
+import { createProvider } from "@riftseer/core";
 import { metaRoutes } from "../src/routes/meta";
 import { cardsRoutes } from "../src/routes/cards";
 import { setsRoutes } from "../src/routes/sets";
@@ -33,22 +28,13 @@ try {
   // Missing credentials in CI — fine, warmup is non-fatal for spec generation
 }
 
-const deckProvider = new SimplifiedDeckProviderImpl(
-  new DeckSerializerV1(),
-  async (id: string) => {
-    const card = await cardProvider.getCardById(id);
-    if (!card) throw new NotFoundError(`Card not found: ${id}`);
-    return card;
-  },
-);
-
 const app = new Elysia()
   .use(
     new Elysia({ prefix: "/api/v1" })
       .use(metaRoutes(cardProvider, Date.now()))
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
-      .use(decksRoutes(deckProvider))
+      .use(decksRoutes())
       .use(authRoutes())
       .use(adminRoutes()),
   )

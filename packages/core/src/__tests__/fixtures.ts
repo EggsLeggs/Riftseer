@@ -1,4 +1,3 @@
-import type { DeckCard } from "../deck.ts";
 import type { Oracle, Printing } from "../index.ts";
 
 export function makePrinting(
@@ -37,20 +36,6 @@ export function makeOracle(
     tags: [],
     domains: [],
     meta_flags: [],
-    ...overrides,
-  };
-}
-
-export function makeDeckCard(
-  id: string,
-  overrides: Partial<DeckCard> = {},
-): DeckCard {
-  return {
-    id,
-    name: overrides.name ?? id,
-    card_type: "Unit",
-    supertype: null,
-    domains: ["Fury"],
     ...overrides,
   };
 }

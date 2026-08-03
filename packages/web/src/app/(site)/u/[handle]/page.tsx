@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { profileApi } from "@/features/profile/api";
@@ -41,11 +41,15 @@ export default async function UserProfilePage({ params }: Props) {
   const profile = result.profile;
   const isOwnProfile = session?.user.id === profile.id;
 
+  // The view reads `?tab` to keep its deck tab deep-linkable, which needs a
+  // boundary around `useSearchParams`.
   return (
-    <ProfileView
-      profile={profile}
-      isOwnProfile={isOwnProfile}
-      isLoggedIn={session !== null}
-    />
+    <Suspense>
+      <ProfileView
+        profile={profile}
+        isOwnProfile={isOwnProfile}
+        isLoggedIn={session !== null}
+      />
+    </Suspense>
   );
 }

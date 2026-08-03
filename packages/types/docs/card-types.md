@@ -66,7 +66,7 @@ interface CardAttributes {
 ```typescript
 interface CardClassification {
   type?: string;            // e.g. "Unit", "Gear", "Spell"
-  supertype?: string | null;// e.g. "Champion", "Rune", "Battleground"
+  supertype?: string | null;// e.g. "Champion", "Signature", "Token"
   rarity?: string;          // e.g. "Common", "Rare", "Legendary"
   tags?: string[];          // e.g. ["Poro"]
   domains?: string[];       // e.g. ["Fury"]
@@ -292,23 +292,9 @@ interface CardSearchOptions {
 
 ## Deck types
 
-### SimplifiedDeck
+Deck types live in `src/deck.ts`, `src/deck-validate.ts` and `src/deck-text.ts`, not here. A deck is a persisted, account-owned row; the old `SimplifiedDeck` wire type and its binary short form are gone.
 
-The serialisable, storage-friendly form of a deck. Card quantities are encoded as `"cardId:quantity"` strings.
-
-```typescript
-interface SimplifiedDeck {
-  id: string | null;
-  legendId: string | null;
-  chosenChampionId: string | null;
-  mainDeck: string[];      // "cardId:quantity" entries
-  sideboard: string[];     // "cardId:quantity" entries
-  runes: string[];         // "cardId:quantity" entries
-  battlegrounds: string[]; // Card IDs only (always quantity 1)
-}
-```
-
-See [@riftseer/core — Deck](../core/deck) for the richer in-memory `Deck` class, and [@riftseer/core — Serialiser](../core/serialiser) for how `SimplifiedDeck` is encoded for URL sharing.
+See [Deck model](./deck-model) for the zone vocabulary, `zoneForCard()`, `validateDeck()` and the text interchange format.
 
 ---
 

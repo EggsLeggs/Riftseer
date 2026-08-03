@@ -25,7 +25,7 @@ bun run cf-typegen
 - All Riftseer data and auth operations go through the Elysia API. Never import Supabase in page, view or feature code. The only direct database connection is c15t's consent backend.
 - `app/` owns routing and layouts; `views/` compose pages; `features/` own domain behavior and API access; `components/` are reusable UI. Keep business logic out of route files and generic components.
 - Server components are the default. Use client components only for state, interactivity or browser APIs. Client-side server state goes through TanStack Query.
-- API calls live in feature API modules. The Eden client in `src/lib/api/client.ts` provides the public contract; admin types in `src/features/admin/types.ts` derive from that contract rather than mirroring it by hand.
+- API calls live in feature API modules. The Eden client in `src/lib/api/client.ts` provides the public contract and `src/lib/api/request.ts` the shared timeout, no-store and `CardApiError` handling for token-less reads; admin and deck types derive from that contract rather than mirroring it by hand.
 - Environment parsing belongs in `src/lib/env.ts`. Public variables need the `NEXT_PUBLIC_` prefix; secrets do not.
 
 ## Cards
@@ -36,6 +36,14 @@ bun run cf-typegen
 - Use `cardHref()` or `oracleHref()` from `src/features/cards/paths.ts` for same-origin paths and API-provided `riftseer_uri` for absolute links. Do not assemble card URLs in components.
 - Card detail is loaded through `cardsApi.getDetail()` using exactly one oracle id, printing id or slug. React request caching lets metadata and the page share the lookup.
 - Search syntax is also the ruling-rule language. When search fields change, update `src/views/search-syntax-view.tsx` and the API search documentation.
+
+## Decks
+
+- `features/decks/api.ts` is token-less and client-safe; every authenticated read and every write goes through `server-api.ts` (`import "server-only"`) and the `actions.ts` wrappers, which fetch the session themselves. An action never takes a token argument.
+- A deck the caller may not read answers 404, so "missing" and "not yours" render the same. Roles come from the payload's `role`; `canEditDeck()` and `ownsDeck()` are the only place that mapping lives.
+- `/deck/<id>/<tail>` — the tail is cosmetic and derived from the current name, so renaming never breaks a link and no deck slug is pinned. Build paths with `features/decks/paths.ts`.
+- Grouping a deck list for display is `features/decks/grouping.ts` and nothing else. It is pure, and counts copies rather than rows.
+- The builder is the deck page with `?edit=1`, one `DeckZoneSection` and one `DeckCardRow` for every zone. Card edits go through `use-deck-editor`, which batches them into one `PUT /decks/:id/cards`: the RPC coalesces revisions within five minutes, so a request per click writes a revision row per click. Violations arrive precomputed — render `severity` distinctly and read the structured fields, never `message`.
 
 ## Admin
 

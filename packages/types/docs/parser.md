@@ -1,7 +1,7 @@
 ---
 title: Parser
 sidebar_label: Parser
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 `src/parser.ts` exports two functions: `parseCardRequests()` for extracting `[[Card Name]]` tokens from free text, and `normalizeCardName()` for consistent name lookups.
