@@ -1,4 +1,4 @@
-import type { LegalityStatus } from "./deck.ts";
+import type { DeckZone, LegalityStatus, ViolationSeverity } from "./deck.ts";
 
 // ─── Card schema ───────────────────────────────────────────────────────────────
 //
@@ -50,9 +50,31 @@ export interface CardSet {
 // ─── Rulings, legalities and formats ──────────────────────────────────────────
 
 /**
+ * One format's constraint on one zone, as the public format list reports it.
+ *
+ * Structurally a {@link FormatZoneRule} with the optionality removed: the
+ * database stores a row per constrained zone with nullable columns, so the wire
+ * shape is nullable-but-present and needs no `?`. It is assignable to
+ * `FormatZoneRule`, which is what lets `validateDeck` take it unchanged.
+ */
+export interface FormatZoneRuleEntry {
+  zone: DeckZone;
+  min_count: number | null;
+  max_count: number | null;
+  copy_limit: number | null;
+}
+
+/**
  * A tournament / play format, e.g. `{ code: "standard", name: "Standard" }`.
  * Formats are system-wide and admin-managed; `sort_order` fixes display order
  * and `active` hides a retired format without deleting its legality rows.
+ *
+ * The rules travel with the format because validation is not always the API's
+ * to do: a signed-out builder holds its deck in the browser and never posts it,
+ * so it needs `zone_rules` and `severity_overrides` to run the same
+ * `validateDeck` a saved deck gets on the server. A format with no zone rules
+ * constrains nothing — that absence is the whole vocabulary, and there is no
+ * boolean restating it.
  */
 export interface Format {
   object: "format";
@@ -61,6 +83,10 @@ export interface Format {
   name: string;
   sort_order: number;
   active: boolean;
+  /** Empty for a format that constrains no zone. */
+  zone_rules: FormatZoneRuleEntry[];
+  /** Departures from `DEFAULT_LEGALITY_SEVERITY`; absent statuses fall through. */
+  severity_overrides: Partial<Record<LegalityStatus, ViolationSeverity>>;
 }
 
 /**

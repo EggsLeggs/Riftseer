@@ -4,9 +4,37 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { CardSearchDialog } from "@/features/cards/card-search-dialog";
+import type { CardResult } from "@/features/cards/api";
 import { DECK_ZONE_LABELS } from "@riftseer/types/deck";
 import { resolveAddZone, type AddableCard } from "../deck-add";
 import type { DeckZone } from "../types";
+
+/**
+ * A search hit as an addable card.
+ *
+ * The rules fields are what the signed-in path needs; the display fields ride
+ * along for the guest builder, whose inserted row is never replaced by a server
+ * answer. Exported because the guest save path builds the same shape.
+ */
+export function addableFromResult(result: CardResult): AddableCard {
+  const { oracle, printing } = result;
+  return {
+    oracle_id: oracle.id,
+    printing_id: printing.id,
+    card_type: oracle.card_type ?? null,
+    supertype: oracle.supertype ?? null,
+    is_token: oracle.is_token,
+    name: oracle.name,
+    domains: oracle.domains ?? [],
+    energy: oracle.energy ?? null,
+    might: oracle.might ?? null,
+    power: oracle.power ?? null,
+    set_code: printing.set?.set_code ?? null,
+    collector_number: printing.collector_number ?? null,
+    rarity: printing.rarity ?? null,
+    public_slug: printing.public_slug ?? null,
+  };
+}
 
 /**
  * The card picker, wired to a zone.
@@ -29,14 +57,8 @@ export function DeckAddCardDialog({
   onAdd: (card: AddableCard, zone: DeckZone) => void;
 }) {
   const handleSelect = React.useCallback(
-    (result: { oracle: { id: string; card_type?: string; supertype?: string | null; is_token: boolean }; printing: { id: string } }) => {
-      const card: AddableCard = {
-        oracle_id: result.oracle.id,
-        printing_id: result.printing.id,
-        card_type: result.oracle.card_type ?? null,
-        supertype: result.oracle.supertype ?? null,
-        is_token: result.oracle.is_token,
-      };
+    (result: CardResult) => {
+      const card = addableFromResult(result);
       const target = resolveAddZone(card, zone);
       onAdd(card, target);
       toast.success(`Added to ${DECK_ZONE_LABELS[target]}`);

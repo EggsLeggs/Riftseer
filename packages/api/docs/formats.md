@@ -27,7 +27,7 @@ Response:
 
 ```json
 {
-  "count": 2,
+  "count": 1,
   "formats": [
     {
       "object": "format",
@@ -35,7 +35,15 @@ Response:
       "code": "standard",
       "name": "Standard",
       "sort_order": 0,
-      "active": true
+      "active": true,
+      "zone_rules": [
+        { "zone": "legend", "min_count": 1, "max_count": 1, "copy_limit": null },
+        { "zone": "main", "min_count": 40, "max_count": 40, "copy_limit": 3 },
+        { "zone": "sideboard", "min_count": null, "max_count": 10, "copy_limit": 3 },
+        { "zone": "runes", "min_count": 12, "max_count": 12, "copy_limit": null },
+        { "zone": "battlefields", "min_count": 3, "max_count": 3, "copy_limit": 1 }
+      ],
+      "severity_overrides": {}
     }
   ]
 }
@@ -44,6 +52,23 @@ Response:
 `code` is the stable lowercase handle to key against — it never changes once a
 format is created. `sort_order` is the intended display order (ascending); the
 response is already sorted, so clients can render it as-is.
+
+### Rules
+
+`zone_rules` and `severity_overrides` are everything the format asserts about
+deck construction, and they are public because **validation is not always the
+API's to do**: a signed-out builder holds its deck in the browser, never posts
+it, and runs the same `validateDeck` a saved deck gets on the server.
+
+A `null` bound is unconstrained, an absent zone constrains nothing, and a format
+with `zone_rules: []` constrains nothing at all. `copy_limit` counts copies of
+one *oracle* across the zone's whole counting group — `legend`/`main`/
+`sideboard` share one, `runes` and `battlefields` each have their own, and
+`considering` is a scratch list counted by nothing.
+
+`severity_overrides` are per-format departures from the default status→severity
+mapping (`restricted` warns, `not_legal` and `banned` error). A status absent
+from the object falls through to that default, so `{}` is the normal answer.
 
 Retired formats (`active: false`) are omitted here and from card payloads, but
 their stored statuses are kept — reactivating a format brings its legalities

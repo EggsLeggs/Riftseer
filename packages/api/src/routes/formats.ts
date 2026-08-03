@@ -36,8 +36,11 @@ export function formatsRoutes(cardProvider: CardDataProvider) {
           tags: ["Formats"],
           summary: "List play formats",
           description:
-            "Returns the active play formats in display order. Card legalities " +
-            "on the card-detail payload carry one entry per format listed here.",
+            "Returns the active play formats in display order, each with the " +
+            "zone rules and severity overrides that judge a deck built in it. " +
+            "The rules are public because a signed-out builder validates its " +
+            "deck in the browser and never posts it. Card legalities on the " +
+            "card-detail payload carry one entry per format listed here.",
         },
       },
     );

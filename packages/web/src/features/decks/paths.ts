@@ -61,8 +61,23 @@ export function myDecksHref(): string {
   return "/decks";
 }
 
-export function newDeckHref(): string {
-  return "/decks/new";
+/**
+ * The builder for a new deck. Signed in that is the create form; signed out it
+ * is the guest builder, which is the same route on purpose — "sign in to save"
+ * has to come back to somewhere, and coming back to a different URL is how a
+ * user loses the deck they just spent an hour on.
+ *
+ * `save` marks the return leg: the page finds the stored guest deck and offers
+ * to turn it into a real one. It carries no deck data — the deck is in
+ * localStorage, never in the URL.
+ */
+export function newDeckHref(options: { save?: boolean } = {}): string {
+  return options.save ? "/decks/new?save=1" : "/decks/new";
+}
+
+/** Sign in, then land back on the builder ready to save the local deck. */
+export function signInToSaveDeckHref(): string {
+  return `/auth/login?next=${encodeURIComponent(newDeckHref({ save: true }))}`;
 }
 
 export function importDeckHref(): string {

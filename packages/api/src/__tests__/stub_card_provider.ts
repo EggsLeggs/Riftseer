@@ -21,6 +21,11 @@ export const STUB_FORMAT: Format = {
   name: "Standard",
   sort_order: 0,
   active: true,
+  zone_rules: [
+    { zone: "legend", min_count: 1, max_count: 1, copy_limit: null },
+    { zone: "main", min_count: 40, max_count: 40, copy_limit: 3 },
+  ],
+  severity_overrides: { restricted: "warning" },
 };
 
 export const STUB_RULING: CardRuling = {

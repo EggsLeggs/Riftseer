@@ -44,6 +44,7 @@ bun run cf-typegen
 - `/deck/<id>/<tail>` — the tail is cosmetic and derived from the current name, so renaming never breaks a link and no deck slug is pinned. Build paths with `features/decks/paths.ts`.
 - Grouping a deck list for display is `features/decks/grouping.ts` and nothing else. It is pure, and counts copies rather than rows.
 - The builder is the deck page with `?edit=1`, one `DeckZoneSection` and one `DeckCardRow` for every zone. Card edits go through `use-deck-editor`, which batches them into one `PUT /decks/:id/cards`: the RPC coalesces revisions within five minutes, so a request per click writes a revision row per click. Violations arrive precomputed — render `severity` distinctly and read the structured fields, never `message`.
+- `/decks/new` renders signed out. `use-guest-deck` swaps localStorage for the API and `validateDeck` for precomputed violations, and every list, row and footer component below it is the same one the signed-in builder uses — a second builder is the thing this arrangement exists to avoid. `guest-deck.ts` is pure and owns the stored shape; a blob it cannot read is no deck, never a crash. On sign-in the deck converts through `createDeckAction` then `applyDeckCardChangesAction`, and the local copy is cleared only once both have landed.
 
 ## Admin
 

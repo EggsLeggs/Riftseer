@@ -6,6 +6,8 @@
  * it is catalogue vocabulary the deck merely points at by `code`.
  */
 
+import type { FormatRules } from "@riftseer/types/deck";
+
 import { createApiClient } from "@/lib/api/client";
 import { getJsonFromTreaty, requestFetchInit } from "@/lib/api/request";
 
@@ -15,6 +17,28 @@ export interface DeckFormatOption {
   id: string;
   code: string;
   name: string;
+  /** Absent on an older API build; treated as "constrains nothing". */
+  zone_rules?: FormatRules["zones"];
+  severity_overrides?: FormatRules["severity_overrides"];
+}
+
+/**
+ * The rules `validateDeck` takes, from a format the list handed back.
+ *
+ * Only the guest builder needs this: a saved deck's violations are computed by
+ * the API and arrive precomputed. A format the list does not know about (an
+ * empty list, a stale cache) validates against no zone rules, which reports the
+ * game-level problems — no legend, no champion, wrong zone — and nothing else.
+ */
+export function formatRulesFor(
+  format: DeckFormatOption | undefined | null,
+): FormatRules {
+  return {
+    zones: format?.zone_rules ?? [],
+    ...(format?.severity_overrides
+      ? { severity_overrides: format.severity_overrides }
+      : {}),
+  };
 }
 
 export const formatsApi = {

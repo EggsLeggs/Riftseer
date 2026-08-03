@@ -114,28 +114,34 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
             Your decks and the decks people have shared with you.
           </p>
         </div>
-        {isSignedIn && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
+          {isSignedIn && (
             <Button variant="outline" size="sm" asChild>
               <Link href={importDeckHref()}>Import</Link>
             </Button>
-            <Button size="sm" asChild>
-              <Link href={newDeckHref()}>New deck</Link>
-            </Button>
-          </div>
-        )}
+          )}
+          <Button size="sm" asChild>
+            <Link href={newDeckHref()}>New deck</Link>
+          </Button>
+        </div>
       </header>
 
       {!isSignedIn ? (
         <div className="flex flex-col items-center gap-4 py-20 text-center">
           <p className="text-base font-semibold">Sign in to see your decks</p>
           <p className="text-muted-foreground text-sm">
-            Decks are private by default. Sign in to build one, or open a deck
-            somebody shared with you by its link.
+            Decks are private by default. Sign in to see yours, or open a deck
+            somebody shared with you by its link. You do not need an account to
+            start building — sign in when you want to keep it.
           </p>
-          <Button asChild>
-            <Link href="/auth/login?next=/decks">Sign in</Link>
-          </Button>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild>
+              <Link href="/auth/login?next=/decks">Sign in</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href={newDeckHref()}>Build one without an account</Link>
+            </Button>
+          </div>
         </div>
       ) : (
         <>

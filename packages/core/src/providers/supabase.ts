@@ -16,7 +16,15 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { printingImageUrls } from "@riftseer/types/card-image";
-import { LEGALITY_STATUSES } from "@riftseer/types/deck";
+import {
+  DECK_ZONES,
+  LEGALITY_STATUSES,
+  VIOLATION_SEVERITIES,
+  type DeckZone,
+  type LegalityStatus,
+  type ViolationSeverity,
+} from "@riftseer/types/deck";
+import type { FormatZoneRuleEntry } from "@riftseer/types";
 import { repairFlavourText } from "@riftseer/types/card-text";
 import { oracleKeyForName } from "@riftseer/types/oracle";
 import {
@@ -298,6 +306,22 @@ function legalityStatus(value: unknown): CardLegality["status"] {
   return (LEGALITY_STATUSES as readonly string[]).includes(value as string)
     ? (value as CardLegality["status"])
     : "legal";
+}
+
+/**
+ * Vocabulary the format-rule rows are checked against before they are cast.
+ * A zone or severity this build does not know about is dropped rather than
+ * handed to `validateDeck` as a value none of its `Record` maps has a key for.
+ */
+const DECK_ZONE_SET: ReadonlySet<string> = new Set<string>(DECK_ZONES);
+const LEGALITY_STATUS_SET: ReadonlySet<string> = new Set<string>(LEGALITY_STATUSES);
+const VIOLATION_SEVERITY_SET: ReadonlySet<string> = new Set<string>(
+  VIOLATION_SEVERITIES,
+);
+
+/** A nullable integer column, kept null unless it really is a finite number. */
+function nullableCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function exactNameOnly(ast: CardSearchAst): CardSearchAst {
@@ -826,6 +850,15 @@ export class SupabaseCardProvider implements CardDataProvider {
     }));
   }
 
+  /**
+   * Formats, each carrying the rules that judge a deck built in it.
+   *
+   * The rules ship with the public list because validation is not always the
+   * API's to do: a signed-out builder holds its deck in the browser and runs
+   * `validateDeck` there. Both rule tables are read whole and grouped in
+   * memory — at most six zone rows and four severity rows per format, so the
+   * entire catalogue of them is smaller than a round trip per format.
+   */
   async getFormats(opts: { includeInactive?: boolean } = {}): Promise<Format[]> {
     let query = this.db
       .from("formats")
@@ -834,12 +867,56 @@ export class SupabaseCardProvider implements CardDataProvider {
       .order("name");
     if (!opts.includeInactive) query = query.eq("active", true);
 
-    const { data, error } = await query;
-    if (error) throw new Error(`getFormats failed: ${error.message}`);
-    return ((data ?? []) as Omit<Format, "object">[]).map((row) => ({
-      object: "format" as const,
-      ...row,
-    }));
+    const [formats, rules, severities] = await Promise.all([
+      query,
+      this.db
+        .from("format_zone_rules")
+        .select("format_id, zone, min_count, max_count, copy_limit"),
+      this.db.from("format_legality_severities").select("format_id, status, severity"),
+    ]);
+    if (formats.error) throw new Error(`getFormats failed: ${formats.error.message}`);
+    if (rules.error) throw new Error(`getFormats failed: ${rules.error.message}`);
+    if (severities.error) {
+      throw new Error(`getFormats failed: ${severities.error.message}`);
+    }
+
+    const rulesByFormat = new Map<string, FormatZoneRuleEntry[]>();
+    for (const row of (rules.data ?? []) as Record<string, unknown>[]) {
+      const zone = String(row.zone ?? "");
+      if (!DECK_ZONE_SET.has(zone)) continue;
+      const list = rulesByFormat.get(String(row.format_id)) ?? [];
+      list.push({
+        zone: zone as DeckZone,
+        min_count: nullableCount(row.min_count),
+        max_count: nullableCount(row.max_count),
+        copy_limit: nullableCount(row.copy_limit),
+      });
+      rulesByFormat.set(String(row.format_id), list);
+    }
+
+    const severityByFormat = new Map<
+      string,
+      Partial<Record<LegalityStatus, ViolationSeverity>>
+    >();
+    for (const row of (severities.data ?? []) as Record<string, unknown>[]) {
+      const status = String(row.status ?? "");
+      const severity = String(row.severity ?? "");
+      if (!LEGALITY_STATUS_SET.has(status)) continue;
+      if (!VIOLATION_SEVERITY_SET.has(severity)) continue;
+      const id = String(row.format_id);
+      const entry = severityByFormat.get(id) ?? {};
+      entry[status as LegalityStatus] = severity as ViolationSeverity;
+      severityByFormat.set(id, entry);
+    }
+
+    return ((formats.data ?? []) as Omit<Format, "object" | "zone_rules" | "severity_overrides">[]).map(
+      (row) => ({
+        object: "format" as const,
+        ...row,
+        zone_rules: rulesByFormat.get(row.id) ?? [],
+        severity_overrides: severityByFormat.get(row.id) ?? {},
+      }),
+    );
   }
 
   async getLegalities(printingId: string): Promise<CardLegality[]> {

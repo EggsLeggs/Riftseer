@@ -1,4 +1,5 @@
 import { t, type Static } from "elysia";
+import { DECK_ZONES } from "@riftseer/types/deck";
 import type {
   CardLegality,
   CardPrices,
@@ -226,6 +227,17 @@ export const LegalityStatusSchema = t.UnionEnum([
   "banned",
 ]);
 
+const ViolationSeveritySchema = t.UnionEnum(["none", "warning", "error"]);
+
+const FormatZoneRuleSchema = t.Object({
+  zone: t.UnionEnum([...DECK_ZONES]),
+  min_count: t.Nullable(t.Number()),
+  max_count: t.Nullable(t.Number()),
+  copy_limit: t.Nullable(t.Number({
+    description: "Copies of one oracle across this zone's whole counting group.",
+  })),
+});
+
 export const FormatSchema = t.Object({
   object: t.Literal("format"),
   id: t.String(),
@@ -235,6 +247,24 @@ export const FormatSchema = t.Object({
   active: t.Boolean({
     description: "False for retired formats; they are omitted from public lists.",
   }),
+  zone_rules: t.Array(FormatZoneRuleSchema, {
+    description:
+      "What this format demands of each zone. An empty array constrains nothing. " +
+      "Public because a signed-out builder validates its deck in the browser.",
+  }),
+  severity_overrides: t.Partial(
+    t.Object({
+      legal: ViolationSeveritySchema,
+      restricted: ViolationSeveritySchema,
+      not_legal: ViolationSeveritySchema,
+      banned: ViolationSeveritySchema,
+    }),
+    {
+      description:
+        "Per-format departures from the default status→severity mapping. " +
+        "A status absent here falls through to the default.",
+    },
+  ),
 });
 
 export const CardLegalitySchema = t.Object({

@@ -14,13 +14,30 @@ import type { DeckCard, DeckCardChange } from "./types";
  * in `runes` there.
  */
 
-/** The rules fields an add needs. Structural, so a search result fits. */
+/**
+ * The rules fields an add needs. Structural, so a search result fits.
+ *
+ * The display fields are optional because nothing here reads them: a signed-in
+ * add is answered by the API with the real row, so the picker need not describe
+ * the card. A **guest** add has no such answer coming — the row it inserts is
+ * the only one there will ever be — so the picker passes through what it
+ * already knows and `deckAddChange` ignores it.
+ */
 export interface AddableCard {
   oracle_id: string;
   printing_id: string;
   card_type: string | null | undefined;
   supertype?: string | null;
   is_token?: boolean | null;
+  name?: string;
+  domains?: string[];
+  energy?: number | null;
+  might?: number | null;
+  power?: number | null;
+  set_code?: string | null;
+  collector_number?: string | null;
+  rarity?: string | null;
+  public_slug?: string | null;
 }
 
 /** Zones this card may sit in, most natural first. */
