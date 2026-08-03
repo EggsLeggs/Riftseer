@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { CONFIRMABLE_RECONCILIATION_FIELDS } from "@riftseer/types/reconciliation";
+import {
+  CONFIRMABLE_RECONCILIATION_FIELDS,
+  reconciliationFieldScope,
+} from "@riftseer/types/reconciliation";
 import { Elysia } from "elysia";
 import {
   AdminRepositoryError,
@@ -75,7 +78,7 @@ function productEntry(): AdminReconciliationEntry {
         set_code: "OGN",
       },
       printing_id: PRINTING_ID,
-      card_name: "Test Card",
+      printing_name: "Test Card",
     },
     proposed_printing_id: PRINTING_ID,
     proposed_oracle_id: ORACLE_ID,
@@ -93,6 +96,7 @@ class StubRepository implements AdminDataRepository {
   nextError: AdminRepositoryError | null = null;
   auditQueries: unknown[] = [];
   reconciliationQueries: unknown[] = [];
+  printingQueries: unknown[] = [];
   rulingsQueries: unknown[] = [];
   previewed: Array<{ ast: unknown; limit: number }> = [];
   entry: AdminReconciliationEntry | null = productEntry();
@@ -136,6 +140,22 @@ class StubRepository implements AdminDataRepository {
   }
   async listFormats() {
     return [{ id: "format", code: "standard", name: "Standard", sort_order: 0, active: true, legality_count: 2, override_count: 1 }];
+  }
+  async getStats() {
+    return { sets: 8, oracles: 928, printings: 1304, pendingReview: 167 };
+  }
+  async listPrintings(query: unknown) {
+    this.printingQueries.push(query);
+    return {
+      printings: [{
+        id: PRINTING_ID, name: "Test Card", oracle_id: ORACLE_ID, is_token: false,
+        set_code: "OGN", collector_number: "12", rarity: "Rare",
+        public_slug: "ogn/12/test-card", source: "riftcodex", deleted_at: null,
+        locked_fields: ["rarity"], oracle_locked_fields: ["might"],
+        delta_source: "admin" as const, has_hosted_image: true,
+      }],
+      total: 1,
+    };
   }
   async listPrintingLegalities(id: string) {
     return id === PRINTING_ID ? {
@@ -230,10 +250,68 @@ describe("admin API contracts", () => {
     ]);
   });
 
+  // reconciliationFieldScope() tells the admin page which level a confirm will
+  // write; buildConfirmPatch() decides where it actually lands. Nothing in the
+  // type system holds those together, so assert it for every field rather than
+  // leaving a comment asking the next edit to keep them in step.
+  test.each([...CONFIRMABLE_RECONCILIATION_FIELDS])(
+    "confirming a %s diff writes at the level reconciliationFieldScope names",
+    async (field) => {
+      const value = field === "released_at" ? "2026-01-01" : "3";
+      repository.entry = {
+        ...productEntry(),
+        kind: "field_diff",
+        fingerprint: `diff:${field}:${PRINTING_ID}:${value}`,
+        payload: { field, current_value: "1", proposed_value: value, printing_id: PRINTING_ID },
+        // A real field_diff never carries one; the API must derive it.
+        proposed_oracle_id: null,
+      };
+      repository.calls = [];
+
+      const response = await app.handle(
+        request(`/admin/reconciliation/${ENTRY_ID}/confirm`, "POST", {}),
+      );
+      expect(response.status).toBe(200);
+
+      const patchedOracle = repository.calls.some((call) => call.name === "admin_patch_oracle");
+      expect(patchedOracle).toBe(reconciliationFieldScope(field) === "oracle");
+
+      const resolve = repository.calls.find(
+        (call) => call.name === "admin_resolve_reconciliation_entry",
+      );
+      expect(resolve).toBeDefined();
+      // An oracle-scoped confirm must not also smuggle the field onto the printing.
+      expect(resolve!.args.p_patch).toEqual(
+        reconciliationFieldScope(field) === "oracle" ? {} : { [field]: value },
+      );
+    },
+  );
+
   test("audit log forwards a bounded, trimmed query", async () => {
     const response = await app.handle(request("/admin/audit-log?limit=999&offset=-2&action=%20oracle.patch%20&target_type=oracle"));
     expect(response.status).toBe(200);
     expect(repository.auditQueries[0]).toEqual({ limit: 200, offset: 0, action: "oracle.patch", targetType: "oracle", targetId: undefined, actorId: undefined });
+  });
+
+  test("stats reports oracles and printings separately", async () => {
+    const response = await app.handle(request("/admin/stats"));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      sets: 8, oracles: 928, printings: 1304, pending_review: 167,
+    });
+  });
+
+  test("printing list defaults to live, bounds the page and upper-cases the set", async () => {
+    const response = await app.handle(request("/admin/printings?limit=999&offset=-5&set=%20ogn%20&q=%20vex%20"));
+    expect(response.status).toBe(200);
+    expect(repository.printingQueries[0]).toEqual({
+      limit: 200, offset: 0, state: "live", q: "vex", setCode: "OGN",
+    });
+  });
+
+  test("printing list forwards an explicit state", async () => {
+    await app.handle(request("/admin/printings?state=deleted"));
+    expect(repository.printingQueries[0]).toMatchObject({ state: "deleted" });
   });
 
   test("reconciliation list defaults to pending and preserves source/kind filters", async () => {

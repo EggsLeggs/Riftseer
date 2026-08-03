@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { Loader2, Plus, Search, Trash2, X } from "lucide-react";
+import { Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,7 @@ import type {
 } from "@/features/admin/types";
 import { cn } from "@/lib/utils";
 import { AdminPageHeader } from "./admin-page-header";
+import { AdminListState, AdminPager } from "./admin-list";
 import { CheckboxField, SelectField, TextAreaField, TextField } from "./admin-form-field";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -108,12 +109,19 @@ function targetKey(target: AdminRulingTargetInput): string {
   return `oracle:${target.oracle_id}`;
 }
 
+/**
+ * The API resolves the card name, so a saved target reads as a card rather than
+ * as the id it is stored under. Falling back to the id still beats an empty
+ * chip: it means the name lookup found nothing, which is itself worth seeing.
+ */
 function describeTarget(target: AdminRulingTarget): string {
-  if (target.kind === "printing") {
-    return target.printing_id ?? "Unknown printing";
-  }
-  if (target.kind === "oracle") return target.oracle_id ?? "Unknown card";
-  return target.query ?? "";
+  if (target.kind === "query") return target.query ?? "";
+  return (
+    target.label ??
+    target.printing_id ??
+    target.oracle_id ??
+    "Unknown card"
+  );
 }
 
 export function AdminRulingsView() {
@@ -298,22 +306,18 @@ export function AdminRulingsView() {
         </Button>
       </form>
 
-      {rulings.isError ? (
-        <p className="text-destructive text-sm">
-          Couldn&apos;t load rulings. Please try again.
-        </p>
-      ) : rulings.isPending ? (
-        <p className="text-muted-foreground flex items-center gap-2 text-sm">
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          Loading rulings…
-        </p>
-      ) : rows.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          {submitted || kind
+      <AdminListState
+        isError={rulings.isError}
+        isPending={rulings.isPending}
+        isEmpty={rows.length === 0}
+        errorMessage="Couldn't load rulings. Please try again."
+        loadingMessage="Loading rulings…"
+        emptyMessage={
+          submitted || kind
             ? "No rulings match this filter."
-            : "No rulings yet. Create one to get started."}
-        </p>
-      ) : (
+            : "No rulings yet. Create one to get started."
+        }
+      >
         <ul className="flex flex-col gap-3">
           {rows.map((ruling) => (
             <li
@@ -346,13 +350,24 @@ export function AdminRulingsView() {
                       Source: {ruling.source}
                     </p>
                   )}
-                  <ul className="mt-3 flex flex-wrap gap-1.5">
-                    {ruling.targets.map((target) => (
-                      <li key={target.id}>
-                        <TargetChip target={target} />
-                      </li>
-                    ))}
-                  </ul>
+                  {/* `admin__replace_ruling_targets` refuses to save a ruling
+                      with no targets, but ON DELETE CASCADE can empty one
+                      afterwards. Both card-page read paths inner-join the
+                      target table, so such a ruling exists and reaches nothing.
+                      This list is the only place it still shows up. */}
+                  {ruling.targets.length === 0 ? (
+                    <p className="text-destructive mt-3 text-xs font-medium">
+                      No targets — this ruling reaches no card. Edit it to add one.
+                    </p>
+                  ) : (
+                    <ul className="mt-3 flex flex-wrap gap-1.5">
+                      {ruling.targets.map((target) => (
+                        <li key={target.id}>
+                          <TargetChip target={target} />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="flex gap-1">
                   <Button
@@ -376,31 +391,8 @@ export function AdminRulingsView() {
             </li>
           ))}
         </ul>
-      )}
-
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page === 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            Previous
-          </Button>
-          <span className="text-muted-foreground text-sm">
-            Page {page + 1} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= totalPages - 1}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+        <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
+      </AdminListState>
 
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -426,35 +418,65 @@ export function AdminRulingsView() {
   );
 }
 
-function TargetChip({ target }: { target: AdminRulingTarget }) {
-  const label = describeTarget(target);
-  const tone =
-    target.kind === "query"
-      ? "border-primary/40 bg-primary/10"
-      : "border-border bg-muted";
+const TARGET_KIND_LABELS: Record<AdminRulingTargetKind, string> = {
+  printing: "Printing",
+  oracle: "Card",
+  query: "Rule",
+};
+
+/**
+ * Shared by the saved chip and the draft chip in the editor below, which
+ * previously carried their own copies of this markup and drifted in tone.
+ * `children` is the trailing slot: a match count on a saved target, a remove
+ * button on a draft one.
+ */
+function TargetChipShell({
+  kind,
+  text,
+  destructive,
+  children,
+}: {
+  kind: AdminRulingTargetKind;
+  text: string;
+  destructive?: boolean;
+  children?: React.ReactNode;
+}) {
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs",
-        tone,
+        destructive
+          ? "border-destructive/50 bg-destructive/10"
+          : kind === "query"
+            ? "border-primary/40 bg-primary/10"
+            : "border-border bg-muted",
       )}
     >
-      <span className="text-muted-foreground">
-        {target.kind === "printing"
-          ? "Printing"
-          : target.kind === "oracle"
-            ? "Card"
-            : "Rule"}
-      </span>
-      <span className={target.kind === "query" ? "font-mono" : undefined}>
-        {label}
-      </span>
+      <span className="text-muted-foreground">{TARGET_KIND_LABELS[kind]}</span>
+      <span className={kind === "query" ? "font-mono" : undefined}>{text}</span>
+      {children}
+    </span>
+  );
+}
+
+function TargetChip({ target }: { target: AdminRulingTarget }) {
+  return (
+    <TargetChipShell
+      kind={target.kind}
+      text={describeTarget(target)}
+      destructive={target.deleted}
+    >
       {target.kind === "query" && target.match_count !== null && (
         <span className="text-muted-foreground tabular-nums">
           · {target.match_count}
         </span>
       )}
-    </span>
+      {/* The target row survives a soft delete, so the ruling looks fine while
+          silently reaching no card page at all. */}
+      {target.deleted && (
+        <span className="text-destructive font-medium">· deleted</span>
+      )}
+    </TargetChipShell>
   );
 }
 
@@ -601,32 +623,16 @@ function TargetEditor({
             const key = targetKey(target);
             return (
               <li key={key}>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-xs",
-                    target.kind === "query"
-                      ? "border-primary/40 bg-primary/10"
-                      : "border-border bg-muted",
-                  )}
-                >
-                  <span className="text-muted-foreground">
-                    {target.kind === "printing"
-                      ? "Printing"
-                      : target.kind === "oracle"
-                        ? "Card"
-                        : "Rule"}
-                  </span>
-                  <span
-                    className={
-                      target.kind === "query" ? "font-mono" : undefined
-                    }
-                  >
-                    {target.kind === "printing"
+                <TargetChipShell
+                  kind={target.kind}
+                  text={
+                    target.kind === "printing"
                       ? target.printing_id
                       : target.kind === "oracle"
                         ? target.oracle_id
-                        : target.query}
-                  </span>
+                        : target.query
+                  }
+                >
                   <button
                     type="button"
                     onClick={() => onRemove(key)}
@@ -635,7 +641,7 @@ function TargetEditor({
                     <X className="size-3" aria-hidden="true" />
                     <span className="sr-only">Remove target</span>
                   </button>
-                </span>
+                </TargetChipShell>
               </li>
             );
           })}

@@ -13,6 +13,10 @@ import type {
   AdminOracleRelationships,
   AdminPrintingDefinition,
   AdminPrintingDelta,
+  AdminPrintingDeltaRead,
+  AdminPrintingListFilters,
+  AdminPrintingListPage,
+  AdminStats,
   AdminPrintingLegalities,
   AdminPrintingMutationResult,
   AdminPrintingPatch,
@@ -143,6 +147,34 @@ export async function deleteOracleAction(
   return result;
 }
 
+export async function getAdminStatsAction(): Promise<AdminResult<AdminStats>> {
+  return withToken((token) => adminApi.getStats(token));
+}
+
+export async function listPrintingsAction(
+  filters: AdminPrintingListFilters = {},
+): Promise<AdminResult<AdminPrintingListPage>> {
+  return withToken((token) => adminApi.listPrintings(token, filters));
+}
+
+export async function restorePrintingAction(
+  printingId: string,
+): Promise<AdminResult<AdminPrintingMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.restorePrinting(token, printingId),
+  );
+  if (result.ok) revalidatePrinting(printingId);
+  return result;
+}
+
+export async function restoreOracleAction(
+  oracleId: string,
+): Promise<AdminResult<AdminOracleMutationResult>> {
+  const result = await withToken((token) => adminApi.restoreOracle(token, oracleId));
+  if (result.ok) revalidatePath("/card", "layout");
+  return result;
+}
+
 export async function createPrintingAction(
   id: string,
   oracleId: string,
@@ -177,6 +209,12 @@ export async function deletePrintingAction(
   );
   if (result.ok) revalidatePrinting(printingId);
   return result;
+}
+
+export async function getPrintingDeltaAction(
+  printingId: string,
+): Promise<AdminResult<AdminPrintingDeltaRead>> {
+  return withToken((token) => adminApi.getPrintingDelta(token, printingId));
 }
 
 export async function setPrintingDeltaAction(

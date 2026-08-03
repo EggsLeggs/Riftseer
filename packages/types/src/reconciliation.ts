@@ -31,3 +31,26 @@ export function isConfirmableReconciliationField(
 ): field is ConfirmableReconciliationField {
   return field != null && CONFIRMABLE.has(field);
 }
+
+/**
+ * Which level of the model a confirmable field lives at.
+ *
+ * A disagreement is always observed against one printing, but the field it
+ * names may belong to the rules object — type and the three stats are oracle
+ * columns, while collector number, release date and rarity are printing
+ * columns. The API needs this to route the patch and the admin page needs it to
+ * label the write; deriving both from here stops the two from disagreeing about
+ * what a confirm is going to change.
+ */
+const ORACLE_SCOPED = new Set<ConfirmableReconciliationField>([
+  "type",
+  "energy",
+  "might",
+  "power",
+]);
+
+export function reconciliationFieldScope(
+  field: ConfirmableReconciliationField,
+): "oracle" | "printing" {
+  return ORACLE_SCOPED.has(field) ? "oracle" : "printing";
+}

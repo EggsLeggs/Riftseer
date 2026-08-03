@@ -1,12 +1,18 @@
 "use client";
 
 import * as React from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import type { Oracle, Printing } from "@riftseer/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { usePrintingMutations } from "@/features/admin/hooks/use-admin-mutations";
-import type { AdminPrintingDelta } from "@/features/admin/types";
+import { getPrintingDeltaAction } from "@/features/admin/actions";
+import {
+  adminPrintingDeltaQueryKey,
+  usePrintingMutations,
+} from "@/features/admin/hooks/use-admin-mutations";
+import type { AdminPrintingDelta, AdminPrintingDeltaRead } from "@/features/admin/types";
 import { AdminSection } from "./admin-form-field";
 
 const SCALAR_FIELDS = [
@@ -36,7 +42,41 @@ const EMPTY: Draft = {
   keywords_added: "", keywords_removed: "", meta_flags_added: "", meta_flags_removed: "",
 };
 
+const ARRAY_FIELDS = ["tags", "domains", "keywords", "meta_flags"] as const;
+
 const list = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+
+/**
+ * Stored delta row → editable draft. `PUT /deltas` replaces the row wholesale,
+ * so anything not reconstructed here would be dropped by the next save.
+ */
+function draftFromDelta(delta: AdminPrintingDeltaRead["delta"]): Draft {
+  if (!delta) return EMPTY;
+  const row = delta as unknown as Record<string, unknown>;
+  const draft: Draft = { ...EMPTY };
+
+  for (const [field] of SCALAR_FIELDS) {
+    const stored = row[`${field}_override`];
+    // 0 is a real printed Might bonus, so test for null/undefined, not falsiness.
+    draft[field] = stored === null || stored === undefined ? "" : String(stored);
+  }
+
+  const cleared = row.cleared_fields;
+  if (Array.isArray(cleared)) {
+    draft.cleared = cleared.filter((item): item is ScalarField =>
+      SCALAR_FIELDS.some(([field]) => field === item),
+    );
+  }
+
+  for (const group of ARRAY_FIELDS) {
+    for (const direction of ["added", "removed"] as const) {
+      const stored = row[`${group}_${direction}`];
+      draft[`${group}_${direction}`] = Array.isArray(stored) ? stored.join(", ") : "";
+    }
+  }
+
+  return draft;
+}
 
 function oracleValue(oracle: Oracle, field: ScalarField): unknown {
   if (field === "text_rich") return oracle.text?.rich;
@@ -46,8 +86,26 @@ function oracleValue(oracle: Oracle, field: ScalarField): unknown {
 }
 
 export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; printing: Printing }) {
-  const [draft, setDraft] = React.useState<Draft>(EMPTY);
   const { delta } = usePrintingMutations();
+  const stored = useQuery({
+    queryKey: adminPrintingDeltaQueryKey(printing.id),
+    queryFn: async () => {
+      const result = await getPrintingDeltaAction(printing.id);
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+    retry: false,
+  });
+
+  const [draft, setDraft] = React.useState<Draft>(EMPTY);
+  // Seed once per delta row rather than on every render, so the load does not
+  // stamp over edits made while it was in flight.
+  const seeded = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!stored.data || seeded.current === printing.id) return;
+    seeded.current = printing.id;
+    setDraft(draftFromDelta(stored.data.delta ?? null));
+  }, [stored.data, printing.id]);
 
   async function save() {
     const payload: Record<string, unknown> = {};
@@ -76,9 +134,23 @@ export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; 
       heading="Printing delta"
       description="A delta records a genuine rules difference on this printing. The oracle value stays visible so an override or removal always has context."
     >
-      {printing.differs_from_oracle ? (
+      {stored.isPending ? (
+        <p className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
+          <Loader2 className="size-4 animate-spin" />Loading the stored delta…
+        </p>
+      ) : stored.isError ? (
+        <p className="text-destructive mb-4 text-sm">
+          Couldn&apos;t load the stored delta. Saving now would replace it with only what is typed here — reload before editing.
+        </p>
+      ) : stored.data?.delta ? (
         <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          This printing already differs from its oracle. The API reports that fact but does not expose the stored delta row; saving here replaces only the admin-authored delta layer.
+          This printing carries an admin delta, loaded below. Saving replaces it wholesale, so clear a field to drop it rather than deleting the row.
+        </p>
+      ) : printing.differs_from_oracle ? (
+        // A delta row is PK'd on printing_id and carries one source, so a
+        // printing that differs without an admin row differs because of ingest.
+        <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          This printing differs from its oracle through an <strong>ingest</strong> delta, which records genuine upstream divergence. Saving here replaces it with an admin delta.
         </p>
       ) : null}
       <div className="overflow-x-auto rounded-md border">
@@ -108,8 +180,10 @@ export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; 
           </div>
         ))}
       </div>
+      {/* Saving before the stored row has loaded would replace it with an empty
+          draft, which is the wipe this panel used to perform on every save. */}
       <div className="mt-4 flex gap-2">
-        <Button type="button" disabled={delta.isPending} onClick={() => void save()}>{delta.isPending ? "Saving…" : "Save delta"}</Button>
+        <Button type="button" disabled={delta.isPending || !stored.isSuccess} onClick={() => void save()}>{delta.isPending ? "Saving…" : "Save delta"}</Button>
         <Button type="button" variant="outline" disabled={delta.isPending} onClick={() => { setDraft(EMPTY); void delta.mutateAsync([printing.id, null, printing.public_slug]); }}>Clear admin delta</Button>
       </div>
     </AdminSection>

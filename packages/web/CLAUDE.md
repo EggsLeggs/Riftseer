@@ -41,6 +41,9 @@ bun run cf-typegen
 
 - `requireAdmin()` protects the route subtree for UX, but the API's bearer-token and `ADMIN_USER_IDS` checks are the security boundary. Admin status is fetched from `/auth/me`, not trusted from a cookie, so revocation takes effect immediately.
 - Oracle and printing editors are separate even when shown on one screen. Form patches contain only changed keys: omission preserves a value and explicit null clears it. Genuine printing-specific rules differences belong in the delta panel, not the oracle form.
+- The delta panel reads the stored row before it writes. `PUT /deltas` replaces wholesale, so authoring against an empty draft silently drops every override the admin did not retype; Save stays disabled until the read lands.
+- Admin bookkeeping — `locked_fields`, `deleted_at`, delta source — comes from `/admin/printings`, never from the card payload. `Oracle` and `Printing` are the public wire types and no public reader should receive it.
+- Types in `features/admin/types.ts` are derived from the Elysia `App` type, not restated. The ruling types were hand-written once and silently lost fields the API had started returning.
 - Relationships replace an oracle's outgoing edge list. Incoming edges are context only, and there is no printing-scoped relationship control.
 - Legality edits choose oracle or printing scope; default means clearing the stored row. Shared or query-targeted rulings are edited from the central rulings page because changing them in a printing panel could affect other cards.
 - Review entries never auto-apply. Confirming a field uses the normal admin mutation path so it becomes locked against ingest. Missing-printing and unmatched-oracle entries flow through manual oracle-plus-printing creation before confirmation.

@@ -28,6 +28,7 @@ import {
   adminFormatsQueryKey,
   useFormatMutations,
 } from "@/features/admin/hooks/use-admin-mutations";
+import { useInlineRowEdit } from "@/features/admin/hooks/use-inline-row-edit";
 import type { AdminFormat, AdminFormatPatch } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
 import { CheckboxField } from "./admin-form-field";
@@ -46,8 +47,10 @@ function draftFrom(format: AdminFormat): FormatDraft {
 }
 
 export function AdminFormatsView() {
-  const [editing, setEditing] = React.useState<string | null>(null);
-  const [draft, setDraft] = React.useState<FormatDraft | null>(null);
+  const { editing, draft, setDraft, startEdit, cancelEdit } = useInlineRowEdit<
+    AdminFormat,
+    FormatDraft
+  >(draftFrom, (format) => format.code);
   const [pendingDelete, setPendingDelete] = React.useState<AdminFormat | null>(
     null,
   );
@@ -68,16 +71,6 @@ export function AdminFormatsView() {
   });
 
   const rows = formats.data?.formats ?? [];
-
-  function startEdit(format: AdminFormat) {
-    setEditing(format.code);
-    setDraft(draftFrom(format));
-  }
-
-  function cancelEdit() {
-    setEditing(null);
-    setDraft(null);
-  }
 
   async function saveEdit(format: AdminFormat) {
     if (!draft) return;

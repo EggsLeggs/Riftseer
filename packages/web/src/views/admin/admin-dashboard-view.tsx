@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  BookOpen,
   ChevronRight,
   Gavel,
   Inbox,
@@ -12,10 +13,7 @@ import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { AdminPageHeader } from "./admin-page-header";
 
-export interface AdminDashboardStats {
-  setCount: number;
-  cardCount: number;
-}
+import type { AdminStats } from "@/features/admin/types";
 
 interface AdminSection {
   href: string;
@@ -47,11 +45,18 @@ const ADMIN_SECTIONS: AdminSection[] = [
       "Add, retire and reorder play formats. Per-card legalities are edited on the card itself.",
   },
   {
+    href: "/admin/rulings",
+    icon: BookOpen,
+    title: "Rulings",
+    description:
+      "Notes and rulings, targeted at a card, a single printing, or a saved search that keeps covering cards released after it.",
+  },
+  {
     href: "/admin/review",
     icon: Inbox,
-    title: "TCGPlayer review",
+    title: "Review queue",
     description:
-      "Products ingest could not match, and fields where TCGPlayer disagrees. Confirm or dismiss — nothing applies itself.",
+      "What ingest could not reconcile, from TCGPlayer and Riot's official gallery both. Confirm or dismiss — nothing applies itself.",
   },
   {
     href: "/admin/audit",
@@ -64,7 +69,7 @@ const ADMIN_SECTIONS: AdminSection[] = [
 
 interface Props {
   /** Null when the API could not be reached — the page still renders its links. */
-  stats: AdminDashboardStats | null;
+  stats: AdminStats | null;
   email?: string;
 }
 
@@ -80,21 +85,31 @@ export function AdminDashboardView({ stats, email }: Props) {
         }
       />
 
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Oracles and printings are both shown because the split makes them
+          different questions: one card can be printed many times, so neither
+          number answers the other. */}
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatTile label="Sets" value={stats ? String(stats.sets) : "—"} />
         <StatTile
-          label="Sets"
-          value={stats ? String(stats.setCount) : "—"}
+          label="Oracles"
+          value={stats ? stats.oracles.toLocaleString() : "—"}
+          hint="Distinct cards"
         />
         <StatTile
-          label="Cards in sets"
-          value={stats ? stats.cardCount.toLocaleString() : "—"}
+          label="Printings"
+          value={stats ? stats.printings.toLocaleString() : "—"}
+          hint="Physical cards"
         />
-        <StatTile label="Decks" value="—" hint="Coming soon" />
+        <StatTile
+          label="Review"
+          value={stats ? stats.pending_review.toLocaleString() : "—"}
+          hint="Pending entries"
+        />
       </div>
 
       {!stats && (
         <p className="text-muted-foreground mb-8 text-sm">
-          Set totals are unavailable right now. The rest of the admin tools still work.
+          Totals are unavailable right now. The rest of the admin tools still work.
         </p>
       )}
 

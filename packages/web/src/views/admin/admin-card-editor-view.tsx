@@ -25,11 +25,13 @@ import { AdminCardImagePanel } from "./admin-card-image-panel";
 import { AdminCardLegalitiesPanel } from "./admin-card-legalities-panel";
 import { AdminCardRelationshipsPanel } from "./admin-card-relationships-panel";
 import { AdminCardRulingsPanel } from "./admin-card-rulings-panel";
+import { AdminLockedFieldsNotice } from "./admin-locked-fields-notice";
 import { AdminPrintingDeltaPanel } from "./admin-printing-delta-panel";
 import {
   AdminSection,
   CheckboxField,
   FieldGrid,
+  SelectField,
   TextAreaField,
   TextField,
 } from "./admin-form-field";
@@ -88,6 +90,8 @@ export function AdminCardEditorView({
         actions={<Button variant="outline" size="sm" asChild><Link href={cardHref(printing)}><ExternalLink />View card page</Link></Button>}
       />
 
+      <AdminLockedFieldsNotice printingId={printing.id} />
+
       <form onSubmit={(event) => void saveOracle(event)} className="space-y-6">
         <AdminSection heading="Oracle" description="Rules-object fields inherited by every printing unless a printing delta says otherwise.">
           <FieldGrid>
@@ -117,7 +121,7 @@ export function AdminCardEditorView({
       <form onSubmit={(event) => void savePrinting(event)} className="space-y-6">
         <AdminSection heading="Printing" description="Physical-card fields: set, collector number, rarity, art credit, flavour and marketplace links.">
           <FieldGrid>
-            <div className="flex flex-col gap-1.5"><label htmlFor="printing-set" className="text-sm font-medium">Set</label><select id="printing-set" className="border-input bg-background h-9 rounded-md border px-3 text-sm" value={printingValues.set_code} onChange={(event) => setPrinting("set_code", event.target.value)}>{setCodes.map((code) => <option key={code}>{code}</option>)}</select></div>
+            <SelectField id="printing-set" label="Set" value={printingValues.set_code} onChange={(event) => setPrinting("set_code", event.target.value)} options={setCodes.map((code) => ({ value: code, label: code }))} />
             <TextField id="printing-collector" label="Collector number" value={printingValues.collector_number} onChange={(event) => setPrinting("collector_number", event.target.value)} />
             <TextField id="printing-released" label="Released at" type="date" value={printingValues.released_at} onChange={(event) => setPrinting("released_at", event.target.value)} />
             <TextField id="printing-rarity" label="Rarity" value={printingValues.rarity} onChange={(event) => setPrinting("rarity", event.target.value)} />

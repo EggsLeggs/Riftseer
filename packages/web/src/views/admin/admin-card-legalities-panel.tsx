@@ -10,8 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { listPrintingLegalitiesAction } from "@/features/admin/actions";
 import { adminCardLegalitiesQueryKey, useCardLegalityMutations } from "@/features/admin/hooks/use-admin-mutations";
 import type { AdminLegalityStatusInput, AdminPrintingLegalityEntry } from "@/features/admin/types";
-import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
-import { AdminSection, CheckboxField } from "./admin-form-field";
+import { AdminSection, CheckboxField, SelectField } from "./admin-form-field";
 
 const STATUS_OPTIONS: Array<{ value: AdminLegalityStatusInput; label: string }> = [
   { value: "default", label: "Default / inherit" },
@@ -44,7 +43,7 @@ export function AdminCardLegalitiesPanel({ printing }: { printing: Printing }) {
       <div className="mb-4"><CheckboxField id="legality-apply-all" label="Apply to every printing" hint="On writes the oracle status and clears printing exceptions for that format. Off changes only this printing." checked={applyToAll} onChange={(event) => setApplyToAll(event.target.checked)} /></div>
       {legalities.isError ? <p className="text-destructive text-sm">Couldn&apos;t load legalities.</p> : legalities.isPending ? <p className="text-muted-foreground flex items-center gap-2 text-sm"><Loader2 className="size-4 animate-spin" />Loading legalities…</p> : entries.length === 0 ? <p className="text-muted-foreground text-sm">No formats defined. <Button variant="link" size="sm" className="h-auto p-0" asChild><Link href="/admin/formats">Create one</Link></Button>.</p> : (
         <Table><TableHeader><TableRow><TableHead>Format</TableHead><TableHead>Effective</TableHead><TableHead>Set by</TableHead><TableHead>{applyToAll ? "Oracle status" : "Printing status"}</TableHead></TableRow></TableHeader><TableBody>
-          {entries.map((entry) => <TableRow key={entry.format_id}><TableCell>{entry.format_name}</TableCell><TableCell><LegalityBadge status={entry.status} /></TableCell><TableCell className="text-muted-foreground capitalize">{entry.scope}</TableCell><TableCell><select aria-label={`${entry.format_name} legality`} className={CARD_BROWSE_SELECT_CLASS} disabled={setLegality.isPending} value={selection(entry)} onChange={(event) => setLegality.mutate([printing.id, entry.format_code, event.target.value as AdminLegalityStatusInput, applyToAll, printing.public_slug])}>{STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></TableCell></TableRow>)}
+          {entries.map((entry) => <TableRow key={entry.format_id}><TableCell>{entry.format_name}</TableCell><TableCell><LegalityBadge status={entry.status} /></TableCell><TableCell className="text-muted-foreground capitalize">{entry.scope}</TableCell><TableCell><SelectField id={`legality-${entry.format_code}`} label={`${entry.format_name} legality`} labelHidden disabled={setLegality.isPending} value={selection(entry)} onChange={(event) => setLegality.mutate([printing.id, entry.format_code, event.target.value as AdminLegalityStatusInput, applyToAll, printing.public_slug])} options={STATUS_OPTIONS} /></TableCell></TableRow>)}
         </TableBody></Table>
       )}
     </AdminSection>
