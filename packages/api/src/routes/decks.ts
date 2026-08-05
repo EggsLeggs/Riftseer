@@ -26,6 +26,7 @@ import {
   type DeckRow,
   type DeckVisibility,
   type FormatRow,
+  type ProfileStub,
 } from "../lib/deck-data";
 import { authPlugin as defaultAuthPlugin, type createAuthPlugin } from "../plugins/auth";
 import {
@@ -203,6 +204,14 @@ const CardChangeSchema = t.Object({
 const NAME_MAX = 120;
 const DESCRIPTION_MAX = 500;
 const REVISION_LIMIT = 50;
+/**
+ * The most rows one `deck_apply_card_changes` call may carry.
+ *
+ * `PUT /decks/:id/cards` states it as `maxItems` on the request schema; import
+ * builds its batch from free text and has to apply the same bound itself, or a
+ * 100 000-character paste becomes a single transaction of several thousand rows.
+ */
+const CARD_BATCH_MAX = 200;
 
 /** Unambiguous alphabet — no 0/O or 1/I, because invite codes get read aloud. */
 const CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -405,6 +414,21 @@ function deckShape(
   };
 }
 
+/**
+ * The creator's own profile, read rather than assumed.
+ *
+ * A `201` describes the deck it just made, and clients build the profile link
+ * from `owner.handle` — a stand-in with an empty handle renders a broken link
+ * and a blank name until the deck is fetched again.
+ */
+async function ownerProfile(
+  repository: DeckDataRepository,
+  userId: string,
+): Promise<ProfileStub | null> {
+  const [profile] = await repository.getProfiles([userId]);
+  return profile ?? null;
+}
+
 function exportCards(cards: DeckCardRow[]): DeckTextCard[] {
   return cards.map((card) => ({
     zone: card.zone,
@@ -558,10 +582,16 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 decks.push(deck);
               }
 
-              const roles = new Map<string, DeckRole | null>();
-              for (const deck of decks) {
-                roles.set(deck.id, await roleFor(repository, deck, user?.id));
-              }
+              // Concurrent, not serial: a user with fifty decks would otherwise
+              // pay fifty round trips before the response could start.
+              const roles = new Map<string, DeckRole | null>(
+                await Promise.all(
+                  decks.map(
+                    async (deck) =>
+                      [deck.id, await roleFor(repository, deck, user?.id)] as const,
+                  ),
+                ),
+              );
 
               // A list is a browse surface: `private` needs a relationship and
               // `unlisted` is reachable only by its id, so neither belongs to
@@ -572,12 +602,18 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 return deck.visibility === "public";
               });
 
-              const formats = new Map<string, FormatRow | null>();
-              for (const formatId of new Set(visible.map((deck) => deck.format_id))) {
-                formats.set(formatId, await repository.getFormat(formatId));
-              }
-              const ownerIds = [...new Set(visible.map((deck) => deck.owner_id))];
-              const profiles = await repository.getProfiles(ownerIds);
+              const formatIds = [...new Set(visible.map((deck) => deck.format_id))];
+              const [formatEntries, profiles] = await Promise.all([
+                Promise.all(
+                  formatIds.map(
+                    async (id) => [id, await repository.getFormat(id)] as const,
+                  ),
+                ),
+                repository.getProfiles([
+                  ...new Set(visible.map((deck) => deck.owner_id)),
+                ]),
+              ]);
+              const formats = new Map<string, FormatRow | null>(formatEntries);
               const byId = new Map(profiles.map((profile) => [profile.id, profile]));
 
               return {
@@ -779,7 +815,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
               });
 
               set.status = 201;
-              return deckShape(deck, format, { id: user.id, handle: "", username: "" }, "owner");
+              return deckShape(deck, format, await ownerProfile(repository, user.id), "owner");
             },
             {
               body: t.Object({
@@ -953,7 +989,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
             {
               params: t.Object({ id: t.String() }),
               body: t.Object({
-                changes: t.Array(CardChangeSchema, { minItems: 1, maxItems: 200 }),
+                changes: t.Array(CardChangeSchema, { minItems: 1, maxItems: CARD_BATCH_MAX }),
               }),
               response: {
                 200: CardsResponseSchema,
@@ -1230,6 +1266,17 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                   existing.is_champion = existing.is_champion || line.is_champion === true;
                   continue;
                 }
+                // Folding into a row already in the batch is free; a new row is
+                // not, so the cap is checked here and the line is reported
+                // rather than silently dropped.
+                if (changes.size >= CARD_BATCH_MAX) {
+                  unresolved.push({
+                    line: line.line,
+                    text: line.name,
+                    message: `An import carries at most ${CARD_BATCH_MAX} distinct cards.`,
+                  });
+                  continue;
+                }
                 changes.set(key, {
                   zone,
                   printing_id: picked.printing_id,
@@ -1261,7 +1308,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
 
               set.status = 201;
               return {
-                ...deckShape(deck, format, { id: user.id, handle: "", username: "" }, "owner"),
+                ...deckShape(deck, format, await ownerProfile(repository, user.id), "owner"),
                 imported: changes.size,
                 unresolved,
               };

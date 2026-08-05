@@ -619,6 +619,10 @@ describe("card mutation", () => {
       changes: [{ zone: "graveyard", printing_id: UNIT.printing_id, quantity: 1 }],
     });
     expect(response.status).toBe(400);
+    // The status alone would still pass if the 400 came from somewhere else and
+    // the stub's `String(raw.zone)` had happily stored the row.
+    expect(repository.cards.get(deck.id) ?? []).toHaveLength(0);
+    expect(repository.revisions.get(deck.id) ?? []).toHaveLength(0);
   });
 });
 
