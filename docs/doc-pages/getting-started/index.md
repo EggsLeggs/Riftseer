@@ -88,7 +88,7 @@ graph TD
   API --> RB[Reddit Bot<br/>Devvit]
 ```
 
-- **Data flows in one direction**: RiftCodex → Ingest Worker → Supabase → API → clients.
+- **Catalogue data flows in one direction**: RiftCodex → Ingest Worker → Supabase → API → clients.
 - **The API never writes card catalogue data to Supabase** — catalogue writes are done by the ingest worker (account/deck/admin routes are separate).
 - **Bots call the public API**, not the provider directly.
 

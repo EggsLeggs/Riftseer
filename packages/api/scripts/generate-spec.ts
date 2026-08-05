@@ -17,6 +17,7 @@ import { createProvider } from "@riftseer/core";
 import { metaRoutes } from "../src/routes/meta";
 import { cardsRoutes } from "../src/routes/cards";
 import { setsRoutes } from "../src/routes/sets";
+import { formatsRoutes } from "../src/routes/formats";
 import { decksRoutes } from "../src/routes/decks";
 import { authRoutes } from "../src/routes/auth";
 import { adminRoutes } from "../src/routes/admin";
@@ -34,6 +35,7 @@ const app = new Elysia()
       .use(metaRoutes(cardProvider, Date.now()))
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
+      .use(formatsRoutes(cardProvider))
       .use(decksRoutes())
       .use(authRoutes())
       .use(adminRoutes()),
@@ -47,6 +49,7 @@ const app = new Elysia()
           { name: "Meta", description: "Server health and metadata" },
           { name: "Cards", description: "Card lookup and search" },
           { name: "Sets", description: "Card set listing" },
+          { name: "Formats", description: "Deck formats and their rules" },
           { name: "Decks", description: "Deck building and sharing" },
           { name: "Auth", description: "User registration and session management" },
           {
