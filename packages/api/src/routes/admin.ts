@@ -14,6 +14,11 @@ import { oracleKeyForName } from "@riftseer/types/oracle";
 import { ADMIN_PRINTING_STATES } from "@riftseer/types/admin-printing";
 import { isConfirmableReconciliationField } from "@riftseer/types/reconciliation";
 import {
+  DECK_ZONES,
+  LEGALITY_STATUSES,
+  VIOLATION_SEVERITIES,
+} from "@riftseer/types/deck";
+import {
   AdminRepositoryError,
   createAdminDataRepository,
   type AdminDataRepository,
@@ -29,7 +34,7 @@ import {
   CARD_SEARCH_LIMITS,
   parseCardSearchQuery,
 } from "@riftseer/core";
-import { ErrorSchema } from "../schemas";
+import { ErrorSchema, LegalityStatusSchema } from "../schemas";
 
 const DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
 const NON_BLANK_PATTERN = ".*\\S.*";
@@ -257,47 +262,22 @@ const AuditLogResponseSchema = t.Object({
  */
 const FORMAT_CODE_PATTERN = "^[A-Za-z0-9][A-Za-z0-9_-]*$";
 
-const LegalityStatusSchema = t.UnionEnum([
-  "legal",
-  "restricted",
-  "not_legal",
-  "banned",
-]);
-
 /**
  * `default` clears the stored row rather than writing a status: absence of an
  * oracle-level row *is* legal, so this is how a format goes back to unmarked.
  */
-const LegalityStatusInputSchema = t.UnionEnum([
-  "legal",
-  "restricted",
-  "not_legal",
-  "banned",
-  "default",
-]);
+const LegalityStatusInputSchema = t.UnionEnum([...LEGALITY_STATUSES, "default"]);
 
-const DeckZoneSchema = t.UnionEnum([
-  "legend",
-  "main",
-  "sideboard",
-  "runes",
-  "battlefields",
-  "considering",
-]);
+const DeckZoneSchema = t.UnionEnum([...DECK_ZONES]);
 
-const ViolationSeveritySchema = t.UnionEnum(["none", "warning", "error"]);
+const ViolationSeveritySchema = t.UnionEnum([...VIOLATION_SEVERITIES]);
 
 /**
  * `default` deletes the override so the status falls back to
  * `DEFAULT_LEGALITY_SEVERITY` in `@riftseer/types`. It is distinct from
  * `"none"`, which is a stored decision that this status should say nothing.
  */
-const ViolationSeverityInputSchema = t.UnionEnum([
-  "none",
-  "warning",
-  "error",
-  "default",
-]);
+const ViolationSeverityInputSchema = t.UnionEnum([...VIOLATION_SEVERITIES, "default"]);
 
 /**
  * A zone's bounds. Every one is nullable and null means **unconstrained**, not
