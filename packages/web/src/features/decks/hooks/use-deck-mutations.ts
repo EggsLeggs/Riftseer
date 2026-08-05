@@ -123,8 +123,8 @@ export function useDeckMutations(deckId: string) {
       [deckId: string, handle: string],
       { message: string }
     >(removeDeckCollaboratorAction, "Collaborator removed", invalidate),
-    // Bound so a caller does not have to thread the id through every call site
-    // and cannot accidentally patch a different deck.
+    // Returned for convenience only. Every mutation still takes `deckId` as its
+    // first tuple argument — nothing here is bound to it.
     deckId,
   };
 }

@@ -24,7 +24,13 @@ function RevisionEntry({ revision }: { revision: DeckRevision }) {
       <div className="text-muted-foreground flex items-baseline gap-2 text-xs">
         <span className="tabular-nums">#{revision.ordinal}</span>
         <span>{revision.author?.username ?? "Unknown"}</span>
-        <time dateTime={revision.created_at}>{when.toLocaleString()}</time>
+        {/* Next.js prerenders this client component on the server, where
+            `toLocaleString()` reads the host locale and time zone rather than
+            the viewer's — the two disagree and React reports a hydration
+            mismatch. The browser's rendering is the correct one. */}
+        <time dateTime={revision.created_at} suppressHydrationWarning>
+          {when.toLocaleString()}
+        </time>
       </div>
       <ul className="mt-1">
         {revision.changes.map((change) => {

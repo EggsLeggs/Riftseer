@@ -57,8 +57,12 @@ export function QuantityStepper({
   };
 
   const step = (delta: number) => {
+    // Step from what the field shows, not from the last committed value: typing
+    // `4` over a saved `1` and then pressing `+` means 5, not 2.
+    const parsed = draft === null ? value : Number.parseInt(draft.trim(), 10);
+    const current = Number.isNaN(parsed) ? value : clamp(parsed, min, max);
     setDraft(null);
-    const next = clamp(value + delta, min, max);
+    const next = clamp(current + delta, min, max);
     if (next !== value) onChange(next);
   };
 

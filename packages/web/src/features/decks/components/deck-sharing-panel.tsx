@@ -84,6 +84,13 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
 
   const inviteUrl = inviteCode ? `${origin}${deckJoinHref(inviteCode)}` : "";
 
+  // Both buttons write the same field. Checking only its own mutation lets
+  // Revoke fire while Regenerate is still in flight, and `inviteCode` then
+  // settles on whichever answered last — possibly a code the server no longer
+  // holds, until something refetches.
+  const invitePending =
+    mutations.setInvite.isPending || mutations.clearInvite.isPending;
+
   const createInvite = async () => {
     try {
       const result = await mutations.setInvite.mutateAsync([deck.id, role]);
@@ -138,7 +145,7 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
           <Button
             type="button"
             onClick={createInvite}
-            disabled={mutations.setInvite.isPending}
+            disabled={invitePending}
           >
             {inviteCode ? "Regenerate link" : "Create link"}
           </Button>
@@ -152,7 +159,7 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
                   setInviteCode(deck.invite_code ?? null);
                 });
               }}
-              disabled={mutations.clearInvite.isPending}
+              disabled={invitePending}
             >
               Revoke
             </Button>

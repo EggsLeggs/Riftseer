@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect, redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { deckBuilderHref, deckHref, deckSlugTail } from "@/features/decks/paths";
 import { loadDeckForViewer } from "@/features/decks/server-loader";
@@ -58,7 +58,10 @@ export default async function DeckPage({ params, searchParams }: Props) {
       if (single != null) params.set(key, single);
     }
     const qs = params.toString();
-    permanentRedirect(qs ? `${deckHref(deck)}?${qs}` : deckHref(deck));
+    // 307, not 308: the tail is derived from the deck's *current* name, so a
+    // permanent redirect would let browsers and CDNs cache a mapping that the
+    // next rename invalidates.
+    redirect(qs ? `${deckHref(deck)}?${qs}` : deckHref(deck));
   }
 
   const wantsEdit = firstValue(query.edit) === "1";

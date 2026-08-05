@@ -105,4 +105,21 @@ describe("deckAddChange", () => {
         .is_champion,
     ).toBe(true);
   });
+
+  test("adds the requested number of copies to the existing total", () => {
+    const cards = [deckCard({ quantity: 2 })];
+    const change = deckAddChange(
+      cards,
+      { oracle_id: "o1", printing_id: "p1", card_type: "Unit" },
+      { copies: 3 },
+    );
+    expect(change.quantity).toBe(5);
+  });
+
+  test("clamps a non-positive or fractional copy count to at least one", () => {
+    const card = { oracle_id: "o1", printing_id: "p1", card_type: "Unit" };
+    expect(deckAddChange([], card, { copies: 0 }).quantity).toBe(1);
+    expect(deckAddChange([], card, { copies: -4 }).quantity).toBe(1);
+    expect(deckAddChange([], card, { copies: 2.4 }).quantity).toBe(2);
+  });
 });
