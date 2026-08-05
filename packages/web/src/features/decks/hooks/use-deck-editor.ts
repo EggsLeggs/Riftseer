@@ -159,7 +159,12 @@ export function useDeckEditor(
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (queueRef.current.length > 0) {
-        void applyDeckCardChangesAction(deckId, queueRef.current);
+        // The action resolves `{ ok: false }` for an API error but still
+        // *rejects* on a transport failure, and there is no component left to
+        // report it to — unhandled, it surfaces as a page-level error.
+        void applyDeckCardChangesAction(deckId, queueRef.current).catch(
+          () => undefined,
+        );
         queueRef.current = [];
       }
     };
@@ -208,9 +213,9 @@ export function useDeckEditor(
   const moveZone = React.useCallback<DeckEditor["moveZone"]>(
     (card, zone) => {
       if (card.zone === zone) return;
-      enqueue(deckMoveChanges(card, zone), true);
+      enqueue(deckMoveChanges(cards, card, zone), true);
     },
-    [enqueue],
+    [cards, enqueue],
   );
 
   const setChampion = React.useCallback<DeckEditor["setChampion"]>(
