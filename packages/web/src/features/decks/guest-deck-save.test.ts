@@ -41,6 +41,14 @@ function deckWithACard(): GuestDeck {
     supertype: null,
     is_token: false,
     domains: ["Calm"],
+    energy: 3,
+    might: 2,
+    power: null,
+    set_code: "OGN",
+    collector_number: "042",
+    rarity: "Common",
+    public_slug: "ogn/042/adaptatron",
+    has_hosted_image: true,
   };
   return { ...emptyGuestDeck(), name: "Guest deck", cards: [card] };
 }
