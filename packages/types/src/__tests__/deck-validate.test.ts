@@ -117,6 +117,22 @@ describe("deck completeness", () => {
     expect(codes(state, STANDARD)).toContain("no_champion");
   });
 
+  test("a champion flag outside main does not satisfy the requirement", () => {
+    // The flag is only meaningful on a `main` row, so a flagged row elsewhere
+    // is reported as misplaced *and* leaves the deck without a champion.
+    const state = {
+      entries: completeDeck().entries.map((e) =>
+        e.zone === "main" ? { ...e, is_champion: false } : e,
+      ),
+    };
+    state.entries = state.entries.map((e) =>
+      e.zone === "runes" ? { ...e, is_champion: true } : e,
+    );
+    const found = codes(state, STANDARD);
+    expect(found).toContain("no_champion");
+    expect(found).toContain("wrong_zone");
+  });
+
   test("a second legend is caught by the format's legend zone rule", () => {
     const state = completeDeck([legend({ oracle_id: "o-legend2", printing_id: "p-legend2" })]);
     const over = validateDeck(state, STANDARD).find((v) => v.code === "zone_over_max");
