@@ -104,6 +104,42 @@ export type AdminFormatInput = Body<AdminRoutes["formats"]["post"]>;
 
 export type AdminFormatPatch = Body<FormatByCode["patch"]>["patch"];
 
+type ZoneRuleByZone = ReturnType<FormatByCode["zone-rules"]>;
+type SeverityByStatus = ReturnType<FormatByCode["severities"]>;
+
+/**
+ * One zone's constraints under one format. Every bound is nullable and `null`
+ * means **unconstrained** — never zero. A format with an empty `zone_rules`
+ * enforces nothing at all, which is the whole of how the sandbox format works.
+ */
+export type AdminFormatZoneRule = AdminFormat["zone_rules"][number];
+
+export type AdminDeckZone = AdminFormatZoneRule["zone"];
+
+/** Only the statuses a format disagrees with; the rest fall through. */
+export type AdminFormatSeverityOverride =
+  AdminFormat["severity_overrides"][number];
+
+export type AdminViolationSeverity = AdminFormatSeverityOverride["severity"];
+
+/** The bounds body, with the same null-is-unconstrained meaning as the read. */
+export type AdminFormatZoneRuleInput = Body<ZoneRuleByZone["put"]>;
+
+/**
+ * What the severity route accepts. `default` is not a severity — it deletes the
+ * override so the status falls back to the shared mapping — which is why it is
+ * absent from {@link AdminViolationSeverity}.
+ */
+export type AdminViolationSeverityInput = Body<
+  SeverityByStatus["put"]
+>["severity"];
+
+export type AdminFormatZoneRuleMutationResult = Ok<ZoneRuleByZone["put"]>;
+
+export type AdminFormatZoneRuleDeleteResult = Ok<ZoneRuleByZone["delete"]>;
+
+export type AdminFormatSeverityMutationResult = Ok<SeverityByStatus["put"]>;
+
 export type AdminPrintingLegalities = Ok<PrintingById["legalities"]["get"]>;
 
 export type AdminPrintingLegalityEntry = AdminPrintingLegalities["entries"][number];

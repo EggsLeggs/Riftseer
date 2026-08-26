@@ -169,7 +169,7 @@ Response fields:
 
 Each `CardRuling` is `{ object, id, type, text, dated?, source?, scope?, created_at?, updated_at? }`. Its `scope` is `printing`, `oracle`, or `rule`.
 
-Each `CardLegality` is `{ object, format_id, format_code, format_name, status, scope, updated_at? }`. Status is `legal`, `not_legal`, or `banned`; scope is `printing`, `oracle`, or `default`. Resolution precedence is printing row → oracle row → legal by default.
+Each `CardLegality` is `{ object, format_id, format_code, format_name, status, scope, note?, updated_at? }`. Status is `legal`, `restricted`, `not_legal`, or `banned`; scope is `printing`, `oracle`, or `default`. Resolution precedence is printing row → oracle row → legal by default, and `note` is the admin's explanation from whichever row decided the status.
 
 The endpoint returns 400 unless exactly one lookup parameter is supplied, 404 when the oracle does not exist, and 404 when it has no printing.
 

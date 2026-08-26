@@ -13,7 +13,12 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { cardsApi, cardsQueryKeys, CardApiError } from "./api";
+import {
+  cardsApi,
+  cardsQueryKeys,
+  CardApiError,
+  type CardResult,
+} from "./api";
 import { cardHref } from "./paths";
 import { printingImageUrl } from "@riftseer/types";
 
@@ -38,13 +43,33 @@ const PALETTE_LIMIT = 10;
 interface CardSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * What choosing a card does. Defaults to navigating to the card page, which
+   * is what the global palette wants; the deck builder passes an adder instead.
+   * The dialog closes itself first either way, so a handler is free to open
+   * another one.
+   */
+  onSelect?: (result: CardResult) => void;
+  /**
+   * The "View all results" row. Present by default because a palette that
+   * cannot reach the search page is a dead end — but a picker embedded in a
+   * form has nowhere to send the user, so it can drop the row.
+   */
+  showViewAll?: boolean;
+  placeholder?: string;
 }
 
 /**
  * Global card search palette. Filtering is server-driven, so cmdk's local
  * filter is disabled; results from `cardsApi.searchByName` are rendered as-is.
  */
-export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) {
+export function CardSearchDialog({
+  open,
+  onOpenChange,
+  onSelect,
+  showViewAll = true,
+  placeholder = "Search cards…",
+}: CardSearchDialogProps) {
   const router = useRouter();
   const [query, setQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
@@ -80,12 +105,16 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
   const showLoading = trimmed.length > 0 && search.isFetching && !search.isError;
   const errorInfo = search.isError ? searchErrorInfo(search.error) : null;
 
-  const goToCard = React.useCallback(
-    (href: string) => {
+  const chooseCard = React.useCallback(
+    (result: CardResult) => {
       onOpenChange(false);
-      router.push(href);
+      if (onSelect) {
+        onSelect(result);
+        return;
+      }
+      router.push(cardHref(result.printing));
     },
-    [onOpenChange, router],
+    [onOpenChange, onSelect, router],
   );
 
   const goToSearchPage = React.useCallback(() => {
@@ -109,7 +138,13 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             hasNavigated.current = true;
           }
-          if (e.key === "Enter" && !e.nativeEvent.isComposing && !hasNavigated.current && trimmed) {
+          if (
+            e.key === "Enter" &&
+            !e.nativeEvent.isComposing &&
+            !hasNavigated.current &&
+            trimmed &&
+            showViewAll
+          ) {
             e.preventDefault();
             goToSearchPage();
           }
@@ -118,7 +153,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
         <CommandInput
           value={query}
           onValueChange={setQuery}
-          placeholder="Search cards…"
+          placeholder={placeholder}
           aria-label="Search cards"
         />
         <CommandList aria-busy={showLoading || undefined}>
@@ -162,8 +197,8 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
 
           {cards.length > 0 && (
             <CommandGroup heading="Cards">
-              {cards.map(({ oracle, printing }) => {
-                const href = cardHref(printing);
+              {cards.map((result) => {
+                const { oracle, printing } = result;
                 const setCode = [
                   printing.set?.set_code?.toUpperCase(),
                   printing.collector_number,
@@ -173,7 +208,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
                   <CommandItem
                     key={printing.id}
                     value={`${oracle.name} ${printing.id}`}
-                    onSelect={() => goToCard(href)}
+                    onSelect={() => chooseCard(result)}
                   >
                     {imageUrl && (
                       <img
@@ -204,7 +239,7 @@ export function CardSearchDialog({ open, onOpenChange }: CardSearchDialogProps) 
             </CommandGroup>
           )}
 
-          {trimmed && (
+          {trimmed && showViewAll && (
             <>
               <CommandSeparator />
               <CommandGroup>

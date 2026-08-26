@@ -1,3 +1,5 @@
+import type { DeckZone, LegalityStatus, ViolationSeverity } from "./deck.ts";
+
 // ─── Card schema ───────────────────────────────────────────────────────────────
 //
 // Two levels, mirroring supabase/migrations/20260810000000_oracle_printing_baseline.sql.
@@ -48,9 +50,31 @@ export interface CardSet {
 // ─── Rulings, legalities and formats ──────────────────────────────────────────
 
 /**
+ * One format's constraint on one zone, as the public format list reports it.
+ *
+ * Structurally a {@link FormatZoneRule} with the optionality removed: the
+ * database stores a row per constrained zone with nullable columns, so the wire
+ * shape is nullable-but-present and needs no `?`. It is assignable to
+ * `FormatZoneRule`, which is what lets `validateDeck` take it unchanged.
+ */
+export interface FormatZoneRuleEntry {
+  zone: DeckZone;
+  min_count: number | null;
+  max_count: number | null;
+  copy_limit: number | null;
+}
+
+/**
  * A tournament / play format, e.g. `{ code: "standard", name: "Standard" }`.
  * Formats are system-wide and admin-managed; `sort_order` fixes display order
  * and `active` hides a retired format without deleting its legality rows.
+ *
+ * The rules travel with the format because validation is not always the API's
+ * to do: a signed-out builder holds its deck in the browser and never posts it,
+ * so it needs `zone_rules` and `severity_overrides` to run the same
+ * `validateDeck` a saved deck gets on the server. A format with no zone rules
+ * constrains nothing — that absence is the whole vocabulary, and there is no
+ * boolean restating it.
  */
 export interface Format {
   object: "format";
@@ -59,13 +83,21 @@ export interface Format {
   name: string;
   sort_order: number;
   active: boolean;
+  /** Empty for a format that constrains no zone. */
+  zone_rules: FormatZoneRuleEntry[];
+  /** Departures from `DEFAULT_LEGALITY_SEVERITY`; absent statuses fall through. */
+  severity_overrides: Partial<Record<LegalityStatus, ViolationSeverity>>;
 }
 
 /**
  * Legality status for one card in one format. Absence of any stored row means
  * `legal` — only non-legal statuses are persisted at oracle level.
+ *
+ * An alias, not a second list: formats, decks and cards all speak one set of
+ * statuses, and the card page rendering a status the validator cannot produce
+ * (or missing one it can) is exactly the drift a duplicate union invites.
  */
-export type CardLegalityStatus = "legal" | "not_legal" | "banned";
+export type CardLegalityStatus = LegalityStatus;
 
 /**
  * A resolved legality in one format.
@@ -82,6 +114,12 @@ export interface CardLegality {
   status: CardLegalityStatus;
   /** Which layer decided `status`. */
   scope: "printing" | "oracle" | "default";
+  /**
+   * The admin's explanation, from the row that won the precedence contest — a
+   * note on a row that lost is not the reason the card reads the way it does.
+   * Absent when nothing is stored (the default `legal`) or nothing was written.
+   */
+  note?: string | null;
   updated_at?: string;
 }
 
@@ -393,23 +431,4 @@ export interface PrintingSearchResult {
   printings: Printing[];
   oracles: Oracle[];
   total: number;
-}
-
-// ─── Deck interfaces ────────────────────────────────────────────────────────────
-
-/**
- * Decks identify cards by **printing** id, not oracle id: a deck list is a
- * list of physical cards, and short-form strings already in the wild encode
- * those ids.
- */
-export interface SimplifiedDeck {
-  id: string | null;
-  legendId: string | null;
-  chosenChampionId: string | null;
-  /** The following 3 arrays contain strings of form "printingId:quantity" */
-  mainDeck: string[];
-  sideboard: string[];
-  runes: string[];
-  /** This one just contains the ids since battlegrounds are unique */
-  battlegrounds: string[];
 }

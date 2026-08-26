@@ -16,12 +16,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import {
-  existsSync,
-  lstatSync,
-  readFileSync,
-  realpathSync,
-} from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
@@ -33,8 +28,8 @@ function git(...args) {
 }
 
 const guidanceFiles = git("ls-files", "*CLAUDE.md", "*AGENTS.md");
-const claudeFiles = git("ls-files", "*CLAUDE.md");
-const trackedAgentFiles = new Set(git("ls-files", "*AGENTS.md"));
+const agentFiles = git("ls-files", "*AGENTS.md");
+const trackedClaudeFiles = new Set(git("ls-files", "*CLAUDE.md"));
 
 // One pass over tracked source; membership tests are then free.
 const sourceFiles = git(
@@ -63,31 +58,27 @@ const IDENTIFIER_LIKE = /^([A-Za-z_][\w]*)\(\)$/;
 
 const problems = [];
 
-// CLAUDE.md is the canonical guidance file, while AGENTS.md exposes the same
-// instructions to tools that discover that filename. Copies drift, so every
-// tracked CLAUDE.md must have a tracked sibling symlink resolving back to it.
-for (const file of claudeFiles) {
-  const claudePath = path.join(repoRoot, file);
-  const agentsFile = path.join(path.dirname(file), "AGENTS.md");
-  const agentsPath = path.join(repoRoot, agentsFile);
+// AGENTS.md is the canonical guidance file, while CLAUDE.md is a one-line
+// import (`@AGENTS.md`) that exposes the same instructions to tools that
+// discover that filename. Copies drift, so every tracked AGENTS.md must have
+// a tracked sibling CLAUDE.md that does nothing but import it.
+for (const file of agentFiles) {
+  const claudeFile = path.join(path.dirname(file), "CLAUDE.md");
+  const claudePath = path.join(repoRoot, claudeFile);
 
-  if (!trackedAgentFiles.has(agentsFile)) {
-    problems.push({ file, token: agentsFile, why: "AGENTS.md is not tracked" });
+  if (!trackedClaudeFiles.has(claudeFile)) {
+    problems.push({ file, token: claudeFile, why: "CLAUDE.md is not tracked" });
     continue;
   }
-  if (!existsSync(agentsPath)) {
-    problems.push({ file, token: agentsFile, why: "AGENTS.md is missing" });
+  if (!existsSync(claudePath)) {
+    problems.push({ file, token: claudeFile, why: "CLAUDE.md is missing" });
     continue;
   }
-  if (!lstatSync(agentsPath).isSymbolicLink()) {
-    problems.push({ file, token: agentsFile, why: "AGENTS.md is not a symlink" });
-    continue;
-  }
-  if (realpathSync(agentsPath) !== realpathSync(claudePath)) {
+  if (readFileSync(claudePath, "utf8").trim() !== "@AGENTS.md") {
     problems.push({
       file,
-      token: agentsFile,
-      why: "AGENTS.md does not resolve to its sibling CLAUDE.md",
+      token: claudeFile,
+      why: "CLAUDE.md must contain only `@AGENTS.md`",
     });
   }
 }
@@ -134,5 +125,5 @@ if (problems.length > 0) {
 }
 
 console.log(
-  `Guidance symlinks are valid and no references dangle across ${guidanceFiles.length} file(s).`,
+  `Guidance imports are valid and no references dangle across ${guidanceFiles.length} file(s).`,
 );

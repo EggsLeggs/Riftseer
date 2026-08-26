@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Backpack } from "lucide-react";
+import { myDecksHref } from "@/features/decks/paths";
 import { getSession, isAdminSession } from "@/lib/session";
 import { UserNav } from "./user-nav";
 import { CardSearchTrigger } from "./card-search-trigger";
@@ -27,7 +28,7 @@ export async function Navbar({ isSupporter, isMember }: NavbarProps) {
         <div className="flex items-center gap-2">
           <CardsNavMenu />
           <Button variant="ghost" size="lg" asChild>
-            <Link href="/decks">Decks</Link>
+            <Link href={myDecksHref()}>Decks</Link>
           </Button>
           <Button variant="ghost" size="lg" asChild>
             <a

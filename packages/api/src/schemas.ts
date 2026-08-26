@@ -1,4 +1,5 @@
 import { t, type Static } from "elysia";
+import { DECK_ZONES } from "@riftseer/types/deck";
 import type {
   CardLegality,
   CardPrices,
@@ -221,9 +222,21 @@ export const OracleSchema = t.Object({
 
 export const LegalityStatusSchema = t.UnionEnum([
   "legal",
+  "restricted",
   "not_legal",
   "banned",
 ]);
+
+const ViolationSeveritySchema = t.UnionEnum(["none", "warning", "error"]);
+
+const FormatZoneRuleSchema = t.Object({
+  zone: t.UnionEnum([...DECK_ZONES]),
+  min_count: t.Nullable(t.Number()),
+  max_count: t.Nullable(t.Number()),
+  copy_limit: t.Nullable(t.Number({
+    description: "Copies of one oracle across this zone's whole counting group.",
+  })),
+});
 
 export const FormatSchema = t.Object({
   object: t.Literal("format"),
@@ -234,6 +247,24 @@ export const FormatSchema = t.Object({
   active: t.Boolean({
     description: "False for retired formats; they are omitted from public lists.",
   }),
+  zone_rules: t.Array(FormatZoneRuleSchema, {
+    description:
+      "What this format demands of each zone. An empty array constrains nothing. " +
+      "Public because a signed-out builder validates its deck in the browser.",
+  }),
+  severity_overrides: t.Partial(
+    t.Object({
+      legal: ViolationSeveritySchema,
+      restricted: ViolationSeveritySchema,
+      not_legal: ViolationSeveritySchema,
+      banned: ViolationSeveritySchema,
+    }),
+    {
+      description:
+        "Per-format departures from the default status→severity mapping. " +
+        "A status absent here falls through to the default.",
+    },
+  ),
 });
 
 export const CardLegalitySchema = t.Object({
@@ -246,6 +277,14 @@ export const CardLegalitySchema = t.Object({
     description:
       "Which layer decided the status: this printing's override, the oracle row, or the default (legal).",
   }),
+  note: t.Optional(
+    t.Nullable(
+      t.String({
+        description:
+          "The admin's explanation, from whichever row decided the status.",
+      }),
+    ),
+  ),
   updated_at: t.Optional(t.String()),
 });
 
@@ -333,45 +372,3 @@ type _MirrorsResolved = Assert<
   Mirrors<Static<typeof ResolvedCardSchema>, ResolvedCard>
 >;
 
-// ─── Decks ────────────────────────────────────────────────────────────────────
-//
-// Deliberately not mirrored: the wire shape renames `legendId` to `legend`, and
-// `decksRoutes` maps between them. Deck entries are `printingId:quantity` — a
-// deck list is a list of physical cards.
-
-export const SimplifiedDeckSchema = t.Object(
-  {
-    id: t.Nullable(t.String({ description: "Deck ID" })),
-    legend: t.Nullable(t.String({ description: "Legend printing ID" })),
-    mainDeck: t.Array(
-      t.String({ description: "Printing ID and quantity, e.g. `aaa000…001:2`" }),
-    ),
-    chosenChampionId: t.Nullable(t.String({ description: "Champion printing ID" })),
-    sideboard: t.Array(t.String({ description: "Printing ID and quantity" })),
-    runes: t.Array(t.String({ description: "Printing ID and quantity" })),
-    battlegrounds: t.Array(t.String({ description: "Battleground printing ID" })),
-  },
-  { description: "Simplified deck format with printing IDs and quantities" },
-);
-
-export const SimplifiedDeckRequestSchema = t.Object({
-  cardsToAdd: t.Optional(
-    t.Array(
-      t.String({
-        description: "Printings to add. Format: `id:quantity`",
-      }),
-    ),
-  ),
-  cardsToRemove: t.Optional(
-    t.Array(
-      t.String({
-        description: "Printings to remove. Format: `id:quantity`",
-      }),
-    ),
-  ),
-});
-
-export const SimplifiedDeckResponseSchema = t.Object({
-  deck: SimplifiedDeckSchema,
-  shortForm: t.String({ description: "Short form string for sharing, e.g. 'u:abc123'" }),
-});

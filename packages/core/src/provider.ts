@@ -10,7 +10,6 @@ import type {
   Printing,
   PrintingSearchResult,
   ResolvedCard,
-  SimplifiedDeck,
 } from "./types.ts";
 
 /**
@@ -168,30 +167,4 @@ export interface CardDataProvider {
    * in seconds; `oracleCount` and `printingCount` are catalogue sizes.
    */
   getStats(): { lastRefresh: number; oracleCount: number; printingCount: number };
-}
-
-export interface SimplifiedDeckProvider {
-  /**
-   * Add printings to the deck given by deckShortForm, or create a new deck if
-   * not provided. Returns the updated deck and a new shortForm.
-   */
-  addCards(
-    cards: { id: string; quantity: number }[],
-    deckShortForm?: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
-  /**
-   * Remove printings from the deck given by deckShortForm. Returns the updated
-   * deck and a new shortForm.
-   */
-  removeCards(
-    cards: { id: string; quantity: number }[],
-    deckShortForm: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
-  /**
-   * Get the deck represented by the shortForm string. Returns the deck and the
-   * same shortForm if valid.
-   */
-  getDeckFromShortForm(
-    deckShortForm: string,
-  ): Promise<{ deck: SimplifiedDeck; shortForm: string }>;
 }

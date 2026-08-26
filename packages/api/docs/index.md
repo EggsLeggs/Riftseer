@@ -114,7 +114,7 @@ Route modules live in `packages/api/src/routes/`:
 | `cards.ts` | `/cards`, `/cards/random`, `/cards/detail`, `/cards/:id`, `/cards/:id/text`, `/cards/by-slug/*`, `/cards/resolve`, `/printings/:id` |
 | `sets.ts` | `/sets` |
 | `formats.ts` | `/formats` |
-| `decks.ts` | `/decks/u`, `/decks/u/:shortForm` |
+| `decks.ts` | `/decks`, `/decks/:id`, `/decks/:id/cards`, `/decks/:id/revisions`, `/decks/:id/invite`, `/decks/:id/collaborators`, `/decks/join/:code`, `/decks/import`, `/decks/:id/export` |
 | `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/me`, `/auth/reset-password` |
 | `admin.ts` | `/admin/oracles/*`, `/admin/printings/*`, `/admin/sets/*`, `/admin/formats/*`, `/admin/rulings/*`, `/admin/reconciliation/*` |
 
@@ -159,9 +159,20 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `GET` | `/api/v1/printings/:id` | [Cards](./cards.md) |
 | `GET` | `/api/v1/sets` | [Sets](./sets.md) |
 | `GET` | `/api/v1/formats` | [Formats](./formats.md) |
-| `GET` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
-| `POST` | `/api/v1/decks/u/:shortForm` | [Decks](./decks.md) |
-| `POST` | `/api/v1/decks/u` | [Decks](./decks.md) |
+| `GET` | `/api/v1/decks` | [Decks](./decks.md) |
+| `POST` | `/api/v1/decks` | [Decks](./decks.md) |
+| `GET` | `/api/v1/decks/:id` | [Decks](./decks.md) |
+| `PATCH` | `/api/v1/decks/:id` | [Decks](./decks.md) |
+| `DELETE` | `/api/v1/decks/:id` | [Decks](./decks.md) |
+| `PUT` | `/api/v1/decks/:id/cards` | [Decks](./decks.md) |
+| `GET` | `/api/v1/decks/:id/revisions` | [Decks](./decks.md) |
+| `POST` | `/api/v1/decks/:id/invite` | [Decks](./decks.md) |
+| `DELETE` | `/api/v1/decks/:id/invite` | [Decks](./decks.md) |
+| `POST` | `/api/v1/decks/join/:code` | [Decks](./decks.md) |
+| `POST` | `/api/v1/decks/:id/collaborators` | [Decks](./decks.md) |
+| `DELETE` | `/api/v1/decks/:id/collaborators` | [Decks](./decks.md) |
+| `POST` | `/api/v1/decks/import` | [Decks](./decks.md) |
+| `GET` | `/api/v1/decks/:id/export` | [Decks](./decks.md) |
 | `POST` | `/api/v1/auth/register` | [Auth](./auth.md) |
 | `POST` | `/api/v1/auth/login` | [Auth](./auth.md) |
 | `POST` | `/api/v1/auth/refresh` | [Auth](./auth.md) |
@@ -198,6 +209,9 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `PUT` | `/api/v1/admin/formats/order` | [Admin](./admin.md) |
 | `PATCH` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
 | `DELETE` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/formats/:code/zone-rules/:zone` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/formats/:code/zone-rules/:zone` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/formats/:code/severities/:legality_status` | [Admin](./admin.md) |
 | `GET` | `/api/v1/admin/rulings` | [Admin](./admin.md) |
 | `POST` | `/api/v1/admin/rulings/preview` | [Admin](./admin.md) |
 | `POST` | `/api/v1/admin/rulings` | [Admin](./admin.md) |

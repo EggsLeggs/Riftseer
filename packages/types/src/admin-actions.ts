@@ -14,8 +14,11 @@
 export const ADMIN_AUDIT_ACTIONS = [
   "format.create",
   "format.delete",
+  "format.legality_severity",
   "format.patch",
   "format.reorder",
+  "format.zone_rule",
+  "format.zone_rule.delete",
   "oracle.create",
   "oracle.delete",
   "oracle.legality",

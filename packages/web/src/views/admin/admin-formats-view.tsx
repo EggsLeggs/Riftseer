@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowUp,
+  ChevronDown,
+  ChevronRight,
   Loader2,
   Plus,
   Save,
@@ -12,6 +14,12 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  DECK_ZONES,
+  DECK_ZONE_LABELS,
+  DEFAULT_LEGALITY_SEVERITY,
+  LEGALITY_STATUSES,
+} from "@riftseer/types/deck";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,9 +37,15 @@ import {
   useFormatMutations,
 } from "@/features/admin/hooks/use-admin-mutations";
 import { useInlineRowEdit } from "@/features/admin/hooks/use-inline-row-edit";
-import type { AdminFormat, AdminFormatPatch } from "@/features/admin/types";
+import type {
+  AdminDeckZone,
+  AdminFormat,
+  AdminFormatPatch,
+  AdminLegalityStatus,
+  AdminViolationSeverityInput,
+} from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
-import { CheckboxField } from "./admin-form-field";
+import { CheckboxField, SelectField } from "./admin-form-field";
 import { ConfirmDialog } from "./confirm-dialog";
 
 /** Mirrors the API's accepted input shape; the stored code is always lowercase. */
@@ -54,6 +68,7 @@ export function AdminFormatsView() {
   const [pendingDelete, setPendingDelete] = React.useState<AdminFormat | null>(
     null,
   );
+  const [expanded, setExpanded] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [newCode, setNewCode] = React.useState("");
   const [newName, setNewName] = React.useState("");
@@ -230,8 +245,10 @@ export function AdminFormatsView() {
           <TableBody>
             {rows.map((format, index) => {
               const isEditing = editing === format.code && draft !== null;
+              const isExpanded = expanded === format.code;
               return (
-                <TableRow key={format.code}>
+                <React.Fragment key={format.code}>
+                <TableRow>
                   <TableCell>
                     <div className="flex gap-0.5">
                       <Button
@@ -331,6 +348,23 @@ export function AdminFormatsView() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-expanded={isExpanded}
+                            onClick={() =>
+                              setExpanded((open) =>
+                                open === format.code ? null : format.code,
+                              )
+                            }
+                          >
+                            {isExpanded ? (
+                              <ChevronDown aria-hidden="true" />
+                            ) : (
+                              <ChevronRight aria-hidden="true" />
+                            )}
+                            Rules
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => startEdit(format)}
                           >
                             Edit
@@ -351,10 +385,26 @@ export function AdminFormatsView() {
                     </div>
                   </TableCell>
                 </TableRow>
+                {isExpanded && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="bg-muted/30 p-0">
+                      <FormatRulesPanel format={format} />
+                    </TableCell>
+                  </TableRow>
+                )}
+                </React.Fragment>
               );
             })}
           </TableBody>
         </Table>
+      )}
+
+      {rows.length > 0 && (
+        <p className="text-muted-foreground mt-4 text-xs">
+          Open a format&apos;s <strong>Rules</strong> to set what it demands of
+          each deck zone. A format with no rules at all — like Sandbox —
+          enforces nothing.
+        </p>
       )}
 
       {rows.some((format) => !format.active) && (
@@ -385,5 +435,248 @@ export function AdminFormatsView() {
         }}
       />
     </>
+  );
+}
+
+// ─── Deck construction rules ──────────────────────────────────────────────────
+//
+// Blank is unconstrained, and that is the whole point of the rules table: a
+// format states only what it actually demands. So the drafts are strings rather
+// than numbers — `0` is a real limit an admin can type, and a numeric state
+// would have to invent a sentinel to tell "no limit" apart from it.
+
+interface ZoneDraft {
+  min: string;
+  max: string;
+  copies: string;
+}
+
+const EMPTY_ZONE_DRAFT: ZoneDraft = { min: "", max: "", copies: "" };
+
+function numberField(value: number | null | undefined): string {
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function zoneDraftsFor(format: AdminFormat): Record<AdminDeckZone, ZoneDraft> {
+  const drafts = {} as Record<AdminDeckZone, ZoneDraft>;
+  for (const zone of DECK_ZONES) drafts[zone] = { ...EMPTY_ZONE_DRAFT };
+  for (const rule of format.zone_rules) {
+    drafts[rule.zone] = {
+      min: numberField(rule.min_count),
+      max: numberField(rule.max_count),
+      copies: numberField(rule.copy_limit),
+    };
+  }
+  return drafts;
+}
+
+/** Blank means unconstrained; anything that is not a whole number is refused. */
+function parseBound(value: string): number | null | "invalid" {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  // Digits only. `Number()` alone accepts `0x10` and `1e3`, both of which pass
+  // `Number.isInteger` and would store a bound the admin never typed;
+  // `inputMode="numeric"` is a keyboard hint, not a restriction on the value.
+  if (!/^\d+$/.test(trimmed)) return "invalid";
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed)) return "invalid";
+  return parsed;
+}
+
+const SEVERITY_OPTIONS: Array<{
+  value: AdminViolationSeverityInput;
+  label: string;
+}> = [
+  { value: "default", label: "Default" },
+  { value: "none", label: "None — allow silently" },
+  { value: "warning", label: "Warning" },
+  { value: "error", label: "Error" },
+];
+
+const STATUS_LABELS: Record<AdminLegalityStatus, string> = {
+  legal: "Legal",
+  restricted: "Restricted",
+  not_legal: "Not legal",
+  banned: "Banned",
+};
+
+function FormatRulesPanel({ format }: { format: AdminFormat }) {
+  const { setZoneRule, deleteZoneRule, setSeverity } = useFormatMutations();
+  // Seeded once on open. A save writes exactly what is on screen, so the server
+  // and the draft already agree afterwards; re-seeding on every refetch would
+  // yank the field the admin is still typing in.
+  const [drafts, setDrafts] = React.useState<Record<AdminDeckZone, ZoneDraft>>(
+    () => zoneDraftsFor(format),
+  );
+  const [pendingClear, setPendingClear] = React.useState<AdminDeckZone | null>(
+    null,
+  );
+
+  const storedZones = new Set(format.zone_rules.map((rule) => rule.zone));
+  const severityFor = (status: AdminLegalityStatus): AdminViolationSeverityInput =>
+    format.severity_overrides.find((row) => row.status === status)?.severity ??
+    "default";
+
+  function edit(zone: AdminDeckZone, field: keyof ZoneDraft, value: string) {
+    setDrafts((current) => ({
+      ...current,
+      [zone]: { ...current[zone], [field]: value },
+    }));
+  }
+
+  function save(zone: AdminDeckZone) {
+    const draft = drafts[zone];
+    const min = parseBound(draft.min);
+    const max = parseBound(draft.max);
+    const copies = parseBound(draft.copies);
+    if (min === "invalid" || max === "invalid" || copies === "invalid") {
+      toast.error(
+        "Counts must be whole numbers of zero or more. Leave a box empty to leave it unconstrained.",
+      );
+      return;
+    }
+    if (min !== null && max !== null && min > max) {
+      toast.error("A zone's minimum cannot be larger than its maximum");
+      return;
+    }
+    setZoneRule.mutate([
+      format.code,
+      zone,
+      { min_count: min, max_count: max, copy_limit: copies },
+    ]);
+  }
+
+  async function clear(zone: AdminDeckZone) {
+    try {
+      await deleteZoneRule.mutateAsync([format.code, zone]);
+    } catch {
+      // Already surfaced as a toast; leave the row as it was.
+      return;
+    }
+    setDrafts((current) => ({ ...current, [zone]: { ...EMPTY_ZONE_DRAFT } }));
+    setPendingClear(null);
+  }
+
+  return (
+    <div className="space-y-6 px-4 py-5">
+      <div>
+        <h3 className="text-sm font-semibold">Zone rules</h3>
+        <p className="text-muted-foreground mt-1 text-xs">
+          An empty box means <strong>unconstrained</strong> — not zero. Copies
+          is the limit per card across the zone&apos;s counting group, so main
+          and sideboard share one limit.
+        </p>
+        <Table className="mt-3">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Zone</TableHead>
+              <TableHead>Minimum</TableHead>
+              <TableHead>Maximum</TableHead>
+              <TableHead>Copies per card</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {DECK_ZONES.map((zone) => {
+              const draft = drafts[zone];
+              const stored = storedZones.has(zone);
+              return (
+                <TableRow key={zone}>
+                  <TableCell>
+                    <span className="text-sm font-medium">
+                      {DECK_ZONE_LABELS[zone]}
+                    </span>
+                    {!stored && (
+                      <span className="text-muted-foreground ml-2 text-xs">
+                        unconstrained
+                      </span>
+                    )}
+                  </TableCell>
+                  {(["min", "max", "copies"] as const).map((field) => (
+                    <TableCell key={field}>
+                      <Input
+                        aria-label={`${DECK_ZONE_LABELS[zone]} ${field}`}
+                        value={draft[field]}
+                        inputMode="numeric"
+                        placeholder="Any"
+                        className="w-24"
+                        onChange={(e) => edit(zone, field, e.target.value)}
+                      />
+                    </TableCell>
+                  ))}
+                  <TableCell>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={setZoneRule.isPending}
+                        onClick={() => save(zone)}
+                      >
+                        <Save aria-hidden="true" />
+                        Save
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={!stored || deleteZoneRule.isPending}
+                        onClick={() => setPendingClear(zone)}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold">Legality severity</h3>
+        <p className="text-muted-foreground mt-1 text-xs">
+          How loudly the deck builder complains about each status in this
+          format. <strong>Default</strong> stores nothing and follows the shared
+          mapping, so a status added later needs no backfill here.
+        </p>
+        <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {LEGALITY_STATUSES.map((legalityStatus) => (
+            <SelectField
+              key={legalityStatus}
+              id={`severity-${format.code}-${legalityStatus}`}
+              label={STATUS_LABELS[legalityStatus]}
+              hint={`Default: ${DEFAULT_LEGALITY_SEVERITY[legalityStatus]}`}
+              disabled={setSeverity.isPending}
+              value={severityFor(legalityStatus)}
+              onChange={(event) =>
+                setSeverity.mutate([
+                  format.code,
+                  legalityStatus,
+                  event.target.value as AdminViolationSeverityInput,
+                ])
+              }
+              options={SEVERITY_OPTIONS}
+            />
+          ))}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={pendingClear !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingClear(null);
+        }}
+        title={`Clear the ${
+          pendingClear ? DECK_ZONE_LABELS[pendingClear] : "zone"
+        } rule?`}
+        description="The zone becomes unconstrained in this format: no minimum, no maximum and no copy limit. Existing decks are never invalidated retroactively — validation is advisory and recomputed on read."
+        confirmLabel="Clear rule"
+        destructive
+        pending={deleteZoneRule.isPending}
+        onConfirm={() => {
+          if (pendingClear) void clear(pendingClear);
+        }}
+      />
+    </div>
   );
 }

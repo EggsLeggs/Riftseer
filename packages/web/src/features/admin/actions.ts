@@ -21,14 +21,21 @@ import type {
   AdminPrintingMutationResult,
   AdminPrintingPatch,
   AdminPrintingRulings,
+  AdminDeckZone,
   AdminFormatDeleteResult,
   AdminFormatInput,
   AdminFormatListResult,
   AdminFormatMutationResult,
   AdminFormatPatch,
+  AdminFormatSeverityMutationResult,
+  AdminFormatZoneRuleDeleteResult,
+  AdminFormatZoneRuleInput,
+  AdminFormatZoneRuleMutationResult,
   AdminImageMutationResult,
   AdminLegalityMutationResult,
+  AdminLegalityStatus,
   AdminLegalityStatusInput,
+  AdminViolationSeverityInput,
   AdminRelationshipEntry,
   AdminReorderResult,
   AdminResult,
@@ -562,6 +569,54 @@ export async function deleteFormatAction(
   return result;
 }
 
+/**
+ * Deck construction rules move what every deck in the format validates against,
+ * so these revalidate the deck pages as well as `/admin/formats`.
+ */
+function revalidateFormatRules() {
+  revalidatePath("/admin/formats");
+  revalidatePath("/decks", "layout");
+  // A deck page lives at /deck/[id]/[[...slugTail]] — a separate route tree
+  // that "/decks" does not cover, and the one place violations are actually
+  // rendered from these rules.
+  revalidatePath("/deck", "layout");
+}
+
+export async function setFormatZoneRuleAction(
+  code: string,
+  zone: AdminDeckZone,
+  rule: AdminFormatZoneRuleInput,
+): Promise<AdminResult<AdminFormatZoneRuleMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.setFormatZoneRule(token, code, zone, rule),
+  );
+  if (result.ok) revalidateFormatRules();
+  return result;
+}
+
+export async function deleteFormatZoneRuleAction(
+  code: string,
+  zone: AdminDeckZone,
+): Promise<AdminResult<AdminFormatZoneRuleDeleteResult>> {
+  const result = await withToken((token) =>
+    adminApi.deleteFormatZoneRule(token, code, zone),
+  );
+  if (result.ok) revalidateFormatRules();
+  return result;
+}
+
+export async function setFormatLegalitySeverityAction(
+  code: string,
+  legalityStatus: AdminLegalityStatus,
+  severity: AdminViolationSeverityInput,
+): Promise<AdminResult<AdminFormatSeverityMutationResult>> {
+  const result = await withToken((token) =>
+    adminApi.setFormatLegalitySeverity(token, code, legalityStatus, severity),
+  );
+  if (result.ok) revalidateFormatRules();
+  return result;
+}
+
 export async function reorderFormatsAction(
   codes: string[],
 ): Promise<AdminResult<AdminReorderResult>> {
@@ -586,6 +641,7 @@ export async function setCardLegalityAction(
   status: AdminLegalityStatusInput,
   applyToAllPrintings: boolean,
   publicSlug?: string,
+  note?: string | null,
 ): Promise<AdminResult<AdminLegalityMutationResult>> {
   const result = await withToken((token) =>
     adminApi.setCardLegality(
@@ -594,6 +650,7 @@ export async function setCardLegalityAction(
       formatCode,
       status,
       applyToAllPrintings,
+      note,
     ),
   );
   if (result.ok) {

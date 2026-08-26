@@ -139,7 +139,14 @@ class StubRepository implements AdminDataRepository {
     return { entries: [], total: 0 };
   }
   async listFormats() {
-    return [{ id: "format", code: "standard", name: "Standard", sort_order: 0, active: true, legality_count: 2, override_count: 1 }];
+    return [{
+      id: "format", code: "standard", name: "Standard", sort_order: 0, active: true,
+      legality_count: 2, override_count: 1,
+      // A null bound is unconstrained, not zero — the sideboard rule below is
+      // the shape that distinction has to survive the wire in.
+      zone_rules: [{ zone: "sideboard" as const, min_count: null, max_count: 10, copy_limit: 3 }],
+      severity_overrides: [{ status: "restricted" as const, severity: "warning" as const }],
+    }];
   }
   async getStats() {
     return { sets: 8, oracles: 928, printings: 1304, pendingReview: 167 };
@@ -161,7 +168,7 @@ class StubRepository implements AdminDataRepository {
     return id === PRINTING_ID ? {
       printing_id: PRINTING_ID,
       oracle_id: ORACLE_ID,
-      entries: [{ format_id: "format", format_code: "standard", format_name: "Standard", status: "banned" as const, scope: "oracle" as const }],
+      entries: [{ format_id: "format", format_code: "standard", format_name: "Standard", status: "banned" as const, scope: "oracle" as const, note: "Banned in the 2026-07 update" }],
     } : null;
   }
   async listPrintingRulings(id: string) {
@@ -438,6 +445,65 @@ describe("admin API contracts", () => {
     await app.handle(request(`/admin/printings/${PRINTING_ID}/legalities`, "PUT", { format_code: "standard", status: "banned", apply_to_all_printings: true }));
     expect(repository.calls[0]?.args).toMatchObject({ p_oracle_id: null, p_printing_id: PRINTING_ID, p_status: null });
     expect(repository.calls[1]?.args).toMatchObject({ p_oracle_id: ORACLE_ID, p_printing_id: null, p_status: "banned" });
+  });
+
+  test("legality accepts restricted with a note, and clearing takes the note with it", async () => {
+    const restricted = await app.handle(request(`/admin/printings/${PRINTING_ID}/legalities`, "PUT",
+      { format_code: "standard", status: "restricted", note: "  One copy as of 2026-07  " }));
+    expect(restricted.status).toBe(200);
+    expect(await restricted.json()).toMatchObject({ status: "restricted", note: "One copy as of 2026-07" });
+    expect(repository.calls[0]?.args).toMatchObject({ p_status: "restricted", p_note: "One copy as of 2026-07" });
+
+    // A cleared status deletes the row the note lives on, so the response must
+    // not claim a note survived it.
+    const cleared = await app.handle(request(`/admin/printings/${PRINTING_ID}/legalities`, "PUT",
+      { format_code: "standard", status: "default", note: "orphan" }));
+    expect(await cleared.json()).toMatchObject({ status: null, note: null });
+  });
+
+  test("format zone rules keep null bounds as unconstrained rather than zero", async () => {
+    const listed = await (await app.handle(request("/admin/formats"))).json() as any;
+    expect(listed.formats[0].zone_rules[0]).toEqual({ zone: "sideboard", min_count: null, max_count: 10, copy_limit: 3 });
+    expect(listed.formats[0].severity_overrides[0]).toEqual({ status: "restricted", severity: "warning" });
+
+    const saved = await app.handle(request("/admin/formats/STANDARD/zone-rules/main", "PUT", { max_count: 40, copy_limit: 3 }));
+    expect(saved.status).toBe(200);
+    expect(repository.calls[0]).toEqual({
+      name: "admin_set_format_zone_rule",
+      args: { p_code: "standard", p_zone: "main", p_min_count: null, p_max_count: 40, p_copy_limit: 3, p_actor: ADMIN_ID },
+    });
+
+    const removed = await app.handle(request("/admin/formats/standard/zone-rules/runes", "DELETE"));
+    expect(removed.status).toBe(200);
+    expect(repository.calls[1]).toEqual({
+      name: "admin_delete_format_zone_rule",
+      args: { p_code: "standard", p_zone: "runes", p_actor: ADMIN_ID },
+    });
+  });
+
+  test("an unknown zone never reaches the database", async () => {
+    const response = await app.handle(request("/admin/formats/standard/zone-rules/graveyard", "PUT", { max_count: 1 }));
+    expect(response.status).toBe(400);
+    expect(repository.calls).toHaveLength(0);
+  });
+
+  test("severity default clears the override instead of storing one", async () => {
+    await app.handle(request("/admin/formats/STANDARD/severities/restricted", "PUT", { severity: "error" }));
+    await app.handle(request("/admin/formats/standard/severities/banned", "PUT", { severity: "default" }));
+    expect(repository.calls[0]?.args).toMatchObject({ p_code: "standard", p_status: "restricted", p_severity: "error" });
+    expect(repository.calls[1]?.args).toMatchObject({ p_status: "banned", p_severity: null });
+  });
+
+  test("rejected format rules map their reason to a status the UI can render", async () => {
+    repository.nextResult = { ok: false, reason: "invalid_range" };
+    const range = await app.handle(request("/admin/formats/standard/zone-rules/main", "PUT", { min_count: 9, max_count: 4 }));
+    expect(range.status).toBe(400);
+    expect(await range.json()).toMatchObject({ code: "INVALID_RANGE" });
+
+    repository.nextResult = { ok: false, reason: "format_not_found" };
+    const missing = await app.handle(request("/admin/formats/nope/severities/legal", "PUT", { severity: "warning" }));
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toMatchObject({ code: "FORMAT_NOT_FOUND" });
   });
 
   test("printing rulings report the target scope and shared guard", async () => {

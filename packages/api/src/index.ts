@@ -14,9 +14,20 @@
  *   POST /api/v1/cards/resolve  body: { requests: string[] }
  *   GET  /api/v1/sets
  *   GET  /api/v1/formats
- *   GET  /api/v1/decks/u/:shortForm
- *   POST /api/v1/decks/u/:shortForm
- *   POST /api/v1/decks/u
+ *   GET  /api/v1/decks              ?handle       (optional auth)
+ *   POST /api/v1/decks                            (protected)
+ *   GET  /api/v1/decks/:id                        (optional auth)
+ *   PATCH  /api/v1/decks/:id                      (protected)
+ *   DELETE /api/v1/decks/:id                      (protected, owner)
+ *   PUT  /api/v1/decks/:id/cards                  (protected, editor)
+ *   GET  /api/v1/decks/:id/revisions              (optional auth)
+ *   GET  /api/v1/decks/:id/export                 (optional auth)
+ *   POST   /api/v1/decks/:id/invite               (protected, owner)
+ *   DELETE /api/v1/decks/:id/invite               (protected, owner)
+ *   POST /api/v1/decks/join/:code                 (protected)
+ *   POST   /api/v1/decks/:id/collaborators        (protected, owner)
+ *   DELETE /api/v1/decks/:id/collaborators?handle (protected, owner)
+ *   POST /api/v1/decks/import                     (protected)
  *   POST /api/v1/auth/register  body: { email, password }
  *   POST /api/v1/auth/login     body: { email, password }
  *   POST /api/v1/auth/refresh   body: { refresh_token }
@@ -41,12 +52,7 @@
 import { Elysia } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 import { cors } from "@elysiajs/cors";
-import {
-  createProvider,
-  DeckSerializerV1,
-  NotFoundError,
-  SimplifiedDeckProviderImpl,
-} from "@riftseer/core";
+import { createProvider } from "@riftseer/core";
 import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
 import { setsRoutes } from "./routes/sets";
@@ -109,25 +115,6 @@ const adminImageBindings: AdminImageBindings = {
   },
 };
 
-// A deck list stores *printing* ids, but every construction rule reads oracle
-// fields — so a deck entry is one of each, flattened.
-const deckProvider = new SimplifiedDeckProviderImpl(
-  new DeckSerializerV1(),
-  async (id: string) => {
-    const printing = await cardProvider.getPrintingById(id);
-    if (!printing) throw new NotFoundError(`Printing not found: ${id}`);
-    const oracle = await cardProvider.getOracleById(printing.oracle_id);
-    if (!oracle) throw new NotFoundError(`Card not found for printing: ${id}`);
-    return {
-      id: printing.id,
-      name: oracle.name,
-      card_type: oracle.card_type,
-      supertype: oracle.supertype,
-      domains: oracle.domains,
-    };
-  },
-);
-
 // Lazy warmup — runs once per isolate on the first request. Retries on failure.
 let warmupPromise: Promise<void> | null = null;
 function ensureWarmedUp(): Promise<void> {
@@ -163,7 +150,10 @@ export const app = new Elysia({
       path === "/api/v1/admin" ||
       path.startsWith("/api/v1/admin/") ||
       path.startsWith("/api/v1/users/") ||
-      path.startsWith("/api/v1/webhooks/")
+      path.startsWith("/api/v1/webhooks/") ||
+      // Decks resolve cards through the deck repository, not the card provider.
+      path === "/api/v1/decks" ||
+      path.startsWith("/api/v1/decks/")
     ) return;
     try {
       await ensureWarmedUp();
@@ -184,7 +174,7 @@ export const app = new Elysia({
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
       .use(formatsRoutes(cardProvider))
-      .use(decksRoutes(deckProvider))
+      .use(decksRoutes())
       .use(authRoutes())
       .use(usersRoutes())
       .use(metafyRoutes())

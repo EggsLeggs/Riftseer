@@ -17,14 +17,21 @@ import type {
   AdminPrintingMutationResult,
   AdminPrintingPatch,
   AdminPrintingRulings,
+  AdminDeckZone,
   AdminFormatDeleteResult,
   AdminFormatInput,
   AdminFormatListResult,
   AdminFormatMutationResult,
   AdminFormatPatch,
+  AdminFormatSeverityMutationResult,
+  AdminFormatZoneRuleDeleteResult,
+  AdminFormatZoneRuleInput,
+  AdminFormatZoneRuleMutationResult,
   AdminImageMutationResult,
   AdminLegalityMutationResult,
+  AdminLegalityStatus,
   AdminLegalityStatusInput,
+  AdminViolationSeverityInput,
   AdminRelationshipEntry,
   AdminReorderResult,
   AdminResult,
@@ -479,6 +486,52 @@ export const adminApi = {
     });
   },
 
+  /**
+   * Upsert one zone's rule. A `null` bound is unconstrained, not zero — the
+   * caller must pass `null` rather than dropping the key when clearing one.
+   */
+  setFormatZoneRule(
+    accessToken: string,
+    code: string,
+    zone: AdminDeckZone,
+    rule: AdminFormatZoneRuleInput,
+  ): Promise<AdminResult<AdminFormatZoneRuleMutationResult>> {
+    return request({
+      method: "PUT",
+      path: `${formatPath(code)}/zone-rules/${encodeURIComponent(zone)}`,
+      accessToken,
+      body: rule,
+    });
+  },
+
+  /** Leaves the zone unconstrained. Succeeds when there was no rule to remove. */
+  deleteFormatZoneRule(
+    accessToken: string,
+    code: string,
+    zone: AdminDeckZone,
+  ): Promise<AdminResult<AdminFormatZoneRuleDeleteResult>> {
+    return request({
+      method: "DELETE",
+      path: `${formatPath(code)}/zone-rules/${encodeURIComponent(zone)}`,
+      accessToken,
+    });
+  },
+
+  /** `"default"` deletes the override and falls back to the shared mapping. */
+  setFormatLegalitySeverity(
+    accessToken: string,
+    code: string,
+    legalityStatus: AdminLegalityStatus,
+    severity: AdminViolationSeverityInput,
+  ): Promise<AdminResult<AdminFormatSeverityMutationResult>> {
+    return request({
+      method: "PUT",
+      path: `${formatPath(code)}/severities/${encodeURIComponent(legalityStatus)}`,
+      accessToken,
+      body: { severity },
+    });
+  },
+
   /** Send the complete ordered list — an unknown code is rejected, not skipped. */
   reorderFormats(
     accessToken: string,
@@ -509,6 +562,9 @@ export const adminApi = {
    * `applyToAllPrintings` writes the oracle-level status and clears every
    * per-printing override for that format; without it only this printing moves.
    * Pass `"default"` to clear the stored status back to legal.
+   *
+   * `note` is the admin's explanation of the status and lives on the stored
+   * row, so clearing the status discards it too.
    */
   setCardLegality(
     accessToken: string,
@@ -516,6 +572,7 @@ export const adminApi = {
     formatCode: string,
     status: AdminLegalityStatusInput,
     applyToAllPrintings: boolean,
+    note?: string | null,
   ): Promise<AdminResult<AdminLegalityMutationResult>> {
     return request({
       method: "PUT",
@@ -524,6 +581,7 @@ export const adminApi = {
       body: {
         format_code: formatCode,
         status,
+        note: note ?? null,
         apply_to_all_printings: applyToAllPrintings,
       },
     });

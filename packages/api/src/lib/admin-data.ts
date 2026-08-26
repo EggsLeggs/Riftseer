@@ -33,7 +33,45 @@ export interface AdminAuditPage {
   total: number;
 }
 
-export type AdminLegalityStatus = "legal" | "not_legal" | "banned";
+export type AdminLegalityStatus =
+  | "legal"
+  | "restricted"
+  | "not_legal"
+  | "banned";
+
+export type AdminDeckZone =
+  | "legend"
+  | "main"
+  | "sideboard"
+  | "runes"
+  | "battlefields"
+  | "considering";
+
+export type AdminViolationSeverity = "none" | "warning" | "error";
+
+/**
+ * One zone's constraints under one format.
+ *
+ * Every bound is nullable and `null` means *unconstrained*, never zero — a
+ * format with no rules at all is how the sandbox format works, so a missing
+ * number can never be read as a limit of nothing.
+ */
+export interface AdminFormatZoneRule {
+  zone: AdminDeckZone;
+  min_count: number | null;
+  max_count: number | null;
+  copy_limit: number | null;
+}
+
+/**
+ * One per-format departure from `DEFAULT_LEGALITY_SEVERITY` in
+ * `@riftseer/types`. Only disagreements are stored; a status with no row here
+ * falls through to that mapping.
+ */
+export interface AdminFormatSeverityOverride {
+  status: AdminLegalityStatus;
+  severity: AdminViolationSeverity;
+}
 
 /**
  * A format as the admin sees it: including retired formats, and with the number
@@ -47,6 +85,9 @@ export interface AdminFormat {
   active: boolean;
   legality_count: number;
   override_count: number;
+  /** Empty means the format constrains no zone at all, not that it is broken. */
+  zone_rules: AdminFormatZoneRule[];
+  severity_overrides: AdminFormatSeverityOverride[];
 }
 
 /**
@@ -60,6 +101,12 @@ export interface AdminPrintingLegalityEntry {
   format_name: string;
   status: AdminLegalityStatus;
   scope: "printing" | "oracle" | "default";
+  /**
+   * The admin-authored explanation on the row that decided the status, so the
+   * editor can amend it instead of asking the admin to retype it. Null at
+   * `default` scope: with no row there is nothing to explain.
+   */
+  note: string | null;
 }
 
 export interface AdminPrintingLegalities {
@@ -755,6 +802,56 @@ export function createAdminDataRepository(
         return count ?? 0;
       };
 
+      // Both rule tables are read whole and grouped here rather than per
+      // format: there are at most six zone rows and four severity rows per
+      // format, so the entire catalogue of them is smaller than the round trips
+      // asking for it one format at a time would cost.
+      const [rules, severities] = await Promise.all([
+        client
+          .from("format_zone_rules")
+          .select("format_id, zone, min_count, max_count, copy_limit"),
+        client
+          .from("format_legality_severities")
+          .select("format_id, status, severity"),
+      ]);
+      if (rules.error) {
+        throw new AdminRepositoryError(rules.error.message, rules.error.code);
+      }
+      if (severities.error) {
+        throw new AdminRepositoryError(
+          severities.error.message,
+          severities.error.code,
+        );
+      }
+
+      const rulesByFormat = new Map<string, AdminFormatZoneRule[]>();
+      for (const row of rules.data ?? []) {
+        const zone = String(row.zone ?? "");
+        if (!DECK_ZONES.has(zone)) continue;
+        const list = rulesByFormat.get(String(row.format_id)) ?? [];
+        list.push({
+          zone: zone as AdminDeckZone,
+          min_count: nullableInteger(row.min_count),
+          max_count: nullableInteger(row.max_count),
+          copy_limit: nullableInteger(row.copy_limit),
+        });
+        rulesByFormat.set(String(row.format_id), list);
+      }
+
+      const severityByFormat = new Map<string, AdminFormatSeverityOverride[]>();
+      for (const row of severities.data ?? []) {
+        const status = String(row.status ?? "");
+        const severity = String(row.severity ?? "");
+        if (!LEGALITY_STATUSES.has(status)) continue;
+        if (!VIOLATION_SEVERITIES.has(severity)) continue;
+        const list = severityByFormat.get(String(row.format_id)) ?? [];
+        list.push({
+          status: status as AdminLegalityStatus,
+          severity: severity as AdminViolationSeverity,
+        });
+        severityByFormat.set(String(row.format_id), list);
+      }
+
       return await Promise.all(
         (formats.data ?? []).map(async (row) => {
           const id = String(row.id);
@@ -770,6 +867,8 @@ export function createAdminDataRepository(
             active: row.active !== false,
             legality_count: legalityCount,
             override_count: overrideCount,
+            zone_rules: rulesByFormat.get(id) ?? [],
+            severity_overrides: severityByFormat.get(id) ?? [],
           };
         }),
       );
@@ -1030,7 +1129,28 @@ export function createAdminDataRepository(
   };
 }
 
-const LEGALITY_STATUSES = new Set<string>(["legal", "not_legal", "banned"]);
+const LEGALITY_STATUSES = new Set<string>([
+  "legal",
+  "restricted",
+  "not_legal",
+  "banned",
+]);
+
+const DECK_ZONES = new Set<string>([
+  "legend",
+  "main",
+  "sideboard",
+  "runes",
+  "battlefields",
+  "considering",
+]);
+
+const VIOLATION_SEVERITIES = new Set<string>(["none", "warning", "error"]);
+
+/** A bound is a number or unconstrained. Anything else is not a bound. */
+function nullableInteger(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
 
 function parseLegalityEntry(
   row: Record<string, unknown>,
@@ -1047,6 +1167,7 @@ function parseLegalityEntry(
     status,
     scope:
       row.scope === "printing" || row.scope === "oracle" ? row.scope : "default",
+    note: typeof row.note === "string" && row.note ? row.note : null,
   };
 }
 

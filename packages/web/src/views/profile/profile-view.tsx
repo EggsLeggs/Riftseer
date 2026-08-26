@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Star, Users, ExternalLink } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SocialIcon } from "@/components/ui/social-icon";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FollowButton } from "@/features/profile/follow-button";
+import { UserDecksList } from "@/features/decks/components/user-decks-list";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
 import type { ProfileData } from "@/features/profile/api";
 
@@ -14,8 +17,38 @@ interface ProfileViewProps {
   isLoggedIn: boolean;
 }
 
+const PROFILE_TABS = ["overview", "decks"] as const;
+type ProfileTab = (typeof PROFILE_TABS)[number];
+
+function parseTab(raw: string | null): ProfileTab {
+  return (PROFILE_TABS as readonly string[]).includes(raw ?? "")
+    ? (raw as ProfileTab)
+    : "overview";
+}
+
 export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewProps) {
   const [followerCount, setFollowerCount] = useState(profile.follower_count);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // `userDecksHref()` links straight to `?tab=decks`, so the URL is the tab
+  // state — otherwise every deck link from elsewhere would land on Overview.
+  const tab = parseTab(searchParams.get("tab"));
+
+  const selectTab = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === "overview") params.delete("tab");
+      else params.set("tab", next);
+      const qs = params.toString();
+      router.replace(
+        qs
+          ? `/u/${encodeURIComponent(profile.handle)}?${qs}`
+          : `/u/${encodeURIComponent(profile.handle)}`,
+        { scroll: false },
+      );
+    },
+    [profile.handle, router, searchParams],
+  );
 
   const initials = profile.username.slice(0, 2).toUpperCase();
 
@@ -134,9 +167,20 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
 
       <Separator className="my-8" />
 
-      <p className="text-sm text-muted-foreground text-center py-8">
-        No content yet.
-      </p>
+      <Tabs value={tab} onValueChange={selectTab}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="decks">Decks</TabsTrigger>
+        </TabsList>
+        <TabsContent value="overview">
+          <p className="text-sm text-muted-foreground text-center py-8">
+            No content yet.
+          </p>
+        </TabsContent>
+        <TabsContent value="decks">
+          <UserDecksList handle={profile.handle} isOwnProfile={isOwnProfile} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

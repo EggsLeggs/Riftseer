@@ -83,6 +83,7 @@ SELECT admin_set_legality(
   NULL,
   'standard',
   'banned',
+  NULL,
   '00000000-0000-0000-0000-0000000000aa'
 );
 
@@ -91,6 +92,7 @@ SELECT admin_set_legality(
   'aaa000000000000000000002',
   'standard',
   'legal',
+  NULL,
   '00000000-0000-0000-0000-0000000000aa'
 );
 

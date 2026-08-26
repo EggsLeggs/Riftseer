@@ -69,10 +69,11 @@ jobs:
       - name: Check guidance files for dangling references
         run: node scripts/check-docs-references.mjs
 
-      # AGENTS.md is a symlink to CLAUDE.md. It used to be a byte-identical
-      # copy kept in sync by hand, which is a process guarding a problem that
-      # a symlink does not have.
-      - name: Check AGENTS.md is still a symlink to CLAUDE.md
+      # AGENTS.md is the canonical guidance file and CLAUDE.md is a one-line
+      # `@AGENTS.md` import. Both used to be byte-identical copies kept in sync
+      # by hand, which is a process guarding a problem an import does not have.
+      # check-docs-references.mjs enforces the pairing for every package.
+      - name: Check CLAUDE.md still imports AGENTS.md
         run: |
-          test -L AGENTS.md || { echo "AGENTS.md must be a symlink to CLAUDE.md"; exit 1; }
-          test "$(readlink AGENTS.md)" = "CLAUDE.md" || { echo "AGENTS.md points at $(readlink AGENTS.md), not CLAUDE.md"; exit 1; }
+          test -f AGENTS.md || { echo "AGENTS.md is missing"; exit 1; }
+          test "$(tr -d '[:space:]' < CLAUDE.md)" = "@AGENTS.md" || { echo "CLAUDE.md must contain only @AGENTS.md"; exit 1; }
