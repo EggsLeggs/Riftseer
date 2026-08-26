@@ -265,7 +265,7 @@ export function DeckView({ deck, editing, showRevisions, isSignedIn }: DeckViewP
               />
             </DeckCollapsible>
 
-            <DeckCollapsible title="Recent history">
+            <DeckCollapsible title="Recent history" lazy>
               <DeckRevisionsPanel deckId={deck.id} isSignedIn={isSignedIn} />
             </DeckCollapsible>
 

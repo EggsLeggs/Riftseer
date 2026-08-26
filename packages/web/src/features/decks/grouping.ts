@@ -63,10 +63,6 @@ function typeKey(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
 }
 
-function titleCase(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
 const UNTYPED_LABEL = "Other";
 const DOMAINLESS_LABEL = "Domainless";
 const NO_COST_LABEL = "No cost";
@@ -102,7 +98,10 @@ function bucketFor(card: GroupableCard, mode: DeckGroupMode): {
   const index = TYPE_ORDER.indexOf(type);
   return {
     key: type || "untyped",
-    label: type ? titleCase(type) : UNTYPED_LABEL,
+    // The catalogue's own spelling, not a re-cased key: `typeKey` lower-cases
+    // the whole value for grouping, so title-casing it back would render a
+    // multi-word type such as "Champion Unit" as "Champion unit".
+    label: card.card_type?.trim() || UNTYPED_LABEL,
     sort: index === -1 ? TYPE_ORDER.length : index,
   };
 }

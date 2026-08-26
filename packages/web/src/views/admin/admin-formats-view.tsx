@@ -474,8 +474,12 @@ function zoneDraftsFor(format: AdminFormat): Record<AdminDeckZone, ZoneDraft> {
 function parseBound(value: string): number | null | "invalid" {
   const trimmed = value.trim();
   if (trimmed === "") return null;
+  // Digits only. `Number()` alone accepts `0x10` and `1e3`, both of which pass
+  // `Number.isInteger` and would store a bound the admin never typed;
+  // `inputMode="numeric"` is a keyboard hint, not a restriction on the value.
+  if (!/^\d+$/.test(trimmed)) return "invalid";
   const parsed = Number(trimmed);
-  if (!Number.isInteger(parsed) || parsed < 0) return "invalid";
+  if (!Number.isSafeInteger(parsed)) return "invalid";
   return parsed;
 }
 

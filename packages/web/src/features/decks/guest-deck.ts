@@ -498,7 +498,9 @@ export function guestDeckSaveName(deck: GuestDeck): string {
   const trimmed = deck.name.trim();
   if (trimmed) return trimmed.slice(0, 120);
   const legend = deck.cards.find((card) => card.zone === "legend");
-  return legend ? `${legend.name} deck`.slice(0, 120) : "Untitled deck";
+  // Truncate the name, not the result: slicing afterwards eats the " deck"
+  // suffix when the legend's name is already near the limit.
+  return legend ? `${legend.name.slice(0, 115)} deck` : "Untitled deck";
 }
 
 /**

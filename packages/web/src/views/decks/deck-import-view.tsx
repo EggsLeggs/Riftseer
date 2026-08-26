@@ -151,9 +151,17 @@ export function DeckImportView() {
         />
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={importDeck.isPending || !text.trim()}>
+          <Button
+            type="submit"
+            disabled={importDeck.isPending || !text.trim() || !format}
+          >
             {importDeck.isPending ? "Importing…" : "Import"}
           </Button>
+          {!format && (
+            <p className="text-muted-foreground self-center text-sm">
+              No formats are configured on this environment.
+            </p>
+          )}
           <Button type="button" variant="outline" asChild>
             <Link href={myDecksHref()}>Cancel</Link>
           </Button>

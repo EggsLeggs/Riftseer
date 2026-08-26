@@ -209,6 +209,9 @@ This means the API has no opinion on where data comes from — swapping the prov
 | `PUT` | `/api/v1/admin/formats/order` | [Admin](./admin.md) |
 | `PATCH` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
 | `DELETE` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/formats/:code/zone-rules/:zone` | [Admin](./admin.md) |
+| `DELETE` | `/api/v1/admin/formats/:code/zone-rules/:zone` | [Admin](./admin.md) |
+| `PUT` | `/api/v1/admin/formats/:code/severities/:legality_status` | [Admin](./admin.md) |
 | `GET` | `/api/v1/admin/rulings` | [Admin](./admin.md) |
 | `POST` | `/api/v1/admin/rulings/preview` | [Admin](./admin.md) |
 | `POST` | `/api/v1/admin/rulings` | [Admin](./admin.md) |

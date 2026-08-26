@@ -1,12 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type {
-  DeckZone,
-  FormatRules,
-  FormatZoneRule,
-  LegalityEntry,
-  LegalityMap,
-  LegalityStatus,
-  ViolationSeverity,
+import {
+  DECK_ZONES,
+  LEGALITY_STATUSES,
+  VIOLATION_SEVERITIES,
+  type DeckZone,
+  type FormatRules,
+  type FormatZoneRule,
+  type LegalityEntry,
+  type LegalityMap,
+  type LegalityStatus,
+  type ViolationSeverity,
 } from "@riftseer/types/deck";
 
 // ─── Deck data access ─────────────────────────────────────────────────────────
@@ -233,6 +236,13 @@ const DECK_COLUMNS =
 const CARD_COLUMNS =
   "printing_id, oracle_id, name, name_normalized, card_type, supertype, is_token, domains, energy, might, power, set_code, collector_number, rarity, public_slug, has_hosted_image";
 
+/** Names per `in(...)` filter, so an import's lookup never overruns the URL. */
+const NAME_LOOKUP_CHUNK = 100;
+
+const DECK_ZONE_SET: ReadonlySet<string> = new Set(DECK_ZONES);
+const LEGALITY_STATUS_SET: ReadonlySet<string> = new Set(LEGALITY_STATUSES);
+const VIOLATION_SEVERITY_SET: ReadonlySet<string> = new Set(VIOLATION_SEVERITIES);
+
 function toDeckRow(row: unknown): DeckRow | null {
   if (!isRecord(row) || typeof row.id !== "string") return null;
   return {
@@ -272,7 +282,11 @@ function toCardBase(row: unknown): DeckCardBase | null {
   };
 }
 
-/** A deleted printing leaves a deck row pointing at nothing; the row is dropped. */
+/**
+ * A deleted printing leaves a deck row pointing at no catalogue row. The entry
+ * is **kept** and stands in for the card, so the deck still loads and the copy
+ * still counts; the name falls back to the printing id.
+ */
 function placeholderCard(printingId: string, oracleId: string): DeckCardBase {
   return {
     printing_id: printingId,
@@ -483,24 +497,32 @@ export function createDeckDataRepository(
         ),
       ]);
 
-      const zones: FormatZoneRule[] = zoneRows.flatMap((row) =>
-        isRecord(row)
-          ? [
-              {
-                zone: String(row.zone) as DeckZone,
-                min_count: num(row.min_count),
-                max_count: num(row.max_count),
-                copy_limit: num(row.copy_limit),
-              },
-            ]
-          : [],
-      );
+      // Filtered rather than cast: an unrecognised zone or severity would reach
+      // `validateDeck` and then the builder, which renders a violation by its
+      // severity and has no label for one it has never heard of.
+      const zones: FormatZoneRule[] = zoneRows.flatMap((row) => {
+        if (!isRecord(row)) return [];
+        const zone = String(row.zone ?? "");
+        if (!DECK_ZONE_SET.has(zone)) return [];
+        return [
+          {
+            zone: zone as DeckZone,
+            min_count: num(row.min_count),
+            max_count: num(row.max_count),
+            copy_limit: num(row.copy_limit),
+          },
+        ];
+      });
 
       const overrides: Partial<Record<LegalityStatus, ViolationSeverity>> = {};
       for (const row of severityRows) {
         if (!isRecord(row)) continue;
-        overrides[String(row.status) as LegalityStatus] =
-          String(row.severity) as ViolationSeverity;
+        const status = String(row.status ?? "");
+        const severity = String(row.severity ?? "");
+        if (!LEGALITY_STATUS_SET.has(status) || !VIOLATION_SEVERITY_SET.has(severity)) {
+          continue;
+        }
+        overrides[status as LegalityStatus] = severity as ViolationSeverity;
       }
 
       return Object.keys(overrides).length > 0
@@ -600,13 +622,24 @@ export function createDeckDataRepository(
     async findPrintingsByNames(normalizedNames) {
       if (normalizedNames.length === 0) return [];
       const unique = [...new Set(normalizedNames)];
-      const rows = await selectRows("resolved_printings", CARD_COLUMNS, (q) =>
-        q.in("name_normalized", unique),
-      );
-      return rows.flatMap((row) => {
-        const card = toCardBase(row);
-        return card ? [card] : [];
-      });
+      // PostgREST puts `in(...)` in the query string, so one request per name is
+      // one URL segment. An import is bounded only by its 100 000-character
+      // body, which is thousands of distinct names — enough to overrun the URL
+      // limit and fail the whole import. Chunked, the request count grows and
+      // nothing overflows.
+      const batches: DeckCardBase[][] = [];
+      for (let i = 0; i < unique.length; i += NAME_LOOKUP_CHUNK) {
+        const rows = await selectRows("resolved_printings", CARD_COLUMNS, (q) =>
+          q.in("name_normalized", unique.slice(i, i + NAME_LOOKUP_CHUNK)),
+        );
+        batches.push(
+          rows.flatMap((row) => {
+            const card = toCardBase(row);
+            return card ? [card] : [];
+          }),
+        );
+      }
+      return batches.flat();
     },
 
     async listRevisions(deckId, limit) {

@@ -156,9 +156,9 @@ export function useGuestDeck(formats: readonly DeckFormatOption[]): GuestDeckEdi
   const moveZone = React.useCallback<GuestDeckEditor["moveZone"]>(
     (card, zone) => {
       if (card.zone === zone) return;
-      applyChanges(deckMoveChanges(card, zone));
+      applyChanges(deckMoveChanges(cards, card, zone));
     },
-    [applyChanges],
+    [applyChanges, cards],
   );
 
   const setChampion = React.useCallback<GuestDeckEditor["setChampion"]>(

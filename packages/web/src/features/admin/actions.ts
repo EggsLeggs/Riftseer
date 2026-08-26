@@ -576,6 +576,10 @@ export async function deleteFormatAction(
 function revalidateFormatRules() {
   revalidatePath("/admin/formats");
   revalidatePath("/decks", "layout");
+  // A deck page lives at /deck/[id]/[[...slugTail]] — a separate route tree
+  // that "/decks" does not cover, and the one place violations are actually
+  // rendered from these rules.
+  revalidatePath("/deck", "layout");
 }
 
 export async function setFormatZoneRuleAction(

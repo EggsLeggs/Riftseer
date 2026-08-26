@@ -76,7 +76,13 @@ export function validateDeck(
     });
   }
 
-  const championEntry = entries.find((entry) => entry.is_champion);
+  // The flag *and* the zone: a champion is a flag on a `main` row, so a flagged
+  // row anywhere else is an ineligible one and must not satisfy the
+  // requirement. It reports `wrong_zone` below, and the deck still has no
+  // champion.
+  const championEntry = entries.find(
+    (entry) => entry.is_champion && entry.zone === "main",
+  );
   if (!championEntry) {
     violations.push({
       code: "no_champion",

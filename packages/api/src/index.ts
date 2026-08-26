@@ -150,7 +150,10 @@ export const app = new Elysia({
       path === "/api/v1/admin" ||
       path.startsWith("/api/v1/admin/") ||
       path.startsWith("/api/v1/users/") ||
-      path.startsWith("/api/v1/webhooks/")
+      path.startsWith("/api/v1/webhooks/") ||
+      // Decks resolve cards through the deck repository, not the card provider.
+      path === "/api/v1/decks" ||
+      path.startsWith("/api/v1/decks/")
     ) return;
     try {
       await ensureWarmedUp();

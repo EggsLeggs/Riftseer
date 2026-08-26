@@ -85,10 +85,15 @@ export function GuestDeckBuilderView() {
   // only when the stored code is not among the options, keeps a deck built in
   // some other format from being silently re-homed on every mount.
   const options = formatSelectOptions(formats.data ?? []);
-  const formatValue =
-    editor.deck && options.some((option) => option.value === editor.deck?.format)
-      ? editor.deck.format
-      : GUEST_DECK_DEFAULT_FORMAT;
+  // The selector must always name the format the deck is actually validated
+  // against. Falling back to the default when the stored code is unknown would
+  // show one format and report violations from another — and if the default is
+  // itself absent from `options` the value matches no option at all, which the
+  // browser renders as the first one. An unknown code gets its own disabled
+  // option instead, so what is displayed is always what is being judged.
+  const storedFormat = editor.deck?.format ?? GUEST_DECK_DEFAULT_FORMAT;
+  const unknownFormat =
+    options.length > 0 && !options.some((option) => option.value === storedFormat);
 
   const empty = isGuestDeckEmpty(editor.deck);
 
@@ -149,18 +154,25 @@ export function GuestDeckBuilderView() {
             <select
               id="guest-deck-format"
               className={CARD_BROWSE_SELECT_CLASS}
-              value={formatValue}
+              value={storedFormat}
               disabled={!editor.ready || options.length === 0}
               onChange={(event) => editor.setFormat(event.target.value)}
             >
               {options.length === 0 ? (
                 <option value={GUEST_DECK_DEFAULT_FORMAT}>Standard</option>
               ) : (
-                options.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))
+                <>
+                  {unknownFormat && (
+                    <option value={storedFormat} disabled>
+                      {storedFormat} (unavailable)
+                    </option>
+                  )}
+                  {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </>
               )}
             </select>
           </div>

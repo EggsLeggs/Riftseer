@@ -61,6 +61,11 @@ export function DeckExportDialog({
     },
     enabled: open && !local && !!deckId,
     staleTime: 0,
+    // Dropped as soon as the dialog closes rather than kept under a key that
+    // only names the deck. The cache outlives a sign-out or an account switch,
+    // and a protected deck's text must not be readable by whoever is holding
+    // the tab next — an export is fetched fresh or not shown.
+    gcTime: 0,
     retry: false,
   });
 

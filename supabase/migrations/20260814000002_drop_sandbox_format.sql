@@ -44,11 +44,19 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT count(*) INTO v_decks FROM decks WHERE format_id = v_format_id;
+  -- Both referencing tables, not just `decks`. `deck_revisions.format_id` is
+  -- ON DELETE RESTRICT too, and a revision keeps the format it was made in — so
+  -- a deck moved off `sandbox` leaves sandbox revisions behind after `decks` has
+  -- stopped pointing at it. Counting only `decks` would read 0 there, run the
+  -- DELETE, and let the revision foreign key abort the migration: exactly the
+  -- failure this guard exists to prevent.
+  SELECT (SELECT count(*) FROM decks           WHERE format_id = v_format_id)
+       + (SELECT count(*) FROM deck_revisions  WHERE format_id = v_format_id)
+    INTO v_decks;
   IF v_decks > 0 THEN
     UPDATE formats SET active = false WHERE id = v_format_id;
     RAISE NOTICE
-      'sandbox format retained and deactivated: % deck(s) still reference it',
+      'sandbox format retained and deactivated: % deck/revision row(s) still reference it',
       v_decks;
     RETURN;
   END IF;

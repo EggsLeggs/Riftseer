@@ -358,7 +358,7 @@ those rows while removing the format from public active-format responses.
 `{ "min_count"?, "max_count"?, "copy_limit"? }`. Zones are `legend`, `main`,
 `sideboard`, `runes`, `battlefields` and `considering`. **Null (or an omitted
 bound) means unconstrained, not zero** — a format with no rules at all enforces
-nothing, which is how the sandbox format works. `copy_limit` applies across the
+nothing. `copy_limit` applies across the
 zone's counting group, so `main` and `sideboard` share one limit. `DELETE` on
 the same path returns the zone to unconstrained and is idempotent, reporting
 `deleted: false` when there was no rule.

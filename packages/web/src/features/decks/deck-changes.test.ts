@@ -133,21 +133,43 @@ describe("applyDeckCardChanges", () => {
 
 describe("deckMoveChanges", () => {
   test("empties the old row and fills the new one with the same quantity", () => {
-    const [from, to] = deckMoveChanges(card({ quantity: 2 }), "considering");
+    const moved = card({ quantity: 2 });
+    const [from, to] = deckMoveChanges([moved], moved, "considering");
     expect(from).toMatchObject({ zone: "main", quantity: 0 });
     expect(to).toMatchObject({ zone: "considering", quantity: 2 });
   });
 
+  test("adds to the destination row rather than replacing it", () => {
+    const moved = card({ quantity: 2 });
+    const occupied = card({ zone: "considering", quantity: 1 });
+    const [, to] = deckMoveChanges([moved, occupied], moved, "considering");
+    // Absolute quantities: sending 2 here would drop the copy already there.
+    expect(to).toMatchObject({ zone: "considering", quantity: 3 });
+  });
+
+  test("counts only the same printing in the destination zone", () => {
+    const moved = card({ quantity: 2 });
+    const otherArt = card({ zone: "considering", printing_id: "p2", quantity: 4 });
+    const [, to] = deckMoveChanges([moved, otherArt], moved, "considering");
+    expect(to).toMatchObject({ printing_id: "p1", quantity: 2 });
+  });
+
   test("drops the champion flag when the destination is not main", () => {
-    const [, to] = deckMoveChanges(card({ is_champion: true }), "sideboard");
+    const moved = card({ is_champion: true });
+    const [, to] = deckMoveChanges([moved], moved, "sideboard");
     expect(to!.is_champion).toBe(false);
   });
 
   test("keeps the champion flag when moving back into main", () => {
-    const [, to] = deckMoveChanges(
-      card({ zone: "sideboard", is_champion: true }),
-      "main",
-    );
+    const moved = card({ zone: "sideboard", is_champion: true });
+    const [, to] = deckMoveChanges([moved], moved, "main");
+    expect(to!.is_champion).toBe(true);
+  });
+
+  test("keeps a champion flag the destination row already carries", () => {
+    const moved = card({ zone: "sideboard" });
+    const occupied = card({ zone: "main", is_champion: true });
+    const [, to] = deckMoveChanges([moved, occupied], moved, "main");
     expect(to!.is_champion).toBe(true);
   });
 });

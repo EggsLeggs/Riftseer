@@ -83,7 +83,9 @@ export function DeckFooterBar({
                 </span>
               )}
               {counts.info > 0 && (
-                <span className="text-muted-foreground">{counts.info} note</span>
+                <span className="text-muted-foreground">
+                  {counts.info} note{counts.info === 1 ? "" : "s"}
+                </span>
               )}
               <ChevronUpIcon
                 className={cn("size-3 transition-transform", open && "rotate-180")}

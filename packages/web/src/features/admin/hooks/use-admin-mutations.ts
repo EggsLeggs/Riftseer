@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { DECK_ZONE_LABELS } from "@riftseer/types/deck";
 import { cardsQueryKeys } from "@/features/cards/api";
 import { setsQueryKeys } from "@/features/sets/api";
 import {
@@ -286,7 +287,7 @@ export function useFormatMutations() {
       { zone: AdminDeckZone }
     >(
       setFormatZoneRuleAction,
-      (data) => `${data.zone} rule saved`,
+      (data) => `${DECK_ZONE_LABELS[data.zone]} rule saved`,
       invalidateFormats,
     ),
 
@@ -297,7 +298,7 @@ export function useFormatMutations() {
       { zone: AdminDeckZone }
     >(
       deleteFormatZoneRuleAction,
-      (data) => `${data.zone} is now unconstrained`,
+      (data) => `${DECK_ZONE_LABELS[data.zone]} is now unconstrained`,
       invalidateFormats,
     ),
 

@@ -45,15 +45,17 @@ ALTER TABLE printings ADD CONSTRAINT printings_id_oracle_key UNIQUE (id, oracle_
 -- Default-legal is unchanged: absence still means legal, and precedence is
 -- still printing row → oracle row → legal.
 
-ALTER TABLE oracle_legalities DROP CONSTRAINT oracle_legalities_status_check;
+-- Guarded so a partially applied database can be re-run: an unguarded DROP or
+-- ADD aborts the whole migration on a database where either half already landed.
+ALTER TABLE oracle_legalities DROP CONSTRAINT IF EXISTS oracle_legalities_status_check;
 ALTER TABLE oracle_legalities ADD CONSTRAINT oracle_legalities_status_check
   CHECK (status IN ('legal', 'restricted', 'not_legal', 'banned'));
-ALTER TABLE oracle_legalities ADD COLUMN note text;
+ALTER TABLE oracle_legalities ADD COLUMN IF NOT EXISTS note text;
 
-ALTER TABLE printing_legalities DROP CONSTRAINT printing_legalities_status_check;
+ALTER TABLE printing_legalities DROP CONSTRAINT IF EXISTS printing_legalities_status_check;
 ALTER TABLE printing_legalities ADD CONSTRAINT printing_legalities_status_check
   CHECK (status IN ('legal', 'restricted', 'not_legal', 'banned'));
-ALTER TABLE printing_legalities ADD COLUMN note text;
+ALTER TABLE printing_legalities ADD COLUMN IF NOT EXISTS note text;
 
 -- ── format rules ──────────────────────────────────────────────────────────────
 --
@@ -275,6 +277,15 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'invalid_changes');
   END IF;
 
+  -- Finding the open revision and allocating a new ordinal is a read-then-write,
+  -- and concurrent collaborators are a supported case. Two sessions arriving
+  -- together would both compute `max(ordinal) + 1` as the same number, and the
+  -- second insert would raise a unique violation on
+  -- `deck_revisions (deck_id, ordinal)` — an exception, rather than the
+  -- `{ ok, reason }` envelope every route here renders. The lock is per deck and
+  -- held to commit, so it serialises this one deck's edits and nothing else.
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_deck_id::text, 0));
+
   -- The open revision. Five minutes is a deliberate, confirmed choice: long
   -- enough that a single sitting of tuning a curve reads as one entry in the
   -- history, short enough that coming back after lunch starts a new one. It is
@@ -378,6 +389,12 @@ BEGIN
     DELETE FROM deck_revisions WHERE id = v_rev;
     RETURN jsonb_build_object('ok', true, 'revision_id', NULL);
   END IF;
+
+  -- `decks_updated_at` fires on UPDATE decks, and this function writes only
+  -- deck_cards and the revision tables. Without this the timestamp would still
+  -- read from the last metadata patch, and `decks_browse_idx` — "most recently
+  -- updated public decks first" — would rank an actively edited deck as stale.
+  UPDATE decks SET updated_at = now() WHERE id = p_deck_id;
 
   RETURN jsonb_build_object('ok', true, 'revision_id', v_rev);
 END;

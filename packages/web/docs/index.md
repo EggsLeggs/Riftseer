@@ -25,7 +25,7 @@ sidebar_position: 1
 
 ## Source layout
 
-```
+```text
 src/
 ├── app/          Routing, layouts, metadata — keep business logic out
 ├── views/        Page compositions
