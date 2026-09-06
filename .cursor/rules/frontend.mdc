@@ -23,7 +23,7 @@ alwaysApply: false
 
 ## Routing
 - Routes are defined in `src/App.tsx` using React Router 7
-- Legal page routes are `/docs/terms` and `/docs/privacy` — do not change these paths without updating the footer links
+- `/docs/terms` and `/docs/privacy` are stubs linking to canonical legal pages on `packages/web` (`/terms`, `/privacy`); do not restore full legal copy here
 
 ## Theme
 - `useTheme()` from `src/hooks/useTheme.tsx` provides `{ theme, setTheme }`
@@ -31,21 +31,21 @@ alwaysApply: false
 - The `<html>` element gets a `dark` class; Tailwind uses `darkMode: 'class'`
 
 ## Legal Pages — MUST KEEP ACCURATE
-`PrivacyPage.tsx` and `TermsPage.tsx` are user-facing legal documents, not just UI components.
+Authoritative **Privacy Policy** is `packages/web/src/views/privacy-view.tsx`; **Terms of Service** is `packages/web/src/views/terms-view.tsx`.
 
-### Update PrivacyPage.tsx when:
-- A new analytics, monitoring, or tracking service is added or removed
-- New data is written to `localStorage`, cookies, or the server database
+### Update packages/web `privacy-view.tsx` when (not `PrivacyPage.tsx` stub):
+- A new analytics, monitoring, tracking, or consent service is added or removed
+- New data is written to `localStorage`, cookies, or the server database (site-wide)
 - The bot starts storing new KV keys or logging additional user data
 - A new third-party service (hosting, CDN, auth, error tracking) is introduced
 - Server log retention or content changes
 - PostHog configuration changes (session recording, sampling, opt-out mechanics)
 
-### Update TermsPage.tsx when:
+### Update packages/web `terms-view.tsx` when (not `TermsPage.tsx` stub):
 - Acceptable-use rules change (new prohibited actions)
 - Age requirements change
 - Riot Games / Riftbound trademark or attribution language needs updating
 - Liability, warranty, or dispute resolution wording changes
 - Contact information changes
 
-**Always update the "Last Updated" date at the top of the component when modifying either legal page.**
+**Always update the "Last updated" date** in the respective `packages/web` view when you change that document.

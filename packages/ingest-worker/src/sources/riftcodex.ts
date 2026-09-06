@@ -1,12 +1,16 @@
 /**
- * RiftCodex API fetch + Raw → Card mapping for the ingest worker.
+ * RiftCodex API fetch + Raw → IngestPrinting mapping for the ingest worker.
  * Upstream: https://api.riftcodex.com
  *   GET /sets        → RawSetInfo[]
  *   GET /cards?page=N&size=100 → paginated RawCard[]
+ *
+ * Every RiftCodex row is a *printing*. The oracle-level fields it carries are
+ * recorded as this printing's observation of them; grouping happens later.
  */
 
 import { normalizeCardName, logger } from "../utils.ts";
-import type { Card } from "@riftseer/types";
+import type { IngestPrinting } from "../pipeline/types.ts";
+import { repairFlavourText } from "@riftseer/types/card-text";
 
 const PAGE_SIZE = 100;
 
@@ -22,8 +26,8 @@ export interface RawSetInfo {
   set_id: string;
   name?: string;
   label: string;
-  tcgplayer_id?: number | null;
-  cardmarket_id?: string | null;
+  tcgplayer_id?: string | number | null;
+  cardmarket_id?: string | string[] | null;
   published_on?: string | null;
 }
 
@@ -73,11 +77,6 @@ interface RawMetadata {
   finishes?: string[];
 }
 
-interface RawRulings {
-  rulings_id?: string;
-  rulings_uri?: string;
-}
-
 export interface RawCard {
   id: string;
   name: string;
@@ -94,7 +93,6 @@ export interface RawCard {
   orientation: string;
   metadata: RawMetadata;
   released_at?: string;
-  rulings?: RawRulings;
   [k: string]: unknown;
 }
 
@@ -108,81 +106,185 @@ interface PagedResponse {
 
 // ─── Raw → Card mapping ───────────────────────────────────────────────────────
 
-export function rawToCard(raw: RawCard): Card {
-  const setCode = raw.set?.set_id?.toUpperCase();
+function normalizeDate(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const match = value.match(/^\d{4}-\d{2}-\d{2}/);
+  return match?.[0];
+}
+
+/**
+ * RiftCodex currently marks tokens with classification.supertype = "Token".
+ * Keep structural fallbacks too: older token rows are dual-faced
+ * "<token> // Buff" printings, and token riftbound IDs may carry a segment like
+ * "sfd-t03".
+ */
+export function isTokenCard(raw: RawCard): boolean {
+  if (raw.classification?.supertype?.toLowerCase() === "token") return true;
+  if (raw.classification?.type?.toLowerCase() === "token") return true;
+  if (raw.name?.includes("//")) return true;
+  if (/(^|-)t\d+($|-)/i.test(raw.riftbound_id ?? "")) return true;
+  return false;
+}
+
+/**
+ * The collector segment of a `riftbound_id`, split into its printed parts.
+ *
+ * Ids are `<set>-<collector>` or `<set>-<collector>-<setSize>`, and the
+ * collector may carry a leading letter group naming a numbering track:
+ *
+ *   ogn-271-298  → { prefix: "",   digits: "271", marker: ""  }
+ *   ogn-042a-298 → { prefix: "",   digits: "042", marker: "a" }
+ *   ogn-305*-298 → { prefix: "",   digits: "305", marker: "*" }
+ *   sfd-t03      → { prefix: "t",  digits: "03",  marker: ""  }  (token)
+ *   ven-r01      → { prefix: "r",  digits: "01",  marker: ""  }  (rune)
+ *   ven-sp3-006  → { prefix: "sp", digits: "3",   marker: ""  }  (special collection)
+ */
+interface PrintedIdParts {
+  prefix: string;
+  digits: string;
+  marker: string;
+  setSize: number | null;
+}
+
+function parsePrintedId(riftboundId: string): PrintedIdParts | null {
+  const segments = riftboundId.split("-");
+  const collector = segments[1];
+  if (!collector) return null;
+
+  const match = collector.match(/^([a-z]*)(\d+)([a*]?)$/i);
+  if (!match) return null;
+
+  const setSize = segments.length > 2 ? Number(segments[2]) : Number.NaN;
   return {
-    object: "card",
+    prefix: match[1]!.toLowerCase(),
+    digits: match[2]!,
+    marker: match[3]!.toLowerCase(),
+    setSize: Number.isFinite(setSize) ? setSize : null,
+  };
+}
+
+/**
+ * The collector number as printed on the card.
+ *
+ * RiftCodex types `collector_number` as an integer, which silently drops the
+ * letter prefix that several numbering tracks use — the Gold token prints
+ * `T03`, Ahri, Inquisitive prints `SP3/006` and the basic runes print `R01`,
+ * yet all three arrive as a bare `3`/`1`. The `riftbound_id` keeps the prefix,
+ * and the digits there are printed verbatim (`T03` is padded, `SP3` is not),
+ * so it is the more faithful source whenever a prefix is present.
+ *
+ * Numbers without a prefix are left to RiftCodex: the id zero-pads them
+ * (`ogn-042a-298`) where the card and every existing slug do not.
+ */
+export function printedCollectorNumber(
+  riftboundId: string | null | undefined,
+  collectorNumber: number | string | null | undefined,
+): string {
+  const parts = riftboundId ? parsePrintedId(riftboundId) : null;
+  if (parts?.prefix) return `${parts.prefix.toUpperCase()}${parts.digits}`;
+  return String(collectorNumber ?? "");
+}
+
+interface PrintedVariantSignals {
+  alternateArt: boolean;
+  overnumbered: boolean;
+  signature: boolean;
+  specialCollection: boolean;
+}
+
+/**
+ * RiftCodex occasionally omits variant metadata on the older duplicate record.
+ * The printed id is more reliable: `042a` is alternate art, `305*` is a
+ * signature, `sp3` belongs to a special collection, and a collector above the
+ * printed set size is overnumbered.
+ */
+export function printedVariantSignals(riftboundId: string): PrintedVariantSignals {
+  const parts = parsePrintedId(riftboundId);
+  if (!parts) {
+    return {
+      alternateArt: false,
+      overnumbered: false,
+      signature: false,
+      specialCollection: false,
+    };
+  }
+
+  const collector = Number(parts.digits);
+  return {
+    alternateArt: parts.marker === "a",
+    signature: parts.marker === "*",
+    specialCollection: parts.prefix === "sp",
+    // Only meaningful on the main numbering track — a special-collection or
+    // token number is counted against its own much smaller run.
+    overnumbered:
+      parts.prefix === "" &&
+      parts.setSize !== null &&
+      Number.isFinite(collector) &&
+      collector > parts.setSize,
+  };
+}
+
+export function rawToPrinting(raw: RawCard): IngestPrinting {
+  const variantSignals = printedVariantSignals(raw.riftbound_id ?? "");
+  const cardType = raw.classification?.type;
+  // A Legend is a complete card type, not a Champion-supertype unit. A small
+  // number of RiftCodex rows (notably OGN Yasuo - Unforgiven) contain both.
+  const supertype =
+    cardType?.toLowerCase() === "legend"
+      ? undefined
+      : raw.classification?.supertype || undefined;
+  // Largest first: the hosted variants are transcoded down from whatever we
+  // fetch, so a bigger source is never worse.
+  const sourceImageUrl =
+    raw.media?.image_url_large ||
+    raw.media?.image_url ||
+    raw.media?.image_url_png ||
+    raw.media?.image_url_small ||
+    undefined;
+
+  return {
     id: raw.id,
+
     name: raw.name,
     name_normalized: normalizeCardName(raw.metadata?.clean_name || raw.name),
-    collector_number: String(raw.collector_number),
-    released_at: raw.released_at || undefined,
-    external_ids: {
-      riftcodex_id: raw.id,
-      riftbound_id: raw.riftbound_id || undefined,
-      tcgplayer_id: raw.tcgplayer_id || undefined,
-    },
-    set: setCode
-      ? {
-          set_code: setCode,
-          set_id: raw.set?.set_id,
-          set_name: raw.set?.name ?? raw.set?.label ?? setCode,
-          set_uri: raw.set?.set_uri,
-          set_search_uri: raw.set?.set_search_uri,
-        }
-      : undefined,
-    rulings:
-      raw.rulings?.rulings_id || raw.rulings?.rulings_uri
-        ? {
-            rulings_id: raw.rulings?.rulings_id,
-            rulings_uri: raw.rulings?.rulings_uri,
-          }
-        : undefined,
-    attributes: {
-      energy: raw.attributes?.energy ?? null,
-      might: raw.attributes?.might ?? null,
-      power: raw.attributes?.power ?? null,
-    },
-    classification: {
-      type: raw.classification?.type,
-      supertype: raw.classification?.supertype,
-      rarity: raw.classification?.rarity,
-      tags: raw.tags?.length ? raw.tags : undefined,
-      domains: raw.classification?.domain?.length ? raw.classification.domain : undefined,
-    },
-    text: {
-      rich: raw.text?.rich || undefined,
-      plain: raw.text?.plain || undefined,
-      flavour: raw.text?.flavour || undefined,
-    },
+    card_type: cardType || undefined,
+    supertype,
+    is_token: isTokenCard(raw),
+    energy: raw.attributes?.energy ?? null,
+    might: raw.attributes?.might ?? null,
+    power: raw.attributes?.power ?? null,
+    text_rich: raw.text?.rich || undefined,
+    text_plain: raw.text?.plain || undefined,
+    tags: raw.tags?.length ? raw.tags : [],
+    domains: raw.classification?.domain?.length ? raw.classification.domain : [],
+
+    set_code: raw.set?.set_id?.toUpperCase(),
     artist: raw.media?.artist || undefined,
-    metadata: {
-      finishes: raw.metadata?.finishes,
-      alternate_art: raw.metadata?.alternate_art ?? false,
-      overnumbered: raw.metadata?.overnumbered ?? false,
-      signature: raw.metadata?.signature ?? false,
-    },
-    media: {
-      orientation: raw.orientation || undefined,
-      accessibility_text: raw.media?.accessibility_text || undefined,
-      media_urls: raw.media?.image_url
-        ? {
-            small: raw.media.image_url_small,
-            normal: raw.media.image_url,
-            large: raw.media.image_url_large,
-            png: raw.media.image_url_png,
-          }
-        : undefined,
-    },
-    is_token:
-      raw.classification?.type?.toLowerCase() === "token" ||
-      raw.classification?.supertype?.toLowerCase() === "token" ||
-      false,
-    all_parts: [],
-    used_by: [],
-    related_champions: [],
-    related_legends: [],
-    related_printings: [],
+    collector_number:
+      printedCollectorNumber(raw.riftbound_id, raw.collector_number) ||
+      undefined,
+    released_at: normalizeDate(raw.released_at),
+    rarity: raw.classification?.rarity || undefined,
+    flavour_text: raw.text?.flavour
+      ? repairFlavourText(raw.text.flavour)
+      : undefined,
+    finishes: raw.metadata?.finishes ?? [],
+    is_signature:
+      (raw.metadata?.signature ?? false) || variantSignals.signature,
+    is_alternate_art:
+      (raw.metadata?.alternate_art ?? false) || variantSignals.alternateArt,
+    is_overnumbered:
+      (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
+    is_special_collection: variantSignals.specialCollection,
+
+    riftcodex_id: raw.id,
+    riftbound_id: raw.riftbound_id || undefined,
+    tcgplayer_id: raw.tcgplayer_id || undefined,
+
+    image_source_url: sourceImageUrl,
+    image_source_provider: sourceImageUrl ? "riftcodex" : undefined,
+    image_orientation: raw.orientation || undefined,
+    image_alt_text: raw.media?.accessibility_text || undefined,
   };
 }
 

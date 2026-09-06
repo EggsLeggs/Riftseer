@@ -4,41 +4,69 @@
  * All API endpoints are under /api/v1:
  *   GET  /api/v1/health
  *   GET  /api/v1/meta
- *   GET  /api/v1/cards          ?name&set&collector&fuzzy&limit
+ *   GET  /api/v1/cards          ?q&set&collector&fuzzy&unique&limit&offset
  *   GET  /api/v1/cards/random
- *   GET  /api/v1/cards/:id
+ *   GET  /api/v1/cards/detail   ?oracle | ?printing | ?slug
+ *   GET  /api/v1/cards/:id      — one oracle
  *   GET  /api/v1/cards/:id/text
+ *   GET  /api/v1/cards/by-slug/* — oracle or printing slug
+ *   GET  /api/v1/printings/:id  — one printing
  *   POST /api/v1/cards/resolve  body: { requests: string[] }
  *   GET  /api/v1/sets
- *   GET  /api/v1/decks/u/:shortForm
- *   POST /api/v1/decks/u/:shortForm
- *   POST /api/v1/decks/u
+ *   GET  /api/v1/formats
+ *   GET  /api/v1/decks              ?handle       (optional auth)
+ *   POST /api/v1/decks                            (protected)
+ *   GET  /api/v1/decks/:id                        (optional auth)
+ *   PATCH  /api/v1/decks/:id                      (protected)
+ *   DELETE /api/v1/decks/:id                      (protected, owner)
+ *   PUT  /api/v1/decks/:id/cards                  (protected, editor)
+ *   GET  /api/v1/decks/:id/revisions              (optional auth)
+ *   GET  /api/v1/decks/:id/export                 (optional auth)
+ *   POST   /api/v1/decks/:id/invite               (protected, owner)
+ *   DELETE /api/v1/decks/:id/invite               (protected, owner)
+ *   POST /api/v1/decks/join/:code                 (protected)
+ *   POST   /api/v1/decks/:id/collaborators        (protected, owner)
+ *   DELETE /api/v1/decks/:id/collaborators?handle (protected, owner)
+ *   POST /api/v1/decks/import                     (protected)
  *   POST /api/v1/auth/register  body: { email, password }
  *   POST /api/v1/auth/login     body: { email, password }
  *   POST /api/v1/auth/refresh   body: { refresh_token }
  *   POST /api/v1/auth/logout    Authorization: Bearer <access_token>
  *   GET  /api/v1/auth/me        Authorization: Bearer <access_token>  (protected)
+ *   *    /api/v1/admin/*        Authorization: Bearer <admin access_token>
+ *   GET  /api/v1/auth/metafy/status        (protected)
+ *   GET  /api/v1/auth/metafy/connect       (protected)
+ *   POST /api/v1/auth/metafy/callback      (protected)
+ *   DELETE /api/v1/auth/metafy/disconnect  (protected)
+ *   POST /api/v1/auth/metafy/refresh-status (protected)
+ *   POST /api/v1/webhooks/metafy           (public — HMAC signature verified)
  *
  * Deploy: wrangler deploy
  * Dev:    wrangler dev
  * Secrets (wrangler secret put): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
  *   SUPABASE_ANON_KEY, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+ * Vars (wrangler.jsonc → vars): SITE_ORIGIN — public site origin used to build
+ *   absolute riftseer_uri values on card responses.
  */
 
 import { Elysia } from "elysia";
 import { CloudflareAdapter } from "elysia/adapter/cloudflare-worker";
 import { cors } from "@elysiajs/cors";
-import {
-  createProvider,
-  DeckSerializerV1,
-  NotFoundError,
-  SimplifiedDeckProviderImpl,
-} from "@riftseer/core";
+import { createProvider } from "@riftseer/core";
 import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
 import { setsRoutes } from "./routes/sets";
+import { formatsRoutes } from "./routes/formats";
 import { decksRoutes } from "./routes/decks";
 import { authRoutes } from "./routes/auth";
+import { usersRoutes } from "./routes/users";
+import { metafyRoutes } from "./routes/metafy";
+import {
+  adminRoutes,
+  type AdminImageBindings,
+} from "./routes/admin";
+import { handleMetafyWebhook } from "./lib/metafy";
+import { withExecutionContext, type WaitUntilContext } from "./lib/background";
 
 // ─── Singletons ───────────────────────────────────────────────────────────────
 // CF Workers forbid async I/O (fetch) in global scope — only inside handlers.
@@ -47,14 +75,45 @@ import { authRoutes } from "./routes/auth";
 const cardProvider = createProvider();
 const startTime = Date.now();
 
-const deckProvider = new SimplifiedDeckProviderImpl(
-  new DeckSerializerV1(),
-  async (id: string) => {
-    const card = await cardProvider.getCardById(id);
-    if (!card) throw new NotFoundError(`Card not found: ${id}`);
-    return card;
+/**
+ * The slice of the Worker env this module touches, declared structurally.
+ *
+ * Every workspace package that imports the `App` type (web, frontend) also
+ * type-checks this file, and those programs have neither
+ * `@cloudflare/workers-types` nor the generated `GeneratedEnv`. Importing
+ * `cloudflare:workers` or naming `GeneratedEnv` here breaks their builds, so
+ * the bindings are captured from the fetch handler instead.
+ */
+interface CardImageEnv {
+  CARD_IMAGES: AdminImageBindings["bucket"];
+  CARD_IMAGE_QUEUE: AdminImageBindings["queue"];
+  CARD_IMAGE_BASE_URL?: string;
+}
+
+let workerEnv: CardImageEnv | undefined;
+
+function requireWorkerEnv(): CardImageEnv {
+  if (!workerEnv) {
+    throw new Error("Worker bindings are unavailable outside a request");
+  }
+  return workerEnv;
+}
+
+// Every access is lazy, so the singleton can be built at module scope while the
+// bindings themselves only arrive with the first request.
+const adminImageBindings: AdminImageBindings = {
+  bucket: {
+    put: (key, value, options) =>
+      requireWorkerEnv().CARD_IMAGES.put(key, value, options),
+    delete: (key) => requireWorkerEnv().CARD_IMAGES.delete(key),
   },
-);
+  queue: {
+    send: (job) => requireWorkerEnv().CARD_IMAGE_QUEUE.send(job),
+  },
+  get baseUrl() {
+    return requireWorkerEnv().CARD_IMAGE_BASE_URL ?? "https://img.riftseer.com";
+  },
+};
 
 // Lazy warmup — runs once per isolate on the first request. Retries on failure.
 let warmupPromise: Promise<void> | null = null;
@@ -71,9 +130,31 @@ function ensureWarmedUp(): Promise<void> {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-export const app = new Elysia({ adapter: CloudflareAdapter })
+export const app = new Elysia({
+  adapter: CloudflareAdapter,
+  // Elysia's response/param normalizer (exact-mirror) can't codegen a
+  // mirror function for the literal `"*"` wildcard param key used by
+  // GET /cards/by-slug/* — it throws a SyntaxError building the mirror's
+  // property access. `"typebox"` normalizes dynamically via Value.Clean
+  // instead, which handles non-identifier keys fine.
+  normalize: "typebox",
+})
   .onBeforeHandle(async ({ path, set }) => {
-    if (path === "/api/v1/health" || path.startsWith("/api/v1/auth/")) return;
+    // These routes do not read the card provider, so a catalogue warmup failure
+    // must not take down health, account, webhook, or admin traffic with them.
+    if (
+      path === "/api/v1/health" ||
+      path === "/api/v1/users" ||
+      path === "/api/v1/webhooks" ||
+      path.startsWith("/api/v1/auth/") ||
+      path === "/api/v1/admin" ||
+      path.startsWith("/api/v1/admin/") ||
+      path.startsWith("/api/v1/users/") ||
+      path.startsWith("/api/v1/webhooks/") ||
+      // Decks resolve cards through the deck repository, not the card provider.
+      path === "/api/v1/decks" ||
+      path.startsWith("/api/v1/decks/")
+    ) return;
     try {
       await ensureWarmedUp();
     } catch {
@@ -84,7 +165,7 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
   .use(
     cors({
       origin: true, // Reflect any Origin — public API, browser requests from any site are allowed
-      methods: ["GET", "HEAD", "POST", "OPTIONS"],
+      methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }),
   )
   .use(
@@ -92,10 +173,37 @@ export const app = new Elysia({ adapter: CloudflareAdapter })
       .use(metaRoutes(cardProvider, startTime))
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
-      .use(decksRoutes(deckProvider))
-      .use(authRoutes()),
+      .use(formatsRoutes(cardProvider))
+      .use(decksRoutes({ imageBaseUrl: () => adminImageBindings.baseUrl }))
+      .use(authRoutes())
+      .use(usersRoutes())
+      .use(metafyRoutes())
+      .use(
+        adminRoutes({
+          imageBindings: adminImageBindings,
+        }),
+      ),
   )
   .compile();
 
 export type App = typeof app;
-export default app;
+
+// The webhook handler needs the raw request body for HMAC signature verification.
+// Elysia's body parser consumes the body stream before our route handler runs,
+// so we intercept the webhook path here, before mounting Elysia.
+export default {
+  async fetch(
+    request: Request,
+    bindings: CardImageEnv,
+    ctx: WaitUntilContext,
+  ): Promise<Response> {
+    workerEnv = bindings;
+    const url = new URL(request.url);
+    return withExecutionContext(ctx, () => {
+      if (url.pathname === "/api/v1/webhooks/metafy" && request.method === "POST") {
+        return handleMetafyWebhook(request);
+      }
+      return Promise.resolve(app.fetch(request));
+    });
+  },
+};

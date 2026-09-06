@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "@raycast/utils";
-import type { Card } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
 
 const STORAGE_KEY = "recent-card-history";
 
@@ -12,10 +12,10 @@ export function parseMaxRecentHistory(raw: string | undefined): number {
 }
 
 export function mergeRecentHistory(
-  prev: Card[] | undefined,
-  card: Card,
+  prev: Oracle[] | undefined,
+  card: Oracle,
   max: number,
-): Card[] {
+): Oracle[] {
   const without = (prev ?? []).filter((c) => c.id !== card.id);
   return [card, ...without].slice(0, max);
 }
@@ -25,9 +25,9 @@ export function useRecentCardHistory(maxRecent: number) {
     value: recentCards,
     setValue: setRecentCards,
     isLoading,
-  } = useLocalStorage<Card[]>(STORAGE_KEY, []);
+  } = useLocalStorage<Oracle[]>(STORAGE_KEY, []);
 
-  const recentRef = useRef<Card[]>([]);
+  const recentRef = useRef<Oracle[]>([]);
   const trimmedCards = (recentCards ?? []).slice(0, maxRecent);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function useRecentCardHistory(maxRecent: number) {
   }, [maxRecent, recentCards, setRecentCards]);
 
   const recordVisit = useCallback(
-    (card: Card) => {
+    (card: Oracle) => {
       if (isLoading) return;
       if (maxRecent <= 0) return;
       const next = mergeRecentHistory(recentRef.current, card, maxRecent);

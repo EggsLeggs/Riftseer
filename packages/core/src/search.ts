@@ -21,9 +21,9 @@
  */
 
 import { normalizeCardName } from "./normalize.ts";
-import type { Card } from "./types.ts";
 
-/** Minimal shape required for name-based ranking. `Card` satisfies this. */
+
+/** Minimal shape required for name-based ranking. */
 export interface Nameable {
   id: string;
   name: string;
@@ -216,13 +216,23 @@ export function rankIds(items: Iterable<Nameable>, query: string, limit: number)
  * - Results below MIN_AUTOCOMPLETE_SCORE are excluded entirely.
  * - Results are ranked: exact > prefix > word-prefix > substring > fuzzy.
  *
- * @param cards   Full card list to search (e.g. provider index values).
+ * Generic over anything name-shaped — an oracle, a printing, or a projection
+ * row — because ranking only ever reads `id`, `name` and `name_normalized`.
+ *
+ * @param cards   Items to search.
  * @param query   Raw query string (will be normalized internally).
  * @param limit   Maximum results to return.
  */
-export function autocompleteSearch(cards: Iterable<Card>, query: string, limit: number): Card[] {
-  const cardMap = new Map<string, Card>();
+export function autocompleteSearch<T extends Nameable>(
+  cards: Iterable<T>,
+  query: string,
+  limit: number,
+): T[] {
+  const cardMap = new Map<string, T>();
   for (const card of cards) cardMap.set(card.id, card);
   const topIds = rankIds(cardMap.values(), query, limit);
-  return topIds.flatMap((id) => { const c = cardMap.get(id); return c ? [c] : []; });
+  return topIds.flatMap((id) => {
+    const c = cardMap.get(id);
+    return c ? [c] : [];
+  });
 }

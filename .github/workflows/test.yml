@@ -11,6 +11,29 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: riftseer
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 55433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d riftseer"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      postgrest:
+        image: postgrest/postgrest:v14.16
+        env:
+          PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/riftseer
+          PGRST_DB_SCHEMA: public
+          PGRST_DB_ANON_ROLE: service_role
+        ports:
+          - 3001:3000
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,7 +42,38 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
+
+      - name: Load database test schema and fixture
+        env:
+          RIFTSEER_DATABASE_URL: postgres://postgres:postgres@localhost:55433/riftseer
+        run: bun scripts/database-tests/database.mjs setup
 
       - name: Run tests
+        env:
+          RIFTSEER_DATABASE_TESTS: "1"
+          RIFTSEER_DATABASE_URL: postgres://postgres:postgres@localhost:55433/riftseer
+          RIFTSEER_POSTGREST_URL: http://localhost:3001
         run: bun run test
+
+      - name: Typecheck
+        run: bun run typecheck
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Most documentation rot is a name that no longer resolves, and a grep
+      # catches every one of those.
+      - name: Check guidance files for dangling references
+        run: node scripts/check-docs-references.mjs
+
+      # AGENTS.md is the canonical guidance file and CLAUDE.md is a one-line
+      # `@AGENTS.md` import. Both used to be byte-identical copies kept in sync
+      # by hand, which is a process guarding a problem an import does not have.
+      # check-docs-references.mjs enforces the pairing for every package.
+      - name: Check CLAUDE.md still imports AGENTS.md
+        run: |
+          test -f AGENTS.md || { echo "AGENTS.md is missing"; exit 1; }
+          test "$(tr -d '[:space:]' < CLAUDE.md)" = "@AGENTS.md" || { echo "CLAUDE.md must contain only @AGENTS.md"; exit 1; }

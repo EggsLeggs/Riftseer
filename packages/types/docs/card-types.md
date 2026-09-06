@@ -22,7 +22,7 @@ interface Card {
   collector_number?: string;       // e.g. "OGN-001"
   external_ids?: CardExternalIds;
   set?: CardSet;
-  rulings?: CardRulings;
+  oracle_key?: string;             // Name-derived group shared by every printing
   attributes?: CardAttributes;
   classification?: CardClassification;
   text?: CardText;
@@ -33,10 +33,15 @@ interface Card {
   purchase_uris?: CardPurchaseUris;
   prices?: CardPrices;
   is_token: boolean;
+  source?: "riftcodex" | "manual";  // Row provenance used by ingest/admin tooling
   all_parts: RelatedCard[];         // Tokens or meld parts produced by this card
   used_by: RelatedCard[];           // Cards that create or reference this card (populated on tokens)
   related_champions: RelatedCard[]; // Champions linked to this legend
   related_legends: RelatedCard[];   // Legends linked to this champion
+  related_signatures: RelatedCard[];
+  related_printings: RelatedCard[];
+  public_slug?: string;
+  riftseer_uri?: string;
   updated_at?: string;
   ingested_at?: string;
 }
@@ -61,7 +66,7 @@ interface CardAttributes {
 ```typescript
 interface CardClassification {
   type?: string;            // e.g. "Unit", "Gear", "Spell"
-  supertype?: string | null;// e.g. "Champion", "Rune", "Battleground"
+  supertype?: string | null;// e.g. "Champion", "Signature", "Token"
   rarity?: string;          // e.g. "Common", "Rare", "Legendary"
   tags?: string[];          // e.g. ["Poro"]
   domains?: string[];       // e.g. ["Fury"]
@@ -96,9 +101,17 @@ interface CardSet {
 interface CardMedia {
   orientation?: string;       // "portrait" or "landscape"
   accessibility_text?: string;
-  media_urls?: CardMediaUrls; // { small, normal, large, png }
+  media_urls?: CardMediaUrls; // { small, normal, large, original, png }
+  source_url?: string;        // Best upstream image selected for this printing
+  source_hash?: string;       // SHA-256(source_url), used for idempotent hosting
+  source_provider?: "riftcodex" | "tcgplayer" | "admin";
 }
 ```
+
+After the image queue succeeds, `small`, `normal`, and `large` are WebP objects
+served from the configured R2 custom domain. `original` points to the unchanged
+source bytes. The URLs include a source-hash version query, so upstream image
+corrections bypass immutable browser and CDN caches.
 
 ### CardMetadata
 
@@ -132,15 +145,6 @@ interface CardExternalIds {
 }
 ```
 
-### CardRulings
-
-```typescript
-interface CardRulings {
-  rulings_id?: string;
-  rulings_uri?: string;
-}
-```
-
 ### CardPurchaseUris
 
 ```typescript
@@ -163,6 +167,83 @@ interface RelatedCard {
   uri?: string;      // API URI for the referenced card
 }
 ```
+
+---
+
+## Oracle grouping: rulings, legalities and formats
+
+Rulings and format legalities describe a **card**, not a printing, so they are
+keyed on `Card.oracle_key` rather than `Card.id`. `oracleKeyForName()` in
+`src/oracle.ts` is the single source of truth for that derivation — take the
+first face, strip trailing parentheticals, then normalize:
+
+```typescript
+import { oracleKeyForName } from "@riftseer/types/oracle";
+
+oracleKeyForName("Recruit (271) // Buff");               // "recruit"
+oracleKeyForName("Ambessa, Matriarch of War (Signature)"); // "ambessa matriarch of war"
+```
+
+The ingest worker stamps `cards.oracle_key` on every upsert and
+`linkRelatedPrintings` groups by the same key, so a printing's siblings are
+exactly the printings that share its rulings. A SQL mirror
+(`card_oracle_key()`) exists for the migration backfill and must stay in step
+with this function.
+
+### Format
+
+```typescript
+interface Format {
+  object: "format";
+  id: string;
+  code: string;      // Stable lowercase handle, e.g. "standard"
+  name: string;
+  sort_order: number; // Display order, ascending
+  active: boolean;    // False for retired formats — hidden from public payloads
+}
+```
+
+### CardLegality
+
+One format's status for the printing being viewed. **Absence means legal** —
+only non-legal statuses are stored — and `scope` reports which layer decided it
+(printing override → oracle row → default).
+
+```typescript
+type CardLegalityStatus = "legal" | "not_legal" | "banned";
+
+interface CardLegality {
+  object: "card_legality";
+  format_id: string;
+  format_code: string;
+  format_name: string;
+  status: CardLegalityStatus;
+  scope: "printing" | "oracle" | "default";
+  updated_at?: string;
+}
+```
+
+### CardRuling
+
+An official ruling or an editorial note. `card_id` absent means it applies to
+every printing; set, it applies only to that printing.
+
+```typescript
+interface CardRuling {
+  object: "card_ruling";
+  id: string;
+  type: "ruling" | "note";
+  text: string;
+  dated?: string;   // ISO date the ruling was issued
+  source?: string;  // Free-text provenance
+  card_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+```
+
+Both arrive on `CardDetail` as `rulings` and `legalities`, already resolved and
+ordered by the API — see [@riftseer/api — Cards](../api/cards).
 
 ---
 
@@ -211,23 +292,9 @@ interface CardSearchOptions {
 
 ## Deck types
 
-### SimplifiedDeck
+Deck types live in `src/deck.ts`, `src/deck-validate.ts` and `src/deck-text.ts`, not here. A deck is a persisted, account-owned row; the old `SimplifiedDeck` wire type and its binary short form are gone.
 
-The serialisable, storage-friendly form of a deck. Card quantities are encoded as `"cardId:quantity"` strings.
-
-```typescript
-interface SimplifiedDeck {
-  id: string | null;
-  legendId: string | null;
-  chosenChampionId: string | null;
-  mainDeck: string[];      // "cardId:quantity" entries
-  sideboard: string[];     // "cardId:quantity" entries
-  runes: string[];         // "cardId:quantity" entries
-  battlegrounds: string[]; // Card IDs only (always quantity 1)
-}
-```
-
-See [@riftseer/core — Deck](../core/deck) for the richer in-memory `Deck` class, and [@riftseer/core — Serialiser](../core/serialiser) for how `SimplifiedDeck` is encoded for URL sharing.
+See [Deck model](./deck-model) for the zone vocabulary, `zoneForCard()`, `validateDeck()` and the text interchange format.
 
 ---
 

@@ -41,4 +41,4 @@ All runtime config comes from env vars. Document any new variable in `.env.examp
 - Don't add comments to self-evident code
 
 ## Legal Pages
-`packages/frontend/src/components/PrivacyPage.tsx` and `TermsPage.tsx` are user-facing legal documents. If you add new data collection, new third-party services, or change how data is stored/retained, you **must** update the relevant legal page and its "Last Updated" date.
+`packages/web/src/views/privacy-view.tsx` and `packages/web/src/views/terms-view.tsx` are the Privacy Policy and Terms of Service. If you add new data collection, new third-party services, or change how data is stored/retained, you **must** update the relevant legal document and its date line ("Last updated"). If acceptable use, liability, or trademark language changes, update `terms-view.tsx`.

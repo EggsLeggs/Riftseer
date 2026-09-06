@@ -1,0 +1,8 @@
+# Local docker stack — see `bun run db:local:up`.
+#
+# Committed on purpose: these are not credentials. The local PostgREST has no
+# JWT secret and the proxy strips auth headers, so the key only has to be
+# non-empty. Production values live in the gitignored `.dev.vars`, which this
+# workflow never edits.
+SUPABASE_URL=http://localhost:54321
+SUPABASE_SERVICE_ROLE_KEY=local-service-role

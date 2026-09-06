@@ -19,31 +19,46 @@ export async function handleCard(
     (o) => o.name === "set" && o.type === ApplicationCommandOptionType.String,
   );
   const imageOpt = options.find(
-    (o) => o.name === "image" && o.type === ApplicationCommandOptionType.Boolean,
+    (o) =>
+      o.name === "image" && o.type === ApplicationCommandOptionType.Boolean,
   );
 
-  const cardName = "value" in (name ?? {}) ? (name as { value: string }).value : "";
-  const setCode = setOpt && "value" in setOpt ? (setOpt as { value: string }).value : undefined;
+  const cardName =
+    "value" in (name ?? {}) ? (name as { value: string }).value : "";
+  const setCode =
+    setOpt && "value" in setOpt
+      ? (setOpt as { value: string }).value
+      : undefined;
   const imageOnly =
-    imageOpt && "value" in imageOpt ? (imageOpt as { value: boolean }).value : false;
+    imageOpt && "value" in imageOpt
+      ? (imageOpt as { value: boolean }).value
+      : false;
 
   const request = setCode ? `${cardName}|${setCode}` : cardName;
 
   const client = createClient(env);
-  const { data, error } = await client.api.v1.cards.resolve.post({ requests: [request] });
+  const { data, error } = await client.api.v1.cards.resolve.post({
+    requests: [request],
+    include: "prices",
+  });
 
-  if (error || !data || data.results.length === 0 || !data.results[0].card) {
+  const result = data?.results[0];
+  if (error || !result?.oracle) {
     await patchResponse(interaction, env, {
       content: `No card found for **${cardName}**${setCode ? ` in set **${setCode}**` : ""}.`,
     });
     return;
   }
 
-  const card = data.results[0].card;
   const emojiMap = await getEmojiMap(env);
   const embed = imageOnly
-    ? buildCardImageEmbed(card, env.SITE_BASE_URL)
-    : buildCardEmbed(card, env.SITE_BASE_URL, emojiMap);
+    ? buildCardImageEmbed(result.oracle, result.printing, env.SITE_BASE_URL)
+    : buildCardEmbed(
+        result.oracle,
+        result.printing,
+        env.SITE_BASE_URL,
+        emojiMap,
+      );
 
   await patchResponse(interaction, env, { embeds: [embed] });
 }

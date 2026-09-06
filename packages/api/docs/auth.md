@@ -128,7 +128,9 @@ Authorization: Bearer <access_token>
 
 ## GET /api/v1/auth/me
 
-Returns the authenticated user's profile. Used by clients to restore a session on page load.
+Returns the authenticated user's profile and whether the account is in the
+server-side `ADMIN_USER_IDS` allowlist. Used by clients to restore a session and
+gate admin UI on page load.
 
 **Headers**
 
@@ -146,5 +148,10 @@ Authorization: Bearer <access_token>
 **200 body**
 
 ```json
-{ "id": "uuid", "email": "user@example.com", "created_at": "2026-01-01T00:00:00Z" }
+{
+  "id": "uuid",
+  "email": "user@example.com",
+  "created_at": "2026-01-01T00:00:00Z",
+  "is_admin": false
+}
 ```

@@ -2,7 +2,7 @@ import { Detail, getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { useFetch } from "@raycast/utils";
 import { CardDetail } from "./components/CardDetail";
 import { parseMaxRecentHistory, useRecentCardHistory } from "./recentHistory";
-import type { Card } from "@riftseer/types";
+import type { Oracle } from "@riftseer/types";
 
 export default function RandomCard() {
   const prefs = getPreferenceValues<Preferences>();
@@ -15,7 +15,7 @@ export default function RandomCard() {
     data: card,
     isLoading,
     error,
-  } = useFetch<Card>(`${api}/api/v1/cards/random`, {
+  } = useFetch<Oracle>(`${api}/api/v1/cards/random`, {
     onError: (err) => {
       showToast({
         style: Toast.Style.Failure,

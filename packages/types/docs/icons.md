@@ -1,7 +1,7 @@
 ---
 title: Icon Tokens
 sidebar_label: Icons
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 `src/icons.ts` exports the regex and token-to-CSS-class map for inline card text symbols. These are consumed by the frontend's `CardTextRenderer` component and by any client that wants to render card text with icon substitution.

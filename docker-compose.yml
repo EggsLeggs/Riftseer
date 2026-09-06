@@ -1,24 +1,86 @@
-version: "3.9"
+# Local dev stack.
+#
+# The database services stand in for the Supabase project so the API, the
+# ingest worker and the tests can run against a real Postgres with the real
+# schema. Nothing here is a mock: `postgres` applies the actual migrations and
+# `supabase-proxy` makes PostgREST answer to the same URL shape supabase-js
+# expects, so clients point at it with unmodified production code.
+#
+#   bun run db:local:up               start the database services
+#   bun run dev:api:local             API against this database
+#   bun run dev:ingest:local          ingest worker against this database
+#   bun run db:local:reset            drop and rebuild the schema from migrations
 
-# Local dev stack: Redis only.
-# API runs via: bun dev:api  (wrangler dev at http://localhost:8789)
-# Ingest is a separate Cloudflare Worker (packages/ingest-worker).
-# Reddit bot is a Devvit app — deploy with: cd packages/reddit-bot && npx devvit upload
+#
+# Leaving the `*:local` scripts off uses `.dev.vars`, i.e. production. Swapping
+# is a different command, never an edited file, so neither can be left pointing
+# somewhere by accident.
 
 services:
-  redis:
-    image: redis:7-alpine
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: riftseer
     ports:
-      - "6379:6379"
+      # Deliberately not 5432: this should never be mistaken for, or collide
+      # with, a system Postgres.
+      - "55432:5432"
     volumes:
-      - redis_data:/data
+      - postgres_data:/var/lib/postgresql/data
+      # Runs once, on an empty volume. `db:local:reset` drops the volume.
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+      - ./supabase/migrations:/migrations:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d riftseer"]
       interval: 5s
       timeout: 3s
-      retries: 5
-      start_period: 5s
+      retries: 20
+      start_period: 10s
+
+  postgrest:
+    image: postgrest/postgrest:v12.2.3
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/riftseer
+      PGRST_DB_SCHEMAS: public
+      # Every local caller is the service role, matching how the Workers talk
+      # to Supabase in production. RLS is bypassed, which is the point.
+      PGRST_DB_ANON_ROLE: service_role
+      PGRST_DB_POOL: 10
+      PGRST_OPENAPI_MODE: ignore-privileges
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # A second PostgREST, because one instance serves exactly one database and
+  # the contract tests need the throwaway rather than the dev catalogue.
+  postgrest-test:
+    image: postgrest/postgrest:v12.2.3
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/riftseer_test
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: service_role
+      PGRST_DB_POOL: 4
+      PGRST_OPENAPI_MODE: ignore-privileges
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  supabase-proxy:
+    image: nginx:1.27-alpine
+    ports:
+      - "54321:8000"   # dev catalogue
+      - "54322:8001"   # throwaway used by the contract tests
+    volumes:
+      - ./docker/supabase-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - postgrest
+      - postgrest-test
+    restart: unless-stopped
 
 volumes:
-  redis_data:
+  postgres_data:

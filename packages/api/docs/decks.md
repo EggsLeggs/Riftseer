@@ -4,15 +4,113 @@ sidebar_label: Decks
 sidebar_position: 5
 ---
 
-The deck endpoints allow clients to build, share, and modify decks using a compact encoded string — the **short form**. For full request/response schemas, see [API reference](https://eggsleggs.github.io/Riftseer/api-reference/#tag/decks).
+Decks are stored rows, not encoded strings. A deck has an owner, a format, a
+visibility, zones of cards, a collaborator roster and a revision history. The
+plain-text interchange format replaces the old short form: it can be pasted into
+a forum post, diffed, and typed by hand.
+
+For full request/response schemas, see
+[API reference](https://eggsleggs.github.io/Riftseer/api-reference/#tag/decks).
 
 ---
 
-## The short form
+## Model
 
-A short form is a base64url-encoded binary string that represents the full state of a deck. It is the primary identifier — there is no separate deck ID or database row. Decks are entirely stateless: the short form *is* the deck.
+Counting is by **oracle**, display is by **printing**. A `deck_cards` row names
+both: the printing supplies art and the printing rung of legality, while every
+construction rule (copy limits, domain matching, zone eligibility) reads oracle
+fields. Three copies of one card split across two arts are three copies against
+the limit and two rows in the list.
 
-Encoding and decoding is handled by `DeckSerializerV1` in `packages/core/src/serialiser.ts`. The format uses a compact binary layout with XOR obfuscation. Clients treat it as an opaque string.
+| Zone | Notes |
+| --- | --- |
+| `legend` | Exactly one card |
+| `main` | The deck proper |
+| `sideboard` | |
+| `runes` | |
+| `battlefields` | |
+| `considering` | Ours, not a game zone; counts toward nothing |
+
+The chosen champion is a **flag on a `main` row**, not a zone: you may run three
+copies and nominate one of them.
+
+Tokens are **derived**, never stored membership. A deck's tokens are whatever
+its oracles' `makes_token` relationships point at, so a client cannot add or
+remove one. `deck_token_printings` only records which art the deck shows for a
+token it already makes.
+
+Validation is advisory and computed on read, by the shared `validateDeck` in
+`@riftseer/types/deck-validate`: a deck saved under one set of format rules must
+stay loadable after those rules change. `GET /decks/:id` returns the violations
+alongside the cards.
+
+Readable decks accept **comments** from any signed-in user. Threading is
+`parent_id` with a stored depth (capped at 7 — deeper replies flatten), read
+back as one flat list of up to 500 rows that the client arranges. Deleting is
+always a soft tombstone — the row stays so replies keep their place — by the
+comment's author or the deck's owner, and that is the entire moderation model.
+Each row carries `can_delete` for the caller, so clients never re-derive it.
+Any signed-in reader can **like** a comment (`POST`/`DELETE
+`/decks/:id/comments/:commentId/like`). Counts are computed on read and ride
+every comment as `like_count`; an authenticated caller also gets `is_liked`.
+
+**Folders** are a user's private organisation of decks, under `/deck-folders`
+(a `/decks/folders` path would be swallowed by `/decks/:id`). v1 is flat,
+unordered and private. Any deck the owner can read may be filed — an item is a
+bookmark, not a claim — and folder contents are pruned on read to what is
+still readable. Deleting a folder never touches its decks.
+
+Deck pages report a **view count** (`view_count` on every deck payload). The
+page fires `POST /decks/:id/views` once per visit; the API deduplicates per
+viewer for six hours — by user id when signed in, otherwise by a digest of
+address, client and UTC day that is never stored outside the expiring dedup
+key — and an owner viewing their own deck never counts. Counting a view does
+not touch `updated_at`, so browsing never reorders "recently updated".
+
+Any deck you can read can be **favorited**. Counts are computed on read and
+ride every deck payload as `favorite_count`; an authenticated caller also gets
+`is_favorited`. `GET /decks?filter=favorites` lists the caller's favorites,
+pruned to decks they can still read.
+
+Cards can carry **manual tags** — free-text labels (at most 20 per card, 40
+characters each), stored per `(deck, oracle)` so a zone move or an art swap
+never drops them and both rows of a two-art card share one list. Tags are
+annotation, not deck content: they are not revisioned, they do not enter the
+text interchange format, and `PUT /decks/:id/card-tags` replaces a card's list
+wholesale. Every card row on the deck payload carries its `tags` (empty when
+none).
+
+Each card and token row carries an optional `image` object of derived art URLs
+(`small`, `normal`, `large`, `original` — WebP variants for hosted art, only
+`original` when we merely know an upstream source, absent when no art exists).
+It is derived at read time and never stored, so a rehosted image changes the
+URLs without a deck write. Clients rendering a whole deck as a grid should read
+it rather than fetching card detail per row.
+
+---
+
+## Visibility and roles
+
+Visibility and role are orthogonal.
+
+| Visibility | Who can read |
+| --- | --- |
+| `public` | Anyone, and it appears in the owner's public list |
+| `unlisted` | Anyone holding the id — never listed for another user |
+| `private` | The owner and collaborators |
+
+| Role | Capability |
+| --- | --- |
+| owner | Everything, and the only role that may delete the deck, manage collaborators, or change `visibility` |
+| editor | Card mutations and metadata patches, but not `visibility` — being invited to help build is not consent to be published |
+| viewer | Read only |
+
+The Worker holds a service-role key and bypasses RLS, so the route code in
+`src/routes/decks.ts` is the real authorisation boundary; the database policies
+are defence in depth against a leaked anon key.
+
+A deck the caller may not read returns **404, not 403** — a 403 would confirm the
+deck exists.
 
 ---
 
@@ -20,74 +118,105 @@ Encoding and decoding is handled by `DeckSerializerV1` in `packages/core/src/ser
 
 | Method | Path | Description |
 | --- | --- | --- |
-| `POST` | `/api/v1/decks/u` | Create a new deck, get back a short form |
-| `GET` | `/api/v1/decks/u/:shortForm` | Decode a short form to full deck data |
-| `POST` | `/api/v1/decks/u/:shortForm` | Add or remove cards from an existing short form |
+| `GET` | `/api/v1/decks` | Your decks, or a user's by `?handle` |
+| `POST` | `/api/v1/decks` | Create a deck |
+| `GET` | `/api/v1/decks/:id` | Cards, derived tokens and violations |
+| `PATCH` | `/api/v1/decks/:id` | Name, description, primer, format, visibility |
+| `DELETE` | `/api/v1/decks/:id` | Owner only |
+| `PUT` | `/api/v1/decks/:id/cards` | Batch zone mutation |
+| `PUT` | `/api/v1/decks/:id/card-tags` | Replace one card's manual tags |
+| `POST` | `/api/v1/decks/:id/favorite` | Favorite (idempotent) |
+| `DELETE` | `/api/v1/decks/:id/favorite` | Unfavorite (idempotent) |
+| `POST` | `/api/v1/decks/:id/views` | Count a view (deduplicated) |
+| `GET` | `/api/v1/decks/:id/comments` | List comments (flat; client builds the tree) |
+| `POST` | `/api/v1/decks/:id/comments` | Comment or reply |
+| `DELETE` | `/api/v1/decks/:id/comments/:commentId` | Tombstone a comment (author or deck owner) |
+| `GET` | `/api/v1/deck-folders` | Your folders (`?deck=` adds membership) |
+| `POST` | `/api/v1/deck-folders` | Create a folder |
+| `GET` | `/api/v1/deck-folders/:id` | One folder and its readable decks |
+| `PATCH` | `/api/v1/deck-folders/:id` | Rename a folder |
+| `DELETE` | `/api/v1/deck-folders/:id` | Delete a folder (decks untouched) |
+| `PUT` | `/api/v1/deck-folders/:id/decks/:deckId` | File a deck (idempotent) |
+| `DELETE` | `/api/v1/deck-folders/:id/decks/:deckId` | Unfile a deck (idempotent) |
+| `GET` | `/api/v1/decks/:id/revisions` | Edit history; `?limit=` 1–50, default 50 |
+| `POST` | `/api/v1/decks/:id/invite` | Create or regenerate the invite link |
+| `DELETE` | `/api/v1/decks/:id/invite` | Disable the invite link |
+| `POST` | `/api/v1/decks/join/:code` | Redeem an invite link |
+| `POST` | `/api/v1/decks/:id/collaborators` | Invite by handle (owner only) |
+| `DELETE` | `/api/v1/decks/:id/collaborators?handle=` | Remove (owner only) |
+| `POST` | `/api/v1/decks/import` | Import Moxfield-style text |
+| `GET` | `/api/v1/decks/:id/export` | Export Moxfield-style text |
+
+Reads take optional auth — who is asking changes the answer, but anonymous is
+allowed. Every write requires a bearer token.
 
 ---
 
-## Deck structure
+## PUT /api/v1/decks/:id/cards
 
-A decoded deck has the following slots:
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `legend` | string \| null | Card ID of the legend |
-| `chosenChampionId` | string \| null | Card ID of the chosen champion |
-| `mainDeck` | string[] | `id:qty` entries, max 40 cards |
-| `sideboard` | string[] | `id:qty` entries |
-| `runes` | string[] | `id:qty` entries |
-| `battlegrounds` | string[] | Card IDs (no quantity) |
-
-Card entries in `mainDeck`, `sideboard`, and `runes` use the format `<uuid>:<quantity>`, e.g. `123e4567-e89b-12d3-a456-426614174000:2`.
-
----
-
-## POST /api/v1/decks/u — Create
-
-Create a new deck from a list of card IDs and quantities.
+One call carries a whole batch, because the builder edits in bursts and the
+history should record intent rather than keystrokes.
 
 ```json
-POST /api/v1/decks/u
+PUT /api/v1/decks/<id>/cards
 {
-  "cardsToAdd": [
-    "123e4567-e89b-12d3-a456-426614174000:1",
-    "987fbc97-4bed-5078-9f07-9141ba07c9f3:3"
+  "changes": [
+    { "zone": "legend", "printing_id": "67f4…dd7", "oracle_id": "…", "quantity": 1 },
+    { "zone": "main", "printing_id": "67f4…abc", "oracle_id": "…", "quantity": 3, "is_champion": true },
+    { "zone": "main", "printing_id": "67f4…def", "quantity": 0 }
   ]
 }
 ```
 
-The API resolves each ID, determines the card's role (legend, rune, battleground, main deck) from its `classification`, and builds the deck accordingly. Returns the full deck object and the short form string.
+`quantity: 0` removes the row, and a removal need not restate `oracle_id`. The
+whole batch is applied by the `deck_apply_card_changes` RPC in one transaction:
+revision creation, the five-minute coalescing window and the champion hand-off
+all have to be atomic.
 
-`cardsToRemove` is not valid on a new deck — it will return 400.
-
----
-
-## GET /api/v1/decks/u/:shortForm — Decode
-
-Decode a short form string back into a full deck object.
-
-```http
-GET /api/v1/decks/u/abc123XYZ...
-```
-
-Returns the same `{ deck, shortForm }` shape. Returns 404 if the short form is structurally valid but references unknown cards, and 400 if the string is malformed.
+The response is the re-read view — `revision_id`, `cards`, `tokens`,
+`violations` — so the builder never has to guess at the new state.
+`revision_id` is `null` when a burst nets to no change at all.
 
 ---
 
-## POST /api/v1/decks/u/:shortForm — Update
+## Invite links
 
-Add or remove cards from an existing deck. Pass the current short form as the path param and the changes in the body.
+`POST /decks/:id/invite` generates a fresh code and sets the role it grants.
+Redeeming through `POST /decks/join/:code` inserts a `deck_collaborators` row
+with `added_via: "link"`, which is what makes the two operations independent:
+regenerating or disabling the link never kicks anyone already in, and any
+individual collaborator stays revocable.
 
-```json
-POST /api/v1/decks/u/abc123XYZ...
-{
-  "cardsToAdd": ["new-card-uuid:2"],
-  "cardsToRemove": ["old-card-uuid:1"]
-}
+---
+
+## Text interchange
+
+Moxfield-style: zone headers, then `<qty> <name>` lines with an optional
+`(SET) COLLECTOR` suffix pinning one printing and a trailing `*CH*` marking the
+chosen champion.
+
+```text
+Legend
+1 Test Legend (OGN) 001
+
+Main
+3 Test Unit (OGN) 002 *CH*
+
+Runes
+12 Test Rune (OGN) 003
 ```
 
-At least one of `cardsToAdd` or `cardsToRemove` must be present. Returns the updated deck and a new short form — the original short form is unchanged.
+Parsing never throws. `POST /decks/import` resolves each name (and optional set
+and collector number) against the catalogue — that resolution is the API's job,
+since only it can see the catalogue — and reports the lines it could not read in
+`unresolved` rather than failing the import. A line whose card cannot sit in the
+zone its header named is routed to the zone it is eligible for, which is what
+makes a bare list with no headers import correctly.
+
+A `Champion` header is accepted on import even though a champion is not a zone.
+Other sites section the chosen champion separately; here it is a flag on a
+main-deck row, so those lines land in `main` flagged as if each carried `*CH*`.
+Export writes the flag, never the section.
 
 ---
 
@@ -97,22 +226,15 @@ At least one of `cardsToAdd` or `cardsToRemove` must be present. Returns the upd
 sequenceDiagram
     participant Client
     participant API as Decks Routes
-    participant Provider as SimplifiedDeckProviderImpl
-    participant Serializer as DeckSerializerV1
+    participant Repo as DeckDataRepository
+    participant DB as Postgres
 
-    Client->>API: POST /api/v1/decks/u { cardsToAdd }
-    API->>Provider: addCards([{id, qty}...], undefined)
-    Provider->>Provider: resolve each card ID
-    Provider->>Provider: build Deck (legend, main, runes...)
-    Provider->>Serializer: serialize(SimplifiedDeck)
-    Serializer-->>Provider: shortForm (base64url)
-    Provider-->>API: { deck, shortForm }
-    API-->>Client: 200 OK
-
-    Client->>API: GET /api/v1/decks/u/:shortForm
-    API->>Provider: getDeckFromShortForm(shortForm)
-    Provider->>Serializer: deserialize(shortForm)
-    Serializer-->>Provider: SimplifiedDeck
-    Provider-->>API: { deck, shortForm }
-    API-->>Client: 200 OK
+    Client->>API: PUT /api/v1/decks/:id/cards { changes }
+    API->>Repo: getDeck + role lookup
+    API->>Repo: callRpc(deck_apply_card_changes)
+    Repo->>DB: one transaction — rows, revision, champion hand-off
+    DB-->>Repo: { ok, revision_id }
+    API->>Repo: getDeckCards + makes_token edges + format rules
+    API->>API: validateDeck(entries, rules, legalities)
+    API-->>Client: { revision_id, cards, tokens, violations }
 ```

@@ -4,7 +4,8 @@
   "private": true,
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "wrangler dev --persist-to ../../.wrangler/shared",
+    "dev:remote": "wrangler dev --remote --port 8789",
     "deploy": "wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test": "bun test src/__tests__",
@@ -13,6 +14,7 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.1",
     "@riftseer/core": "workspace:*",
+    "@riftseer/types": "workspace:*",
     "@supabase/supabase-js": "^2.97.0",
     "elysia": "^1.4.7"
   },
@@ -20,6 +22,6 @@
     "@cloudflare/workers-types": "^4.0.0",
     "@elysiajs/swagger": "^1.3.0",
     "bun-types": "^1.2.0",
-    "wrangler": "^4"
+    "wrangler": "^4.118.0"
   }
 }

@@ -6,8 +6,23 @@
   "types": "index.ts",
   "exports": {
     ".": "./index.ts",
+    "./card-text": "./src/card-text.ts",
+    "./card-image": "./src/card-image.ts",
+    "./deck": "./src/deck.ts",
+    "./deck-text": "./src/deck-text.ts",
+    "./deck-validate": "./src/deck-validate.ts",
+    "./keywords": "./src/keywords.ts",
     "./icons": "./src/icons.ts",
-    "./parser": "./src/parser.ts"
+    "./oracle": "./src/oracle.ts",
+    "./parser": "./src/parser.ts",
+    "./admin-actions": "./src/admin-actions.ts",
+    "./admin-printing": "./src/admin-printing.ts",
+    "./reconciliation": "./src/reconciliation.ts",
+    "./slug": "./src/slug.ts",
+    "./social-links": "./src/social-links.ts"
+  },
+  "scripts": {
+    "test": "bun test src/__tests__"
   },
   "devDependencies": {
     "bun-types": "^1.2.0"

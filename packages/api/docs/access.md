@@ -8,7 +8,7 @@ sidebar_position: 7
 
 The Riftseer API is public. CORS headers are set for **any** request that includes an `Origin` header, so client-side JavaScript on any domain can call the API directly without a proxy.
 
-Allowed methods: `GET`, `HEAD`, `POST`, `OPTIONS`.
+Allowed methods: `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
 
 ### Using the API from client-side JavaScript
 
@@ -25,7 +25,7 @@ If your site uses a CSP, add the following directives:
 
 ```text
 connect-src https://api.riftseer.com;
-img-src https://*.riftcodex.com;
+img-src https://img.riftseer.com https://*.riftcodex.com https://tcgplayer-cdn.tcgplayer.com;
 ```
 
 ---
@@ -40,7 +40,9 @@ Please be a good citizen: avoid hammering the endpoint in tight loops and cache 
 
 ## Images
 
-Card images are served directly from the source CDN (RiftCodex). The Riftseer API does not proxy or re-host images.
+Card images are re-hosted in the `riftseer-cards` Cloudflare R2 bucket and
+served through `https://img.riftseer.com`. RiftCodex and TCGPlayer remain image
+sources, but stable completed media URLs point at the Riftseer domain.
 
 ### Available sizes
 
@@ -48,12 +50,14 @@ The `media.media_urls` object on a card may contain the following keys:
 
 | Key | Notes |
 | --- | --- |
-| `normal` | Standard display size — the only size currently populated from the data source |
-| `small` | Coming soon |
-| `large` | Coming soon |
-| `png` | Coming soon |
+| `small` | WebP, approximately 200 px wide |
+| `normal` | WebP, approximately 400 px wide |
+| `large` | WebP, up to approximately 1000 px wide |
+| `original` | Original source bytes |
+| `png` | Legacy upstream fallback when hosted media is unavailable |
 
-Currently only `normal` is populated. We plan to host card imagery directly in multiple sizes in the future — when that ships, `small`, `large`, and `png` will be filled in without any API changes. Check for `null` / `undefined` before using any image URL — not all cards have images.
+Check for `null` / `undefined` before using any image URL because a card may
+have no source or may still be waiting for asynchronous variant generation.
 
 ```typescript
 const imageUrl = card.media?.media_urls?.normal ?? null;

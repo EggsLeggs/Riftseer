@@ -2,9 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [1.0.1] - 2026-08-01
+
+### Fixed
+
+- Updated card search, random cards, details, and recent history for the oracle/printing API so rules and physical printing details display together correctly.
+
+## [1.0.0] - 2026-05-10
 
 ### Added
+
 - Initial Raycast extension release
 - Search Cards command with fuzzy matching
 - Random Card command
@@ -15,20 +22,15 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
-### Fixed
-
-### Deprecated
-
-### Removed
-
-### Security
+- Search Cards now sends queries via the API `q` parameter and supports the same advanced syntax as web search (`t:`, `a:`, `r:`, negation, `or`, and `!exact`).
 
 ---
 
 ## Format Notes
 
 When adding entries to this changelog:
-- Use date format `{PR_MERGE_DATE}` for section headers or entries
+
+- Use version headers in this exact format: `## [x.y.z] - YYYY-MM-DD` (for example: `## [1.0.0] - 2026-05-10`)
 - Group changes under: Added, Changed, Fixed, Deprecated, Removed, Security
 - Keep entries concise and user-focused
 - Link to related PRs or issues where relevant

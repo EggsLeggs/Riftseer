@@ -22,7 +22,8 @@ Because it has no runtime dependencies it can be imported in any environment —
 
 | Module | File | Purpose |
 | --- | --- | --- |
-| Card types | `src/card.ts` | `Card`, all sub-interfaces, `CardRequest`, `ResolvedCard`, `CardSearchOptions`, `SimplifiedDeck` |
+| Card types | `src/card.ts` | `Card`, all sub-interfaces, `CardRequest`, `ResolvedCard`, `CardSearchOptions` |
+| Deck model | `src/deck.ts`, `src/deck-validate.ts`, `src/deck-text.ts` | Zone vocabulary, `zoneForCard()`, `validateDeck()`, text import/export |
 | Parser | `src/parser.ts` | `parseCardRequests()` and `normalizeCardName()` |
 | Icons | `src/icons.ts` | `TOKEN_REGEX` and `TOKEN_ICON_MAP` |
 
@@ -32,7 +33,7 @@ Because it has no runtime dependencies it can be imported in any environment —
 
 ```typescript
 // Default export — everything in one import
-import type { Card, CardRequest, ResolvedCard, SimplifiedDeck } from "@riftseer/types";
+import type { Card, CardRequest, ResolvedCard } from "@riftseer/types";
 import { parseCardRequests, normalizeCardName } from "@riftseer/types";
 
 // Sub-path exports (tree-shakeable)

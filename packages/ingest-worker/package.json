@@ -4,17 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev --config wrangler.toml --port 8788",
-    "deploy": "wrangler deploy --config wrangler.toml",
+    "dev": "wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
+    "deploy": "wrangler deploy --config wrangler.jsonc",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260219.0",
+    "@cloudflare/workers-types": "^5.20260729.1",
     "@riftseer/types": "workspace:*",
     "typescript": "~5.8.0",
-    "wrangler": "^4"
+    "wrangler": "^4.118.0"
   }
 }

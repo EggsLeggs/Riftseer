@@ -14,14 +14,28 @@
  * Optional: RIFTCODEX_API_KEY, RIFTCODEX_BASE_URL, UPSTREAM_TIMEOUT_MS
  */
 
-import type { Env } from "./ingest.ts";
+import type { Env } from "./env.ts";
+import type { CardImageQueueJob } from "./images/types.ts";
+import { processCardImageQueue } from "./images/processor.ts";
 import { runIngest } from "./ingest.ts";
 
 export type { Env };
 
+async function secretsMatch(
+  provided: string,
+  expected: string,
+): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const [providedHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(provided)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  return crypto.subtle.timingSafeEqual(providedHash, expectedHash);
+}
+
 export default {
   async scheduled(
-    _event: ScheduledEvent,
+    _event: ScheduledController,
     env: Env,
     ctx: ExecutionContext,
   ): Promise<void> {
@@ -40,10 +54,24 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<Response> {
     if (request.method === "GET" && new URL(request.url).pathname === "/") {
+      // `target` is the host this worker would write to, reported before
+      // anyone can trigger a run. An ingest prunes and rewrites the whole
+      // catalogue, so "am I pointed at production or at my local stack?" needs
+      // an answer that does not involve reading a gitignored file or trusting
+      // wrangler's variable precedence. Host only — never the service key.
+      let target = "unset";
+      try {
+        target = new URL(env.SUPABASE_URL).host;
+      } catch {
+        /* leave "unset": a malformed URL is as good as none for this purpose */
+      }
+
       return new Response(
         JSON.stringify({
           worker: "riftseer-ingest",
           cron: "0 */6 * * *",
+          target,
+          local: target.startsWith("localhost") || target.startsWith("127.0.0.1"),
           hint: "Trigger scheduled run locally: GET /cdn-cgi/mf/scheduled",
         }),
         { headers: { "Content-Type": "application/json" } },
@@ -56,7 +84,10 @@ export default {
     ) {
       if (env.INGEST_SECRET) {
         const auth = request.headers.get("Authorization");
-        if (!auth || auth !== `Bearer ${env.INGEST_SECRET}`) {
+        if (
+          !auth ||
+          !(await secretsMatch(auth, `Bearer ${env.INGEST_SECRET}`))
+        ) {
           return new Response("Unauthorized", { status: 401 });
         }
       }
@@ -64,8 +95,12 @@ export default {
       return new Response(
         JSON.stringify({
           ok: result.ok,
-          cardsCount: result.cardsCount,
+          oraclesCount: result.oraclesCount,
+          printingsCount: result.printingsCount,
           setsCount: result.setsCount,
+          imageJobsCount: result.imageJobsCount,
+          divergenceCount: result.divergenceCount,
+          reviewEntriesCount: result.reviewEntriesCount,
           elapsedMs: result.elapsedMs,
           ...(result.error && { error: result.error }),
         }),
@@ -78,4 +113,12 @@ export default {
 
     return new Response("Not Found", { status: 404 });
   },
-};
+
+  async queue(
+    batch: MessageBatch<CardImageQueueJob>,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    await processCardImageQueue(batch, env);
+  },
+} satisfies ExportedHandler<Env, CardImageQueueJob>;

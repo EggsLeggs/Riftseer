@@ -69,7 +69,7 @@ post.authorId           // string ID — NOT the username
 - Do NOT remove this override
 
 ## Privacy
-If the bot begins storing new KV keys or logging additional fields (user IDs, subreddit names, card text, etc.), update `packages/frontend/src/components/PrivacyPage.tsx` to reflect what is collected, why, and for how long.
+If the bot begins storing new KV keys or logging additional fields (user IDs, subreddit names, card text, etc.), update `packages/web/src/views/privacy-view.tsx` to reflect what is collected, why, and for how long.
 
 Current bot data footprint:
 - **KV store**: Only replied comment/post IDs (deduplication)

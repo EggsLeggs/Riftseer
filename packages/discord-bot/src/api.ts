@@ -53,14 +53,8 @@ export function createClient(env: Env) {
 
 export type ApiClient = ReturnType<typeof createClient>;
 
-type RandomCardData = Awaited<
-  ReturnType<ApiClient["api"]["v1"]["cards"]["random"]["get"]>
+type SetsData = Awaited<
+  ReturnType<ApiClient["api"]["v1"]["sets"]["get"]>
 >["data"];
-type ResolveData = Awaited<
-  ReturnType<ApiClient["api"]["v1"]["cards"]["resolve"]["post"]>
->["data"];
-type SetsData = Awaited<ReturnType<ApiClient["api"]["v1"]["sets"]["get"]>>["data"];
 
-export type Card = NonNullable<RandomCardData>;
-export type ResolvedCard = NonNullable<ResolveData>["results"][number];
 export type CardSet = NonNullable<SetsData>["sets"][number];

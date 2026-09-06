@@ -6,7 +6,6 @@
     "README.md",
     "docs/doc-pages/**/*.md",
     "docs/README.md",
-    "docs/CLAUDE.md",
     "packages/*/docs/**/*.md",
     "supabase/docs/**/*.md"
   ],

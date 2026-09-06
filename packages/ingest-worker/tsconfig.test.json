@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types", "bun"]
+  },
+  // The generated binding declarations are ambient — tests reach `Env` through
+  // them, so they must be in the program even though no test imports them.
+  "include": ["src/**/__tests__/**/*", "src/worker-configuration.d.ts"],
+  "exclude": []
+}
