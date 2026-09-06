@@ -129,6 +129,20 @@ bun run preview:web                         # builds and runs in workerd
 - Rules an agent can break go in the nearest AGENTS.md. Reference it reads once goes in `docs/`. Neither, and it is probably not worth writing.
 - A merged PR is the implementation record. Close or update its tracking item when the work lands; do not preserve a second checklist in the repository.
 
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `EggsLeggs/Riftseer`, driven by the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context: a root `CONTEXT-MAP.md` pointing at one `CONTEXT.md` per package. See `docs/agents/domain.md`.
+
 ## How it works
 
 **The card model.** Two levels. A field belongs to exactly one of them.
