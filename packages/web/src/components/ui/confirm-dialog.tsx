@@ -26,7 +26,7 @@ interface Props {
   onConfirm: (reason: string) => void;
 }
 
-/** Confirmation step for the irreversible admin actions (delete card / delete set). */
+/** Confirmation step for irreversible actions (delete a deck, card or set). */
 export function ConfirmDialog({
   open,
   onOpenChange,

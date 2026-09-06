@@ -20,7 +20,7 @@ function zoneLabel(zone: string): string {
 function RevisionEntry({ revision }: { revision: DeckRevision }) {
   const when = new Date(revision.created_at);
   return (
-    <li className="border-border border-b py-2 last:border-b-0">
+    <li className="border-border break-inside-avoid border-b py-2 last:border-b-0">
       <div className="text-muted-foreground flex items-baseline gap-2 text-xs">
         <span className="tabular-nums">#{revision.ordinal}</span>
         <span>{revision.author?.username ?? "Unknown"}</span>
@@ -64,6 +64,8 @@ function RevisionEntry({ revision }: { revision: DeckRevision }) {
 export function DeckRevisionsPanel({
   deckId,
   isSignedIn,
+  limit,
+  wide = false,
 }: {
   deckId: string;
   /**
@@ -71,16 +73,20 @@ export function DeckRevisionsPanel({
    * answer "you are signed out" for a deck they can perfectly well read.
    */
   isSignedIn: boolean;
+  /** How many revisions to fetch; the "Recent history" strip asks for a few. */
+  limit?: number;
+  /** Two columns from `lg` up — the full-page history, not the strip. */
+  wide?: boolean;
 }) {
   const revisions = useQuery({
-    queryKey: deckQueryKeys.revisions(deckId),
+    queryKey: deckQueryKeys.revisions(deckId, limit),
     queryFn: async () => {
       if (!isSignedIn) {
-        const page = await decksApi.listRevisions(deckId);
+        const page = await decksApi.listRevisions(deckId, limit);
         if (!page) throw new Error("This deck's history is not available.");
         return page;
       }
-      const result = await listDeckRevisionsAction(deckId);
+      const result = await listDeckRevisionsAction(deckId, limit);
       if (!result.ok) throw new Error(result.error);
       return result.data;
     },
@@ -102,7 +108,9 @@ export function DeckRevisionsPanel({
     return <p className="text-muted-foreground text-sm">No edits recorded yet.</p>;
   }
   return (
-    <ul>
+    // CSS columns rather than a grid: entries vary wildly in height, and the
+    // reading order of a changelog survives down-then-across.
+    <ul className={wide ? "lg:columns-2 lg:gap-x-10" : undefined}>
       {revisions.data.items.map((revision) => (
         <RevisionEntry key={revision.id} revision={revision} />
       ))}

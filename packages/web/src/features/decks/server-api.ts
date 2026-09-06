@@ -17,6 +17,11 @@ import type {
   DeckPatch,
   DeckResult,
   DeckRevisionsPage,
+  DeckFolder,
+  DeckFolderContents,
+  DeckFolderListPage,
+  DeckComment,
+  DeckCommentsPage,
 } from "./types";
 
 /**
@@ -33,7 +38,8 @@ import type {
  */
 
 const API_BASE = env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "");
-const DECKS_BASE = `${API_BASE}/api/v1/decks`;
+const V1_BASE = `${API_BASE}/api/v1`;
+const DECKS_BASE = `${V1_BASE}/decks`;
 
 /** Deck writes are small; a bounded timeout keeps a hung API from wedging a form. */
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -43,6 +49,8 @@ interface RequestOptions {
   path: string;
   accessToken: string;
   body?: unknown;
+  /** Resolve `path` against `/api/v1` rather than `/api/v1/decks` (folders). */
+  root?: boolean;
 }
 
 async function request<T>({
@@ -50,10 +58,11 @@ async function request<T>({
   path,
   accessToken,
   body,
+  root = false,
 }: RequestOptions): Promise<DeckResult<T>> {
   let res: Response;
   try {
-    res = await fetch(`${DECKS_BASE}${path}`, {
+    res = await fetch(`${root ? V1_BASE : DECKS_BASE}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -119,6 +128,11 @@ export const decksServerApi = {
     return request({ method: "GET", path: "", accessToken });
   },
 
+  /** The caller's favorites, pruned server-side to what they can still read. */
+  listFavorites(accessToken: string): Promise<DeckResult<DeckListPage>> {
+    return request({ method: "GET", path: "?filter=favorites", accessToken });
+  },
+
   /**
    * One user's decks as the caller can see them — their own private decks when
    * it is their handle, only the public ones otherwise.
@@ -142,10 +156,14 @@ export const decksServerApi = {
   listRevisions(
     accessToken: string,
     deckId: string,
+    limit?: number,
   ): Promise<DeckResult<DeckRevisionsPage>> {
     return request({
       method: "GET",
-      path: deckPath(deckId, "/revisions"),
+      path: deckPath(
+        deckId,
+        limit != null ? `/revisions?limit=${encodeURIComponent(limit)}` : "/revisions",
+      ),
       accessToken,
     });
   },
@@ -203,6 +221,156 @@ export const decksServerApi = {
       path: deckPath(deckId, "/cards"),
       accessToken,
       body: { changes },
+    });
+  },
+
+  listFolders(
+    accessToken: string,
+    deckId?: string,
+  ): Promise<DeckResult<DeckFolderListPage>> {
+    return request({
+      method: "GET",
+      path: deckId ? `/deck-folders?deck=${encodeURIComponent(deckId)}` : "/deck-folders",
+      root: true,
+      accessToken,
+    });
+  },
+
+  getFolder(
+    accessToken: string,
+    folderId: string,
+  ): Promise<DeckResult<DeckFolderContents>> {
+    return request({
+      method: "GET",
+      path: `/deck-folders/${encodeURIComponent(folderId)}`,
+      accessToken,
+      root: true,
+    });
+  },
+
+  createFolder(accessToken: string, name: string): Promise<DeckResult<DeckFolder>> {
+    return request({
+      method: "POST",
+      path: "/deck-folders",
+      accessToken,
+      root: true,
+      body: { name },
+    });
+  },
+
+  renameFolder(
+    accessToken: string,
+    folderId: string,
+    name: string,
+  ): Promise<DeckResult<DeckFolder>> {
+    return request({
+      method: "PATCH",
+      path: `/deck-folders/${encodeURIComponent(folderId)}`,
+      accessToken,
+      root: true,
+      body: { name },
+    });
+  },
+
+  deleteFolder(
+    accessToken: string,
+    folderId: string,
+  ): Promise<DeckResult<{ message: string }>> {
+    return request({
+      method: "DELETE",
+      path: `/deck-folders/${encodeURIComponent(folderId)}`,
+      accessToken,
+      root: true,
+    });
+  },
+
+  setFolderMembership(
+    accessToken: string,
+    folderId: string,
+    deckId: string,
+    filed: boolean,
+  ): Promise<DeckResult<{ message: string }>> {
+    return request({
+      method: filed ? "PUT" : "DELETE",
+      path: `/deck-folders/${encodeURIComponent(folderId)}/decks/${encodeURIComponent(deckId)}`,
+      root: true,
+      accessToken,
+    });
+  },
+
+  postComment(
+    accessToken: string,
+    deckId: string,
+    body: string,
+    parentId?: string,
+  ): Promise<DeckResult<DeckComment>> {
+    return request({
+      method: "POST",
+      path: deckPath(deckId, "/comments"),
+      accessToken,
+      body: { body, ...(parentId ? { parent_id: parentId } : {}) },
+    });
+  },
+
+  deleteComment(
+    accessToken: string,
+    deckId: string,
+    commentId: string,
+  ): Promise<DeckResult<{ message: string }>> {
+    return request({
+      method: "DELETE",
+      path: deckPath(deckId, `/comments/${encodeURIComponent(commentId)}`),
+      accessToken,
+    });
+  },
+
+  listComments(
+    accessToken: string,
+    deckId: string,
+  ): Promise<DeckResult<DeckCommentsPage>> {
+    return request({
+      method: "GET",
+      path: deckPath(deckId, "/comments"),
+      accessToken,
+    });
+  },
+
+  likeComment(
+    accessToken: string,
+    deckId: string,
+    commentId: string,
+    on: boolean,
+  ): Promise<DeckResult<{ liked: boolean; like_count: number }>> {
+    return request({
+      method: on ? "POST" : "DELETE",
+      path: deckPath(deckId, `/comments/${encodeURIComponent(commentId)}/like`),
+      accessToken,
+    });
+  },
+
+  favorite(
+    accessToken: string,
+    deckId: string,
+    on: boolean,
+  ): Promise<DeckResult<{ favorited: boolean; favorite_count: number }>> {
+    return request({
+      method: on ? "POST" : "DELETE",
+      path: deckPath(deckId, "/favorite"),
+      accessToken,
+    });
+  },
+
+  setCardTags(
+    accessToken: string,
+    deckId: string,
+    oracleId: string,
+    tags: string[],
+  ): Promise<DeckResult<{ oracle_id: string; tags: string[] }>> {
+    return request({
+      method: "PUT",
+      path: deckPath(deckId, "/card-tags"),
+      accessToken,
+      body: { oracle_id: oracleId, tags },
     });
   },
 

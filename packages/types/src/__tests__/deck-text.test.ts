@@ -96,6 +96,27 @@ describe("parseDeckText", () => {
     });
   });
 
+  test("reads a Champion section as flagged main-deck cards", () => {
+    const parsed = parseDeckText(
+      [
+        "Legend:",
+        "1 Ivern, Green Father",
+        "",
+        "Champion:",
+        "1 Azir, Sovereign",
+        "",
+        "MainDeck:",
+        "3 Defy",
+      ].join("\n"),
+    );
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.cards).toEqual([
+      { line: 2, zone: "legend", quantity: 1, name: "Ivern, Green Father" },
+      { line: 5, zone: "main", quantity: 1, name: "Azir, Sovereign", is_champion: true },
+      { line: 8, zone: "main", quantity: 3, name: "Defy" },
+    ]);
+  });
+
   test("reports bad lines and still returns the rest", () => {
     const parsed = parseDeckText(["Main", "3 Vayne", "not a card", "0 Poro", "2"].join("\n"));
     expect(parsed.cards.map((card) => card.name)).toEqual(["Vayne"]);

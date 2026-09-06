@@ -47,3 +47,8 @@ export const profileApi = {
     return { status: "ok", profile: (await res.json()) as ProfileData };
   },
 };
+
+export const profileQueryKeys = {
+  all: ["profile"] as const,
+  byHandle: (handle: string) => ["profile", handle] as const,
+};

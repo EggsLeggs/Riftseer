@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { saveGuestDeck, type GuestDeckSaveOutcome } from "@/features/decks/guest-deck-save";
 import { isGuestDeckEmpty, readGuestDeck, type GuestDeck } from "@/features/decks/guest-deck";
-import { deckBuilderHref, newDeckHref } from "@/features/decks/paths";
+import { deckHref, newDeckHref } from "@/features/decks/paths";
 import { DeckCreateView } from "@/views/decks/deck-create-view";
 
 /**
@@ -51,7 +51,7 @@ export function NewDeckView() {
       setOutcome(result);
       if (result.ok) {
         toast.success("Deck saved to your account");
-        router.replace(deckBuilderHref({ id: result.deckId, name: result.name }));
+        router.replace(deckHref({ id: result.deckId, name: result.name }));
       }
     },
     [router],
@@ -90,7 +90,7 @@ export function NewDeckView() {
               </Button>
               {failed.deckId && (
                 <Button variant="outline" asChild>
-                  <Link href={deckBuilderHref({ id: failed.deckId, name: failed.name })}>
+                  <Link href={deckHref({ id: failed.deckId, name: failed.name })}>
                     Open the deck
                   </Link>
                 </Button>

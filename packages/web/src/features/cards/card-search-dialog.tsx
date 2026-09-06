@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { SearchIcon } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
 import {
   Command,
   CommandDialog,
@@ -56,6 +57,11 @@ interface CardSearchDialogProps {
    * form has nowhere to send the user, so it can drop the row.
    */
   showViewAll?: boolean;
+  /**
+   * When false the palette stays open after a pick and keeps its query, so
+   * Enter-Enter-Enter is a multi-add. Escape remains the way out.
+   */
+  closeOnSelect?: boolean;
   placeholder?: string;
 }
 
@@ -68,6 +74,7 @@ export function CardSearchDialog({
   onOpenChange,
   onSelect,
   showViewAll = true,
+  closeOnSelect = true,
   placeholder = "Search cards…",
 }: CardSearchDialogProps) {
   const router = useRouter();
@@ -107,14 +114,14 @@ export function CardSearchDialog({
 
   const chooseCard = React.useCallback(
     (result: CardResult) => {
-      onOpenChange(false);
+      if (closeOnSelect) onOpenChange(false);
       if (onSelect) {
         onSelect(result);
         return;
       }
       router.push(cardHref(result.printing));
     },
-    [onOpenChange, onSelect, router],
+    [closeOnSelect, onOpenChange, onSelect, router],
   );
 
   const goToSearchPage = React.useCallback(() => {
@@ -138,12 +145,17 @@ export function CardSearchDialog({
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
             hasNavigated.current = true;
           }
+          // Plain Enter is the full-search shortcut only when a pick would
+          // navigate anyway. With an `onSelect` — the deck's adder — Enter
+          // must pick the highlighted card; the view-all row stays reachable
+          // by arrowing onto it.
           if (
             e.key === "Enter" &&
             !e.nativeEvent.isComposing &&
             !hasNavigated.current &&
             trimmed &&
-            showViewAll
+            showViewAll &&
+            !onSelect
           ) {
             e.preventDefault();
             goToSearchPage();
@@ -226,13 +238,13 @@ export function CardSearchDialog({
                         </span>
                       )}
                     </div>
-                    <kbd
+                    <Kbd
                       aria-hidden="true"
                       data-slot="command-shortcut"
-                      className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground opacity-0 group-data-[selected=true]/command-item:opacity-100"
+                      className="text-muted-foreground opacity-0 group-data-[selected=true]/command-item:opacity-100"
                     >
                       ↵
-                    </kbd>
+                    </Kbd>
                   </CommandItem>
                 );
               })}
@@ -249,13 +261,13 @@ export function CardSearchDialog({
                 >
                   <SearchIcon className="size-4 opacity-60" />
                   <span className="flex-1">View all results for "{trimmed}"</span>
-                  <kbd
+                  <Kbd
                     aria-hidden="true"
                     data-slot="command-shortcut"
-                    className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground opacity-0 group-data-[selected=true]/command-item:opacity-100"
+                    className="text-muted-foreground opacity-0 group-data-[selected=true]/command-item:opacity-100"
                   >
                     ↵
-                  </kbd>
+                  </Kbd>
                 </CommandItem>
               </CommandGroup>
             </>
@@ -267,17 +279,17 @@ export function CardSearchDialog({
           )}
           <div className="ml-auto flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1 py-0.5 font-mono text-[10px] font-medium">↑</kbd>
-              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1 py-0.5 font-mono text-[10px] font-medium">↓</kbd>
+              <Kbd className="px-1">↑</Kbd>
+              <Kbd className="px-1">↓</Kbd>
               Navigate
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium">↵</kbd>
-              Open
+              <Kbd>↵</Kbd>
+              {closeOnSelect ? "Open" : "Add"}
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="inline-flex items-center rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium">Esc</kbd>
-              Close
+              <Kbd>Esc</Kbd>
+              {closeOnSelect ? "Close" : "Done"}
             </span>
           </div>
         </div>

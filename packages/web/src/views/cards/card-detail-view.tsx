@@ -7,7 +7,6 @@ import type { OracleDetail } from "@riftseer/types";
 import { printingImageDownloadUrl, printingImageUrl } from "@riftseer/types";
 import {
   DownloadIcon,
-  ExternalLinkIcon,
   FlagIcon,
   LayoutList,
   PencilLine,
@@ -28,6 +27,7 @@ import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cardExportUrls } from "@/features/cards/api";
 import { CardArt } from "@/features/cards/card-art";
+import { CardBuyLinks } from "@/features/cards/card-buy-links";
 import {
   CardTypeLine,
   DomainRunes,
@@ -47,11 +47,8 @@ import { CardText } from "@/features/cards/card-text";
 import { CopyButton } from "@/features/cards/copy-button";
 import {
   cardIsLandscapeOriented,
-  formatEur,
-  formatUsd,
   meaningfulCardDomains,
   meaningfulRulesText,
-  tcgplayerUsdPrice,
 } from "@/features/cards/format";
 import { cardHref } from "@/features/cards/paths";
 import { reportCardIssueUrl } from "@/features/cards/report-issue";
@@ -233,7 +230,7 @@ function DetailedCardBody({ detail, imageUrl, domains, rulesText }: CardBodyProp
           </TableBody>
         </Table>
       </section>
-      <aside className="space-y-6 lg:col-span-4"><RelatedTables detail={detail} /><BuyPanel detail={detail} /></aside>
+      <aside className="space-y-6 lg:col-span-4"><RelatedTables detail={detail} /><CardBuyLinks purchase={detail.purchase} printing={detail.printing} /></aside>
     </div>
   );
 }
@@ -274,7 +271,7 @@ function SimpleCardBody({ detail, imageUrl, domains, rulesText }: CardBodyProps)
           </div>
         ) : null}
       </section>
-      <aside className="space-y-6 lg:col-span-4"><RelatedTables detail={detail} /><BuyPanel detail={detail} /></aside>
+      <aside className="space-y-6 lg:col-span-4"><RelatedTables detail={detail} /><CardBuyLinks purchase={detail.purchase} printing={detail.printing} /></aside>
     </div>
   );
 }
@@ -327,31 +324,6 @@ function RelatedTables({ detail }: { detail: OracleDetail }) {
       {detail.characters.length > 0 ? <OracleReferencesTable rows={detail.characters} label="Related characters" caption={`Characters linked to ${oracle.name}`} /> : null}
       {detail.signatures.length > 0 ? <OracleReferencesTable rows={detail.signatures} label="Signature cards" caption={`Signature cards linked to ${oracle.name}`} /> : null}
     </div>
-  );
-}
-
-function BuyPanel({ detail }: { detail: OracleDetail }) {
-  const { printing } = detail;
-  const markets = [
-    { name: "TCGPlayer", logoSrc: "/icons/markets/tcgplayer.png", url: detail.purchase.tcgplayer, price: formatUsd(tcgplayerUsdPrice(printing.prices?.tcgplayer)) },
-    { name: "Cardmarket", logoSrc: "/icons/markets/cardmarket.png", url: detail.purchase.cardmarket, price: formatEur(printing.prices?.cardmarket?.normal) },
-  ].filter((market) => market.url);
-  if (markets.length === 0) return null;
-  return (
-    <section>
-      <h2 className="text-muted-foreground mb-2 text-sm font-semibold tracking-wide uppercase">Buy</h2>
-      <div className="flex flex-col gap-2">
-        {markets.map((market) => (
-          <Button key={market.name} variant="outline" size="sm" className="h-9 w-full justify-between gap-3 px-3" asChild>
-            <a href={market.url} target="_blank" rel="noreferrer nofollow">
-              <span className="inline-flex min-w-0 items-center gap-2"><img src={market.logoSrc} alt="" width={16} height={16} className="size-4 shrink-0" />{market.name}</span>
-              <span className="inline-flex shrink-0 items-center gap-2"><span className="text-muted-foreground tabular-nums">{market.price}</span><ExternalLinkIcon className="size-3.5" /></span>
-            </a>
-          </Button>
-        ))}
-      </div>
-      <p className="text-muted-foreground mt-2 text-xs">Prices are provided for reference and may be out of date. Purchases through these links may earn Riftseer a commission.</p>
-    </section>
   );
 }
 

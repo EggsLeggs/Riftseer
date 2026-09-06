@@ -4,21 +4,21 @@ import { DECK_ZONES, DECK_ZONE_LABELS, type DeckZone } from "@riftseer/types/dec
  * How a deck list is broken up for display.
  *
  * Pure and structural on purpose: the builder renders whatever this returns and
- * hard-codes no grouping of its own, so adding "by domain" or "by cost" later
+ * hard-codes no grouping of its own, so adding "by power" or "by rarity" later
  * is a change here and a new option in a select — not a second rendering path.
  *
  * Grouping is **display only**. Nothing here counts toward a format rule; deck
  * validation reads zones and oracle ids and lives in `@riftseer/types`.
  */
 
-export const DECK_GROUP_MODES = ["type", "domain", "cost"] as const;
+export const DECK_GROUP_MODES = ["type", "domain", "energy"] as const;
 
 export type DeckGroupMode = (typeof DECK_GROUP_MODES)[number];
 
 export const DECK_GROUP_MODE_LABELS: Record<DeckGroupMode, string> = {
   type: "Type",
   domain: "Domain",
-  cost: "Cost",
+  energy: "Energy",
 };
 
 /**
@@ -65,7 +65,7 @@ function typeKey(value: string | null | undefined): string {
 
 const UNTYPED_LABEL = "Other";
 const DOMAINLESS_LABEL = "Domainless";
-const NO_COST_LABEL = "No cost";
+const NO_ENERGY_LABEL = "No energy";
 
 /** Multi-domain cards get one group, not one per domain, so no copy is counted twice. */
 function domainKey(domains: string[]): string {
@@ -87,12 +87,14 @@ function bucketFor(card: GroupableCard, mode: DeckGroupMode): {
       sort: key ? 0 : 1,
     };
   }
-  if (mode === "cost") {
+  if (mode === "energy") {
     const energy = card.energy;
     if (energy === null || energy === undefined) {
-      return { key: "no-cost", label: NO_COST_LABEL, sort: Number.MAX_SAFE_INTEGER };
+      return { key: "no-energy", label: NO_ENERGY_LABEL, sort: Number.MAX_SAFE_INTEGER };
     }
-    return { key: `cost-${energy}`, label: `${energy}`, sort: energy };
+    // Named, not bare. A heading is a label beside a copy count, so an energy
+    // group labelled "4" next to a count of 6 reads as "4 6".
+    return { key: `energy-${energy}`, label: `${energy} energy`, sort: energy };
   }
   const type = typeKey(card.card_type);
   const index = TYPE_ORDER.indexOf(type);
@@ -109,7 +111,7 @@ function bucketFor(card: GroupableCard, mode: DeckGroupMode): {
 /**
  * Group one zone's cards for display, in a stable order.
  *
- * Groups sort by the mode's own order (type order, cost ascending, domain
+ * Groups sort by the mode's own order (type order, energy ascending, domain
  * alphabetically) and then by label, so two runs over the same list always
  * produce the same headings; cards inside a group sort by name.
  */
@@ -171,6 +173,24 @@ export function deckZoneSections<T extends GroupableCard>(
       count: inZone.reduce((total, card) => total + card.quantity, 0),
     };
   });
+}
+
+/**
+ * Every card in the order the builder actually shows it: zones in canonical
+ * order, each zone's groups in the grouping's own order, then the cards inside
+ * each group.
+ *
+ * The quick view's Prev and Next walk this, so they follow what the reader can
+ * see rather than the order the API happened to return — which means regrouping
+ * the list regroups the navigation with it.
+ */
+export function deckDisplayOrder<T extends GroupableCard>(
+  cards: readonly T[],
+  mode: DeckGroupMode = "type",
+): T[] {
+  return deckZoneSections(cards).flatMap((section) =>
+    groupDeckCards(section.cards, mode).flatMap((group) => group.cards),
+  );
 }
 
 /** Total copies across the given cards. Rows are not copies. */

@@ -100,7 +100,7 @@ export const CardPurchaseUrisSchema = t.Partial(
   }),
 );
 
-const PrintingImageSchema = t.Partial(
+export const PrintingImageSchema = t.Partial(
   t.Object({
     small: t.String(),
     normal: t.String(),

@@ -36,14 +36,14 @@ export function deckHref(deck: DeckLike): string {
   return tail ? `${base}/${tail}` : base;
 }
 
-/** The builder, which is the deck page in an editing state. */
-export function deckBuilderHref(deck: DeckLike): string {
-  return `${deckHref(deck)}?edit=1`;
-}
-
 /** A deck's revision history. */
 export function deckRevisionsHref(deck: DeckLike): string {
   return `${deckHref(deck)}?view=revisions`;
+}
+
+/** The deck's guide, in place of the list. */
+export function deckGuideHref(deck: DeckLike): string {
+  return `${deckHref(deck)}?view=guide`;
 }
 
 /** Where an invite link points. Redeeming it is a POST from that page. */

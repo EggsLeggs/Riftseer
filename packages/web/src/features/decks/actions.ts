@@ -22,6 +22,11 @@ import type {
   DeckPatch,
   DeckResult,
   DeckRevisionsPage,
+  DeckFolder,
+  DeckFolderContents,
+  DeckFolderListPage,
+  DeckComment,
+  DeckCommentsPage,
 } from "./types";
 
 /**
@@ -91,8 +96,9 @@ export async function getDeckAction(
 
 export async function listDeckRevisionsAction(
   deckId: string,
+  limit?: number,
 ): Promise<DeckResult<DeckRevisionsPage>> {
-  return withToken((token) => decksServerApi.listRevisions(token, deckId));
+  return withToken((token) => decksServerApi.listRevisions(token, deckId, limit));
 }
 
 export async function exportDeckAction(
@@ -139,6 +145,113 @@ export async function deleteDeckAction(
  * tokens and violations, so the builder renders from it rather than re-reading
  * the deck.
  */
+export async function setDeckFavoriteAction(
+  deckId: string,
+  favorited: boolean,
+): Promise<DeckResult<{ favorited: boolean; favorite_count: number }>> {
+  const result = await withToken((token) =>
+    decksServerApi.favorite(token, deckId, favorited),
+  );
+  if (result.ok) revalidateDeck(deckId);
+  return result;
+}
+
+export async function listFavoriteDecksAction(): Promise<DeckResult<DeckListPage>> {
+  return withToken((token) => decksServerApi.listFavorites(token));
+}
+
+export async function listDeckCommentsAction(
+  deckId: string,
+): Promise<DeckResult<DeckCommentsPage>> {
+  return withToken((token) => decksServerApi.listComments(token, deckId));
+}
+
+export async function postDeckCommentAction(
+  deckId: string,
+  body: string,
+  parentId?: string,
+): Promise<DeckResult<DeckComment>> {
+  return withToken((token) => decksServerApi.postComment(token, deckId, body, parentId));
+}
+
+export async function deleteDeckCommentAction(
+  deckId: string,
+  commentId: string,
+): Promise<DeckResult<{ message: string }>> {
+  return withToken((token) => decksServerApi.deleteComment(token, deckId, commentId));
+}
+
+export async function setDeckCommentLikeAction(
+  deckId: string,
+  commentId: string,
+  liked: boolean,
+): Promise<DeckResult<{ liked: boolean; like_count: number }>> {
+  return withToken((token) => decksServerApi.likeComment(token, deckId, commentId, liked));
+}
+
+// ─── Folders ──────────────────────────────────────────────────────────────────
+
+export async function listDeckFoldersAction(
+  deckId?: string,
+): Promise<DeckResult<DeckFolderListPage>> {
+  return withToken((token) => decksServerApi.listFolders(token, deckId));
+}
+
+export async function getDeckFolderAction(
+  folderId: string,
+): Promise<DeckResult<DeckFolderContents>> {
+  return withToken((token) => decksServerApi.getFolder(token, folderId));
+}
+
+export async function createDeckFolderAction(
+  name: string,
+): Promise<DeckResult<DeckFolder>> {
+  const result = await withToken((token) => decksServerApi.createFolder(token, name));
+  if (result.ok) revalidatePath("/decks");
+  return result;
+}
+
+export async function renameDeckFolderAction(
+  folderId: string,
+  name: string,
+): Promise<DeckResult<DeckFolder>> {
+  const result = await withToken((token) =>
+    decksServerApi.renameFolder(token, folderId, name),
+  );
+  if (result.ok) revalidatePath("/decks");
+  return result;
+}
+
+export async function deleteDeckFolderAction(
+  folderId: string,
+): Promise<DeckResult<{ message: string }>> {
+  const result = await withToken((token) => decksServerApi.deleteFolder(token, folderId));
+  if (result.ok) revalidatePath("/decks");
+  return result;
+}
+
+export async function setDeckFolderMembershipAction(
+  folderId: string,
+  deckId: string,
+  filed: boolean,
+): Promise<DeckResult<{ message: string }>> {
+  return withToken((token) =>
+    decksServerApi.setFolderMembership(token, folderId, deckId, filed),
+  );
+}
+
+export async function setDeckCardTagsAction(
+  deckId: string,
+  oracleId: string,
+  tags: string[],
+): Promise<DeckResult<{ oracle_id: string; tags: string[] }>> {
+  const result = await withToken((token) =>
+    decksServerApi.setCardTags(token, deckId, oracleId, tags),
+  );
+  if (result.ok) revalidateDeck(deckId);
+  return result;
+}
+
 export async function applyDeckCardChangesAction(
   deckId: string,
   changes: DeckCardChange[],

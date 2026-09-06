@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { AdminPageHeader } from "./admin-page-header";
 import { AdminListState, AdminPager } from "./admin-list";
 import { CheckboxField, SelectField, TextAreaField, TextField } from "./admin-form-field";
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const PAGE_SIZE = 25;
 /** Long enough that typing a rule does not fire a request per keystroke. */

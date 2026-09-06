@@ -19,6 +19,7 @@ import type {
   DeckExport,
   DeckListPage,
   DeckRevisionsPage,
+  DeckCommentsPage,
 } from "./types";
 
 export { CardApiError } from "@/lib/api/errors";
@@ -45,12 +46,33 @@ export const decksApi = {
     );
   },
 
-  /** Coalesced edit bursts, newest first. */
-  async listRevisions(id: string): Promise<DeckRevisionsPage | null> {
+  /**
+   * Fire-and-forget view ping. Token-less on purpose: signed-out readers are
+   * most of a public deck's audience. A failure costs a count, nothing else.
+   */
+  async countView(id: string): Promise<void> {
+    try {
+      await decksClient.api.v1.decks({ id }).views.post(undefined, {
+        fetch: requestFetchInit(),
+      });
+    } catch {
+      /* not load-bearing */
+    }
+  },
+
+  /** Comments, flat and newest first; anonymous readers use this path. */
+  async listComments(id: string): Promise<DeckCommentsPage | null> {
+    return getJsonFromTreaty<DeckCommentsPage>(() =>
+      decksClient.api.v1.decks({ id }).comments.get({ fetch: requestFetchInit() }),
+    );
+  },
+
+  /** Coalesced edit bursts, newest first. `limit` caps how many (1–50). */
+  async listRevisions(id: string, limit?: number): Promise<DeckRevisionsPage | null> {
     return getJsonFromTreaty<DeckRevisionsPage>(() =>
       decksClient.api.v1
         .decks({ id })
-        .revisions.get({ fetch: requestFetchInit() }),
+        .revisions.get({ query: limit != null ? { limit } : {}, fetch: requestFetchInit() }),
     );
   },
 
@@ -70,8 +92,13 @@ export const decksApi = {
 export const deckQueryKeys = {
   all: ["decks"] as const,
   mine: () => ["decks", "mine"] as const,
+  favorites: () => ["decks", "favorites"] as const,
+  folders: (deckId?: string) => ["decks", "folders", deckId ?? null] as const,
+  folder: (folderId: string) => ["decks", "folder", folderId] as const,
+  comments: (id: string) => ["decks", "comments", id] as const,
   byHandle: (handle: string) => ["decks", "handle", handle] as const,
   detail: (id: string) => ["decks", "detail", id] as const,
-  revisions: (id: string) => ["decks", "revisions", id] as const,
+  revisions: (id: string, limit?: number) =>
+    ["decks", "revisions", id, limit ?? null] as const,
   export: (id: string) => ["decks", "export", id] as const,
 };

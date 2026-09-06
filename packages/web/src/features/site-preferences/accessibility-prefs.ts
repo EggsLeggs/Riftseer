@@ -7,6 +7,12 @@ export type CardDetailViewPreference = (typeof CARD_DETAIL_VIEW_OPTIONS)[number]
 export const CARD_RESULTS_VIEW_OPTIONS = ["details", "images", "table"] as const;
 export type CardResultsViewPreference = (typeof CARD_RESULTS_VIEW_OPTIONS)[number];
 
+export const DECK_LIST_VIEW_OPTIONS = ["list", "grid", "stack"] as const;
+export type DeckListViewPreference = (typeof DECK_LIST_VIEW_OPTIONS)[number];
+
+export const DECK_GROUP_MODE_OPTIONS = ["type", "domain", "energy"] as const;
+export type DeckGroupModePreference = (typeof DECK_GROUP_MODE_OPTIONS)[number];
+
 export type SiteAccessibilityPreferences = {
   /** When true, card search grid shows names under thumbnails instead of selectable overlay text on art. */
   showCardNamesBelowSearch: boolean;
@@ -19,6 +25,12 @@ export type SiteAccessibilityPreferences = {
   cardDetailView: CardDetailViewPreference;
   /** Default layout for card gallery / search / set browse grids. */
   cardResultsView: CardResultsViewPreference;
+  /** Default layout for the deck page's card list. */
+  deckListView: DeckListViewPreference;
+  /** Default grouping for the deck page's card list. */
+  deckGroupMode: DeckGroupModePreference;
+  /** Whether card tags show on deck rows. */
+  deckShowTags: boolean;
 };
 
 export const DEFAULT_SITE_ACCESSIBILITY_PREFS: SiteAccessibilityPreferences = {
@@ -26,6 +38,9 @@ export const DEFAULT_SITE_ACCESSIBILITY_PREFS: SiteAccessibilityPreferences = {
   preferTextOverSymbols: false,
   cardDetailView: "detailed",
   cardResultsView: "images",
+  deckListView: "list",
+  deckGroupMode: "type",
+  deckShowTags: true,
 };
 
 function parseDetailView(raw: unknown): CardDetailViewPreference {
@@ -48,6 +63,26 @@ function parseResultsView(raw: unknown): CardResultsViewPreference {
   return DEFAULT_SITE_ACCESSIBILITY_PREFS.cardResultsView;
 }
 
+function parseDeckListView(raw: unknown): DeckListViewPreference {
+  if (
+    typeof raw === "string" &&
+    (DECK_LIST_VIEW_OPTIONS as readonly string[]).includes(raw)
+  ) {
+    return raw as DeckListViewPreference;
+  }
+  return DEFAULT_SITE_ACCESSIBILITY_PREFS.deckListView;
+}
+
+function parseDeckGroupMode(raw: unknown): DeckGroupModePreference {
+  if (
+    typeof raw === "string" &&
+    (DECK_GROUP_MODE_OPTIONS as readonly string[]).includes(raw)
+  ) {
+    return raw as DeckGroupModePreference;
+  }
+  return DEFAULT_SITE_ACCESSIBILITY_PREFS.deckGroupMode;
+}
+
 export function parseStoredAccessibilityPrefs(
   raw: string | null,
 ): SiteAccessibilityPreferences {
@@ -65,6 +100,12 @@ export function parseStoredAccessibilityPrefs(
           : DEFAULT_SITE_ACCESSIBILITY_PREFS.preferTextOverSymbols,
       cardDetailView: parseDetailView(parsed.cardDetailView),
       cardResultsView: parseResultsView(parsed.cardResultsView),
+      deckListView: parseDeckListView(parsed.deckListView),
+      deckGroupMode: parseDeckGroupMode(parsed.deckGroupMode),
+      deckShowTags:
+        typeof parsed.deckShowTags === "boolean"
+          ? parsed.deckShowTags
+          : DEFAULT_SITE_ACCESSIBILITY_PREFS.deckShowTags,
     };
   } catch {
     return { ...DEFAULT_SITE_ACCESSIBILITY_PREFS };

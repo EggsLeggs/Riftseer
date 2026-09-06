@@ -9,7 +9,7 @@ import type { DeckSummary } from "./types";
  * without rendering anything.
  */
 
-export const DECK_LIST_OWNERSHIP = ["all", "mine", "shared"] as const;
+export const DECK_LIST_OWNERSHIP = ["all", "mine", "shared", "favorites"] as const;
 
 export type DeckListOwnership = (typeof DECK_LIST_OWNERSHIP)[number];
 
@@ -17,6 +17,7 @@ export const DECK_LIST_OWNERSHIP_LABELS: Record<DeckListOwnership, string> = {
   all: "All decks",
   mine: "My decks",
   shared: "Shared with me",
+  favorites: "Favorites",
 };
 
 export interface DeckListFilter {
@@ -46,6 +47,8 @@ export function filterDeckSummaries(
     // Ownership is the deck's `role`, not a comparison of ids: the API already
     // decided who the caller is to this deck, and a null role is a deck that is
     // merely visible.
+    // "favorites" swaps the *source list* (the API's favorites listing), so
+    // there is nothing further to filter by here.
     if (ownership === "mine" && deck.role !== "owner") return false;
     if (ownership === "shared" && (deck.role === "owner" || deck.role === null)) {
       return false;

@@ -46,7 +46,7 @@ import type {
 } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
 import { CheckboxField, SelectField } from "./admin-form-field";
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** Mirrors the API's accepted input shape; the stored code is always lowercase. */
 const CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;

@@ -20,7 +20,7 @@ Nine route files, all mounted in `src/index.ts`. Check this list before adding a
 
 - `src/routes/cards.ts` — oracle search and detail, printing lookup, batch resolve. `/cards` is oracle-shaped; `unique=prints` is the explicit printing mode.
 - `src/routes/admin.ts` — oracle, printing, delta, relationship, legality, ruling, set, **format** and reconciliation mutations.
-- `src/routes/decks.ts` — decks, zones, collaborators, revisions, invites and text import/export.
+- `src/routes/decks.ts` — decks, zones, collaborators, revisions, invites, text import/export, card tags, favorites, view counts, comments and `/deck-folders`.
 - `src/routes/auth.ts` — register, login, refresh, logout, password reset, email change, `/auth/me`.
 - `src/routes/users.ts` — public profiles, followers, following, `/users/me`, follow and unfollow.
 - `src/routes/metafy.ts` — Metafy OAuth connect, callback, status, disconnect.

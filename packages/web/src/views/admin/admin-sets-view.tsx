@@ -23,7 +23,7 @@ import { useInlineRowEdit } from "@/features/admin/hooks/use-inline-row-edit";
 import type { AdminSetPatch } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
 import { CheckboxField } from "./admin-form-field";
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface SetDraft {
   setName: string;

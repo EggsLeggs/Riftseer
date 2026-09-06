@@ -6,6 +6,7 @@ import { Star, Users, ExternalLink } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SocialIcon } from "@/components/ui/social-icon";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProfileIcon } from "@/components/profile-icon";
 import { FollowButton } from "@/features/profile/follow-button";
 import { UserDecksList } from "@/features/decks/components/user-decks-list";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
@@ -50,8 +51,6 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
     [profile.handle, router, searchParams],
   );
 
-  const initials = profile.username.slice(0, 2).toUpperCase();
-
   const activeSocials = SOCIAL_PLATFORMS.filter(
     (p) => profile.social_links[p.id]?.trim(),
   );
@@ -59,9 +58,7 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
   return (
     <div className="container py-8">
       <div className="flex items-start gap-6">
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-full bg-muted text-lg font-semibold select-none">
-          {initials}
-        </div>
+        <ProfileIcon username={profile.username} handle={profile.handle} size="lg" />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start gap-3">

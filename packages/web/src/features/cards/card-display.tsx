@@ -50,6 +50,24 @@ export {
   tcgplayerUsdPrice,
 };
 
+/**
+ * Column counts for a grid of card art, by whether the cards are landscape.
+ *
+ * Shared so a second grid of cards — the deck's token shelf — lays out at the
+ * same widths as search's gallery rather than approximating them.
+ */
+export const CARD_GRID_COLUMNS = {
+  portrait: "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6",
+  landscape: "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4",
+} as const;
+
+/**
+ * Wrapper classes for one gallery cell, so hovering scales the art and the
+ * `group-hover` inside {@link CardThumbnail} has a group to belong to.
+ */
+export const CARD_GRID_CELL_CLASS =
+  "group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
 const CARD_GRID_INVISIBLE_LABEL =
   "pointer-events-none absolute inset-x-0 top-0 z-[1000] box-border w-full pt-[6.75%] pl-[8%] text-sm tracking-normal text-transparent select-text";
 
@@ -440,9 +458,7 @@ export function CardGrid({
     <ul
       className={cn(
         "grid gap-4",
-        allLandscapeOriented
-          ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
-          : "grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6",
+        allLandscapeOriented ? CARD_GRID_COLUMNS.landscape : CARD_GRID_COLUMNS.portrait,
       )}
     >
       {cards.map((card) => (
@@ -475,7 +491,7 @@ function CardGridLink({
       href={href}
       title={card.oracle.name}
       aria-label={card.oracle.name}
-      className="group block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={CARD_GRID_CELL_CLASS}
     >
       <CardThumbnail
         card={card}
@@ -488,7 +504,15 @@ function CardGridLink({
   );
 }
 
-function CardThumbnail({
+/**
+ * One card's art in a gallery cell.
+ *
+ * `cardNamePlacement` is the accessibility preference: `below` renders a
+ * visible caption, `overlay` lays transparent selectable text over the printed
+ * name so ⌘F finds and highlights the card in place. Exported because the deck
+ * token shelf is a second gallery and must behave identically.
+ */
+export function CardThumbnail({
   card,
   isLandscape,
   naturalLandscapeLayout,

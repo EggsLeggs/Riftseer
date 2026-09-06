@@ -77,6 +77,24 @@ export type DeckRevisionChange = DeckRevision["changes"][number];
 
 export type DeckExport = Ok<DeckById["export"]["get"]>;
 
+export type DeckCommentsPage = Ok<DeckById["comments"]["get"]>;
+
+/** One comment; `deleted` rows keep their place with a null body. */
+export type DeckComment = DeckCommentsPage["items"][number];
+
+// ─── Folders ──────────────────────────────────────────────────────────────────
+
+type FolderRoutes = V1["deck-folders"];
+type FolderById = ReturnType<FolderRoutes>;
+
+export type DeckFolderListPage = Ok<FolderRoutes["get"]>;
+
+/** A folder as listed: name, count, and membership when asked about a deck. */
+export type DeckFolder = DeckFolderListPage["items"][number];
+
+/** One folder plus the still-readable decks filed in it. */
+export type DeckFolderContents = Ok<FolderById["get"]>;
+
 // ─── Writes ───────────────────────────────────────────────────────────────────
 
 export type DeckCreateInput = Body<DeckRoutes["post"]>;

@@ -7,7 +7,7 @@ import type { DeckZone as Zone } from "@riftseer/types/deck";
 
 import { cardsApi } from "@/features/cards/api";
 import { deckAddChange, type AddableCard } from "../deck-add";
-import { deckMoveChanges } from "../deck-changes";
+import { deckMoveChanges, deckPrintingSwapChanges } from "../deck-changes";
 import { formatRulesFor, type DeckFormatOption } from "../formats";
 import {
   applyGuestCardChanges,
@@ -62,6 +62,11 @@ export interface GuestDeckEditor {
   setChampion: (
     card: Pick<DeckCard, "zone" | "printing_id" | "oracle_id" | "quantity">,
     isChampion: boolean,
+  ) => void;
+  /** Swap a row onto another printing of the same card, copies and flag intact. */
+  changePrinting: (
+    card: Pick<DeckCard, "zone" | "printing_id" | "oracle_id" | "quantity" | "is_champion">,
+    printing: AddableCard,
   ) => void;
   /** Throw the local deck away and start again. */
   reset: () => void;
@@ -176,6 +181,30 @@ export function useGuestDeck(formats: readonly DeckFormatOption[]): GuestDeckEdi
     [applyChanges],
   );
 
+  const changePrinting = React.useCallback<GuestDeckEditor["changePrinting"]>(
+    (card, printing) => {
+      // The new row is described by the picker rather than by a server answer,
+      // exactly as a guest add is — same template path, same legality fetch.
+      applyChanges(deckPrintingSwapChanges(cards, card, printing), printing);
+      void cardsApi
+        .getDetail({ printing: printing.printing_id })
+        .then((detail) => {
+          if (!detail?.legalities?.length) return;
+          update((current) =>
+            withGuestLegalities(
+              current,
+              { oracle_id: printing.oracle_id, printing_id: printing.printing_id },
+              detail.legalities,
+            ),
+          );
+        })
+        .catch(() => {
+          /* The swap happened; its legality table is not load-bearing. */
+        });
+    },
+    [applyChanges, cards, update],
+  );
+
   const setName = React.useCallback(
     (name: string) => update((current) => ({ ...current, name })),
     [update],
@@ -227,6 +256,7 @@ export function useGuestDeck(formats: readonly DeckFormatOption[]): GuestDeckEdi
     addCard,
     moveZone,
     setChampion,
+    changePrinting,
     reset,
   };
 }

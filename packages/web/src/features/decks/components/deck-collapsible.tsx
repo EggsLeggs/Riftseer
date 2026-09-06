@@ -19,6 +19,7 @@ export function DeckCollapsible({
   lazy = false,
   children,
   className,
+  id,
 }: {
   title: string;
   count?: number;
@@ -34,11 +35,13 @@ export function DeckCollapsible({
   lazy?: boolean;
   children: React.ReactNode;
   className?: string;
+  id?: string;
 }) {
   const [opened, setOpened] = React.useState(defaultOpen);
   return (
     <details
-      className={cn("group border-t py-3", className)}
+      id={id}
+      className={cn("group scroll-mt-4 border-t py-3", className)}
       open={defaultOpen}
       onToggle={lazy && !opened ? () => setOpened(true) : undefined}
     >

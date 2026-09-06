@@ -36,6 +36,7 @@ function deckWithACard(): GuestDeck {
     printing_id: "69bc5bc6d308c64675ca86b6",
     quantity: 2,
     is_champion: false,
+    tags: [],
     name: "Adaptatron",
     card_type: "Unit",
     supertype: null,

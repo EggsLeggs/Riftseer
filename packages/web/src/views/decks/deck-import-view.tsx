@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { formatSelectOptions, formatsApi, formatsQueryKeys } from "@/features/decks/formats";
 import { DECK_VISIBILITY_OPTIONS } from "@/features/decks/components/deck-metadata-dialog";
 import { useDeckLifecycleMutations } from "@/features/decks/hooks/use-deck-mutations";
-import { deckBuilderHref, myDecksHref, newDeckHref } from "@/features/decks/paths";
+import { deckHref, myDecksHref, newDeckHref } from "@/features/decks/paths";
 import type { DeckImportProblem, DeckVisibility } from "@/features/decks/types";
 import { SelectField, TextAreaField, TextField } from "@/views/admin/admin-form-field";
 
@@ -55,7 +55,7 @@ export function DeckImportView() {
       ]);
       setCreated({ id: result.id, name: result.name });
       if (result.unresolved.length === 0) {
-        router.push(deckBuilderHref({ id: result.id, name: result.name }));
+        router.push(deckHref({ id: result.id, name: result.name }));
         return;
       }
       setProblems(result.unresolved);
@@ -94,7 +94,7 @@ export function DeckImportView() {
         </ul>
         <div className="mt-6 flex gap-2">
           <Button asChild>
-            <Link href={deckBuilderHref(created)}>Open the deck</Link>
+            <Link href={deckHref(created)}>Open the deck</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link href={myDecksHref()}>All decks</Link>

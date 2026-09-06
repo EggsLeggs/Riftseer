@@ -61,7 +61,11 @@ export function DeckAddCardDialog({
       const card = addableFromResult(result);
       const target = resolveAddZone(card, zone);
       onAdd(card, target);
-      toast.success(`Added to ${DECK_ZONE_LABELS[target]}`);
+      // One toast per card, updated in place: picking the same card three
+      // times must not stack three identical banners over the open palette.
+      toast.success(`Added ${card.name ?? "card"} to ${DECK_ZONE_LABELS[target]}`, {
+        id: `deck-add-${card.printing_id}`,
+      });
     },
     [onAdd, zone],
   );
@@ -71,7 +75,7 @@ export function DeckAddCardDialog({
       open={open}
       onOpenChange={onOpenChange}
       onSelect={handleSelect}
-      showViewAll={false}
+      closeOnSelect={false}
       placeholder={
         zone ? `Add a card to ${DECK_ZONE_LABELS[zone]}…` : "Add a card to the deck…"
       }

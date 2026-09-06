@@ -26,7 +26,7 @@ import type {
 import { AdminPageHeader } from "./admin-page-header";
 import { AdminListState, AdminPager } from "./admin-list";
 import { SelectField, TextField } from "./admin-form-field";
-import { ConfirmDialog } from "./confirm-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const PAGE_SIZE = 40;
 

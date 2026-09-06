@@ -15,6 +15,8 @@ function summary(overrides: Partial<DeckSummary>): DeckSummary {
     format: { id: "f1", code: "standard", name: "Standard" },
     owner: { id: "u1", handle: "amory", username: "Amory" },
     role: "owner",
+    favorite_count: 0,
+    view_count: 0,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,

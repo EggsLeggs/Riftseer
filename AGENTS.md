@@ -219,7 +219,7 @@ Legal copy is code here, and it goes stale the same way code does.
 - A new column storing something about a person is a privacy-page change. So is new logging, a new third party, or changed bot behaviour.
 - Terms carry a 13+ age floor and Riot's Legal Jibber Jabber attribution. Keep that attribution on anything showing card art or data.
 - Consent is c15t. `C15T_DATABASE_URL` is a transaction-pooler URL and must keep `prepare: false` and `max: 1`.
-- The terms prohibit API abuse but nothing enforces it. There is no rate limiting, and `getRedisClient()` has no callers.
+- The terms prohibit API abuse but nothing enforces it. There is no rate limiting; `getRedisClient()`'s one caller is deck view dedup, not enforcement.
 - The privacy policy predates profiles, follows and decks, naming only email and password. Raise this before extending those tables.
 
 ## Taste

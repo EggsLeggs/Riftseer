@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Kbd } from "@/components/ui/kbd";
 import { SearchIcon } from "lucide-react";
 import { useCardSearch } from "@/features/cards/card-search-provider";
 import { cn } from "@/lib/utils";
@@ -46,13 +47,13 @@ export function CardSearchTrigger({ className }: CardSearchTriggerProps) {
     >
       <SearchIcon className="size-4 shrink-0 opacity-60" aria-hidden="true" />
       <span className="flex-1 truncate text-left">Search cards…</span>
-      <kbd
+      <Kbd
         aria-hidden="true"
-        className="hidden items-center gap-0.5 rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground sm:inline-flex"
+        className="hidden text-muted-foreground sm:inline-flex"
       >
         <span>{modKey}</span>
         <span>K</span>
-      </kbd>
+      </Kbd>
     </button>
   );
 }

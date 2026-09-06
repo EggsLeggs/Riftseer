@@ -505,3 +505,25 @@ export function CardText({
     </div>
   );
 }
+
+/** One line of rules-text tokens, for primers and other prose that is not a card. */
+export function CardTextInline({
+  text,
+  className,
+  linkKeywords = false,
+}: {
+  text: string;
+  className?: string;
+  /** Off in guides: a keyword there is decoration, not a search. */
+  linkKeywords?: boolean;
+}) {
+  const { accessibility } = useSitePreferences();
+  return (
+    <span className={className}>
+      {renderLine(text, 0, {
+        preferText: accessibility.preferTextOverSymbols,
+        linkKeywords,
+      })}
+    </span>
+  );
+}

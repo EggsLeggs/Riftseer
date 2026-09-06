@@ -83,8 +83,8 @@ export function DeckExportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[min(90vh,44rem)] flex-col overflow-hidden sm:max-w-lg">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Export deck</DialogTitle>
           <DialogDescription>
             Plain text, grouped by zone. Paste it back into the importer to
@@ -97,17 +97,18 @@ export function DeckExportDialog({
         ) : value === undefined ? (
           <p className="text-muted-foreground text-sm">Building the list…</p>
         ) : (
-          <Textarea
-            readOnly
-            value={value}
-            rows={16}
-            className="font-mono text-xs"
-            aria-label="Deck list text"
-            onFocus={(event) => event.currentTarget.select()}
-          />
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <Textarea
+              readOnly
+              value={value}
+              className="h-full min-h-40 resize-none overflow-y-auto font-mono text-xs"
+              aria-label="Deck list text"
+              onFocus={(event) => event.currentTarget.select()}
+            />
+          </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>

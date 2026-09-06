@@ -56,6 +56,11 @@ export interface ParsedDeckText {
  *
  * Moxfield writes `Deck` and `Maybeboard`; the previous model called
  * battlefields "battlegrounds"; and pasted lists often pluralise or not.
+ *
+ * `Champion` is here too, and it is the odd one: other exports give the chosen
+ * champion its own section, but a champion is not a zone — it is a flag on a
+ * main-deck row. So the header lands cards in `main` and {@link CHAMPION_HEADERS}
+ * flags them.
  */
 const ZONE_ALIASES: Record<string, DeckZone> = {
   legend: "legend",
@@ -65,6 +70,8 @@ const ZONE_ALIASES: Record<string, DeckZone> = {
   maindeck: "main",
   "main deck": "main",
   mainboard: "main",
+  champion: "main",
+  champions: "main",
   sideboard: "sideboard",
   side: "sideboard",
   rune: "runes",
@@ -78,6 +85,9 @@ const ZONE_ALIASES: Record<string, DeckZone> = {
   maybeboard: "considering",
   maybe: "considering",
 };
+
+/** Headers whose cards are champions, as if each line carried `*CH*`. */
+const CHAMPION_HEADERS = new Set(["champion", "champions"]);
 
 /** A bare list with no header is a main deck, which is how Moxfield reads one. */
 const DEFAULT_ZONE: DeckZone = "main";
@@ -122,6 +132,7 @@ export function parseDeckText(text: string): ParsedDeckText {
   const cards: DeckTextLine[] = [];
   const errors: DeckTextError[] = [];
   let zone: DeckZone = DEFAULT_ZONE;
+  let zoneIsChampion = false;
 
   const lines = text.split(/\r?\n/);
   for (let index = 0; index < lines.length; index++) {
@@ -132,7 +143,8 @@ export function parseDeckText(text: string): ParsedDeckText {
 
     const header = headerZone(trimmed);
     if (header) {
-      zone = header;
+      zone = header.zone;
+      zoneIsChampion = header.is_champion;
       continue;
     }
 
@@ -153,7 +165,7 @@ export function parseDeckText(text: string): ParsedDeckText {
     }
 
     let rest = match[2]!.trim();
-    let isChampion = false;
+    let isChampion = zoneIsChampion;
     if (rest.toUpperCase().endsWith(CHAMPION_MARKER)) {
       isChampion = true;
       rest = rest.slice(0, rest.length - CHAMPION_MARKER.length).trim();
@@ -186,8 +198,13 @@ export function parseDeckText(text: string): ParsedDeckText {
 /**
  * A header is a line with no leading quantity naming a zone, optionally with a
  * trailing colon and a count — `Main`, `Sideboard:`, `Runes (12)`.
+ *
+ * Returns the zone it opens and whether cards under it are champions.
  */
-function headerZone(trimmed: string): DeckZone | undefined {
+function headerZone(trimmed: string): { zone: DeckZone; is_champion: boolean } | undefined {
   const withoutCount = trimmed.replace(/\s*[:(]\s*\d*\s*\)?\s*$/, "").trim();
-  return ZONE_ALIASES[withoutCount.toLowerCase()];
+  const key = withoutCount.toLowerCase();
+  const zone = ZONE_ALIASES[key];
+  if (!zone) return undefined;
+  return { zone, is_champion: CHAMPION_HEADERS.has(key) };
 }

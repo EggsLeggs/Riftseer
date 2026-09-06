@@ -44,6 +44,49 @@ Validation is advisory and computed on read, by the shared `validateDeck` in
 stay loadable after those rules change. `GET /decks/:id` returns the violations
 alongside the cards.
 
+Readable decks accept **comments** from any signed-in user. Threading is
+`parent_id` with a stored depth (capped at 7 — deeper replies flatten), read
+back as one flat list of up to 500 rows that the client arranges. Deleting is
+always a soft tombstone — the row stays so replies keep their place — by the
+comment's author or the deck's owner, and that is the entire moderation model.
+Each row carries `can_delete` for the caller, so clients never re-derive it.
+Any signed-in reader can **like** a comment (`POST`/`DELETE
+`/decks/:id/comments/:commentId/like`). Counts are computed on read and ride
+every comment as `like_count`; an authenticated caller also gets `is_liked`.
+
+**Folders** are a user's private organisation of decks, under `/deck-folders`
+(a `/decks/folders` path would be swallowed by `/decks/:id`). v1 is flat,
+unordered and private. Any deck the owner can read may be filed — an item is a
+bookmark, not a claim — and folder contents are pruned on read to what is
+still readable. Deleting a folder never touches its decks.
+
+Deck pages report a **view count** (`view_count` on every deck payload). The
+page fires `POST /decks/:id/views` once per visit; the API deduplicates per
+viewer for six hours — by user id when signed in, otherwise by a digest of
+address, client and UTC day that is never stored outside the expiring dedup
+key — and an owner viewing their own deck never counts. Counting a view does
+not touch `updated_at`, so browsing never reorders "recently updated".
+
+Any deck you can read can be **favorited**. Counts are computed on read and
+ride every deck payload as `favorite_count`; an authenticated caller also gets
+`is_favorited`. `GET /decks?filter=favorites` lists the caller's favorites,
+pruned to decks they can still read.
+
+Cards can carry **manual tags** — free-text labels (at most 20 per card, 40
+characters each), stored per `(deck, oracle)` so a zone move or an art swap
+never drops them and both rows of a two-art card share one list. Tags are
+annotation, not deck content: they are not revisioned, they do not enter the
+text interchange format, and `PUT /decks/:id/card-tags` replaces a card's list
+wholesale. Every card row on the deck payload carries its `tags` (empty when
+none).
+
+Each card and token row carries an optional `image` object of derived art URLs
+(`small`, `normal`, `large`, `original` — WebP variants for hosted art, only
+`original` when we merely know an upstream source, absent when no art exists).
+It is derived at read time and never stored, so a rehosted image changes the
+URLs without a deck write. Clients rendering a whole deck as a grid should read
+it rather than fetching card detail per row.
+
 ---
 
 ## Visibility and roles
@@ -81,7 +124,21 @@ deck exists.
 | `PATCH` | `/api/v1/decks/:id` | Name, description, primer, format, visibility |
 | `DELETE` | `/api/v1/decks/:id` | Owner only |
 | `PUT` | `/api/v1/decks/:id/cards` | Batch zone mutation |
-| `GET` | `/api/v1/decks/:id/revisions` | Edit history |
+| `PUT` | `/api/v1/decks/:id/card-tags` | Replace one card's manual tags |
+| `POST` | `/api/v1/decks/:id/favorite` | Favorite (idempotent) |
+| `DELETE` | `/api/v1/decks/:id/favorite` | Unfavorite (idempotent) |
+| `POST` | `/api/v1/decks/:id/views` | Count a view (deduplicated) |
+| `GET` | `/api/v1/decks/:id/comments` | List comments (flat; client builds the tree) |
+| `POST` | `/api/v1/decks/:id/comments` | Comment or reply |
+| `DELETE` | `/api/v1/decks/:id/comments/:commentId` | Tombstone a comment (author or deck owner) |
+| `GET` | `/api/v1/deck-folders` | Your folders (`?deck=` adds membership) |
+| `POST` | `/api/v1/deck-folders` | Create a folder |
+| `GET` | `/api/v1/deck-folders/:id` | One folder and its readable decks |
+| `PATCH` | `/api/v1/deck-folders/:id` | Rename a folder |
+| `DELETE` | `/api/v1/deck-folders/:id` | Delete a folder (decks untouched) |
+| `PUT` | `/api/v1/deck-folders/:id/decks/:deckId` | File a deck (idempotent) |
+| `DELETE` | `/api/v1/deck-folders/:id/decks/:deckId` | Unfile a deck (idempotent) |
+| `GET` | `/api/v1/decks/:id/revisions` | Edit history; `?limit=` 1–50, default 50 |
 | `POST` | `/api/v1/decks/:id/invite` | Create or regenerate the invite link |
 | `DELETE` | `/api/v1/decks/:id/invite` | Disable the invite link |
 | `POST` | `/api/v1/decks/join/:code` | Redeem an invite link |
@@ -155,6 +212,11 @@ since only it can see the catalogue — and reports the lines it could not read 
 `unresolved` rather than failing the import. A line whose card cannot sit in the
 zone its header named is routed to the zone it is eligible for, which is what
 makes a bare list with no headers import correctly.
+
+A `Champion` header is accepted on import even though a champion is not a zone.
+Other sites section the chosen champion separately; here it is a flag on a
+main-deck row, so those lines land in `main` flagged as if each carried `*CH*`.
+Export writes the flag, never the section.
 
 ---
 

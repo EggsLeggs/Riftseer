@@ -18,8 +18,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { buildPageRange, CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
-import { listMyDecksAction } from "@/features/decks/actions";
+import {
+  getDeckFolderAction,
+  listFavoriteDecksAction,
+  listMyDecksAction,
+} from "@/features/decks/actions";
 import { deckQueryKeys } from "@/features/decks/api";
+import { DeckFoldersPanel } from "@/features/decks/components/deck-folders-panel";
 import { DeckSummaryCard } from "@/features/decks/components/deck-summary-card";
 import {
   DECK_LIST_OWNERSHIP,
@@ -56,6 +61,7 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
   const query = searchParams.get("q") ?? "";
   const format = searchParams.get("format") ?? "";
   const ownership = parseOwnership(searchParams.get("owner"));
+  const folderId = searchParams.get("folder");
   const requestedPage = Number.parseInt(searchParams.get("page") ?? "1", 10) || 1;
 
   const decks = useQuery({
@@ -71,7 +77,46 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
     retry: false,
   });
 
-  const items = decks.data?.items ?? [];
+  const favorites = useQuery({
+    queryKey: deckQueryKeys.favorites(),
+    queryFn: async () => {
+      const result = await listFavoriteDecksAction();
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: isSignedIn && ownership === "favorites",
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const folder = useQuery({
+    queryKey: deckQueryKeys.folder(folderId ?? ""),
+    queryFn: async () => {
+      const result = await getDeckFolderAction(folderId!);
+      if (!result.ok) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: isSignedIn && folderId != null,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  // A folder or "favorites" is a different *listing*, not a different
+  // predicate: someone else's public deck you filed or favorited is in no
+  // version of "my decks". The text/format filters still apply on top.
+  const folderItems = React.useMemo(
+    () => (folder.data ? { items: folder.data.items } : undefined),
+    [folder.data],
+  );
+  const source =
+    folderId != null
+      ? { ...folder, data: folderItems }
+      : ownership === "favorites"
+        ? favorites
+        : decks;
+  const items = source.data?.items ?? [];
   const formats = React.useMemo(() => deckListFormats(items), [items]);
   const filtered = React.useMemo(
     () => filterDeckSummaries(items, { query, format: format || undefined, ownership }),
@@ -125,6 +170,21 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
           </Button>
         </div>
       </header>
+
+      {isSignedIn && (
+        <div className="mb-4">
+          <DeckFoldersPanel
+            selectedId={folderId}
+            onSelect={(id) =>
+              updateParams((params) => {
+                if (id) params.set("folder", id);
+                else params.delete("folder");
+                params.delete("page");
+              })
+            }
+          />
+        </div>
+      )}
 
       {!isSignedIn ? (
         <div className="flex flex-col items-center gap-4 py-20 text-center">
@@ -212,21 +272,25 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
             )}
           </div>
 
-          {decks.isPending ? (
+          {source.isPending ? (
             <p className="text-muted-foreground text-sm">Loading decks…</p>
-          ) : decks.isError ? (
+          ) : source.isError ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-base font-semibold">Couldn't load your decks</p>
               <p className="text-muted-foreground text-sm">
-                {(decks.error as Error).message}
+                {(source.error as Error).message}
               </p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-base font-semibold">
-                {items.length === 0 ? "No decks yet" : "No decks match those filters"}
+                {items.length !== 0
+                  ? "No decks match those filters"
+                  : ownership === "favorites"
+                    ? "No favorites yet"
+                    : "No decks yet"}
               </p>
-              {items.length === 0 && (
+              {items.length === 0 && ownership !== "favorites" && (
                 <Button asChild>
                   <Link href={newDeckHref()}>Build your first deck</Link>
                 </Button>

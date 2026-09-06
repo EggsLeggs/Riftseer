@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { formatSelectOptions, formatsApi, formatsQueryKeys } from "@/features/decks/formats";
 import { DECK_VISIBILITY_OPTIONS } from "@/features/decks/components/deck-metadata-dialog";
 import { useDeckLifecycleMutations } from "@/features/decks/hooks/use-deck-mutations";
-import { deckBuilderHref, importDeckHref, myDecksHref } from "@/features/decks/paths";
+import { deckHref, importDeckHref, myDecksHref } from "@/features/decks/paths";
 import type { DeckVisibility } from "@/features/decks/types";
 import { SelectField, TextAreaField, TextField } from "@/views/admin/admin-form-field";
 
@@ -66,7 +66,7 @@ export function DeckCreateView() {
           ...(values.description?.trim() ? { description: values.description.trim() } : {}),
         },
       ]);
-      router.push(deckBuilderHref({ id: deck.id, name: deck.name }));
+      router.push(deckHref({ id: deck.id, name: deck.name }));
     } catch {
       // The toast carried the API's reason.
     }

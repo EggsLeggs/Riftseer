@@ -5,7 +5,7 @@ interface __BaseEnv_GeneratedEnv {
 	CARD_IMAGE_QUEUE: Queue;
 	CARD_PROVIDER: "supabase";
 	LEGAL_TERMS_VERSION: "2";
-	LEGAL_PRIVACY_VERSION: "4";
+	LEGAL_PRIVACY_VERSION: "5";
 	SITE_ORIGIN: "https://riftseer.com";
 	ADMIN_USER_IDS: "";
 	CARD_IMAGE_BASE_URL: "https://img.riftseer.com";

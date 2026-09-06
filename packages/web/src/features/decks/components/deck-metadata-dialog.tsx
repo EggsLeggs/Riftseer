@@ -25,7 +25,8 @@ import { useDeckMutations } from "../hooks/use-deck-mutations";
 import type { DeckDetail, DeckPatch, DeckVisibility } from "../types";
 
 /**
- * Deck metadata: name, description, primer, format, visibility.
+ * Deck metadata: name, description, format, visibility. The guide has its
+ * own editor — this dialog does not take a second primer textarea.
  *
  * `visibility` is owner-only on the API — an editor was invited to help build,
  * which is not consent to publish — so an editor is not offered a control that
@@ -47,7 +48,6 @@ const schema = z.object({
   description: z.string().max(DESCRIPTION_MAX, {
     message: `At most ${DESCRIPTION_MAX} characters`,
   }),
-  primer: z.string(),
   format: z.string().min(1, { message: "Pick a format" }),
   visibility: z.enum(["private", "unlisted", "public"]),
 });
@@ -82,11 +82,10 @@ export function DeckMetadataDialog({
     () => ({
       name: deck.name,
       description: deck.description ?? "",
-      primer: deck.primer ?? "",
       format: deck.format?.code ?? "",
       visibility: (deck.visibility as DeckVisibility) ?? "private",
     }),
-    [deck.description, deck.format?.code, deck.name, deck.primer, deck.visibility],
+    [deck.description, deck.format?.code, deck.name, deck.visibility],
   );
 
   const {
@@ -106,7 +105,6 @@ export function DeckMetadataDialog({
     if (values.description.trim() !== (deck.description ?? "")) {
       next.description = values.description.trim() || null;
     }
-    if (values.primer !== (deck.primer ?? "")) next.primer = values.primer || null;
     if (values.format && values.format !== deck.format?.code) next.format = values.format;
     if (isOwner && values.visibility !== deck.visibility) {
       next.visibility = values.visibility;
@@ -155,14 +153,6 @@ export function DeckMetadataDialog({
             maxLength={DESCRIPTION_MAX}
             error={errors.description?.message}
             {...register("description")}
-          />
-          <TextAreaField
-            id="deck-primer"
-            label="Primer"
-            hint="The long write-up shown on the deck page."
-            rows={6}
-            error={errors.primer?.message}
-            {...register("primer")}
           />
           <SelectField
             id="deck-format"

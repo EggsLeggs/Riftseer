@@ -257,6 +257,32 @@ export const cardsApi = {
       cardsClient.api.v1.cards.random.get({ fetch: requestFetchInit() }),
     );
   },
+
+  /**
+   * Batch name → card resolution, the same contract the bots use. Each entry
+   * is a token's inner content (`Brush`, `Vayne|VEN-SP3`); results come back
+   * in request order, with null halves for a name nothing matched. At most 20
+   * per call — the caller chunks.
+   */
+  async resolve(
+    requests: string[],
+  ): Promise<Array<{ oracle: Oracle | null; printing: Printing | null }>> {
+    const chunks: string[][] = [];
+    for (let i = 0; i < requests.length; i += 20) chunks.push(requests.slice(i, i + 20));
+    const pages = await Promise.all(
+      chunks.map((chunk) =>
+        getJsonFromTreaty<{
+          results: Array<{ oracle: Oracle | null; printing: Printing | null }>;
+        }>(() =>
+          cardsClient.api.v1.cards.resolve.post(
+            { requests: chunk },
+            { fetch: requestFetchInit() },
+          ),
+        ),
+      ),
+    );
+    return pages.flatMap((page) => page?.results ?? []);
+  },
 };
 
 export const cardExportUrls = {
@@ -280,6 +306,8 @@ export const cardsQueryKeys = {
   printing: (id: string) => ["cards", "printing", id] as const,
   relationshipSearch: (name: string) =>
     ["cards", "relationship-search", name] as const,
+  resolve: (requests: readonly string[]) =>
+    ["cards", "resolve", ...requests] as const,
   detail: (
     target:
       | { oracle: string }

@@ -164,6 +164,23 @@ const TYPE_ICON_KEYS = new Set([
   "unit",
 ]);
 
+/** The printed champion glyph, for a chosen champion rather than a type line. */
+export function ChampionIcon({
+  className,
+  label = "Champion",
+}: {
+  className?: string;
+  label?: string;
+}) {
+  return (
+    <span
+      className={cn("icon-champion shrink-0", className)}
+      role="img"
+      aria-label={label}
+    />
+  );
+}
+
 /**
  * Type chrome: vertical capsule with the type glyph, joined to a rhombus-like
  * label that only slants on the right (see keywords.css `.card-type-badge`).

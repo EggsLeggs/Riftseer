@@ -174,7 +174,7 @@ export const app = new Elysia({
       .use(cardsRoutes(cardProvider))
       .use(setsRoutes(cardProvider))
       .use(formatsRoutes(cardProvider))
-      .use(decksRoutes())
+      .use(decksRoutes({ imageBaseUrl: () => adminImageBindings.baseUrl }))
       .use(authRoutes())
       .use(usersRoutes())
       .use(metafyRoutes())

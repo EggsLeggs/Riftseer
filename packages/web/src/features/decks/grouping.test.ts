@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  deckDisplayOrder,
   deckZoneSections,
   groupDeckCards,
   totalCopies,
@@ -94,25 +95,35 @@ describe("groupDeckCards by domain", () => {
   });
 });
 
-describe("groupDeckCards by cost", () => {
-  test("orders numerically and keeps zero as a real cost", () => {
+describe("groupDeckCards by energy", () => {
+  test("orders numerically and keeps zero as a real energy", () => {
     const groups = groupDeckCards(
       [
         card({ name: "Ten", energy: 10 }),
         card({ name: "Two", energy: 2 }),
         card({ name: "Free", energy: 0 }),
       ],
-      "cost",
+      "energy",
     );
-    expect(groups.map((group) => group.label)).toEqual(["0", "2", "10"]);
+    expect(groups.map((group) => group.label)).toEqual([
+      "0 energy",
+      "2 energy",
+      "10 energy",
+    ]);
   });
 
-  test("sorts costless cards last", () => {
+  test("names the value so a heading is not two bare numbers", () => {
+    const groups = groupDeckCards([card({ name: "Four", energy: 4, quantity: 6 })], "energy");
+    expect(groups[0]!.label).toBe("4 energy");
+    expect(groups[0]!.count).toBe(6);
+  });
+
+  test("sorts energyless cards last", () => {
     const groups = groupDeckCards(
       [card({ name: "Rune", energy: null }), card({ name: "Unit", energy: 3 })],
-      "cost",
+      "energy",
     );
-    expect(groups.map((group) => group.label)).toEqual(["3", "No cost"]);
+    expect(groups.map((group) => group.label)).toEqual(["3 energy", "No energy"]);
   });
 });
 
@@ -137,5 +148,36 @@ describe("deckZoneSections", () => {
     ]);
     expect(sections.find((section) => section.zone === "main")!.count).toBe(3);
     expect(sections.find((section) => section.zone === "runes")!.count).toBe(12);
+  });
+});
+
+describe("deckDisplayOrder", () => {
+  const deck = [
+    card({ name: "Sigil", zone: "runes", card_type: "Rune", energy: null }),
+    card({ name: "Vayne", zone: "main", card_type: "Unit", energy: 3 }),
+    card({ name: "Defy", zone: "main", card_type: "Spell", energy: 1 }),
+    card({ name: "Ivern", zone: "legend", card_type: "Legend" }),
+  ];
+
+  test("walks zones in canonical order, then each zone's groups", () => {
+    expect(deckDisplayOrder(deck, "type").map((entry) => entry.name)).toEqual([
+      "Ivern",
+      "Vayne",
+      "Defy",
+      "Sigil",
+    ]);
+  });
+
+  test("regrouping regroups the order with it", () => {
+    expect(deckDisplayOrder(deck, "energy").map((entry) => entry.name)).toEqual([
+      "Ivern",
+      "Defy",
+      "Vayne",
+      "Sigil",
+    ]);
+  });
+
+  test("holds every card exactly once", () => {
+    expect(deckDisplayOrder(deck, "domain")).toHaveLength(deck.length);
   });
 });

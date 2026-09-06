@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   applyDeckCardChanges,
   deckMoveChanges,
+  deckPrintingSwapChanges,
   deckRowKey,
   mergeDeckCardChange,
   mergeDeckCardChanges,
@@ -171,5 +172,52 @@ describe("deckMoveChanges", () => {
     const occupied = card({ zone: "main", is_champion: true });
     const [, to] = deckMoveChanges([moved, occupied], moved, "main");
     expect(to!.is_champion).toBe(true);
+  });
+});
+
+describe("deckPrintingSwapChanges", () => {
+  const target = { printing_id: "p2", oracle_id: "o1" };
+
+  test("empties the old row and refills the same zone under the new printing", () => {
+    const changes = deckPrintingSwapChanges([card({ quantity: 3 })], card({ quantity: 3 }), target);
+    expect(changes[0]).toEqual({ zone: "main", printing_id: "p1", oracle_id: "o1", quantity: 0 });
+    expect(changes[1]).toMatchObject({ zone: "main", printing_id: "p2", oracle_id: "o1", quantity: 3 });
+    expect(changes[1]!.is_champion).toBeFalsy();
+  });
+
+  test("the removal precedes the refill, so a champion flag never doubles up", () => {
+    const changes = deckPrintingSwapChanges(
+      [card({ quantity: 2, is_champion: true })],
+      card({ quantity: 2, is_champion: true }),
+      target,
+    );
+    expect(changes[0]).toMatchObject({ printing_id: "p1", quantity: 0 });
+    expect(changes[1]).toMatchObject({ printing_id: "p2", quantity: 2, is_champion: true });
+  });
+
+  test("merges into a row the target printing already has in this zone", () => {
+    const cards = [card({ quantity: 2 }), card({ printing_id: "p2", quantity: 1 })];
+    const changes = deckPrintingSwapChanges(cards, cards[0]!, target);
+    expect(changes[1]).toMatchObject({ printing_id: "p2", quantity: 3 });
+  });
+
+  test("keeps a champion flag the destination row already carries", () => {
+    const cards = [
+      card({ quantity: 1 }),
+      card({ printing_id: "p2", quantity: 1, is_champion: true }),
+    ];
+    const changes = deckPrintingSwapChanges(cards, cards[0]!, target);
+    expect(changes[1]!.is_champion).toBe(true);
+  });
+
+  test("drops the champion flag outside main", () => {
+    const row = card({ zone: "considering", quantity: 1, is_champion: true });
+    const changes = deckPrintingSwapChanges([row], row, target);
+    expect(changes[1]).toMatchObject({ zone: "considering", is_champion: false });
+  });
+
+  test("swapping onto the printing already in the row is a no-op", () => {
+    const row = card({ quantity: 2 });
+    expect(deckPrintingSwapChanges([row], row, { printing_id: "p1", oracle_id: "o1" })).toEqual([]);
   });
 });

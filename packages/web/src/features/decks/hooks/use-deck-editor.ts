@@ -8,6 +8,7 @@ import { deckAddChange, type AddableCard } from "../deck-add";
 import {
   applyDeckCardChanges,
   deckMoveChanges,
+  deckPrintingSwapChanges,
   mergeDeckCardChanges,
 } from "../deck-changes";
 import type {
@@ -56,6 +57,11 @@ export interface DeckEditor extends DeckEditorSnapshot {
   setChampion: (
     card: Pick<DeckCard, "zone" | "printing_id" | "oracle_id" | "quantity">,
     isChampion: boolean,
+  ) => void;
+  /** Swap a row onto another printing of the same card, copies and flag intact. */
+  changePrinting: (
+    card: Pick<DeckCard, "zone" | "printing_id" | "oracle_id" | "quantity" | "is_champion">,
+    printing: AddableCard,
   ) => void;
   /** Send whatever is queued now, e.g. before navigating away. */
   flush: () => void;
@@ -218,6 +224,15 @@ export function useDeckEditor(
     [cards, enqueue],
   );
 
+  const changePrinting = React.useCallback<DeckEditor["changePrinting"]>(
+    (card, printing) => {
+      // Structural like a move: the projection cannot invent the new row, so
+      // the server's answer has to supply it.
+      enqueue(deckPrintingSwapChanges(cards, card, printing), true);
+    },
+    [cards, enqueue],
+  );
+
   const setChampion = React.useCallback<DeckEditor["setChampion"]>(
     (card, isChampion) => {
       enqueue(
@@ -246,6 +261,7 @@ export function useDeckEditor(
     addCard,
     moveZone,
     setChampion,
+    changePrinting,
     flush: () => void flushRef.current(),
   };
 }

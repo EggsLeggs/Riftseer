@@ -11,8 +11,8 @@
 	"vars": {
 		"CARD_PROVIDER": "supabase",
 		"LEGAL_TERMS_VERSION": "2",
-		// 4 — 30 July 2026: admin edit attribution and audit retention.
-		"LEGAL_PRIVACY_VERSION": "4",
+		// 5 — 6 September 2026: comment likes.
+		"LEGAL_PRIVACY_VERSION": "5",
 		// Public site origin used to build absolute riftseer_uri values on every
 		// card response. Override per-environment if needed.
 		"SITE_ORIGIN": "https://riftseer.com",

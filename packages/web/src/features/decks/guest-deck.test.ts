@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { validateDeck } from "@riftseer/types/deck-validate";
 import { formatDeckText } from "@riftseer/types/deck-text";
 
+import { deckPrintingSwapChanges } from "./deck-changes";
+
 import {
   GUEST_DECK_VERSION,
   applyGuestCardChanges,
@@ -22,6 +24,7 @@ import {
 
 function card(overrides: Partial<GuestDeckCard> = {}): GuestDeckCard {
   return {
+    tags: [],
     zone: "main",
     printing_id: "p1",
     oracle_id: "o1",
@@ -233,6 +236,32 @@ describe("applyGuestCardChanges", () => {
       [{ zone: "main", printing_id: "p1", oracle_id: "o1", quantity: 4 }],
     );
     expect(cards[0]?.is_champion).toBe(true);
+  });
+
+  test("a printing swap is a remove plus a create described by the template", () => {
+    const { zone: _zone, quantity: _q, is_champion: _c, ...fields } = card({
+      printing_id: "p2",
+      set_code: "ALT",
+      collector_number: "007",
+    });
+    const cards = applyGuestCardChanges(
+      [card({ quantity: 3, is_champion: true })],
+      deckPrintingSwapChanges(
+        [card({ quantity: 3, is_champion: true })],
+        card({ quantity: 3, is_champion: true }),
+        { printing_id: "p2", oracle_id: "o1" },
+      ),
+      [fields],
+    );
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toMatchObject({
+      zone: "main",
+      printing_id: "p2",
+      quantity: 3,
+      is_champion: true,
+      set_code: "ALT",
+      name: "Vayne",
+    });
   });
 });
 

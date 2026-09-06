@@ -156,6 +156,8 @@ function parseCard(value: unknown): GuestDeckCard | null {
     oracle_id: oracleId,
     quantity: Math.floor(quantity),
     is_champion: row.is_champion === true,
+    // Tags live server-side only; a guest deck has nowhere to keep them.
+    tags: [],
     name: typeof row.name === "string" ? row.name : printingId,
     card_type: nullableStr(row.card_type),
     supertype: nullableStr(row.supertype),
@@ -372,6 +374,7 @@ export function guestCardFields(card: AddableCard): GuestCardFields {
     printing_id: card.printing_id,
     oracle_id: card.oracle_id,
     name: card.name ?? card.printing_id,
+    tags: [],
     card_type: card.card_type ?? null,
     supertype: card.supertype ?? null,
     is_token: card.is_token === true,

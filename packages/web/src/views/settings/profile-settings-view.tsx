@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ProfileIcon } from "@/components/profile-icon";
 import { SocialIcon } from "@/components/ui/social-icon";
 import { validateSocialLink } from "@riftseer/types/social-links";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
@@ -47,7 +48,6 @@ export function ProfileSettingsView({ session, profile }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const handle = profile?.handle ?? session.user.handle ?? "";
-  const initials = displayName.slice(0, 2).toUpperCase() || "??";
 
   function togglePreset(preset: string) {
     setPronouns((prev) => {
@@ -144,9 +144,12 @@ export function ProfileSettingsView({ session, profile }: Props) {
           </h2>
           <div className="flex items-center gap-5">
             <div className="relative size-20 shrink-0">
-              <div className="flex size-20 items-center justify-center rounded-full bg-muted text-lg font-semibold select-none">
-                {initials}
-              </div>
+              <ProfileIcon
+                username={displayName}
+                handle={handle}
+                size="lg"
+                className="size-20 text-lg"
+              />
               <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-not-allowed">
                 <Camera className="size-5 text-white" />
               </div>

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
-import { deckBuilderHref, deckHref, deckSlugTail } from "@/features/decks/paths";
+import { deckHref, deckSlugTail } from "@/features/decks/paths";
 import { loadDeckForViewer } from "@/features/decks/server-loader";
-import { canEditDeck } from "@/features/decks/types";
-import { getSession, requireAuth } from "@/lib/session";
+import { getSession } from "@/lib/session";
 import { DeckView } from "@/views/decks/deck-view";
 
 /**
- * `/deck/<id>/<tail>` — the deck page, and with `?edit=1` the builder.
+ * `/deck/<id>/<tail>` — the deck page, which is also the builder: editing is
+ * modeless, so there is no separate URL for it.
  *
  * The tail is cosmetic and derived from the current name, so a link copied
  * before a rename still resolves and is redirected onto the current spelling.
@@ -51,11 +51,13 @@ export default async function DeckPage({ params, searchParams }: Props) {
 
   const currentTail = deckSlugTail(deck.name);
   const requestedTail = slugTail?.join("/") ?? null;
-  if (requestedTail !== currentTail) {
+  // `edit` is the retired builder flag: editing is modeless now, so old
+  // `?edit=1` links are redirected onto the plain deck URL.
+  if (requestedTail !== currentTail || firstValue(query.edit) != null) {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(query)) {
       const single = firstValue(value);
-      if (single != null) params.set(key, single);
+      if (single != null && key !== "edit") params.set(key, single);
     }
     const qs = params.toString();
     // 307, not 308: the tail is derived from the deck's *current* name, so a
@@ -64,19 +66,11 @@ export default async function DeckPage({ params, searchParams }: Props) {
     redirect(qs ? `${deckHref(deck)}?${qs}` : deckHref(deck));
   }
 
-  const wantsEdit = firstValue(query.edit) === "1";
-  if (wantsEdit) {
-    // An unauthenticated visitor must never reach an edit control, and a reader
-    // who followed a builder link lands on the deck rather than a dead toolbar.
-    await requireAuth(deckBuilderHref(deck));
-    if (!canEditDeck(deck.role)) redirect(deckHref(deck));
-  }
-
   return (
     <DeckView
       deck={deck}
-      editing={wantsEdit && canEditDeck(deck.role)}
       showRevisions={firstValue(query.view) === "revisions"}
+      showGuide={firstValue(query.view) === "guide"}
       isSignedIn={(await getSession()) !== null}
     />
   );

@@ -9,7 +9,7 @@ export function PrivacyView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Privacy Policy</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 31 July 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 6 September 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -74,6 +74,30 @@ export function PrivacyView() {
               layout). These are
               not personally identifiable and are not sent to our servers. You can clear them by
               clearing your browser&apos;s local storage for this site.
+            </ListItem>
+            <ListItem>
+              <strong className="font-semibold">Deck content and social features (signed in).</strong>{" "}
+              If you use decks, we store what you create so it can be shown as you direct: your{" "}
+              <strong className="font-semibold">decks</strong> (names, descriptions, guides, card
+              lists and per-card tags, with the visibility you chose),{" "}
+              <strong className="font-semibold">comments</strong> you post on decks (visible to
+              everyone who can see that deck; deleting one leaves a &ldquo;comment deleted&rdquo;
+              placeholder so replies keep their place, and the deck&apos;s owner can also remove
+              comments on their deck),{" "}
+              <strong className="font-semibold">comment likes</strong> (which comments you liked,
+              used to show a like count and to remember your own like), your{" "}
+              <strong className="font-semibold">favorites</strong> (public decks show a favorite
+              count), and your <strong className="font-semibold">deck folders</strong> (private to
+              you). Public content is attributed to your handle. To remove any of it, delete the
+              content or contact us through the project repository.
+            </ListItem>
+            <ListItem>
+              <strong className="font-semibold">Deck view counts.</strong> Deck pages keep an
+              aggregate view counter. To count a visitor only once per six hours we briefly keep a{" "}
+              <strong className="font-semibold">one-way digest</strong> of your IP address, browser
+              identifier and the current date (or your user ID when signed in) in an expiring
+              cache. The raw IP address is never stored for this purpose and the digest cannot be
+              reversed or linked across days.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Cookie preferences.</strong> Where applicable, we
