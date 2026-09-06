@@ -43,7 +43,7 @@ cd packages/discord-bot
 bun run dev        # wrangler dev — local tunnel
 bun run deploy     # production worker
 bun run register   # register slash commands with Discord (re-run when commands change)
-bun run type-check
+bun run typecheck
 ```
 
 ---

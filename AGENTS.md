@@ -96,19 +96,21 @@ bun run db:local:psql
 ## Verifying
 
 ```bash
+bun run check                               # the gate: typecheck, tests, docs references, markdown lint, boundaries
 bun test                                    # types, core, api, ingest-worker, web, discord-bot
-bun run typecheck                           # tsc --noEmit across six project configs
-node scripts/check-docs-references.mjs      # dangling paths and identifiers in guidance files
-bun run lint:md
+bun run typecheck                           # tsc --noEmit for every package, including web and discord-bot
+bun run lint:boundaries                     # dependency-cruiser rules in .config/dependency-cruiser.cjs
 bun run test:db                             # needs db:local:up first
 bun run build:web
 bun run preview:web                         # builds and runs in workerd
 ```
 
-- `bun test` and `bun run typecheck` are the gate. `.github/workflows/test.yml` runs both on every PR, unfiltered.
+- `bun run check` is the gate. `.github/workflows/test.yml` runs it on every PR, unfiltered; CONTRIBUTING and CI name the same command, so a green local check is a green PR.
+- Boundary rules are structural invariants, not style: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports `@riftseer/core`.
 - **There is no formatter and no general linter.** No biome, eslint or prettier. Match the file you are in, and do not add one without asking.
 - `bun dev` does not exercise the Workers runtime. Run `bun run preview:web` before shipping anything that touches web's server runtime or bindings.
-- `discord-bot` and `ingest-worker` spell it `type-check`. Everything else uses `typecheck`.
+- `ingest-worker` spells it `type-check`. Everything else uses `typecheck`, and root `typecheck` covers every workspace member.
+- reddit-bot and raycast-extension are gated by `.github/workflows/standalone.yml` (`npm ci` + `tsc --noEmit` on their committed lockfiles).
 - Validate a migration by running it. `bun run db:local:reset` surfaces the SQL error that reading it will not.
 
 ## Pull requests

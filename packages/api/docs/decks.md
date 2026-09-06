@@ -50,8 +50,8 @@ back as one flat list of up to 500 rows that the client arranges. Deleting is
 always a soft tombstone — the row stays so replies keep their place — by the
 comment's author or the deck's owner, and that is the entire moderation model.
 Each row carries `can_delete` for the caller, so clients never re-derive it.
-Any signed-in reader can **like** a comment (`POST`/`DELETE
-`/decks/:id/comments/:commentId/like`). Counts are computed on read and ride
+Any signed-in reader can **like** a comment: `POST` or `DELETE` on
+`/decks/:id/comments/:commentId/like`. Counts are computed on read and ride
 every comment as `like_count`; an authenticated caller also gets `is_liked`.
 
 **Folders** are a user's private organisation of decks, under `/deck-folders`

@@ -101,4 +101,3 @@ export function normalizeCardName(name: string): string {
 ```
 
 Cards are stored with a pre-computed `name_normalized` field. The query is normalized at search time using the same function so comparisons are always apples-to-apples.
-

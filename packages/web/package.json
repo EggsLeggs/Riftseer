@@ -11,7 +11,7 @@
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "deploy": "bun run check:production-env && opennextjs-cloudflare build && opennextjs-cloudflare deploy --env production",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts --include-runtime false",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@c15t/backend": "^2.0.4",

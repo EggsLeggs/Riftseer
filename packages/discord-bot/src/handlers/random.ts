@@ -2,7 +2,7 @@ import type { APIChatInputApplicationCommandInteraction } from "discord-api-type
 import { createClient } from "../api.ts";
 import { buildCardEmbed } from "../embeds.ts";
 import { getEmojiMap } from "../emoji-cache.ts";
-import type { Env } from "../index.ts";
+import type { Env } from "../env.ts";
 import { patchResponse } from "../response.ts";
 
 export async function handleRandom(

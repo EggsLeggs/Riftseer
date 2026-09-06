@@ -5,8 +5,9 @@ on:
     branches: [main]
   pull_request:
 
-env:
-  BUN_VERSION: "1.2.0"
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -39,7 +40,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -49,15 +50,15 @@ jobs:
           RIFTSEER_DATABASE_URL: postgres://postgres:postgres@localhost:55433/riftseer
         run: bun scripts/database-tests/database.mjs setup
 
-      - name: Run tests
+      # One command, the same one CONTRIBUTING and the agent guidance name:
+      # typecheck for every package, tests, docs references, markdown lint
+      # and dependency boundaries.
+      - name: Run checks
         env:
           RIFTSEER_DATABASE_TESTS: "1"
           RIFTSEER_DATABASE_URL: postgres://postgres:postgres@localhost:55433/riftseer
           RIFTSEER_POSTGREST_URL: http://localhost:3001
-        run: bun run test
-
-      - name: Typecheck
-        run: bun run typecheck
+        run: bun run check
 
   docs:
     runs-on: ubuntu-latest

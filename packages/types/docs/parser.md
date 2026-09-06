@@ -73,7 +73,7 @@ Normalizes a card name for consistent in-memory index lookups. Used to populate 
 4. Collapses consecutive whitespace to a single space
 5. Trims leading/trailing whitespace
 
-### Example
+### Example normalization
 
 ```typescript
 import { normalizeCardName } from "@riftseer/types";

@@ -3,7 +3,7 @@ import { ApplicationCommandOptionType } from "discord-api-types/v10";
 import { createClient } from "../api.ts";
 import { buildCardEmbed, buildCardImageEmbed } from "../embeds.ts";
 import { getEmojiMap } from "../emoji-cache.ts";
-import type { Env } from "../index.ts";
+import type { Env } from "../env.ts";
 import { patchResponse } from "../response.ts";
 
 export async function handleCard(

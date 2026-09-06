@@ -9,7 +9,7 @@
  * renders with Unicode fallbacks rather than crashing.
  */
 
-import type { Env } from "./index.ts";
+import type { Env } from "./env.ts";
 import { EMOJI_PREFIX } from "@riftseer/core/icons";
 
 /** token key → Discord emoji ID  (e.g. "exhaust" → "1234567890") */

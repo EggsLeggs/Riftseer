@@ -1,7 +1,7 @@
 import type { APIChatInputApplicationCommandInteraction } from "discord-api-types/v10";
 import { createClient } from "../api.ts";
 import { buildSetsEmbed } from "../embeds.ts";
-import type { Env } from "../index.ts";
+import type { Env } from "../env.ts";
 import { patchResponse } from "../response.ts";
 
 export async function handleSets(
