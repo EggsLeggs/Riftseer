@@ -63,8 +63,8 @@ Run these from the repository root. This is a **Bun workspace** — `bun install
 ```bash
 bun install             # all workspace members
 
-bun dev                 # API + web, against whatever .dev.vars points at
-bun run dev:local       # API + web, pinned to the local docker database
+bun dev                 # API + web, pinned to the local docker database
+bun run dev:prod        # API + web, against whatever .dev.vars points at
 bun dev:api             # API alone at http://localhost:8789
 bun dev:web             # Next.js alone
 bun run dev:ingest      # ingest worker at http://localhost:8787
@@ -75,8 +75,8 @@ bun run db:local:reset  # drop the volume, rebuild from supabase/migrations
 bun run db:local:psql
 ```
 
-- Only the `:local` scripts pin a database. They load `.dev.vars.local`, which holds docker placeholders and is committed on purpose.
-- Plain `bun dev` uses whatever `packages/api/.dev.vars` contains, and that is conventionally production. Check before an ingest or an admin mutation.
+- `bun dev` and the `:local` scripts pin the docker database. They load `.dev.vars.local`, which holds docker placeholders and is committed on purpose.
+- `bun run dev:prod` uses whatever `packages/api/.dev.vars` contains, and that is conventionally production. It is the explicit opt-in; check before an ingest or an admin mutation.
 - `curl localhost:8787/` reports the host the ingest worker would write to, plus a `local` flag. An ingest rewrites the whole catalogue, so look first.
 - The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
 - The local stack is real Postgres and PostgREST behind a Supabase-shaped proxy, not a mock. It needs Docker.
@@ -193,7 +193,6 @@ Read a package's own AGENTS.md before changing it. This is the map, not the deta
 - `docs` — Docusaurus, a workspace member, reads each package's `docs/` in place.
 - `supabase/migrations` — append-only after the squashed baseline.
 - `scripts`, `docker` — repository checks, the test harness, the local database stack.
-- `packages/frontend` is dead but not deletable: `.github/workflows/discord-bot.yml` path-filters on its `public/icons/**`.
 
 ## Invariants
 

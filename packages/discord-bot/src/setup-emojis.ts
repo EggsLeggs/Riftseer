@@ -30,8 +30,8 @@ if (!token || !appId) {
   process.exit(1);
 }
 
-// Path to the frontend's public icons directory (relative to this script file)
-const publicDir = join(import.meta.dir, "../../frontend/public");
+// Icons ship with the web app; this path is relative to this script file.
+const publicDir = join(import.meta.dir, "../../web/public");
 
 // ─── Fetch existing emojis so we can skip duplicates ─────────────────────────
 

@@ -33,7 +33,6 @@ This is a multi-context repo: a Bun workspace where each package owns its own do
 
 `packages/raycast-extension` and `packages/reddit-bot` sit outside the Bun workspace and are not mounted by the docs site. They still take a `CONTEXT.md` if their domain needs one; put their ADRs in the root `docs/adr/`.
 
-`packages/frontend` is dead code kept only for a CI path filter. It has no domain.
 
 ## Use the glossary's vocabulary
 

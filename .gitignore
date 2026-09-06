@@ -1,12 +1,6 @@
 # Dependencies
 node_modules/
 
-# SQLite database files
-data/
-*.db
-*.db-shm
-*.db-wal
-
 # Build artifacts
 dist/
 *.tsbuildinfo
