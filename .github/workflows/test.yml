@@ -27,10 +27,10 @@ jobs:
           --health-retries 10
 
       postgrest:
-        image: postgrest/postgrest:v14.16
+        image: postgrest/postgrest:v16.2
         env:
           PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/riftseer
-          PGRST_DB_SCHEMA: public
+          PGRST_DB_SCHEMAS: public
           PGRST_DB_ANON_ROLE: service_role
         ports:
           - 3001:3000
