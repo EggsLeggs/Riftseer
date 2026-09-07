@@ -43,7 +43,7 @@ bun run cf-typegen  # after a wrangler.jsonc change
 - The deck page is modeless: `canEditDeck(role)` alone turns the edit affordances on. `?edit=1` is retired and the route redirects it away.
 - `DeckWorkspace` is the one body both the deck page and the guest builder render. A second builder is the thing this arrangement exists to avoid.
 - Grouping, display order and stats are `@riftseer/types/deck/grouping` and `@riftseer/types/deck/stats`, pure, counting copies rather than rows. All three list views and Prev/Next navigation read `deckDisplayOrder()`, so switching views never reorders a deck.
-- Card edits go through `use-deck-editor`, which batches them into one `PUT /decks/:id/cards`. The RPC coalesces revisions within five minutes, so a request per click would write a revision row per click.
+- Card edits go through `use-deck-editor`, a hook around the reducer in `@riftseer/types/deck/editor`, which batches them into one `PUT /decks/:id/cards`. The RPC coalesces revisions within five minutes, so a request per click would write a revision row per click.
 - Violations arrive precomputed. Render `severity` distinctly and read the structured fields, never `message`.
 - Social state is server-decided: favorite, view count, `can_delete` and `is_liked` come from the payload, and the UI never re-derives moderation. Comment threads arrive flat; `deck-comments.ts` builds the tree and promotes orphans rather than dropping them.
 - `/decks/new` renders signed out. `@riftseer/types/deck/guest-deck` is pure and owns the stored shape, and `src/features/decks/guest-deck.ts` is only the localStorage calls; a blob it cannot read is no deck, never a crash. On sign-in the local copy clears only once both `createDeckAction` and `applyDeckCardChangesAction` land.

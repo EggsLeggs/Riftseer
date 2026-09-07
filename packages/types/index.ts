@@ -8,6 +8,7 @@ export * from "./src/deck-text.ts";
 export * from "./src/deck-validate.ts";
 export * from "./src/deck/add.ts";
 export * from "./src/deck/changes.ts";
+export * from "./src/deck/editor.ts";
 export * from "./src/deck/grouping.ts";
 export * from "./src/deck/guest-deck.ts";
 export * from "./src/deck/primer-markup.ts";

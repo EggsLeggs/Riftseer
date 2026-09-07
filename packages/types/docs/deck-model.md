@@ -20,6 +20,7 @@ The logic a builder runs over it, in `src/deck/`:
 | `src/deck/add.ts`           | `AddableCard`, zone eligibility, `deckAddChange()`                                       |
 | `src/deck/guest-deck.ts`    | The signed-out deck: stored shape, parse and serialise, edits, projections               |
 | `src/deck/primer-markup.ts` | `primerMarkup()`: mention spans to Markdown links over the card-mention parser           |
+| `src/deck/editor.ts`        | `deckEditorReducer()`: the builder's queue, its one batch on the wire and the projection |
 
 ---
 
