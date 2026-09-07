@@ -10,6 +10,7 @@
 
 import { Elysia, type ElysiaConfig } from "elysia";
 import { cors } from "./plugins/cors";
+import { rateLimit, type RateLimitOptions } from "./plugins/rate-limit";
 import type { CardDataProvider } from "@riftseer/core";
 import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
@@ -32,6 +33,8 @@ export interface BuildAppOptions {
    * browser. Defaults to `SITE_ORIGIN`; public reads answer `*` regardless.
    */
   corsOrigins?: readonly string[];
+  /** Limiter wiring; tests supply an in-memory store and clock. Defaults to Upstash. */
+  rateLimit?: RateLimitOptions;
 }
 
 /** `SITE_ORIGIN` from the Worker vars, as the CORS allowlist it implies. */
@@ -120,6 +123,7 @@ export function buildApp(cardProvider: CardDataProvider, options: BuildAppOption
         }
       })
       .use(cors({ allowedOrigins: options.corsOrigins ?? configuredOrigins() }))
+      .use(rateLimit(options.rateLimit))
       // The reference page and the spec it reads. Both are hidden from the spec
       // itself: they describe the API rather than belonging to it.
       .get(
