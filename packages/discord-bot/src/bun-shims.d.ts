@@ -9,6 +9,17 @@
 interface ImportMeta {
   readonly dir: string;
 }
+
+// @cloudflare/workers-types declares the nodejs_compat globals, `Buffer` among
+// them, as `declare const Buffer: any`. That collides with the one @types/node
+// declares, and the program keeps only one side of the merge: `Buffer` is still
+// typed, because buffer.buffer.d.ts contributes the interface, but the members
+// declared next to the losing `const` in buffer.d.ts go with it. `toString`
+// then falls through to Uint8Array's, which takes no arguments, and
+// setup-emojis.ts cannot base64 an icon. Merge the overload back.
+interface Buffer {
+  toString(encoding?: BufferEncoding, start?: number, end?: number): string;
+}
 declare module "bun:sqlite" {
   export interface Changes {
     changes: number;
