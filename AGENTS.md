@@ -107,7 +107,7 @@ A change to shared behaviour is not done when the website shows it. Surfaces her
 - Format limits are data in `format_zone_rules`, never database constraints. Changing a format cannot make a saved deck unloadable.
 - Image URLs, slugs and keywords are derived, with one derivation each. Slugs are pinned on first insert so public URLs never drift.
 - A `might_bonus` of `0` is a real printed value. Presence decides equipment, never truthiness.
-- The API Worker holds a service-role key and bypasses RLS. `canRead()` and `canWrite()` in `apps/api/src/routes/decks.ts` decide deck access and `ADMIN_USER_IDS` decides admin; migration policies are defence in depth. Web's `requireAuth()` and `requireAdmin()` are UX gates. A deck you may not read answers 404, never 403.
+- The API Worker holds a service-role key and bypasses RLS. `canRead()` and `canWrite()` in `apps/api/src/authz/deck-access.ts` decide deck access and `ADMIN_USER_IDS` decides admin; migration policies are defence in depth. Web's `requireAuth()` and `requireAdmin()` are UX gates. A deck you may not read answers 404, never 403.
 - `owner` is computed from `owner_id`, never stored, and visibility is orthogonal to role.
 
 ## Legal and consent

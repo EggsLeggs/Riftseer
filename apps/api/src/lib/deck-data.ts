@@ -23,7 +23,7 @@ import type { PrintingImage } from "@riftseer/types";
 //
 // The client is the service-role one, so RLS is bypassed: the policies in the
 // migration are defence in depth against a leaked anon key, and the real
-// boundary is `apps/api/src/routes/decks.ts`.
+// boundary is `apps/api/src/authz/deck-access.ts`.
 
 export type DeckVisibility = "private" | "unlisted" | "public";
 export type CollaboratorRole = "editor" | "viewer";
