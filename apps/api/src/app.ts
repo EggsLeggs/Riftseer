@@ -9,7 +9,7 @@
  */
 
 import { Elysia, type ElysiaConfig } from "elysia";
-import { cors } from "@elysiajs/cors";
+import { cors } from "./plugins/cors";
 import type { CardDataProvider } from "@riftseer/core";
 import { metaRoutes } from "./routes/meta";
 import { cardsRoutes } from "./routes/cards";
@@ -27,6 +27,17 @@ export interface BuildAppOptions {
   adapter?: ElysiaConfig<undefined>["adapter"];
   /** R2 + queue bindings for admin image uploads. Absent outside the Worker. */
   imageBindings?: AdminImageBindings;
+  /**
+   * Origins that may call account, deck-writing and admin routes from a
+   * browser. Defaults to `SITE_ORIGIN`; public reads answer `*` regardless.
+   */
+  corsOrigins?: readonly string[];
+}
+
+/** `SITE_ORIGIN` from the Worker vars, as the CORS allowlist it implies. */
+function configuredOrigins(): string[] {
+  const origin = process.env.SITE_ORIGIN;
+  return origin ? [origin] : [];
 }
 
 // The committed spec is served verbatim. Widening it here keeps the literal
@@ -108,12 +119,7 @@ export function buildApp(cardProvider: CardDataProvider, options: BuildAppOption
           return { error: "Service temporarily unavailable" };
         }
       })
-      .use(
-        cors({
-          origin: true, // Reflect any Origin — public API, browser requests from any site are allowed
-          methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        }),
-      )
+      .use(cors({ allowedOrigins: options.corsOrigins ?? configuredOrigins() }))
       // The reference page and the spec it reads. Both are hidden from the spec
       // itself: they describe the API rather than belonging to it.
       .get(
