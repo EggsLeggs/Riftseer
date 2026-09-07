@@ -1,0 +1,3 @@
+# The TTS save embeds Lua with CRLF and its extract/inject tools do byte-mode
+# I/O, so git must never normalise line endings under apps/tts.
+apps/tts/** -text
