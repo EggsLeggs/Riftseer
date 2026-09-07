@@ -25,7 +25,17 @@ BEGIN
     RETURN;
   END IF;
 
-  CREATE SCHEMA IF NOT EXISTS legacy_hold;
+  -- Refuse to park into a pre-existing schema: it may hold unrelated objects,
+  -- and the restore migration would CASCADE-drop them. The marker table is the
+  -- ownership proof 20260811000000 checks before dropping.
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'legacy_hold') THEN
+    RAISE EXCEPTION
+      'legacy_hold schema already exists; refusing pre-baseline teardown';
+  END IF;
+  CREATE SCHEMA legacy_hold;
+  CREATE TABLE legacy_hold._pre_baseline_transition (
+    owned_by text NOT NULL DEFAULT '20260809999999_pre_baseline_teardown'
+  );
 
   IF to_regclass('public.profiles') IS NOT NULL THEN
     ALTER TABLE public.profiles SET SCHEMA legacy_hold;
@@ -73,9 +83,15 @@ BEGIN
   END LOOP;
 
   FOR r IN
-    SELECT s.sequencename
-    FROM pg_sequences s
-    WHERE s.schemaname = 'public'
+    SELECT c.relname AS sequencename
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relkind = 'S'
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_depend d
+        WHERE d.objid = c.oid AND d.deptype = 'e'
+      )
   LOOP
     EXECUTE format('DROP SEQUENCE IF EXISTS public.%I CASCADE', r.sequencename);
   END LOOP;

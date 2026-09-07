@@ -24,6 +24,13 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Only drop a hold this transition created. A pre-existing legacy_hold with
+  -- a profiles table is not ours to CASCADE away.
+  IF to_regclass('legacy_hold._pre_baseline_transition') IS NULL THEN
+    RAISE EXCEPTION
+      'legacy_hold exists without the pre-baseline transition marker; refusing to restore or drop';
+  END IF;
+
   -- profiles first: follows and linked_accounts reference it.
   FOREACH tbl IN ARRAY ARRAY['profiles', 'follows', 'linked_accounts'] LOOP
     IF to_regclass(format('legacy_hold.%I', tbl)) IS NULL THEN
