@@ -12,7 +12,6 @@
     "generate:spec": "bun run scripts/generate-spec.ts"
   },
   "dependencies": {
-    "@elysiajs/cors": "^1.4.1",
     "@riftseer/core": "workspace:*",
     "@riftseer/types": "workspace:*",
     "@supabase/supabase-js": "^2.97.0",

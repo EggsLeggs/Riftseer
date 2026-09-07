@@ -35,3 +35,17 @@ export const authAdminClient =
         auth: { autoRefreshToken: false, persistSession: false },
       })
     : null;
+
+/**
+ * The two clients the account routes read, as one injectable value.
+ *
+ * Route modules take `clients` as an option and default to this object, which
+ * is how the route tests run real round trips against an in-memory fake
+ * instead of a mocked module.
+ */
+export interface SupabaseClients {
+  authClient: typeof authClient;
+  authAdminClient: typeof authAdminClient;
+}
+
+export const supabaseClients: SupabaseClients = { authClient, authAdminClient };
