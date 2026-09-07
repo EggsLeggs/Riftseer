@@ -2,6 +2,7 @@ export * from "./src/card.ts";
 export * from "./src/card-detail.ts";
 export * from "./src/card-image.ts";
 export * from "./src/card-text.ts";
+export * from "./src/client/index.ts";
 export * from "./src/deck.ts";
 export * from "./src/deck-text.ts";
 export * from "./src/deck-validate.ts";
