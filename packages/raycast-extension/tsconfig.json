@@ -10,6 +10,11 @@
     "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "types": []
+    // The extension runs on Node: it imports node:fs, node:path, node:os and
+    // node:url, and reaches for Buffer, URL, fetch and setTimeout. Until
+    // @raycast/utils v2 these arrived by accident, pulled in through a
+    // triple-slash reference in v1's dependency tree, which `types: []` does
+    // not suppress. v2 dropped those dependencies, so name the types.
+    "types": ["node"]
   }
 }
