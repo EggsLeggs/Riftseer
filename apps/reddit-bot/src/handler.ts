@@ -1,32 +1,19 @@
 /**
- * Calls the Riftseer Elysia API to resolve card requests and builds the
- * Reddit reply string.
+ * Resolves card requests through the Riftseer API and builds the Reddit reply.
  *
- * The Devvit app does NOT embed provider logic — it delegates to the external
- * API.  This keeps the Devvit bundle small and the API as the single source
- * of truth for card data, fuzzy matching, and caching.
+ * The Devvit app carries no card data or matching of its own: the API is the
+ * one source of truth for names, fuzzy matching and images, which also keeps
+ * the Devvit bundle small.
  */
 
-import type { CardRequest, Oracle, Printing } from "@riftseer/types";
-import { printingImageUrl } from "@riftseer/types";
-
-interface ApiResolvedCard {
-  request: { raw: string; name: string; set?: string; collector?: string };
-  oracle: Oracle | null;
-  printing: Printing | null;
-  matchType: "exact" | "fuzzy" | "not-found";
-  score?: number;
-}
-
-interface ApiResolveResponse {
-  count: number;
-  results: ApiResolvedCard[];
-}
+import type { CardRequest, ResolvedCard } from "@riftseer/types";
+import { cardSiteUrl, normalizeSiteOrigin, printingImageUrl } from "@riftseer/types";
+import { createRiftseerClient } from "@riftseer/types/client";
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
- * Resolve `requests` via the external API and build a Markdown reply.
+ * Resolve `requests` via the API and build a Markdown reply.
  * Returns null if the API call fails or no cards could be resolved.
  */
 export async function buildReply(
@@ -36,37 +23,30 @@ export async function buildReply(
 ): Promise<string | null> {
   if (requests.length === 0) return null;
 
-  const api = apiBaseUrl.replace(/\/$/, "");
-  const site = siteBaseUrl.replace(/\/$/, "");
+  const api = normalizeSiteOrigin(apiBaseUrl);
+  const client = createRiftseerClient({ baseUrl: api });
 
   // Preserve the token contents so the API can choose a requested printing,
   // including prefixed collector tracks such as VEN-SP3 and OGN-T03.
-  const rawStrings = requests.map((r) => r.raw);
-
-  let data: ApiResolveResponse;
-  try {
-    const res = await fetch(`${api}/api/v1/cards/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requests: rawStrings }),
-    });
-
-    if (!res.ok) {
-      console.error(`[Riftseer] API returned HTTP ${res.status}`);
-      return null;
-    }
-
-    data = (await res.json()) as ApiResolveResponse;
-  } catch (err) {
-    console.error(`[Riftseer] API fetch failed: ${err}`);
+  const result = await client.cards.resolve({ requests: requests.map((r) => r.raw) });
+  if (!result.ok) {
+    // Status 0 is the client's own code for a request that never reached the API.
+    console.error(
+      `[Riftseer] resolve failed: HTTP ${result.status} ${result.error.code}: ${result.error.error}`,
+    );
     return null;
   }
 
-  if (!data.results?.length) return null;
+  if (result.data.results.length === 0) return null;
 
-  const lines = data.results.map((r) => formatCard(r, site, api));
+  const lines = result.data.results.map((r) => formatCard(r, siteBaseUrl, api));
 
-  return [...lines, "", "---", `*[info](${site}/docs/reddit-bot)*`].join("\n");
+  return [
+    ...lines,
+    "",
+    "---",
+    `*[info](${normalizeSiteOrigin(siteBaseUrl)}/docs/reddit-bot)*`,
+  ].join("\n");
 }
 
 // ─── Formatting ───────────────────────────────────────────────────────────────
@@ -77,7 +57,7 @@ export async function buildReply(
  * Found:      [Card Name](image) *(fuzzy: Actual Name)* — [(RS)](...), [(txt)](...)
  * Not found:  Card Name — not found.
  */
-function formatCard(result: ApiResolvedCard, siteBase: string, apiBase: string): string {
+function formatCard(result: ResolvedCard, siteBase: string, apiBase: string): string {
   const displayName = result.request.name;
 
   if (!result.oracle) {
@@ -86,10 +66,7 @@ function formatCard(result: ApiResolvedCard, siteBase: string, apiBase: string):
 
   const { id, name: cardName } = result.oracle;
   const imageUrl = printingImageUrl(result.printing, "normal");
-  const siteUrl =
-    result.printing?.riftseer_uri ??
-    result.oracle.riftseer_uri ??
-    `${siteBase}/card/${result.printing?.id ?? id}`;
+  const siteUrl = cardSiteUrl(result.oracle, result.printing, siteBase);
   const txtUrl = `${apiBase}/api/v1/cards/${id}/text`;
 
   const fuzzyNote = result.matchType === "fuzzy" ? ` *(fuzzy: ${esc(cardName)})*` : "";
