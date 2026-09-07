@@ -1,18 +1,31 @@
 #!/usr/bin/env python3
-"""Reject migration files with top-level COMMIT/ROLLBACK.
+"""Reject migration files with top-level transaction-ending statements.
 
 Used by .github/workflows/db-migrate.yml so each migration + schema_migrations
-insert can run under psql --single-transaction. A top-level COMMIT/ROLLBACK
-would end that transaction early and let the history insert commit alone.
+insert can run under psql --single-transaction. A top-level COMMIT, END,
+ROLLBACK, or ABORT would end that transaction early and let the history insert
+commit alone.
 
-Skips -- and /* */ comments, single- and double-quoted literals, and
-dollar-quoted bodies so PL/pgSQL BEGIN / transaction-control text inside
-function bodies is allowed.
+Skips -- and /* */ comments, single- and double-quoted literals (including
+E'...' backslash escapes), and dollar-quoted bodies so PL/pgSQL BEGIN / END /
+transaction-control text inside function bodies is allowed.
 """
 from __future__ import annotations
 
 import re
 import sys
+
+_TXN_END = re.compile(r"(?is)(?:^|;)\s*(?:COMMIT|END|ROLLBACK|ABORT)\b")
+
+
+def _is_escape_string(sql: str, quote_idx: int) -> bool:
+    """True when quote_idx is the opening ' of an E'...' / e'...' literal."""
+    if quote_idx < 1 or sql[quote_idx - 1] not in "Ee":
+        return False
+    # E must be its own token, not the tail of an identifier (fooE'...').
+    if quote_idx >= 2 and (sql[quote_idx - 2].isalnum() or sql[quote_idx - 2] == "_"):
+        return False
+    return True
 
 
 def has_toplevel_txn_end(sql: str) -> bool:
@@ -42,8 +55,12 @@ def has_toplevel_txn_end(sql: str) -> bool:
                 out.append(" ")
                 continue
         if c == "'":
+            escape = _is_escape_string(sql, i)
             i += 1
             while i < n:
+                if escape and sql[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
                 if sql[i] == "'":
                     if i + 1 < n and sql[i + 1] == "'":
                         i += 2
@@ -67,9 +84,7 @@ def has_toplevel_txn_end(sql: str) -> bool:
             continue
         out.append(c)
         i += 1
-    return bool(
-        re.search(r"(?is)(?:^|;)\s*(?:COMMIT|ROLLBACK)\b", "".join(out))
-    )
+    return bool(_TXN_END.search("".join(out)))
 
 
 def main() -> int:
@@ -80,7 +95,7 @@ def main() -> int:
     sql = open(path, encoding="utf-8").read()
     if has_toplevel_txn_end(sql):
         print(
-            f"refusing {path}: top-level COMMIT/ROLLBACK breaks --single-transaction",
+            f"refusing {path}: top-level COMMIT/END/ROLLBACK/ABORT breaks --single-transaction",
             file=sys.stderr,
         )
         return 1

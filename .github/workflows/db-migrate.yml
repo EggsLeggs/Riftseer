@@ -111,8 +111,8 @@ jobs:
             [ -n "$f" ] || continue
             base=$(basename "$f"); ver="${base%%_*}"; name="${base#*_}"; name="${name%.sql}"
             echo "==> applying ${base}"
-            # Reject top-level COMMIT/ROLLBACK so --single-transaction cannot end
-            # early (PL/pgSQL bodies inside dollar-quotes are allowed).
+            # Reject top-level COMMIT/END/ROLLBACK/ABORT so --single-transaction
+            # cannot end early (PL/pgSQL bodies inside dollar-quotes are allowed).
             python3 .github/scripts/reject-toplevel-txn-end.py "$f"
             # Migration body + schema_migrations row in one session/transaction so
             # a committed schema change cannot land without its history record.
