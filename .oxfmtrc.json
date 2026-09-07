@@ -15,11 +15,6 @@
     "apps/web/cloudflare-env.d.ts",
     // Raycast's `ray lint` requires its own ESLint and Prettier.
     "apps/raycast-extension",
-    // Docusaurus, deleted in the docs chunk of the overhaul.
-    "docs/doc-pages",
-    "docs/src",
-    "docs/static",
-    "docs/*.ts",
     // SQL and Lua are not formatted here; listed so nobody adds them.
     "supabase/migrations",
     "apps/tts"

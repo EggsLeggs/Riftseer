@@ -7,8 +7,7 @@
     "apps/api",
     "apps/discord-bot",
     "apps/ingest-worker",
-    "apps/web",
-    "docs"
+    "apps/web"
   ],
   "_workspacesExcluded": "apps/reddit-bot (Devvit/npm standalone) and apps/raycast-extension (Raycast/npm standalone) are intentionally excluded — both require npm and are not Bun workspace members.",
   "overrides": {

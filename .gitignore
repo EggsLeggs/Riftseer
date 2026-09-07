@@ -6,7 +6,6 @@ dist/
 *.tsbuildinfo
 
 # Generated files
-docs/static/openapi.json
 .next/
 out/
 next-env.d.ts

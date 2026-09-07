@@ -27,9 +27,7 @@
   osvVulnerabilityAlerts: true,
   // ignorePaths is not mergeable: setting it here replaces the list
   // config:recommended inherits from :ignoreModulesAndTests rather than adding
-  // to it, so that list is repeated verbatim before docs/. docs/ is the
-  // Docusaurus site, deleted in the docs chunk of the overhaul; delete that
-  // entry with it.
+  // to it, so that list is repeated verbatim.
   ignorePaths: [
     "**/node_modules/**",
     "**/bower_components/**",
@@ -39,7 +37,6 @@
     "**/test/**",
     "**/tests/**",
     "**/__fixtures__/**",
-    "docs/**",
   ],
   packageRules: [
     {
