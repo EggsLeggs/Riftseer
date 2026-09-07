@@ -1,309 +1,75 @@
 # Riftseer
 
-Card data API, web app, and Reddit + Discord integration for the **Riftbound** TCG.
+Riftseer is a data platform for the Riftbound TCG: a card catalogue ingested
+from RiftCodex every six hours, a REST API over it, and the clients that read
+that API. Think Scryfall plus Moxfield, for Riftbound.
 
-```text
-# Reddit bot (bracket syntax)
-[[Sun Disc]]         → bot replies with card image, API link, site link
-[[Sun Disc|OGN]]     → specific set
-[[Sun Disc|OGN-021]] → specific printing by collector number
+The API is public at `https://api.riftseer.com/api/v1`. Everything a client
+shows, it got from there; no client talks to the database.
 
-# Discord bot (slash commands)
-/card name:Sun Disc          → embed with stats, rules text, and icons
-/card name:Sun Disc set:OGN  → scoped to set
-/card name:Sun Disc image:true → image-only embed
-/random                      → random card
-/sets                        → list all sets
-```
+## What lives where
 
----
+| Package | What it is |
+|---------|------------|
+| `packages/types` | Shared types, card-text parser, deck model and validation. Zero runtime dependencies so Workers, Devvit and browsers can all import it. |
+| `packages/core` | `CardDataProvider`, the Supabase provider, the search grammar and its SQL renderer. Consumed by the API only. |
+| `packages/api` | Elysia REST API on Cloudflare Workers. Owns `/api/v1` and the authorisation boundary. |
+| `packages/web` | riftseer.com. Next.js App Router, deployed to Workers via OpenNext. |
+| `packages/ingest-worker` | Scheduled ingest from RiftCodex, TCGPlayer enrichment, image hosting. |
+| `packages/discord-bot` | Slash commands on a Worker. |
+| `packages/reddit-bot` | Devvit app answering `[[Card Name]]` on Reddit. Standalone npm project. |
+| `packages/raycast-extension` | Card search in Raycast. Standalone npm project. |
+| `supabase/migrations` | The schema, append-only after the squashed baseline. |
 
-## What’s included
+## Running it
 
-| Part | Description |
-| --- | --- |
-| **Site** | React (Vite) app: search, card pages, sets browser, syntax guide, light/dark theme |
-| **API** | Elysia HTTP server under `/api/v1`: cards, sets, resolve; Swagger UI at `/api/swagger` |
-| **Discord bot** | Slash-command bot on Cloudflare Workers — see `packages/discord-bot` |
-| **Reddit bot** | Bracket-syntax bot on Reddit — uses [Devvit](https://devvit.dev), see `packages/reddit-bot` |
-| **Core** | Shared types, `CardDataProvider`, parser, icon definitions, Supabase provider |
-
----
-
-## Site features
-
-The frontend (`packages/frontend`) is a single-page app that talks to the API:
-
-- **Home** — Search box and links to Sets and Syntax
-- **Search** — Fuzzy card search by name; filter by set (`?set=OGN`); single-result redirects to card page
-- **Card page** — Image (with rotate for landscape cards), name, cost, type, domains, ability/effect (with inline icons), might, artist, rarity, tags; **Tokens** (parsed from text); **Printings** (all versions, click to switch); **Extra tools** — download image, copy-paste text, JSON link, report (placeholder)
-- **Sets** — List of sets with codes and card counts; links to browse cards in set
-- **Syntax** — Bracket syntax for Reddit/bot and API, search tips, set codes, API overview with link to Swagger
-- **Nav** — Global search, Advanced (search), Syntax, Sets, **Random card**, light/dark theme toggle
-
-The site uses Eden (typed API client), React Router, Tailwind, and domain/stat icons (e.g. runes, energy, might). Card text is rendered with `CardTextRenderer` (replaces `:rb_*:` tokens with icons).
-
----
-
-## Architecture
-
-```text
-packages/
-  core/         ← shared types, CardDataProvider, parser, icon defs, Supabase provider
-  api/          ← Elysia server (all routes under /api/v1) + ingest pipeline (src/ingest.ts)
-  frontend/     ← React + Vite SPA (Eden client → API)
-  discord-bot/  ← Discord slash-command bot (Cloudflare Workers + Wrangler)
-  ingest-worker/  ← Cloudflare Worker — cron trigger for ingest (POST /api/v1/admin/ingest)
-  reddit-bot/   ← Reddit bracket-syntax bot (Devvit)
-```
-
-**Design:** The API and Reddit bot both use `@riftseer/core`. Both the Reddit bot and the Discord bot call the deployed API over HTTP. Data source is swappable via `CARD_PROVIDER`; the API and site are unchanged. Icon definitions live in `@riftseer/core/icons` — a subpath export that is safe to import in both browser (Vite) and Cloudflare Workers (no `bun:sqlite` pulled in). Supabase/Redis clients live in `@riftseer/core/server` (server-only subpath, never imported in browser/Workers builds).
-
----
-
-## Requirements
-
-| Tool | Version |
-| --- | --- |
-| [Bun](https://bun.sh) | ≥ 1.2 |
-
-Elysia is Bun-first and uses `Bun.serve()`; Bun also provides SQLite and a Jest-compatible test runner.
-
----
-
-## Quick Start
+You need [Bun](https://bun.sh) ≥ 1.3 and Docker.
 
 ```bash
-# 1. Clone + install
-git clone https://github.com/you/riftseer
-cd riftseer
 bun install
-
-# 2. Configure
-cp .env.example .env
-# Set API_BASE_URL, SITE_BASE_URL, and REDDIT_* if using the bot
-
-# 3. Run API + site together
-bun dev
-# → API: http://localhost:3000
-# → Site: Vite dev server (port in frontend package, often 5173)
-# → Swagger: http://localhost:3000/api/swagger
-
-# Or run separately:
-bun dev:api      # API only
-bun dev:frontend # Frontend only (expects API at VITE_API_URL or same origin)
+bun run db:local:up   # Postgres + PostgREST behind a Supabase-shaped proxy
+bun dev               # API on :8789 and web on :3000, against the local database
 ```
 
-The Reddit bot lives in `packages/reddit-bot` (Devvit) and the Discord bot in `packages/discord-bot` (Cloudflare Workers) — see their respective setup sections below.
+`bun dev` is pinned to the local docker database. `bun run dev:prod` points at
+whatever `packages/api/.dev.vars` holds, which is conventionally production;
+it is the explicit opt-in, not the default.
 
----
-
-## Local Services (Supabase + Redis)
-
-Only needed when `CARD_PROVIDER=supabase`. Both require **Docker Desktop** to be running.
-
-### Supabase
-
-**Option A — use production Supabase for local dev** (easiest; ingest is idempotent):
-
-In `.env`, set:
-
-```env
-SUPABASE_URL=https://zsummtaaaftymjhnapyo.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<your production service role key>
-```
-
-**Option B — full local stack** (isolated; good for testing ingest changes):
+The local catalogue starts empty. Fill it with a real ingest run:
 
 ```bash
-# Install CLI (macOS)
-brew install supabase/tap/supabase
-
-# Start local Postgres + REST API (Docker)
-npx supabase start
-
-# Apply migrations
-npx supabase db push
+bun run dev:ingest:local              # ingest worker on :8787
+curl -X POST localhost:8787/ingest    # pulls the full catalogue from RiftCodex
 ```
 
-In `.env`, uncomment the local block. The local service_role key is the well-known Supabase
-default (all local instances use this key):
-
-```env
-SUPABASE_URL=http://127.0.0.1:54321
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hj04zWl196z2-SBc0
-```
-
-Then populate the local database:
+## Checking your work
 
 ```bash
-bun packages/api/src/ingest.ts
+bun run check
 ```
 
-Studio UI (local): `http://127.0.0.1:54323`. To stop: `npx supabase stop`.
+That one command is the CI gate: typecheck for every package, the test suite,
+guidance-file reference checks, markdown lint and dependency boundary rules.
+If it passes locally, the PR gate passes.
 
-> **Note:** Bun reads `.env` from the directory where it is invoked. The API scripts use
-> `--env-file ../../.env` so the root `.env` is always picked up regardless of working directory.
+The two standalone npm packages are gated separately: `npm ci` plus
+`tsc --noEmit` in `packages/reddit-bot` and `packages/raycast-extension`.
 
-### Upstash Redis
+## The data model, in three sentences
 
-Upstash Redis is used as a warmup cache for the Supabase provider (fast restarts without re-querying Postgres). It is optional — if credentials are absent, the provider falls back to Supabase on every restart.
+An **oracle** is the rules object: name, type, rules text, keywords. A
+**printing** is one physical card of that oracle: art, set, collector number,
+rarity, prices. Decks reference both, which is why printing ids must survive
+an ingest rebuild.
 
-Create a free database at [console.upstash.com](https://console.upstash.com) (free tier: 10k req/day, 256MB — sufficient for ~650 cards), then set the credentials in your `.env`:
+`AGENTS.md` carries the full domain model, the invariants and the map of the
+codebase. Read it before changing anything; it is written for exactly that.
 
-```bash
-UPSTASH_REDIS_REST_TOKEN=<rest-token>
-UPSTASH_REDIS_REST_URL=https://<database-name>.upstash.io
-```
+## License and attribution
 
-If you deploy the API as a Cloudflare Worker (using Wrangler), set the following secrets:
+Source terms are in [LICENSE](LICENSE). The public API may be used under the
+conditions described there.
 
-```bash
-wrangler secret put UPSTASH_REDIS_REST_URL
-wrangler secret put UPSTASH_REDIS_REST_TOKEN
-```
-
-On other hosts, set the same values using that platform’s environment variable or secret mechanism (not Wrangler).
-
----
-
-## Environment Variables
-
-See `.env.example`. Summary:
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `CARD_PROVIDER` | `supabase` | `supabase` |
-| `API_PORT` | `3000` | Elysia port |
-| `API_BASE_URL` | `http://localhost:3000` | Public API URL (bot/site links) |
-| `SITE_BASE_URL` | `https://example.com` | Public site URL (bot reply links) |
-| `CACHE_REFRESH_INTERVAL_MS` | `21600000` | Provider stats refresh interval (6h) |
-| `SUPABASE_URL` | — | Required when `CARD_PROVIDER=supabase` |
-| `SUPABASE_SERVICE_ROLE_KEY` | — | Required when `CARD_PROVIDER=supabase` |
-| `UPSTASH_REDIS_REST_URL` | — | Upstash Redis REST URL (optional cache). If set, `UPSTASH_REDIS_REST_TOKEN` is required. |
-| `UPSTASH_REDIS_REST_TOKEN` | — | Required when `UPSTASH_REDIS_REST_URL` is set — Upstash Redis REST token |
-| `REDDIT_*` | — | Required for Reddit bot (see Reddit setup below) |
-
----
-
-## Discord bot setup
-
-The Discord bot runs on Cloudflare Workers. Secrets are set once via `wrangler secret put` (not `.env`).
-
-```bash
-cd packages/discord-bot
-
-# 1. Set secrets (one-time)
-wrangler secret put DISCORD_PUBLIC_KEY
-wrangler secret put DISCORD_BOT_TOKEN
-wrangler secret put DISCORD_APPLICATION_ID
-
-# 2. Register slash commands (re-run when commands.ts changes)
-bun run register
-
-# 3. Upload card icons as application emojis (one-time, re-run after new icons are added)
-#    Reads DISCORD_BOT_TOKEN and DISCORD_APPLICATION_ID from .dev.vars
-bun run setup-emojis
-
-# 4. Run locally (requires a tunnel — ngrok or cloudflared — to receive Discord webhooks)
-bun run dev
-
-# 5. Deploy to Cloudflare
-bun run deploy
-```
-
-Set the **Interactions Endpoint URL** in the Discord Developer Portal to your worker URL (or tunnel URL during dev).
-
-Public vars (`API_BASE_URL`, `SITE_BASE_URL`) are in `wrangler.toml`.
-
----
-
-## Reddit bot setup (Devvit)
-
-The Reddit bot (`packages/reddit-bot`) is a standalone [Devvit](https://devvit.dev) app — **not** part of the Bun workspace. It uses `npm`, not `bun`.
-
-```bash
-cd packages/reddit-bot
-npm install
-
-npx devvit login        # one-time auth with your Reddit account
-
-# Set the API and site URLs (stored as app-level secrets, shared across subreddits)
-npx devvit settings set apiBaseUrl   # e.g. https://api.riftseer.com
-npx devvit settings set siteBaseUrl  # e.g. https://riftseer.com
-
-npx devvit upload       # deploy to Reddit
-npx devvit playtest r/yoursubreddit  # live testing against a real subreddit
-```
-
-After upload, install the app on the subreddit you want to moderate via the Devvit dashboard or `npx devvit install`.
-
----
-
-## API Reference
-
-The OpenAPI reference is published at **`/api-reference/`** on the [docs site](https://eggsleggs.github.io/Riftseer/api-reference/) and is regenerated on every docs deploy. There is no live `/api/swagger` endpoint — the spec is generated at build time (see `packages/api/scripts/generate-spec.ts`).
-
-All endpoints are under **`/api/v1`**:
-
-| Method | Path | Description |
-| --- | --- | --- |
-| GET | `/api/v1/health` | `{ status, uptimeMs }` |
-| GET | `/api/v1/meta` | Provider name, card count, last refresh, cache age |
-| GET | `/api/v1/cards` | Search: `?name=...` (required unless browsing set), optional `?set=`, `?fuzzy=false` (exact name only), `?limit=` |
-| GET | `/api/v1/cards?set=OGN` | List cards in set (no `name` required) |
-| GET | `/api/v1/cards/random` | One random card |
-| GET | `/api/v1/cards/:id` | Card by UUID |
-| GET | `/api/v1/cards/:id/text` | Plain text (name, type line, rules) for copy-paste |
-| POST | `/api/v1/cards/resolve` | Batch resolve: `{ "requests": ["Sun Disc", "Stalwart Poro\|OGN", ...] }` (max 20) |
-| GET | `/api/v1/sets` | List sets with codes and card counts |
-
-### POST /api/v1/cards/resolve example
-
-```bash
-curl -X POST http://localhost:3000/api/v1/cards/resolve \
-  -H 'Content-Type: application/json' \
-  -d '{"requests":["Sun Disc","Stalwart Poro|OGN","NonExistentCard"]}'
-```
-
-Response shape: `{ count, results: [{ request, card | null, matchType }] }`.
-
----
-
-## Running tests
-
-```bash
-bun test         # all
-bun test:core    # core (parser, provider)
-bun test:api     # API routes
-```
-
-Tests use Bun’s runner; API tests call Elysia’s `.handle()` (no live server).
-
----
-
-## Deployment
-
-- **API:** Use the root `Dockerfile` (or any Node/Bun host). Set `PORT`, `API_BASE_URL`, `SITE_BASE_URL`, and optionally `CARD_PROVIDER`, `DB_PATH`, etc.
-- **Frontend:** Build with `bun run build:frontend`; deploy the `packages/frontend/dist` output (e.g. Cloudflare Pages via `wrangler`, or any static host). Set `VITE_API_URL` at build time if the API is on another origin.
-- **Discord bot:** Deploy with `wrangler deploy` from `packages/discord-bot`. Secrets set via `wrangler secret put`.
-- **Ingest worker:** Deploy with `wrangler deploy` from `packages/ingest-worker`. Set secrets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` via `wrangler secret put`. Optionally set `INGEST_SECRET` to guard the manual POST `/ingest` trigger.
-- **Reddit bot:** See `packages/reddit-bot` (Devvit deploy).
-- **Docker Compose:** From repo root, `docker compose up -d` runs API (and optionally bot).
-
----
-
-## Card data
-
-Card data is sourced from [RiftCodex](https://riftcodex.com) (`https://api.riftcodex.com`). The ingestion pipeline (`bun packages/api/src/ingest.ts`) fetches all cards, enriches them with TCGPlayer prices, derives token relationships, and upserts everything into Supabase Postgres.
-
-The API uses the Supabase provider (`CARD_PROVIDER=supabase`): it reads from Postgres, with data populated by the ingest pipeline.
-
-Run the ingest pipeline manually or via the cron worker:
-
-```bash
-bun packages/api/src/ingest.ts           # full ingest → Supabase
-bun packages/api/src/ingest.ts --dry-run # fetch + transform only, no writes
-```
-
-The **ingest worker** (`packages/ingest-worker`) is a Cloudflare Worker that runs on a schedule (default: every 6 hours) and upserts card data directly to Supabase. Deploy it with `wrangler deploy` from `packages/ingest-worker` and set the required secrets (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) via `wrangler secret put`.
+Riftseer is unofficial fan content, not approved or endorsed by Riot Games.
+Card data and art are the property of Riot Games under their
+[Legal Jibber Jabber](https://www.riotgames.com/en/legal) fan-content policy.
