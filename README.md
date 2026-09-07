@@ -48,13 +48,14 @@ curl -X POST localhost:8787/ingest    # pulls the full catalogue from RiftCodex
 bun run check
 ```
 
-That one command is the CI gate: lint, format, typecheck for every package,
-the test suite, guidance-file reference checks, markdown lint, dependency
-boundary rules, wrangler consistency and OpenAPI spec drift. If it passes
-locally, the PR gate passes.
+That is the workspace gate (`.github/workflows/test.yml`): lint, format,
+typecheck for every Bun workspace package, the test suite, guidance-file
+reference checks, markdown lint, dependency boundary rules, wrangler
+consistency and OpenAPI spec drift.
 
-The two standalone npm packages are gated separately: `npm ci` plus
-`tsc --noEmit` in `apps/reddit-bot` and `apps/raycast-extension`.
+`apps/reddit-bot` and `apps/raycast-extension` sit outside the workspace and
+are gated separately by `.github/workflows/standalone.yml` (`npm ci` plus
+`tsc --noEmit` in each). Both gates must pass.
 
 ## The data model, in three sentences
 

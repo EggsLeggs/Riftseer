@@ -25,7 +25,7 @@ The response always includes both result arrays and says which one is populated:
 
 ## Query language
 
-The `name` (or `q`) value is parsed into an AST and combined with the explicit URL filters (`type`, `artist`, `rarity`, `set`, `collector`) as `AND` clauses. Input length and AST size are bounded before the query reaches Postgres.
+The `name` (or `q`) value is parsed into an AST and combined with the explicit URL filters `type`, `artist` and `rarity` as `AND` clauses. `set` and `collector` are passed separately to the provider and the database query; they are not AST conjuncts. Input length and AST size are bounded before the query reaches Postgres.
 
 | Construct          | Example                                              | Meaning                                                                   |
 | ------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------- |

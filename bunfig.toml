@@ -1,2 +1,8 @@
+# Root `.env` is the web dev server's file and holds production values. Disable
+# automatic loading so tests, database runners and other Bun processes cannot
+# inherit them; web commands pass `--env-file` explicitly. `scripts/wrangler-dev.mjs`
+# still strips those keys before spawning wrangler as a second line of defence.
+env = false
+
 [serve.static]
 plugins = ["bun-plugin-tailwind"]

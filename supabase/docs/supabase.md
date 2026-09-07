@@ -10,7 +10,7 @@ The `:local` dev scripts (`bun dev`, `bun run dev:api:local`, `bun run dev:inges
 
 The local catalogue starts empty. Fill it with `bun run dev:ingest:local` and `curl -X POST localhost:8787/ingest`.
 
-`bun run db:local:psql` opens a shell. `bun scripts/database-tests/database.mjs setup | reseed | query <sql>` drives the test database and its fixture; `bun run test:db` runs the SQL-level tests against it.
+`bun run db:local:psql` opens a shell. `bun scripts/database-tests/database.mjs setup` prepares the test database; `bun scripts/database-tests/database.mjs reseed` reloads the fixture; `bun scripts/database-tests/database.mjs query <sql>` runs ad-hoc SQL against it. `bun run test:db` runs the SQL-level tests against it.
 
 ## Migrations
 
@@ -20,6 +20,6 @@ Production is migrated by `.github/workflows/db-migrate.yml`, dispatched by hand
 
 ## Hosted project
 
-Point `SUPABASE_URL` at the hosted project and `SUPABASE_SERVICE_ROLE_KEY` at its service-role key in the Worker's gitignored `.dev.vars`, then use `bun run dev:prod`. Check `curl localhost:8787/` before an ingest: it reports the host the worker would write to plus a `local` flag, and an ingest rewrites the whole catalogue.
+Point `SUPABASE_URL` at the hosted project and `SUPABASE_SERVICE_ROLE_KEY` at its service-role key in the Worker's gitignored `.dev.vars`, then use `bun run dev:prod`. Check `curl localhost:8787/` before an ingest: it reports the host the worker would write to plus a `local` flag. The final `ingestCatalogue` prune removes stale RiftCodex printings and orphaned RiftCodex oracles while preserving manual rows.
 
 The API Worker holds the service-role key and bypasses row-level security. The policies in the migrations are defence in depth; the authorisation boundary is the API's route code.

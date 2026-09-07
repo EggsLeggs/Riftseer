@@ -7,8 +7,8 @@ Riftseer is a Riftbound TCG data platform: a card catalogue ingested from RiftCo
 Each of these already cost us something. Breaking one usually fails silently.
 
 - Read the package's `AGENTS.md` before changing it, and `CONTEXT.md` before naming a domain concept. Use the glossary's word, never a synonym it lists under _Avoid_.
-- `bun run check` is the gate. It runs lint, format, typecheck, tests, docs references, markdown lint, boundaries, wrangler consistency and spec drift, and `.github/workflows/test.yml` runs the same command on every PR. Green locally is green in CI.
-- Check `curl localhost:8787/` before an ingest. It reports the host the worker would write to plus a `local` flag, and an ingest rewrites the whole catalogue.
+- `bun run check` is the workspace gate. It runs lint, format, typecheck, tests, docs references, markdown lint, boundaries, wrangler consistency and spec drift, and `.github/workflows/test.yml` runs the same command on every PR. `apps/reddit-bot` and `apps/raycast-extension` are outside the workspace and are gated separately by `.github/workflows/standalone.yml` (`npm ci` plus `tsc --noEmit` on each). Both gates must pass.
+- Check `curl localhost:8787/` before an ingest. It reports the host the worker would write to plus a `local` flag. Ingest's final prune removes stale RiftCodex printings and orphaned RiftCodex oracles; manual rows stay.
 - `bun dev` pins the docker database. `bun run dev:prod` reads `apps/api/.dev.vars`, which is conventionally production, and is the explicit opt-in.
 - Never make a PR unless the maintainer asks. Never co-author with the maintainer on commits or PRs.
 - Never commit implementation plans, research notes or agent scratch files. `.gitignore` will not catch them.
@@ -18,11 +18,9 @@ Each of these already cost us something. Breaking one usually fails silently.
 - `apps/ingest-worker` never imports `@riftseer/core`; it pulls in Node built-ins Workers cannot load.
 - Prose and code follow `docs/standards.md`. If a rule here fights the task in front of you, say so loudly and get a maintainer's sign-off before breaking it.
 
-## Philosophy
+## Defaults
 
-Open at the core, performant without compromise, one implementation shared across every surface, cheap to run, and never assuming the existing code is the best way. Ambitious ideas, simple systems, software that feels obvious. Do not preserve complexity because it exists; do not add machinery because it looks architectural. Find the real constraint, then fight for the smallest model that makes the correct behaviour unsurprising. Measure twice, cut once, and yagni. When there is a better way than the existing code, be loud and ask.
-
-These are good defaults, not law. The maintainer's stated preference overrides any of them.
+Prefer the smallest change that makes the correct behaviour unsurprising. Do not preserve complexity because it exists; do not add machinery because it looks architectural. Prefer one shared implementation over a per-surface copy. When there is a better way than the existing code, say so and ask before rewriting. These are defaults, not law; the maintainer's stated preference overrides them.
 
 ## Vocabulary
 
@@ -60,14 +58,14 @@ bun run db:local:reset  # drop the volume, rebuild from supabase/migrations
 - The local stack is real Postgres and PostgREST behind a Supabase-shaped proxy, not a mock. It needs Docker, and it starts empty: fill it with a local ingest run.
 - PostgREST catches shape bugs `psql` cannot: an embedded one-to-one comes back as an object or null, never an array.
 - The `:local` scripts load `.dev.vars.local`, committed on purpose with docker placeholders. Real values that ride alongside go in the gitignored `.dev.vars.local.secrets`.
-- The root `.env` belongs to the web dev server and holds production values. Bun loads it into every script it runs and wrangler reads declared secrets from `process.env` first, so `scripts/wrangler-dev.mjs` strips its keys before spawning. A Worker's local values live in its own `.dev.vars*` files, never in `.env`.
+- The root `.env` belongs to the web dev server and holds production values. `bunfig.toml` sets `env = false`, so Bun does not auto-load it into tests, database runners or other non-web processes; web commands pass `--env-file ../../.env` explicitly. Wrangler still reads declared secrets from `process.env` first, so `scripts/wrangler-dev.mjs` strips those keys before spawning as a safeguard. A Worker's local values live in its own `.dev.vars*` files, never in `.env`.
 - The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
 - A new env var or secret touches several files per Worker, and a missed one is silently absent under `wrangler dev`. `docs/adding-an-env-var.md` is the checklist.
 
 ## Verifying
 
 ```bash
-bun run check           # the gate
+bun run check           # workspace gate (test.yml)
 bun run lint:fix        # oxlint --fix, then oxfmt --write
 bun test                # types, core, api, ingest-worker, web, discord-bot
 bun run test:db         # needs db:local:up first
@@ -79,7 +77,7 @@ bun run preview:web     # builds and runs in workerd
 - Boundary rules in `.config/dependency-cruiser.cjs` are structural invariants: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports core, the render kernel is reached only through its index.
 - `bun dev` does not exercise the Workers runtime. Run `bun run preview:web` before shipping anything that touches web's server runtime or bindings.
 - `ingest-worker` spells it `type-check`; everything else says `typecheck`, and root `typecheck` covers every workspace member.
-- reddit-bot and raycast-extension are gated by `.github/workflows/standalone.yml`: `npm ci` plus `tsc --noEmit` on their committed lockfiles.
+- The standalone gate is `.github/workflows/standalone.yml`: `npm ci` plus `tsc --noEmit` in `apps/reddit-bot` and `apps/raycast-extension`. It is not part of `bun run check`; both gates must pass.
 - Most API tests need no database: `apps/api/src/__tests__/stub_card_provider.ts` is an in-memory `CardDataProvider`. Reach for a real database only when the thing under test is the SQL.
 - `scripts/database-tests/fixture.sql` is the only fixture, loaded through the real `ingest_catalogue` RPC so it exercises production's write path. Extend it there. `packages/core/src/__tests__/database.integration.test.ts` is gated behind `RIFTSEER_DATABASE_TESTS=1`.
 

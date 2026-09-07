@@ -7,7 +7,7 @@ Each entry is the term, what it is, the words to avoid for it, and the terms it 
 ## The card model
 
 **Oracle**:
-The rules object of a card: name, type, tags, domains, rules text, keywords, stats. One oracle exists per distinct card, however many times it is printed.
+The rules object: name, type, tags, domains, rules text, keywords, stats. One oracle exists per distinct rules object, however many times it is printed.
 _Avoid_: card (when the rules are meant), card definition, base card
 _Related_: Printing, Oracle key, Relationship, Keyword, Preferred printing
 
@@ -17,7 +17,7 @@ _Avoid_: card (when the cardboard is meant), edition, variant, version
 _Related_: Oracle, Rarity, Set, Collector number, Slug, Delta
 
 **Card**:
-The pair a reader sees: an oracle together with the printing being looked at. A field belongs to exactly one half; a surface that shows rules reads the oracle and a surface that shows cardboard reads the printing.
+The aggregate a reader sees: an oracle together with the printing being looked at. Reserve this word for that pair; a field belongs to exactly one half, so a surface that shows rules reads the oracle and a surface that shows cardboard reads the printing.
 _Avoid_: using "card" alone where the oracle/printing distinction matters
 _Related_: Oracle, Printing, Card detail
 
@@ -149,12 +149,12 @@ _Avoid_: sync, import, crawl, scrape
 _Related_: Ingest source, Catalogue, Locked field, Reconciliation entry, Oracle key
 
 **Ingest source**:
-An upstream Riftseer reads during ingest. RiftCodex is the only source that may create a card; TCGPlayer and Riot's gallery enrich or observe, and either failing is non-fatal.
+An upstream Riftseer reads during ingest. RiftCodex is the only source that may introduce printings; ingest normalises them and derives oracles by grouping. TCGPlayer and Riot's gallery enrich or observe, and either failing is non-fatal.
 _Avoid_: provider (that word is the API's storage abstraction), feed, upstream (unqualified)
 _Related_: Ingest, Enrichment, Reconciliation entry
 
 **Enrichment**:
-Adding to a printing what its creating source lacks: a marketplace product and its prices, the equipment text box, a hosted image. Enrichment never creates a set or a card.
+Adding to a printing what its creating source lacks: a marketplace product and its prices, the equipment text box, a hosted image. Enrichment never creates a set, printing or oracle.
 _Avoid_: hydration, augmentation, decoration
 _Related_: Ingest source, Printing, Equipment, Image variant
 

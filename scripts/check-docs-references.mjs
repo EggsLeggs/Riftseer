@@ -69,7 +69,7 @@ const haystack = sourceFiles
 
 const CODE_SPAN = /`([^`\n]+)`/g;
 const MARKDOWN_LINK = /\]\(([^)\s]+)\)/g;
-const PATH_LIKE = /^[\w./@-]+\/[\w./@-]+\.(ts|tsx|sql|json|jsonc|md|mjs|yml)$/;
+const PATH_LIKE = /^[\w./@-]+\/[\w./@-]+\.(ts|tsx|sql|json|jsonc|json5|md|mjs|yml)$/;
 const IDENTIFIER_LIKE = /^([A-Za-z_][\w]*)\(\)$/;
 
 const problems = [];
