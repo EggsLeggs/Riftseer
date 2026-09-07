@@ -1,6 +1,10 @@
-# AGENTS.md
+# apps/tts
 
-Instructions for Codex working in this repo.
+The Tabletop Simulator mod, imported from `EggsLeggs/riftbound-tcg-tts` with its
+history. It is Lua plus two Python tools, not a Bun workspace member. Paths in
+this file are relative to `apps/tts/`, and the tools run from that directory.
+The root `AGENTS.md` governs commits and PRs; this file carries the rules of the
+mod itself.
 
 ## What this project is
 
@@ -45,7 +49,7 @@ beyond TTS itself.
 
 ## Repo layout
 
-```
+```text
 mod/Riftbound.json       The TTS save file. Build artifact. Loaded by TTS.
 scripts/global.lua       Global Lua script (extracted from the JSON).
 scripts/objects/*.lua    One file per scripted object. Filename is {GUID}_{slug}.lua.
@@ -81,6 +85,7 @@ There are two valid paths for editing scripts. Pick the right one for the
 change.
 
 **Path A — script-only changes (preferred for code edits).**
+
 1. Edit files in `scripts/` directly.
 2. Run `python3 tools/inject.py` to write changes back into `mod/Riftbound.json`.
 3. The user reloads the save in TTS to verify.
@@ -90,6 +95,7 @@ change.
 This requires TTS itself. Do not attempt these via JSON surgery unless the
 change is small and well-understood (e.g. removing a top-level object by
 GUID match in `ObjectStates`).
+
 1. The user opens TTS, makes the change, saves the mod.
 2. The JSON updates via the symlink.
 3. Run `python3 tools/extract.py` to regenerate `scripts/`.
@@ -104,6 +110,10 @@ attempting it yourself.
   expected updates without errors.
 - After any structural edit to the JSON: confirm `len(ObjectStates)` is what
   you expect, the JSON parses, and `tools/extract.py` round-trips cleanly.
+- `.github/workflows/tts.yml` runs the same round trip on every change under
+  `apps/tts/`: the save must parse, `tools/extract.py` must leave `scripts/`
+  and `ui/` unchanged, and `tools/inject.py` must reproduce `mod/Riftbound.json`
+  byte for byte.
 - The user verifies behaviourally by loading the save in TTS. Always tell
   them what to test (e.g. "load the save and try drawing from a deck").
 
@@ -111,7 +121,9 @@ attempting it yourself.
 
 - **Line endings**: the original JSON stores Lua with `\r\n` line endings.
   `tools/extract.py` and `tools/inject.py` preserve this via byte-mode I/O.
-  Do not convert to `\n` — it produces noisy diffs against upstream.
+  Do not convert to `\n` — it produces noisy diffs against upstream. The root
+  `.gitattributes` marks `apps/tts/**` as `-text`, so git never normalises
+  them either.
 - **Filenames in `scripts/objects/`**: `{6-char-guid}_{slug}.lua`. The GUID
   prefix is what `tools/inject.py` matches on. Don't rename without updating
   the inject script.
@@ -140,11 +152,11 @@ attempting it yourself.
 
 ## Commit conventions
 
-- Imperative mood subject line, ≤72 chars: `Remove MTG-specific deck importers`.
-- Body explains the **why**, not just the what. The diff shows the what.
+- Titles follow the root `AGENTS.md`: `fix(tts): ...`, `feat(tts): ...`. The
+  body explains the why; the diff shows the what.
 - Reference GUIDs when removing or modifying specific objects.
-- **Never add `Co-Authored-By: Codex` or any "Generated with Codex"
-  trailer.** Commits in this repo are authored by the user only. No exceptions.
+- No `Co-Authored-By` or "generated with" trailers. The root rule applies here
+  too.
 
 ## Credits and licensing
 
@@ -157,6 +169,7 @@ committing licensing-sensitive changes.
   listed in `NOTICE`, third-party assets, imported card faces, Riftbound game IP.
 
 Upstream authors (credit in `README.md` and `NOTICE`; preserve attribution):
+
 - Oops I Baked a Pie (table, global script, hand counters, timers, draw/mill buttons)
 - TyrantNomad (Easy Modules Unified, the πMenu/πNotepad/πScry/πKeywords suite)
 - Tipsy Hobbit (Keyword Abilities module — πKeywords / Ready-button lineage)
@@ -196,7 +209,7 @@ exclusion list if the wildcard exception note needs changing.
 
 Match the existing `NOTICE` structure exactly:
 
-```
+```text
 ================================================================================
 Licensed under MIT
 ================================================================================
