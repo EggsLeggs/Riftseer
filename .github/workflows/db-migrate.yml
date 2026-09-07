@@ -87,7 +87,7 @@ jobs:
 
       - name: Upload encrypted backup artifact
         if: ${{ github.event.inputs.apply == 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: prod-backup-${{ github.run_id }}
           path: /tmp/prod-backup.dump.enc
