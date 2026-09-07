@@ -122,7 +122,7 @@ bun run preview:web                         # builds and runs in workerd
 - UI changes need before/after images. Motion or timing needs a short video.
 - Upload PR evidence to GitHub. Never commit PR-only screenshots or assets such as .github/pr-assets/.
 - One concern per PR. If the description says "also", split it.
-- Renovate opens the dependency PRs on a weekly schedule. `docs/renovate.md` covers the cadence and how to force a run.
+- Renovate opens the routine dependency PRs on a weekly schedule; OSV vulnerability fixes ignore it. `docs/renovate.md` covers the cadence and how to force a run.
 - When babysitting: poll checks and comments newer than the last push, verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when the bots are green on the latest commit.
 
 ## Plans and work artefacts

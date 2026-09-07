@@ -14,10 +14,12 @@ portal are the whole interface.
   standalone `package-lock.json` files even when no range moved.
 - A release has to be three days old before Renovate will propose it. Until
   then the PR carries a pending `renovate/stability-days` check.
-- Vulnerability fixes come from the OSV database, not from Dependabot alerts,
-  and ignore the schedule.
-- Two PRs an hour, ten open at once. A "create everything" click on the
-  dashboard trickles out at that rate.
+- Vulnerability fixes come from the OSV database, not from Dependabot alerts.
+  They ignore the schedule and the two limits below: every limit check in
+  Renovate is guarded on `!isVulnerabilityAlert`, so a security PR opens
+  immediately however many others are queued.
+- Two PRs an hour, ten open at once, for everything else. A "create everything"
+  click on the dashboard trickles out at that rate.
 - Nothing automerges. CI is the gate and a human merges.
 
 ## Where to look
@@ -31,7 +33,9 @@ portal are the whole interface.
 - From a terminal:
 
 ```bash
-gh issue list --author app/renovate            # the dashboard issue number
+# --author does not match a GitHub App on `gh issue list`, and neither does
+# --app; both return nothing. The search filter does.
+gh issue list --search "author:app/renovate"   # the dashboard issue number
 gh pr list --author app/renovate --state all   # what it has opened
 gh issue view <dashboard> --json body -q .body # what is awaiting schedule
 

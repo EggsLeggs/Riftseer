@@ -23,12 +23,24 @@
   minimumReleaseAge: "3 days",
   // Dependabot alerts are switched off on the repository, so GitHub gives
   // Renovate no vulnerability signal. OSV does, and vulnerability PRs open
-  // outside the weekly window.
+  // outside the weekly window and past the hourly and concurrent PR limits.
   osvVulnerabilityAlerts: true,
-  // Setting ignorePaths replaces the default, so node_modules stays listed.
-  // docs/ is the Docusaurus site, deleted in the docs chunk of the overhaul;
-  // delete that entry with it.
-  ignorePaths: ["**/node_modules/**", "docs/**"],
+  // ignorePaths is not mergeable: setting it here replaces the list
+  // config:recommended inherits from :ignoreModulesAndTests rather than adding
+  // to it, so that list is repeated verbatim before docs/. docs/ is the
+  // Docusaurus site, deleted in the docs chunk of the overhaul; delete that
+  // entry with it.
+  ignorePaths: [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/__fixtures__/**",
+    "docs/**",
+  ],
   packageRules: [
     {
       // Action bumps are one-line tag or digest changes. One PR for all of
