@@ -1069,11 +1069,13 @@ function normalizeBaseUrl(baseUrl: string): string {
 }
 
 async function sha256Hex(value: ArrayBuffer | Uint8Array): Promise<string> {
-  // A `Uint8Array` is typed over `ArrayBufferLike`, which the DOM lib's
-  // `BufferSource` rejects because it admits `SharedArrayBuffer`. Every runtime
-  // we target accepts the view as-is, and copying would clone whole uploads, so
-  // assert the contract rather than reallocating.
-  const digest = await crypto.subtle.digest("SHA-256", value as BufferSource);
+  // A `Uint8Array` is typed over `ArrayBufferLike`, which neither `BufferSource`
+  // in scope accepts: the workers one rejects it for admitting
+  // `SharedArrayBuffer`, and `@types/node`'s `NodeJS.BufferSource` is a
+  // different type again, so naming `BufferSource` picks whichever lib won.
+  // Every runtime we target takes the view as-is, and copying would clone whole
+  // uploads, so assert a concrete type rather than reallocating.
+  const digest = await crypto.subtle.digest("SHA-256", value as ArrayBuffer);
   return Array.from(new Uint8Array(digest), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");

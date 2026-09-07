@@ -51,7 +51,7 @@
     "wrangler": "^4.118.0",
     "@riftseer/api": "workspace:*",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^26.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4"
