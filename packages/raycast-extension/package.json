@@ -61,18 +61,18 @@
     "jimp": "^1.0.0"
   },
   "devDependencies": {
-    "@raycast/eslint-config": "^1.0.11",
+    "@raycast/eslint-config": "^2.0.0",
     "@types/node": "24.13.3",
     "@types/react": "19.2.18",
-    "eslint": "^8.57.0",
+    "eslint": "^10.0.0",
     "prettier": "^3.3.3",
     "typescript": "^5.4.5"
   },
   "scripts": {
     "build": "ray build",
     "dev": "ray develop",
-    "fix-lint": "eslint src --ext ts,tsx --fix && prettier --write src",
-    "lint": "eslint src --ext ts,tsx && prettier --check src",
+    "fix-lint": "eslint src --fix && prettier --write src",
+    "lint": "eslint src && prettier --check src",
     "lint:ray": "ray lint",
     "publish": "npx @raycast/api@latest publish"
   }
