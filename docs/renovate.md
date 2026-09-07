@@ -9,15 +9,27 @@ portal are the whole interface.
 
 - Branches are created on Mondays between 00:00 and 03:59 UTC.
 - Every non-major bump lands in one PR titled `fix(deps): update all non-major
-  dependencies`. Majors get a PR each, except GitHub Actions, which share one.
+  dependencies`. Majors get a PR each, with two exceptions: GitHub Actions
+  share one, and the `postgres` docker major is disabled outright because it
+  has to follow the hosted Supabase Postgres major, which Renovate cannot see.
+  Bump that one by hand in `docker-compose.yml` and `test.yml` together.
 - Lockfile maintenance runs weekly. It regenerates `bun.lock` and the two
   standalone `package-lock.json` files even when no range moved.
+- Lockfile maintenance is not covered by `ignorePaths`. `docs/` is a workspace
+  member, so a root `bun install` re-resolves its dependencies and commits them
+  to `bun.lock` even though Renovate will not open a PR against
+  `docs/package.json`. That is how #156 moved the Docusaurus tree and broke
+  Mermaid SSR. `docs.yml` now runs on `bun.lock` as well so the docs build
+  actually gets exercised when that happens.
 - A release has to be three days old before Renovate will propose it. Until
   then the PR carries a pending `renovate/stability-days` check.
 - Vulnerability fixes come from the OSV database, not from Dependabot alerts.
   They ignore the schedule and the two limits below: every limit check in
   Renovate is guarded on `!isVulnerabilityAlert`, so a security PR opens
   immediately however many others are queued.
+- OSV covers the npm dependencies only. Nothing scans the docker images in
+  `docker-compose.yml` and `test.yml` — `security.yml` runs Gitleaks, which
+  looks for secrets, not CVEs. Those tags are on you.
 - Two PRs an hour, ten open at once, for everything else. A "create everything"
   click on the dashboard trickles out at that rate.
 - Nothing automerges. CI is the gate and a human merges.

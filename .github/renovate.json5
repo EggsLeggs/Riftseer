@@ -44,9 +44,13 @@
   packageRules: [
     {
       // Action bumps are one-line tag or digest changes. One PR for all of
-      // them, majors included, instead of one per action.
+      // them, majors included, instead of one per action. groupName alone does
+      // not do that: separateMajorMinor defaults to true and would split the
+      // group into `renovate/github-actions` and
+      // `renovate/major-github-actions`.
       matchManagers: ["github-actions"],
       groupName: "GitHub Actions",
+      separateMajorMinor: false,
     },
     {
       // The docker and CI Postgres majors follow the hosted Supabase Postgres
