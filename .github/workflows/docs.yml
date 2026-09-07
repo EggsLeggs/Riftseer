@@ -6,7 +6,7 @@ on:
     paths:
       - "docs/**"
       - "packages/**/docs/**"
-      - "packages/api/**"
+      - "apps/api/**"
       - "supabase/docs/**"
       - ".github/workflows/docs.yml"
       # docs/ is a workspace member, so lockfile maintenance re-resolves its
@@ -18,7 +18,7 @@ on:
     paths:
       - "docs/**"
       - "packages/**/docs/**"
-      - "packages/api/**"
+      - "apps/api/**"
       - "supabase/docs/**"
       - ".github/workflows/docs.yml"
       # docs/ is a workspace member, so lockfile maintenance re-resolves its
@@ -48,7 +48,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Copy the committed OpenAPI spec into the site
-        run: cp packages/api/openapi.json docs/static/openapi.json
+        run: cp apps/api/openapi.json docs/static/openapi.json
 
       - name: Build docs
         working-directory: docs

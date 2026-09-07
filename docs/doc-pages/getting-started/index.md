@@ -12,11 +12,11 @@ Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a Next.js
 | --- | --- | --- |
 | Types | `packages/types/` | Shared card types, parser, icons, slug and image helpers |
 | Core | `packages/core/` | `CardDataProvider` interface, Supabase provider, search |
-| API | `packages/api/` | ElysiaJS REST API on Cloudflare Workers |
-| Web | `packages/web/` | Next.js App Router site on Cloudflare Workers |
-| Ingest Worker | `packages/ingest-worker/` | Cloudflare Worker — scheduled ingest from RiftCodex into Supabase |
-| Discord Bot | `packages/discord-bot/` | Slash commands on Cloudflare Workers |
-| Reddit Bot | `packages/reddit-bot/` | `[[Card Name]]` mention triggers via Devvit (standalone npm project) |
+| API | `apps/api/` | ElysiaJS REST API on Cloudflare Workers |
+| Web | `apps/web/` | Next.js App Router site on Cloudflare Workers |
+| Ingest Worker | `apps/ingest-worker/` | Cloudflare Worker — scheduled ingest from RiftCodex into Supabase |
+| Discord Bot | `apps/discord-bot/` | Slash commands on Cloudflare Workers |
+| Reddit Bot | `apps/reddit-bot/` | `[[Card Name]]` mention triggers via Devvit (standalone npm project) |
 
 ---
 
@@ -36,7 +36,7 @@ Riftseer is a Riftbound TCG card data platform. It exposes a REST API, a Next.js
 bun install
 ```
 
-This installs all workspace dependencies in one pass. The Reddit bot (`packages/reddit-bot/`) is excluded from the workspace — `cd` into it and run `npm install` separately if needed.
+This installs all workspace dependencies in one pass. The Reddit bot (`apps/reddit-bot/`) is excluded from the workspace — `cd` into it and run `npm install` separately if needed.
 
 ### 2. Configure environment
 

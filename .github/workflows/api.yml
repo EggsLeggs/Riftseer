@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/api/**"
+      - "apps/api/**"
       - "packages/core/**"
       - "packages/types/**"
       - "package.json"
@@ -12,7 +12,7 @@ on:
       - ".github/workflows/api.yml"
   pull_request:
     paths:
-      - "packages/api/**"
+      - "apps/api/**"
       - "packages/core/**"
       - "packages/types/**"
       - "package.json"
@@ -39,7 +39,7 @@ jobs:
           packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: packages/api
+          workingDirectory: apps/api
           command: deploy --dry-run --config wrangler.jsonc
 
   deploy:
@@ -65,5 +65,5 @@ jobs:
           packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: packages/api
+          workingDirectory: apps/api
           command: deploy --config wrangler.jsonc

@@ -27,12 +27,12 @@ Most content is **co-located with its package**. Cross-cutting sections (Getting
 | Section | Source path | URL prefix |
 | --- | --- | --- |
 | Getting Started | `docs/doc-pages/getting-started/` | `/` |
-| API | `packages/api/docs/` | `/api/` |
-| Web | `packages/web/docs/` | `/web/` |
+| API | `apps/api/docs/` | `/api/` |
+| Web | `apps/web/docs/` | `/web/` |
 | Core | `packages/core/docs/` | `/core/` |
 | Clients & Bots | `docs/doc-pages/clients-bots/` | `/bots/` |
-| Discord / Reddit (same sidebar) | `packages/discord-bot/docs/`, `packages/reddit-bot/docs/` (copied into `clients-bots/` by `bun run sync-clients-bots-docs` before dev/build) | `/bots/` |
-| Ingest Worker | `packages/ingest-worker/docs/` | `/ingest-worker/` |
+| Discord / Reddit (same sidebar) | `apps/discord-bot/docs/`, `apps/reddit-bot/docs/` (copied into `clients-bots/` by `bun run sync-clients-bots-docs` before dev/build) | `/bots/` |
+| Ingest Worker | `apps/ingest-worker/docs/` | `/ingest-worker/` |
 | Supabase | `supabase/docs/` | `/supabase/` |
 | Infrastructure | `docs/doc-pages/infrastructure/` | `/infrastructure/` |
 

@@ -112,9 +112,9 @@ Bun loads `.env` from the working directory; the API is usually started from the
 
 ### Load card data locally
 
-The API and `SupabaseCardProvider` read whatever is in Postgres. After migrations, tables are empty until you run the **ingest pipeline**. Point the ingest worker at the same `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, then trigger an ingest (see `packages/ingest-worker` and `CLAUDE.md` for `wrangler dev` and `/ingest`).
+The API and `SupabaseCardProvider` read whatever is in Postgres. After migrations, tables are empty until you run the **ingest pipeline**. Point the ingest worker at the same `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, then trigger an ingest (see `apps/ingest-worker` and `CLAUDE.md` for `wrangler dev` and `/ingest`).
 
-HTTP search behaviour (exact match vs full-text fallback) is documented in `packages/api/docs/search.md`, not here.
+HTTP search behaviour (exact match vs full-text fallback) is documented in `apps/api/docs/search.md`, not here.
 
 ### Stop the stack
 

@@ -19,12 +19,12 @@ Its prestart and prebuild hooks copy the Discord, Reddit and Raycast pages into 
 Each section is a separate content-docs plugin instance reading its source in place.
 
 - Getting Started — `doc-pages/getting-started/` at `/`
-- API — `../packages/api/docs/` at `/api/`
-- Web — `../packages/web/docs/` at `/web/`
+- API — `../apps/api/docs/` at `/api/`
+- Web — `../apps/web/docs/` at `/web/`
 - Core — `../packages/core/docs/` at `/core/`
 - Types — `../packages/types/docs/` at `/types/`
 - Clients & Bots — package docs copied into `doc-pages/clients-bots/` at `/bots/`
-- Ingest — `../packages/ingest-worker/docs/` at `/ingest-worker/`
+- Ingest — `../apps/ingest-worker/docs/` at `/ingest-worker/`
 - Supabase — `../supabase/docs/` at `/supabase/`
 - Infrastructure — `doc-pages/infrastructure/` at `/infrastructure/`
 

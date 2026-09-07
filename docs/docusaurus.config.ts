@@ -54,17 +54,17 @@ const config: Config = {
       '@docusaurus/plugin-content-docs',
       {
         id: 'ingest-worker',
-        path: '../packages/ingest-worker/docs',
+        path: '../apps/ingest-worker/docs',
         routeBasePath: 'ingest-worker',
         sidebarPath: './sidebarsIngestWorker.ts',
-        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/ingest-worker/docs/',
+        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/apps/ingest-worker/docs/',
       },
     ],
     [
       '@docusaurus/plugin-content-docs',
       {
         id: 'api',
-        path: '../packages/api/docs',
+        path: '../apps/api/docs',
         routeBasePath: 'api',
         sidebarPath: './sidebarsApi.ts',
       },
@@ -73,10 +73,10 @@ const config: Config = {
       '@docusaurus/plugin-content-docs',
       {
         id: 'web',
-        path: '../packages/web/docs',
+        path: '../apps/web/docs',
         routeBasePath: 'web',
         sidebarPath: './sidebarsWeb.ts',
-        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/packages/web/docs/',
+        editUrl: 'https://github.com/EggsLeggs/Riftseer/edit/main/apps/web/docs/',
       },
     ],
     [
@@ -107,10 +107,10 @@ const config: Config = {
         editUrl: ({docPath}) => {
           const base = 'https://github.com/EggsLeggs/Riftseer/edit/main/';
           if (docPath === 'discord-bot.md') {
-            return `${base}packages/discord-bot/docs/discord-bot.md`;
+            return `${base}apps/discord-bot/docs/discord-bot.md`;
           }
           if (docPath === 'reddit-bot.md') {
-            return `${base}packages/reddit-bot/docs/reddit-bot.md`;
+            return `${base}apps/reddit-bot/docs/reddit-bot.md`;
           }
           return `${base}docs/doc-pages/clients-bots/${docPath}`;
         },

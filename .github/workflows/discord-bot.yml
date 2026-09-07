@@ -4,13 +4,13 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/discord-bot/**"
+      - "apps/discord-bot/**"
       - "packages/core/**"
       - "packages/types/**"
-      - "packages/web/public/icons/**"
+      - "apps/web/public/icons/**"
   pull_request:
     paths:
-      - "packages/discord-bot/**"
+      - "apps/discord-bot/**"
       - "packages/core/**"
       - "packages/types/**"
 
@@ -38,7 +38,7 @@ jobs:
           packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: packages/discord-bot
+          workingDirectory: apps/discord-bot
           command: deploy --dry-run --config wrangler.jsonc
 
   deploy:
@@ -61,7 +61,7 @@ jobs:
           packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: packages/discord-bot
+          workingDirectory: apps/discord-bot
           command: deploy --config wrangler.jsonc
 
   upload-emojis:
@@ -76,7 +76,7 @@ jobs:
       - id: check-icons
         run: |
           changed=$(git diff --name-only ${{ github.event.before }}..${{ github.sha }})
-          if printf '%s\n' "$changed" | grep -q '^packages/web/public/icons/'; then
+          if printf '%s\n' "$changed" | grep -q '^apps/web/public/icons/'; then
             echo "icons_changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "icons_changed=false" >> "$GITHUB_OUTPUT"
@@ -91,7 +91,7 @@ jobs:
 
       - name: Upload icons as Discord application emojis
         if: steps.check-icons.outputs.icons_changed == 'true'
-        working-directory: packages/discord-bot
+        working-directory: apps/discord-bot
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_APPLICATION_ID: ${{ secrets.DISCORD_APPLICATION_ID }}

@@ -29,10 +29,10 @@
   // Patterns resolve inside this file's directory and cannot use `..`, which
   // is why the config lives at the root and not in .config/.
   "ignorePatterns": [
-    "packages/api/src/worker-configuration.d.ts",
-    "packages/ingest-worker/src/worker-configuration.d.ts",
-    "packages/web/cloudflare-env.d.ts",
-    "packages/raycast-extension",
+    "apps/api/src/worker-configuration.d.ts",
+    "apps/ingest-worker/src/worker-configuration.d.ts",
+    "apps/web/cloudflare-env.d.ts",
+    "apps/raycast-extension",
     "docs",
     "apps/tts"
   ]

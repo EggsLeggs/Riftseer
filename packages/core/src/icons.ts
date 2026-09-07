@@ -14,7 +14,7 @@ export interface EmojiFile {
   /** Discord emoji name — [a-zA-Z0-9_]{2,32} */
   emojiName: string;
   /**
-   * Icon file path relative to packages/web/public/.
+   * Icon file path relative to apps/web/public/.
    * .svg files are converted to PNG before upload; .png files are uploaded as-is.
    */
   file: string;
@@ -22,7 +22,7 @@ export interface EmojiFile {
 
 /**
  * Icons to upload as Discord application emojis.
- * Run `bun run setup-emojis` in packages/discord-bot to upload these.
+ * Run `bun run setup-emojis` in apps/discord-bot to upload these.
  *
  * Note: energy_0–5 are CSS-generated (no image file) and use Unicode fallbacks.
  */

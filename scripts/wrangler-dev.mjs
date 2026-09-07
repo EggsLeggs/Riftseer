@@ -25,7 +25,7 @@ if (!pkg) {
   process.exit(2);
 }
 
-const cwd = path.join(repoRoot, "packages", pkg);
+const cwd = path.join(repoRoot, "apps", pkg);
 const wrangler = path.join(cwd, "node_modules", ".bin", "wrangler");
 const persistTo = path.join(repoRoot, ".wrangler", "shared");
 

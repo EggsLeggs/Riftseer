@@ -50,10 +50,10 @@ We need to be on the same page with terminology. When communicating, use this la
 
 A change to shared behaviour is not done when the website shows it.
 
-- Surfaces here: `packages/web`, `packages/discord-bot`, `packages/reddit-bot`, `packages/raycast-extension`. The TTS mod lives elsewhere; the mobile app does not exist yet.
+- Surfaces here: `apps/web`, `apps/discord-bot`, `apps/reddit-bot`, `apps/raycast-extension`. The TTS mod lives elsewhere; the mobile app does not exist yet.
 - No client queries the database. They resolve through the API, so a provider fix reaches all of them at once.
 - Shared logic goes in `packages/types`. Zero runtime dependencies is the only reason Workers, Devvit and browsers can all import it.
-- `reddit-bot` and `raycast-extension` sit outside the workspace and use `file:../types`. A types change reaches them only after an install in their own directory.
+- `reddit-bot` and `raycast-extension` sit outside the workspace and use `file:../../packages/types`. A types change reaches them only after an install in their own directory.
 - That is the usual way a "shared" fix silently misses two surfaces. Say so in the PR when you leave one behind on purpose.
 
 ## Dev servers
@@ -76,7 +76,7 @@ bun run db:local:psql
 ```
 
 - `bun dev` and the `:local` scripts pin the docker database. They load `.dev.vars.local`, which holds docker placeholders and is committed on purpose.
-- `bun run dev:prod` uses whatever `packages/api/.dev.vars` contains, and that is conventionally production. It is the explicit opt-in; check before an ingest or an admin mutation.
+- `bun run dev:prod` uses whatever `apps/api/.dev.vars` contains, and that is conventionally production. It is the explicit opt-in; check before an ingest or an admin mutation.
 - `curl localhost:8787/` reports the host the ingest worker would write to, plus a `local` flag. An ingest rewrites the whole catalogue, so look first.
 - The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
 - The local stack is real Postgres and PostgREST behind a Supabase-shaped proxy, not a mock. It needs Docker.
@@ -89,7 +89,7 @@ bun run db:local:psql
 - `scripts/database-tests/fixture.sql` is the only fixture: 3 sets, 4 oracles, 6 printings, a delta, a relationship, a format, a legality and a ruling.
 - It loads through the real `ingest_catalogue` RPC rather than inserts, so it exercises production's write path. Extend it there.
 - `bun scripts/database-tests/database.mjs setup | reseed | query <sql>` drives it.
-- Most API tests need no database. `packages/api/src/__tests__/stub_card_provider.ts` is an in-memory `CardDataProvider`.
+- Most API tests need no database. `apps/api/src/__tests__/stub_card_provider.ts` is an in-memory `CardDataProvider`.
 - Reach for a real database only when the thing under test is the SQL.
 - The docker `riftseer` database gets schema only. Fill it with a real local ingest run.
 - `packages/core/src/__tests__/database.integration.test.ts` is gated behind `RIFTSEER_DATABASE_TESTS=1` and skipped by default.
@@ -160,7 +160,7 @@ Multi-context: a root `CONTEXT-MAP.md` pointing at one `CONTEXT.md` per package.
 - `oracle_key` is a name-derived lookup slug, never identity. `oracleKeyForName()` uses it at one moment: when ingest guesses which oracle a new printing joins.
 - A printing it cannot match goes to review rather than silently creating a second oracle.
 
-**The catalogue.** `packages/ingest-worker`, every six hours, no user involved.
+**The catalogue.** `apps/ingest-worker`, every six hours, no user involved.
 
 - RiftCodex is the only source that may create a card. TCGPlayer and Riot's gallery enrich or observe, and either failing is non-fatal.
 - Fetch, dedupe, group printings into oracles, enrich, emit deltas, upsert in bounded batches, prune only once all of them land.
@@ -181,7 +181,7 @@ Multi-context: a root `CONTEXT-MAP.md` pointing at one `CONTEXT.md` per package.
 **Who enforces access.**
 
 - The API Worker holds a service-role key and bypasses RLS. Migration policies are defence in depth, not the boundary.
-- `canRead()` and `canWrite()` in `packages/api/src/routes/decks.ts` decide deck access; `ADMIN_USER_IDS` decides admin.
+- `canRead()` and `canWrite()` in `apps/api/src/routes/decks.ts` decide deck access; `ADMIN_USER_IDS` decides admin.
 - Roles are `owner`, `editor`, `viewer`. `owner` is computed from `owner_id`, never stored, and visibility is orthogonal to role.
 - Web's `requireAuth()` and `requireAdmin()` are UX gates. A deck you may not read answers 404, never 403.
 
@@ -189,13 +189,15 @@ Multi-context: a root `CONTEXT-MAP.md` pointing at one `CONTEXT.md` per package.
 
 Read a package's own AGENTS.md before changing it. This is the map, not the detail.
 
+- `apps/` holds the deployable surfaces, `packages/` the libraries they share, `tooling/` the configs they share. Package names stay `@riftseer/*`, so a move never changes an import.
+
 - `packages/types` — shared types, parser, deck model and validation, slug and image derivation. Zero dependencies; keep it that way.
 - `packages/core` — `CardDataProvider`, the Supabase provider, search grammar and its SQL renderer. Consumed by the API only.
-- `packages/api` — Elysia REST API on Workers. Owns `/api/v1` and the real authorisation boundary.
-- `packages/web` — Next.js App Router on Workers via OpenNext.
-- `packages/discord-bot` — Worker, slash commands.
-- `packages/ingest-worker` — scheduled ingest and image hosting. Never import `@riftseer/core` here; it pulls in Node built-ins Workers cannot load.
-- `packages/raycast-extension`, `packages/reddit-bot` — standalone npm projects outside the workspace.
+- `apps/api` — Elysia REST API on Workers. Owns `/api/v1` and the real authorisation boundary.
+- `apps/web` — Next.js App Router on Workers via OpenNext.
+- `apps/discord-bot` — Worker, slash commands.
+- `apps/ingest-worker` — scheduled ingest and image hosting. Never import `@riftseer/core` here; it pulls in Node built-ins Workers cannot load.
+- `apps/raycast-extension`, `apps/reddit-bot` — standalone npm projects outside the workspace.
 - `docs` — Docusaurus, a workspace member, reads each package's `docs/` in place.
 - `supabase/migrations` — append-only after the squashed baseline.
 - `scripts`, `docker` — repository checks, the test harness, the local database stack.
@@ -220,8 +222,8 @@ Each of these already cost us something. Breaking one usually fails silently.
 
 Legal copy is code here, and it goes stale the same way code does.
 
-- Copy lives in `packages/web/src/views/privacy-view.tsx` and `terms-view.tsx`. Change the copy, change the "Last updated" date in the same diff.
-- Material changes bump `LEGAL_PRIVACY_VERSION` or `LEGAL_TERMS_VERSION` in `packages/api/wrangler.jsonc`, then need an API redeploy.
+- Copy lives in `apps/web/src/views/privacy-view.tsx` and `terms-view.tsx`. Change the copy, change the "Last updated" date in the same diff.
+- Material changes bump `LEGAL_PRIVACY_VERSION` or `LEGAL_TERMS_VERSION` in `apps/api/wrangler.jsonc`, then need an API redeploy.
 - Those versions are stamped at registration and read nowhere else. A bump prompts nobody to re-accept; there is no re-consent flow to hook into.
 - A new column storing something about a person is a privacy-page change. So is new logging, a new third party, or changed bot behaviour.
 - Terms carry a 13+ age floor and Riot's Legal Jibber Jabber attribution. Keep that attribution on anything showing card art or data.

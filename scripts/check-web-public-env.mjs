@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-const wranglerPath = fileURLToPath(new URL("../packages/web/wrangler.jsonc", import.meta.url));
+const wranglerPath = fileURLToPath(new URL("../apps/web/wrangler.jsonc", import.meta.url));
 const source = readFileSync(wranglerPath, "utf8");
 const { config, error } = ts.parseConfigFileTextToJson(wranglerPath, source);
 
