@@ -227,10 +227,7 @@ export interface DeckDataRepository {
   setDeckCardTags(deckId: string, oracleId: string, tags: string[]): Promise<void>;
 
   getCollaborators(deckId: string): Promise<DeckCollaboratorRow[]>;
-  getCollaboratorRole(
-    deckId: string,
-    userId: string,
-  ): Promise<CollaboratorRole | null>;
+  getCollaboratorRole(deckId: string, userId: string): Promise<CollaboratorRole | null>;
   addCollaborator(
     deckId: string,
     userId: string,
@@ -452,9 +449,7 @@ export function createDeckDataRepository(
   // *whether* art is hosted, and the cache-busting suffix needs the source
   // hash, which lives on `printings`. One indexed IN-query alongside the
   // catalogue read; mirrors `printingRowToPrinting` in `@riftseer/core`.
-  async function printingImages(
-    printingIds: string[],
-  ): Promise<Map<string, PrintingImage>> {
+  async function printingImages(printingIds: string[]): Promise<Map<string, PrintingImage>> {
     const rows = await selectRows(
       "printings",
       "id, image_source_hash, image_hosted_at, image_source_url",
@@ -695,10 +690,8 @@ export function createDeckDataRepository(
         map.oracles = oracles;
       }
       if (printingIds.length > 0) {
-        const rows = await selectRows(
-          "printing_legalities",
-          "printing_id, status, note",
-          (q) => q.eq("format_id", formatId).in("printing_id", printingIds),
+        const rows = await selectRows("printing_legalities", "printing_id, status, note", (q) =>
+          q.eq("format_id", formatId).in("printing_id", printingIds),
         );
         const printings: Record<string, LegalityEntry> = {};
         for (const row of rows) {
@@ -715,10 +708,8 @@ export function createDeckDataRepository(
 
     async getTokenEdges(oracleIds) {
       if (oracleIds.length === 0) return [];
-      const rows = await selectRows(
-        "oracle_relationships",
-        "from_oracle_id, to_oracle_id",
-        (q) => q.eq("kind", "makes_token").in("from_oracle_id", oracleIds),
+      const rows = await selectRows("oracle_relationships", "from_oracle_id, to_oracle_id", (q) =>
+        q.eq("kind", "makes_token").in("from_oracle_id", oracleIds),
       );
       return rows.flatMap((row) =>
         isRecord(row)
@@ -775,9 +766,9 @@ export function createDeckDataRepository(
         .eq("kind", "manual");
       if (deleteError) fail(deleteError);
       if (tags.length === 0) return;
-      const { error } = await client.from("deck_card_tags").insert(
-        tags.map((tag) => ({ deck_id: deckId, oracle_id: oracleId, tag })),
-      );
+      const { error } = await client
+        .from("deck_card_tags")
+        .insert(tags.map((tag) => ({ deck_id: deckId, oracle_id: oracleId, tag })));
       if (error) fail(error);
     },
 
@@ -824,9 +815,7 @@ export function createDeckDataRepository(
         "id, ordinal, author_id, format_id, created_at",
         (q) => q.eq("deck_id", deckId).order("ordinal", { ascending: false }).limit(limit),
       );
-      const ids = rows
-        .map((row) => (isRecord(row) ? String(row.id ?? "") : ""))
-        .filter(Boolean);
+      const ids = rows.map((row) => (isRecord(row) ? String(row.id ?? "") : "")).filter(Boolean);
       const changeRows =
         ids.length === 0
           ? []
@@ -919,9 +908,7 @@ export function createDeckDataRepository(
       if (deckIds.length === 0) return counts;
       // Row scan rather than GROUP BY: PostgREST has no aggregate here, and a
       // deck's favorites are bounded by its readers.
-      const rows = await selectRows("deck_favorites", "deck_id", (q) =>
-        q.in("deck_id", deckIds),
-      );
+      const rows = await selectRows("deck_favorites", "deck_id", (q) => q.in("deck_id", deckIds));
       for (const row of rows) {
         if (!isRecord(row) || typeof row.deck_id !== "string") continue;
         counts.set(row.deck_id, (counts.get(row.deck_id) ?? 0) + 1);

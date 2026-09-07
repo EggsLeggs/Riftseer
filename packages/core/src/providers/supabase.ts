@@ -57,8 +57,7 @@ const REFRESH_INTERVAL_MS = Number.parseInt(
   10,
 );
 
-const CARD_IMAGE_BASE_URL =
-  process.env.CARD_IMAGE_BASE_URL ?? "https://img.riftseer.com";
+const CARD_IMAGE_BASE_URL = process.env.CARD_IMAGE_BASE_URL ?? "https://img.riftseer.com";
 
 const ORACLE_SELECT = "*";
 
@@ -315,9 +314,7 @@ function legalityStatus(value: unknown): CardLegality["status"] {
  */
 const DECK_ZONE_SET: ReadonlySet<string> = new Set<string>(DECK_ZONES);
 const LEGALITY_STATUS_SET: ReadonlySet<string> = new Set<string>(LEGALITY_STATUSES);
-const VIOLATION_SEVERITY_SET: ReadonlySet<string> = new Set<string>(
-  VIOLATION_SEVERITIES,
-);
+const VIOLATION_SEVERITY_SET: ReadonlySet<string> = new Set<string>(VIOLATION_SEVERITIES);
 
 /** A nullable integer column, kept null unless it really is a finite number. */
 function nullableCount(value: unknown): number | null {
@@ -393,14 +390,8 @@ export class SupabaseCardProvider implements CardDataProvider {
 
   async refresh(): Promise<void> {
     const [oracles, printings] = await Promise.all([
-      this.db
-        .from("oracles")
-        .select("id", { count: "exact", head: true })
-        .is("deleted_at", null),
-      this.db
-        .from("printings")
-        .select("id", { count: "exact", head: true })
-        .is("deleted_at", null),
+      this.db.from("oracles").select("id", { count: "exact", head: true }).is("deleted_at", null),
+      this.db.from("printings").select("id", { count: "exact", head: true }).is("deleted_at", null),
     ]);
     if (oracles.error) throw new Error(oracles.error.message);
     if (printings.error) throw new Error(printings.error.message);
@@ -482,9 +473,7 @@ export class SupabaseCardProvider implements CardDataProvider {
       .eq("oracle_id", oracleId)
       .is("deleted_at", null);
     if (error) throw new Error(`getPrintingsForOracle failed: ${error.message}`);
-    return ((data ?? []) as PrintingRow[])
-      .map(printingRowToPrinting)
-      .sort(comparePrintings);
+    return ((data ?? []) as PrintingRow[]).map(printingRowToPrinting).sort(comparePrintings);
   }
 
   async getOracleRelationships(oracleId: string) {
@@ -507,12 +496,8 @@ export class SupabaseCardProvider implements CardDataProvider {
 
     // `used_by` is exactly the reverse of `makes_token`. `character` and
     // `signature` read the same from either end, so both directions merge.
-    const makesTokenIds = out
-      .filter((e) => e.kind === "makes_token")
-      .map((e) => e.to_oracle_id);
-    const usedByIds = inc
-      .filter((e) => e.kind === "makes_token")
-      .map((e) => e.from_oracle_id);
+    const makesTokenIds = out.filter((e) => e.kind === "makes_token").map((e) => e.to_oracle_id);
+    const usedByIds = inc.filter((e) => e.kind === "makes_token").map((e) => e.from_oracle_id);
     const characterIds = [
       ...out.filter((e) => e.kind === "character").map((e) => e.to_oracle_id),
       ...inc.filter((e) => e.kind === "character").map((e) => e.from_oracle_id),
@@ -580,10 +565,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     return ids.map((id) => byId.get(id)).filter((p): p is Printing => Boolean(p));
   }
 
-  async getPrintingsBySet(
-    setCode: string,
-    opts: { limit?: number } = {},
-  ): Promise<Printing[]> {
+  async getPrintingsBySet(setCode: string, opts: { limit?: number } = {}): Promise<Printing[]> {
     const { data: set, error: setError } = await this.db
       .from("sets")
       .select("id")
@@ -658,8 +640,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     // are appended rather than dropped.
     return [...printings].sort(
       (a, b) =>
-        (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
-        (order.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+        (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 
@@ -682,9 +663,7 @@ export class SupabaseCardProvider implements CardDataProvider {
     const printings = await this.getPrintingsByIds(ids);
     const rows = await this.oracleRowsByIds(printings.map((p) => p.oracle_id));
     const oracleById = new Map(rows.map((r) => [r.id, oracleRowToOracle(r)]));
-    const names = new Map(
-      printings.map((p) => [p.id, oracleById.get(p.oracle_id)?.name ?? ""]),
-    );
+    const names = new Map(printings.map((p) => [p.id, oracleById.get(p.oracle_id)?.name ?? ""]));
 
     const page = this.rankByText(ast, printings, names).slice(offset, offset + limit);
 
@@ -722,17 +701,12 @@ export class SupabaseCardProvider implements CardDataProvider {
     // printing search (`is:alternate`, a set browse) returns many printings of
     // comparatively few cards, so embedding would duplicate heavily.
     const wanted = new Set(page.map((p) => p.oracle_id));
-    const oracles = await this.attachPreferredPrintings(
-      rows.filter((r) => wanted.has(r.id)),
-    );
+    const oracles = await this.attachPreferredPrintings(rows.filter((r) => wanted.has(r.id)));
 
     return { printings: page, oracles, total };
   }
 
-  async browseOracles(opts: {
-    limit: number;
-    offset: number;
-  }): Promise<OracleSearchResult> {
+  async browseOracles(opts: { limit: number; offset: number }): Promise<OracleSearchResult> {
     const limit = clamp(opts.limit, 1, 100);
     const offset = Math.max(opts.offset, 0);
 
@@ -775,9 +749,7 @@ export class SupabaseCardProvider implements CardDataProvider {
   /** One batched printing fetch for a page of oracle rows. */
   private async attachPreferredPrintings(rows: OracleRow[]): Promise<Oracle[]> {
     const oracles = rows.map(oracleRowToOracle);
-    const ids = rows
-      .map((r) => r.preferred_printing_id)
-      .filter((id): id is string => Boolean(id));
+    const ids = rows.map((r) => r.preferred_printing_id).filter((id): id is string => Boolean(id));
     if (ids.length === 0) return oracles;
 
     const printings = await this.getPrintingsByIds(ids);
@@ -869,9 +841,7 @@ export class SupabaseCardProvider implements CardDataProvider {
 
     const [formats, rules, severities] = await Promise.all([
       query,
-      this.db
-        .from("format_zone_rules")
-        .select("format_id, zone, min_count, max_count, copy_limit"),
+      this.db.from("format_zone_rules").select("format_id, zone, min_count, max_count, copy_limit"),
       this.db.from("format_legality_severities").select("format_id, status, severity"),
     ]);
     if (formats.error) throw new Error(`getFormats failed: ${formats.error.message}`);
@@ -894,10 +864,7 @@ export class SupabaseCardProvider implements CardDataProvider {
       rulesByFormat.set(String(row.format_id), list);
     }
 
-    const severityByFormat = new Map<
-      string,
-      Partial<Record<LegalityStatus, ViolationSeverity>>
-    >();
+    const severityByFormat = new Map<string, Partial<Record<LegalityStatus, ViolationSeverity>>>();
     for (const row of (severities.data ?? []) as Record<string, unknown>[]) {
       const status = String(row.status ?? "");
       const severity = String(row.severity ?? "");
@@ -909,14 +876,14 @@ export class SupabaseCardProvider implements CardDataProvider {
       severityByFormat.set(id, entry);
     }
 
-    return ((formats.data ?? []) as Omit<Format, "object" | "zone_rules" | "severity_overrides">[]).map(
-      (row) => ({
-        object: "format" as const,
-        ...row,
-        zone_rules: rulesByFormat.get(row.id) ?? [],
-        severity_overrides: severityByFormat.get(row.id) ?? {},
-      }),
-    );
+    return (
+      (formats.data ?? []) as Omit<Format, "object" | "zone_rules" | "severity_overrides">[]
+    ).map((row) => ({
+      object: "format" as const,
+      ...row,
+      zone_rules: rulesByFormat.get(row.id) ?? [],
+      severity_overrides: severityByFormat.get(row.id) ?? {},
+    }));
   }
 
   async getLegalities(printingId: string): Promise<CardLegality[]> {
@@ -985,9 +952,7 @@ export function pickRequestedPrinting(
   }
   if (req.collector) {
     const wanted = String(req.collector).toLowerCase();
-    const matching = candidates.filter(
-      (p) => p.collector_number?.toLowerCase() === wanted,
-    );
+    const matching = candidates.filter((p) => p.collector_number?.toLowerCase() === wanted);
     if (matching.length > 0) {
       candidates = matching;
       narrowed = true;

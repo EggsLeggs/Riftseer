@@ -24,9 +24,7 @@ function normalizeDate(value: string | null | undefined): string | null {
 }
 
 /** Cardmarket occasionally lists several expansion ids; only one fits a column. */
-function firstCardmarketId(
-  value: string | string[] | null | undefined,
-): string | undefined {
+function firstCardmarketId(value: string | string[] | null | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
   return value ?? undefined;
 }

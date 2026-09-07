@@ -1,9 +1,5 @@
 import { Elysia } from "elysia";
-import {
-  type AuthenticatedUser,
-  type AuthTokenResolver,
-  resolveSupabaseToken,
-} from "./auth";
+import { type AuthenticatedUser, type AuthTokenResolver, resolveSupabaseToken } from "./auth";
 
 /**
  * Auth that never rejects: a valid bearer token becomes a user, anything else

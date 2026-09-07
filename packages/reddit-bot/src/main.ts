@@ -55,8 +55,7 @@ Devvit.addSettings([
     type: "string",
     name: "siteBaseUrl",
     label: "Riftseer site base URL",
-    helpText:
-      "URL of the React card browser site, used for [site] and [txt] links in replies.",
+    helpText: "URL of the React card browser site, used for [site] and [txt] links in replies.",
     scope: SettingScope.App,
     isSecret: false,
   },
@@ -92,14 +91,17 @@ Devvit.addTrigger({
         return;
       }
 
-      console.log(`[Riftseer] Found ${requests.length} card request(s): ${requests.map((r) => r.raw).join(", ")}`);
+      console.log(
+        `[Riftseer] Found ${requests.length} card request(s): ${requests.map((r) => r.raw).join(", ")}`,
+      );
 
       const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
       const siteBaseUrl =
-        (await context.settings.get<string>("siteBaseUrl")) ||
-        "https://example.com";
+        (await context.settings.get<string>("siteBaseUrl")) || "https://example.com";
 
-      console.log(`[Riftseer] apiBaseUrl=${apiBaseUrl ? "(set)" : "(empty)"} siteBaseUrl=${siteBaseUrl}`);
+      console.log(
+        `[Riftseer] apiBaseUrl=${apiBaseUrl ? "(set)" : "(empty)"} siteBaseUrl=${siteBaseUrl}`,
+      );
 
       if (!apiBaseUrl) {
         console.error(
@@ -134,9 +136,7 @@ Devvit.addTrigger({
 
   async onEvent(event, context) {
     const post = event.post;
-    console.log(
-      `[Riftseer] PostCreate fired — id=${post?.id} title=${post?.title?.slice(0, 80)}`,
-    );
+    console.log(`[Riftseer] PostCreate fired — id=${post?.id} title=${post?.title?.slice(0, 80)}`);
     try {
       if (!post) return;
 
@@ -155,12 +155,13 @@ Devvit.addTrigger({
 
       if (requests.length === 0) return;
 
-      console.log(`[Riftseer] Found ${requests.length} card request(s) in post: ${requests.map((r) => r.raw).join(", ")}`);
+      console.log(
+        `[Riftseer] Found ${requests.length} card request(s) in post: ${requests.map((r) => r.raw).join(", ")}`,
+      );
 
       const apiBaseUrl = (await context.settings.get<string>("apiBaseUrl")) ?? "";
       const siteBaseUrl =
-        (await context.settings.get<string>("siteBaseUrl")) ||
-        "https://example.com";
+        (await context.settings.get<string>("siteBaseUrl")) || "https://example.com";
 
       if (!apiBaseUrl) {
         console.error(

@@ -27,15 +27,13 @@ const ADMIN_SECTIONS: AdminSection[] = [
     href: "/admin/cards",
     icon: Library,
     title: "Cards",
-    description:
-      "Search every printing, edit fields, upload art, fix slugs, and record deletions.",
+    description: "Search every printing, edit fields, upload art, fix slugs, and record deletions.",
   },
   {
     href: "/admin/sets",
     icon: Layers,
     title: "Sets",
-    description:
-      "Create manual sets, correct names and release dates, and remove empty sets.",
+    description: "Create manual sets, correct names and release dates, and remove empty sets.",
   },
   {
     href: "/admin/formats",
@@ -137,28 +135,18 @@ export function AdminDashboardView({ stats, email }: Props) {
       <div className="text-muted-foreground mt-8 flex items-start gap-2 text-xs">
         <ShieldCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <p className="leading-relaxed">
-          Oracle, printing and set edits lock the fields an admin chose, so the
-          scheduled RiftCodex ingest cannot overwrite those decisions.
+          Oracle, printing and set edits lock the fields an admin chose, so the scheduled RiftCodex
+          ingest cannot overwrite those decisions.
         </p>
       </div>
     </>
   );
 }
 
-function StatTile({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+function StatTile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-lg border px-4 py-3">
-      <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-        {label}
-      </p>
+      <p className="text-muted-foreground text-xs font-medium tracking-wider uppercase">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
       {hint && <p className="text-muted-foreground mt-0.5 text-xs">{hint}</p>}
     </div>

@@ -22,7 +22,6 @@
 
 import { normalizeCardName } from "./normalize.ts";
 
-
 /** Minimal shape required for name-based ranking. */
 export interface Nameable {
   id: string;

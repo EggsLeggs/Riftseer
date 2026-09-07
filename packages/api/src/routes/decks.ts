@@ -8,11 +8,7 @@ import {
   type DeckZone,
 } from "@riftseer/types/deck";
 import { validateDeck } from "@riftseer/types/deck-validate";
-import {
-  formatDeckText,
-  parseDeckText,
-  type DeckTextCard,
-} from "@riftseer/types/deck-text";
+import { formatDeckText, parseDeckText, type DeckTextCard } from "@riftseer/types/deck-text";
 import { getRedisClient } from "@riftseer/core/server";
 import { authAdminClient } from "../lib/supabase";
 import {
@@ -98,9 +94,7 @@ async function viewerKey(userId: string | undefined, request: Request): Promise<
     "SHA-256",
     new TextEncoder().encode(`${ip}|${agent}|${day}`),
   );
-  return [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 // ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -414,7 +408,10 @@ async function deriveTokens(
     const stale = await repository.getTokenPrintingChoices(deckId);
     if (stale.length > 0) {
       await repository
-        .pruneTokenPrintings(deckId, stale.map((row) => row.oracle_id))
+        .pruneTokenPrintings(
+          deckId,
+          stale.map((row) => row.oracle_id),
+        )
         .catch(() => undefined);
     }
     return [];
@@ -432,7 +429,10 @@ async function deriveTokens(
   const stale = choices.filter((choice) => !sources.has(choice.oracle_id));
   if (stale.length > 0) {
     await repository
-      .pruneTokenPrintings(deckId, stale.map((row) => row.oracle_id))
+      .pruneTokenPrintings(
+        deckId,
+        stale.map((row) => row.oracle_id),
+      )
       .catch(() => undefined);
   }
 
@@ -534,9 +534,7 @@ function exportCards(cards: DeckCardRow[]): DeckTextCard[] {
     quantity: card.quantity,
     name: card.name,
     ...(card.set_code ? { set_code: card.set_code } : {}),
-    ...(card.set_code && card.collector_number
-      ? { collector_number: card.collector_number }
-      : {}),
+    ...(card.set_code && card.collector_number ? { collector_number: card.collector_number } : {}),
     ...(card.is_champion ? { is_champion: true } : {}),
   }));
 }
@@ -551,8 +549,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
       : null);
   const viewDedup = options.viewDedup ?? defaultViewDedup;
   const routeAuthPlugin = options.authPlugin ?? defaultAuthPlugin;
-  const routeOptionalAuthPlugin =
-    options.optionalAuthPlugin ?? defaultOptionalAuthPlugin;
+  const routeOptionalAuthPlugin = options.optionalAuthPlugin ?? defaultOptionalAuthPlugin;
 
   /**
    * Tags joined by oracle onto every row of that card. A tag whose oracle has
@@ -581,9 +578,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
     const deckIds = decks.map((deck) => deck.id);
     const formatIds = [...new Set(decks.map((deck) => deck.format_id))];
     const [formatEntries, profiles, favoriteCounts, favorited] = await Promise.all([
-      Promise.all(
-        formatIds.map(async (id) => [id, await repo.getFormat(id)] as const),
-      ),
+      Promise.all(formatIds.map(async (id) => [id, await repo.getFormat(id)] as const)),
       repo.getProfiles([...new Set(decks.map((deck) => deck.owner_id))]),
       repo.getFavoriteCounts(deckIds),
       userId ? repo.getFavoritesFor(userId, deckIds) : null,
@@ -654,15 +649,14 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
     userId?: string,
   ): Promise<DeckDetailPayload> {
     const repo = repository!;
-    const [cards, tagRows, format, owners, favoriteCounts, favorited] =
-      await Promise.all([
-        repo.getDeckCards(deck.id),
-        repo.getDeckCardTags(deck.id),
-        repo.getFormat(deck.format_id),
-        repo.getProfiles([deck.owner_id]),
-        repo.getFavoriteCounts([deck.id]),
-        userId ? repo.getFavoritesFor(userId, [deck.id]) : null,
-      ]);
+    const [cards, tagRows, format, owners, favoriteCounts, favorited] = await Promise.all([
+      repo.getDeckCards(deck.id),
+      repo.getDeckCardTags(deck.id),
+      repo.getFormat(deck.format_id),
+      repo.getProfiles([deck.owner_id]),
+      repo.getFavoriteCounts([deck.id]),
+      userId ? repo.getFavoritesFor(userId, [deck.id]) : null,
+    ]);
     const [tokens, violations] = await Promise.all([
       deriveTokens(repo, deck.id, cards),
       validate(repo, deck, cards),
@@ -759,8 +753,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 const favRoles = new Map<string, DeckRole | null>(
                   await Promise.all(
                     favorites.map(
-                      async (deck) =>
-                        [deck.id, await roleFor(repository, deck, user.id)] as const,
+                      async (deck) => [deck.id, await roleFor(repository, deck, user.id)] as const,
                     ),
                   ),
                 );
@@ -795,9 +788,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
 
               const owned = await repository.listDecksOwnedBy(ownerId);
               const shared =
-                user && ownerId === user.id
-                  ? await repository.listDecksSharedWith(user.id)
-                  : [];
+                user && ownerId === user.id ? await repository.listDecksSharedWith(user.id) : [];
 
               const seen = new Set<string>();
               const decks: DeckRow[] = [];
@@ -812,8 +803,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
               const roles = new Map<string, DeckRole | null>(
                 await Promise.all(
                   decks.map(
-                    async (deck) =>
-                      [deck.id, await roleFor(repository, deck, user?.id)] as const,
+                    async (deck) => [deck.id, await roleFor(repository, deck, user?.id)] as const,
                   ),
                 ),
               );
@@ -943,10 +933,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 set.status = 404;
                 return { error: "Deck not found", code: "NOT_FOUND" };
               }
-              const rows = await repository.listComments(
-                loaded.deck.id,
-                COMMENT_LIST_LIMIT,
-              );
+              const rows = await repository.listComments(loaded.deck.id, COMMENT_LIST_LIMIT);
               const authorIds = [
                 ...new Set(
                   rows
@@ -1070,9 +1057,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 items: revisions.map((revision) => ({
                   id: revision.id,
                   ordinal: revision.ordinal,
-                  author: revision.author_id
-                    ? (authorById.get(revision.author_id) ?? null)
-                    : null,
+                  author: revision.author_id ? (authorById.get(revision.author_id) ?? null) : null,
                   format_id: revision.format_id,
                   created_at: revision.created_at,
                   changes: revision.changes.map((change) => ({
@@ -1452,8 +1437,7 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
               }
               // The author moderates themselves; the deck's owner moderates
               // their page. Nobody else.
-              const mayDelete =
-                loaded.role === "owner" || comment.author_id === user.id;
+              const mayDelete = loaded.role === "owner" || comment.author_id === user.id;
               if (!mayDelete) {
                 set.status = 403;
                 return { error: "You cannot delete this comment.", code: "FORBIDDEN" };
@@ -1647,9 +1631,10 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
 
               // Trimmed and deduplicated here so two spellings of a whitespace
               // variant cannot occupy two PK slots.
-              const tags = [
-                ...new Set(body.tags.map((tag) => tag.trim()).filter(Boolean)),
-              ].slice(0, CARD_TAGS_MAX);
+              const tags = [...new Set(body.tags.map((tag) => tag.trim()).filter(Boolean))].slice(
+                0,
+                CARD_TAGS_MAX,
+              );
               await repository.setDeckCardTags(loaded.deck.id, body.oracle_id, tags);
               return { oracle_id: body.oracle_id, tags };
             },
@@ -1990,14 +1975,11 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
               const roles = new Map<string, DeckRole | null>(
                 await Promise.all(
                   decks.map(
-                    async (deck) =>
-                      [deck.id, await roleFor(repository, deck, user.id)] as const,
+                    async (deck) => [deck.id, await roleFor(repository, deck, user.id)] as const,
                   ),
                 ),
               );
-              const readable = decks.filter((deck) =>
-                canRead(deck, roles.get(deck.id) ?? null),
-              );
+              const readable = decks.filter((deck) => canRead(deck, roles.get(deck.id) ?? null));
               return {
                 folder: {
                   id: folder.id,
@@ -2152,7 +2134,11 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Remove a deck from a folder", description: "Idempotent." },
+              detail: {
+                tags: ["Decks"],
+                summary: "Remove a deck from a folder",
+                description: "Idempotent.",
+              },
             },
           )
 
@@ -2315,8 +2301,7 @@ function pickPrinting(
   if (set && collector) {
     const exact = pool.find(
       (card) =>
-        card.set_code?.toLowerCase() === set &&
-        card.collector_number?.toLowerCase() === collector,
+        card.set_code?.toLowerCase() === set && card.collector_number?.toLowerCase() === collector,
     );
     if (exact) return exact;
   }
@@ -2324,8 +2309,6 @@ function pickPrinting(
     const inSet = pool.find((card) => card.set_code?.toLowerCase() === set);
     if (inSet) return inSet;
   }
-  const preferredCard = pool.find(
-    (card) => preferred.get(card.oracle_id) === card.printing_id,
-  );
+  const preferredCard = pool.find((card) => preferred.get(card.oracle_id) === card.printing_id);
   return preferredCard ?? pool[0]!;
 }

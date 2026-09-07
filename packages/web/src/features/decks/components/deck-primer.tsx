@@ -42,9 +42,7 @@ export function DeckPrimer({ primer }: { primer: string }) {
   const uniqueRaws = React.useMemo(
     () =>
       [
-        ...new Set(
-          mentions.flatMap((mention) => (mention.kind === "card" ? [mention.raw] : [])),
-        ),
+        ...new Set(mentions.flatMap((mention) => (mention.kind === "card" ? [mention.raw] : []))),
       ].sort(),
     [mentions],
   );
@@ -89,21 +87,11 @@ export function DeckPrimer({ primer }: { primer: string }) {
           <CardMention mention={mention} card={card} />
         );
       },
-      p: ({ children }: { children?: React.ReactNode }) => (
-        <p>{withSymbols(children)}</p>
-      ),
-      li: ({ children }: { children?: React.ReactNode }) => (
-        <li>{withSymbols(children)}</li>
-      ),
-      h1: ({ children }: { children?: React.ReactNode }) => (
-        <h1>{withSymbols(children)}</h1>
-      ),
-      h2: ({ children }: { children?: React.ReactNode }) => (
-        <h2>{withSymbols(children)}</h2>
-      ),
-      h3: ({ children }: { children?: React.ReactNode }) => (
-        <h3>{withSymbols(children)}</h3>
-      ),
+      p: ({ children }: { children?: React.ReactNode }) => <p>{withSymbols(children)}</p>,
+      li: ({ children }: { children?: React.ReactNode }) => <li>{withSymbols(children)}</li>,
+      h1: ({ children }: { children?: React.ReactNode }) => <h1>{withSymbols(children)}</h1>,
+      h2: ({ children }: { children?: React.ReactNode }) => <h2>{withSymbols(children)}</h2>,
+      h3: ({ children }: { children?: React.ReactNode }) => <h3>{withSymbols(children)}</h3>,
     }),
     [byRaw, mentions],
   );
@@ -134,8 +122,7 @@ function UserMention({ handle }: { handle: string }) {
     staleTime: 60_000,
     retry: false,
   });
-  const username =
-    profile.data?.status === "ok" ? profile.data.profile.username : handle;
+  const username = profile.data?.status === "ok" ? profile.data.profile.username : handle;
 
   return (
     <Link

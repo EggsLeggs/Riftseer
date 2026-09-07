@@ -22,9 +22,7 @@ export interface SelectedImageSource {
 
 function inferProvider(url: string): CardImageSourceProvider {
   try {
-    return new URL(url).hostname.toLowerCase().includes("tcgplayer")
-      ? "tcgplayer"
-      : "riftcodex";
+    return new URL(url).hostname.toLowerCase().includes("tcgplayer") ? "tcgplayer" : "riftcodex";
   } catch {
     return "riftcodex";
   }
@@ -48,9 +46,7 @@ export function selectBestImageSource(
 export async function hashImageSourceUrl(sourceUrl: string): Promise<string> {
   const bytes = new TextEncoder().encode(sourceUrl);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export function createImageJob(

@@ -7,9 +7,7 @@ export interface AuthenticatedUser {
   created_at: string;
 }
 
-export type AuthTokenResolver = (
-  token: string,
-) => Promise<AuthenticatedUser | null>;
+export type AuthTokenResolver = (token: string) => Promise<AuthenticatedUser | null>;
 
 export const resolveSupabaseToken: AuthTokenResolver = async (token) => {
   // Read the imported binding at request time. Besides avoiding stale config in
@@ -84,23 +82,17 @@ export async function resolveBearerUser(
   }
 }
 
-export function createAuthPlugin(
-  resolveToken: AuthTokenResolver | null = resolveSupabaseToken,
-) {
-  return new Elysia({ name: "auth" })
-    .resolve({ as: "scoped" }, async ({ headers, status }) => {
-      const result = await resolveBearerUser(
-        headers.authorization,
-        resolveToken,
-      );
-      if (!("user" in result)) {
-        return status(result.status, {
-          error: result.error,
-          code: result.code,
-        });
-      }
-      return { user: result.user };
-    });
+export function createAuthPlugin(resolveToken: AuthTokenResolver | null = resolveSupabaseToken) {
+  return new Elysia({ name: "auth" }).resolve({ as: "scoped" }, async ({ headers, status }) => {
+    const result = await resolveBearerUser(headers.authorization, resolveToken);
+    if (!("user" in result)) {
+      return status(result.status, {
+        error: result.error,
+        code: result.code,
+      });
+    }
+    return { user: result.user };
+  });
 }
 
 export const authPlugin = createAuthPlugin();

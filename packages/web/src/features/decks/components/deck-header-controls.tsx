@@ -19,12 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   createDeckFolderAction,
   listDeckFoldersAction,
@@ -103,9 +98,7 @@ export function DeckHeaderControls({
           </AppSelectContent>
         </Select>
       ) : (
-        currentFormat && (
-          <HeaderActionStat label="Format">{currentFormat.name}</HeaderActionStat>
-        )
+        currentFormat && <HeaderActionStat label="Format">{currentFormat.name}</HeaderActionStat>
       )}
 
       {isOwner ? (
@@ -234,8 +227,7 @@ function DeckFolderMenuItems({ deckId }: { deckId: string }) {
     retry: false,
   });
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: deckQueryKeys.all });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: deckQueryKeys.all });
 
   const toggle = async (folderId: string, filed: boolean) => {
     const result = await setDeckFolderMembershipAction(folderId, deckId, filed);

@@ -2,7 +2,11 @@ import { describe, expect, test } from "bun:test";
 import { normalizeCardName } from "../normalize.ts";
 import { autocompleteSearch, rankIds, scoreCard, type Nameable } from "../search.ts";
 
-const card = (name: string, id = name): Nameable => ({ id, name, name_normalized: normalizeCardName(name) });
+const card = (name: string, id = name): Nameable => ({
+  id,
+  name,
+  name_normalized: normalizeCardName(name),
+});
 
 describe("name search ranking", () => {
   test("uses one ordered score tier for each matching rule", () => {
@@ -51,10 +55,9 @@ describe("name search ranking", () => {
   });
 
   test("deduplicates ids, honors a safe integer limit, and rejects empty queries", () => {
-    expect(rankIds([card("Bard", "same"), card("Bard Prime", "same"), card("Barrow")], "bar", 10)).toEqual([
-      "Barrow",
-      "same",
-    ]);
+    expect(
+      rankIds([card("Bard", "same"), card("Bard Prime", "same"), card("Barrow")], "bar", 10),
+    ).toEqual(["Barrow", "same"]);
     expect(rankIds([card("Bard"), card("Barrow")], "bar", 1.9)).toHaveLength(1);
     expect(rankIds([card("Bard")], "bar", -1)).toEqual([]);
     expect(rankIds([card("Bard")], "   ", 10)).toEqual([]);

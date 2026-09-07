@@ -76,9 +76,7 @@ export function DeckAddCardDialog({
       onOpenChange={onOpenChange}
       onSelect={handleSelect}
       closeOnSelect={false}
-      placeholder={
-        zone ? `Add a card to ${DECK_ZONE_LABELS[zone]}…` : "Add a card to the deck…"
-      }
+      placeholder={zone ? `Add a card to ${DECK_ZONE_LABELS[zone]}…` : "Add a card to the deck…"}
     />
   );
 }

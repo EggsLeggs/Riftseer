@@ -2,26 +2,11 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import {
-  DialogContent,
-  type DialogContentProps,
-} from "@/components/ui/dialog";
-import {
-  ContextMenuContent,
-  type ContextMenuContentProps,
-} from "@/components/ui/context-menu";
-import {
-  DropdownMenuContent,
-  type DropdownMenuContentProps,
-} from "@/components/ui/dropdown-menu";
-import {
-  PopoverContent,
-  type PopoverContentProps,
-} from "@/components/ui/popover";
-import {
-  SelectContent,
-  type SelectContentProps,
-} from "@/components/ui/select";
+import { DialogContent, type DialogContentProps } from "@/components/ui/dialog";
+import { ContextMenuContent, type ContextMenuContentProps } from "@/components/ui/context-menu";
+import { DropdownMenuContent, type DropdownMenuContentProps } from "@/components/ui/dropdown-menu";
+import { PopoverContent, type PopoverContentProps } from "@/components/ui/popover";
+import { SelectContent, type SelectContentProps } from "@/components/ui/select";
 
 /**
  * Radix modal layers (DropdownMenu, Dialog, etc.) set `pointer-events: none` on
@@ -67,10 +52,7 @@ export function ClearBodyPointerEventsOnNavigate() {
 }
 
 /** App-owned DialogContent with pointer-events cleanup on close. */
-export function AppDialogContent({
-  onCloseAutoFocus,
-  ...props
-}: DialogContentProps) {
+export function AppDialogContent({ onCloseAutoFocus, ...props }: DialogContentProps) {
   return (
     <DialogContent
       onCloseAutoFocus={(event) => {
@@ -83,10 +65,7 @@ export function AppDialogContent({
 }
 
 /** App-owned DropdownMenuContent with pointer-events cleanup on close. */
-export function AppDropdownMenuContent({
-  onCloseAutoFocus,
-  ...props
-}: DropdownMenuContentProps) {
+export function AppDropdownMenuContent({ onCloseAutoFocus, ...props }: DropdownMenuContentProps) {
   return (
     <DropdownMenuContent
       onCloseAutoFocus={(event) => {
@@ -99,10 +78,7 @@ export function AppDropdownMenuContent({
 }
 
 /** App-owned ContextMenuContent with pointer-events cleanup on close. */
-export function AppContextMenuContent({
-  onCloseAutoFocus,
-  ...props
-}: ContextMenuContentProps) {
+export function AppContextMenuContent({ onCloseAutoFocus, ...props }: ContextMenuContentProps) {
   return (
     <ContextMenuContent
       onCloseAutoFocus={(event) => {
@@ -115,10 +91,7 @@ export function AppContextMenuContent({
 }
 
 /** App-owned SelectContent with pointer-events cleanup on close. */
-export function AppSelectContent({
-  onCloseAutoFocus,
-  ...props
-}: SelectContentProps) {
+export function AppSelectContent({ onCloseAutoFocus, ...props }: SelectContentProps) {
   return (
     <SelectContent
       onCloseAutoFocus={(event) => {
@@ -136,10 +109,7 @@ export function AppSelectContent({
  * here. HoverCard has no App wrapper: it is never modal and exposes no close
  * hook to clean up from.
  */
-export function AppPopoverContent({
-  onCloseAutoFocus,
-  ...props
-}: PopoverContentProps) {
+export function AppPopoverContent({ onCloseAutoFocus, ...props }: PopoverContentProps) {
   return (
     <PopoverContent
       onCloseAutoFocus={(event) => {

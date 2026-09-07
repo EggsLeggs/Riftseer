@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
 
 export function SubHeading({ children }: { children: ReactNode }) {
-  return (
-    <h3 className="mb-4 text-2xl font-bold tracking-tight text-foreground">{children}</h3>
-  );
+  return <h3 className="mb-4 text-2xl font-bold tracking-tight text-foreground">{children}</h3>;
 }
 
 export function Text({ children }: { children: ReactNode }) {
@@ -12,7 +10,9 @@ export function Text({ children }: { children: ReactNode }) {
 
 export function UnorderedList({ children }: { children: ReactNode }) {
   return (
-    <ul className="mb-4 list-disc space-y-3 pl-6 text-base leading-relaxed text-foreground">{children}</ul>
+    <ul className="mb-4 list-disc space-y-3 pl-6 text-base leading-relaxed text-foreground">
+      {children}
+    </ul>
   );
 }
 
@@ -20,13 +20,7 @@ export function ListItem({ children }: { children: ReactNode }) {
   return <li>{children}</li>;
 }
 
-export function InlineLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: ReactNode;
-}) {
+export function InlineLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <a
       href={href}

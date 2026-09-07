@@ -10,10 +10,7 @@ import {
   tagSearchQuery,
 } from "./search-links";
 
-function card(fields: {
-  type?: string | null;
-  supertype?: string | null;
-}) {
+function card(fields: { type?: string | null; supertype?: string | null }) {
   return {
     card_type: fields.type,
     supertype: fields.supertype,
@@ -59,9 +56,7 @@ describe("tagSearchQuery", () => {
 describe("artistSearchQuery", () => {
   test("uses the artist field and quotes multi-word names", () => {
     expect(artistSearchQuery("Kudos")).toBe("a:Kudos");
-    expect(artistSearchQuery("Kudos Productions")).toBe(
-      'a:"Kudos Productions"',
-    );
+    expect(artistSearchQuery("Kudos Productions")).toBe('a:"Kudos Productions"');
   });
 });
 
@@ -87,18 +82,18 @@ describe("keywordSearchQuery", () => {
 describe("cardTypeLineSearchQuery", () => {
   test("splits a compound type line into two filters", () => {
     // The whole point: `t:"signature unit"` is not a type any card carries.
-    expect(
-      cardTypeLineSearchQuery(card({ type: "Unit", supertype: "Signature" })),
-    ).toBe("st:Signature t:Unit");
-    expect(
-      cardTypeLineSearchQuery(card({ type: "Unit", supertype: "Champion" })),
-    ).toBe("st:Champion t:Unit");
+    expect(cardTypeLineSearchQuery(card({ type: "Unit", supertype: "Signature" }))).toBe(
+      "st:Signature t:Unit",
+    );
+    expect(cardTypeLineSearchQuery(card({ type: "Unit", supertype: "Champion" }))).toBe(
+      "st:Champion t:Unit",
+    );
   });
 
   test("drops the supertype for legends, matching the printed label", () => {
-    expect(
-      cardTypeLineSearchQuery(card({ type: "Legend", supertype: "Champion" })),
-    ).toBe("t:Legend");
+    expect(cardTypeLineSearchQuery(card({ type: "Legend", supertype: "Champion" }))).toBe(
+      "t:Legend",
+    );
   });
 
   test("maps a token to the flag its label means", () => {
@@ -107,9 +102,7 @@ describe("cardTypeLineSearchQuery", () => {
 
   test("handles a lone type or supertype", () => {
     expect(cardTypeLineSearchQuery(card({ type: "Spell" }))).toBe("t:Spell");
-    expect(cardTypeLineSearchQuery(card({ supertype: "Signature" }))).toBe(
-      "st:Signature",
-    );
+    expect(cardTypeLineSearchQuery(card({ supertype: "Signature" }))).toBe("st:Signature");
   });
 
   test("returns null when there is nothing to link", () => {
@@ -120,8 +113,6 @@ describe("cardTypeLineSearchQuery", () => {
 
 describe("searchHref", () => {
   test("encodes the query into the q param", () => {
-    expect(searchHref("st:Signature t:Unit")).toBe(
-      "/search?q=st%3ASignature%20t%3AUnit",
-    );
+    expect(searchHref("st:Signature t:Unit")).toBe("/search?q=st%3ASignature%20t%3AUnit");
   });
 });

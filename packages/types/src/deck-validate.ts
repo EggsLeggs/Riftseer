@@ -80,9 +80,7 @@ export function validateDeck(
   // row anywhere else is an ineligible one and must not satisfy the
   // requirement. It reports `wrong_zone` below, and the deck still has no
   // champion.
-  const championEntry = entries.find(
-    (entry) => entry.is_champion && entry.zone === "main",
-  );
+  const championEntry = entries.find((entry) => entry.is_champion && entry.zone === "main");
   if (!championEntry) {
     violations.push({
       code: "no_champion",

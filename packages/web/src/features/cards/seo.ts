@@ -63,9 +63,7 @@ export function cardMetadata(oracle: Oracle, printing: Printing, path: string): 
   const description = cardSeoDescription(oracle, printing);
   const canonical = new URL(path, env.NEXT_PUBLIC_APP_URL).toString();
   const image = printingImageUrl(printing, "large");
-  const images = image
-    ? [{ url: image, alt: printing.image_alt_text ?? oracle.name }]
-    : undefined;
+  const images = image ? [{ url: image, alt: printing.image_alt_text ?? oracle.name }] : undefined;
 
   return {
     title,

@@ -59,9 +59,7 @@ function characterPart(name: string): string {
  */
 function characterTags(oracle: IngestOracle): string[] {
   const haystack = ` ${normalizeCardName(characterPart(oracle.name))} `;
-  const matched = oracle.tags.filter((tag) =>
-    haystack.includes(` ${normalizeCardName(tag)} `),
-  );
+  const matched = oracle.tags.filter((tag) => haystack.includes(` ${normalizeCardName(tag)} `));
   // No tag in the name is not a shape we have seen; fall back to the old
   // behaviour rather than silently dropping the card's links.
   return matched.length > 0 ? matched : oracle.tags;
@@ -130,10 +128,7 @@ export function linkTokens(oracles: IngestOracle[], edges: EdgeSet): number {
   return linked;
 }
 
-export function linkChampionsLegends(
-  oracles: IngestOracle[],
-  edges: EdgeSet,
-): number {
+export function linkChampionsLegends(oracles: IngestOracle[], edges: EdgeSet): number {
   const championsByTag = new Map<string, IngestOracle[]>();
   for (const oracle of oracles) {
     if (!isChampion(oracle) || oracle.tags.length === 0) continue;

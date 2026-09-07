@@ -96,10 +96,7 @@ export function printingImageUrls(
  * instead of fetching `img.riftseer.com`, which 404s under local wrangler
  * (local R2, production CDN hostname).
  */
-export function hostedObjectKeyFromUrl(
-  sourceUrl: string,
-  baseUrl: string,
-): string | null {
+export function hostedObjectKeyFromUrl(sourceUrl: string, baseUrl: string): string | null {
   try {
     const parsed = new URL(sourceUrl);
     const base = normalizeBaseUrl(baseUrl);
@@ -126,10 +123,7 @@ export function isHostedCardImageUrl(url: string, baseUrl?: string): boolean {
   if (baseUrl) return hostedObjectKeyFromUrl(url, baseUrl) !== null;
   try {
     const parsed = new URL(url);
-    return (
-      parsed.hostname === CARD_IMAGE_CDN_HOST &&
-      parsed.pathname.startsWith("/cards/")
-    );
+    return parsed.hostname === CARD_IMAGE_CDN_HOST && parsed.pathname.startsWith("/cards/");
   } catch {
     return false;
   }

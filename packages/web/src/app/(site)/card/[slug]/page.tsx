@@ -25,11 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const detail = slug ? await loadDetail(slug) : null;
   if (!detail) return { title: "Card not found — Riftseer" };
-  return cardMetadata(
-    detail.oracle,
-    detail.printing,
-    cardHref(detail.printing),
-  );
+  return cardMetadata(detail.oracle, detail.printing, cardHref(detail.printing));
 }
 
 /**

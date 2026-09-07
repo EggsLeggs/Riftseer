@@ -24,9 +24,7 @@ export function stashReviewCreateDraft(entry: AdminReviewEntry): void {
   }
 }
 
-export function readReviewCreateDraft(
-  entryId: string | null,
-): ReviewCreateDraft | null {
+export function readReviewCreateDraft(entryId: string | null): ReviewCreateDraft | null {
   if (!entryId || typeof window === "undefined") return null;
   const raw = sessionStorage.getItem(STORAGE_KEY);
   if (!raw) return null;
@@ -73,14 +71,10 @@ export function galleryToPrefill(gallery: AdminReviewGalleryCard): GalleryPrefil
   const riftboundId = gallery.riftbound_id ?? "";
   // Older queue rows predate the enriched payload; derive the flags that the
   // printed id already encodes so Create still lands useful defaults.
-  const isToken =
-    gallery.is_token === true || /^T\d/i.test(collector);
-  const signature =
-    gallery.signature === true || /-\d+\*/.test(riftboundId);
-  const specialCollection =
-    gallery.special_collection === true || /-(?:sp)\d+/i.test(riftboundId);
-  const alternateArt =
-    gallery.alternate_art === true || /-\d+a(?:-|$)/i.test(riftboundId);
+  const isToken = gallery.is_token === true || /^T\d/i.test(collector);
+  const signature = gallery.signature === true || /-\d+\*/.test(riftboundId);
+  const specialCollection = gallery.special_collection === true || /-(?:sp)\d+/i.test(riftboundId);
+  const alternateArt = gallery.alternate_art === true || /-\d+a(?:-|$)/i.test(riftboundId);
 
   return {
     name: gallery.name ?? "",

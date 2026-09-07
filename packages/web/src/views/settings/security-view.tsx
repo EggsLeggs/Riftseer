@@ -19,7 +19,11 @@ import {
 } from "@/components/ui/dialog";
 import { AppDialogContent } from "@/components/layout/clear-body-pointer-events";
 import { updateHandleAction } from "@/features/profile/actions";
-import { changeEmailAction, changePasswordAction, deleteAccountAction } from "@/features/auth/actions";
+import {
+  changeEmailAction,
+  changePasswordAction,
+  deleteAccountAction,
+} from "@/features/auth/actions";
 import type { Session } from "@/features/auth/types";
 
 interface Props {
@@ -32,7 +36,9 @@ function ChangeUsernameDialog({ currentHandle }: { currentHandle: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [handle, setHandle] = useState(currentHandle);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
+    null,
+  );
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent) {
@@ -43,7 +49,10 @@ function ChangeUsernameDialog({ currentHandle }: { currentHandle: string }) {
       if ("error" in result) {
         setFeedback({ type: "error", message: result.error ?? "Failed to update username." });
       } else {
-        setFeedback({ type: "success", message: `Username changed to @${result.handle ?? handle}.` });
+        setFeedback({
+          type: "success",
+          message: `Username changed to @${result.handle ?? handle}.`,
+        });
         // Reload the server component so the displayed handle matches the session.
         router.refresh();
         setTimeout(() => setOpen(false), 1200);
@@ -200,9 +209,7 @@ function ChangePasswordDialog() {
       <AppDialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Change password</DialogTitle>
-          <DialogDescription>
-            Enter your current password and choose a new one.
-          </DialogDescription>
+          <DialogDescription>Enter your current password and choose a new one.</DialogDescription>
         </DialogHeader>
         <form action={action} className="space-y-4">
           <div className="space-y-1.5">
@@ -320,11 +327,7 @@ function DeleteAccountDialog({ handle }: { handle: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={!confirmed || isPending}
-            >
+            <Button type="submit" variant="destructive" disabled={!confirmed || isPending}>
               {isPending ? "Deleting…" : "Permanently delete account"}
             </Button>
           </DialogFooter>
@@ -407,16 +410,19 @@ export function SecurityView({ session }: Props) {
             <div className="flex items-center justify-between gap-4 px-4 py-4">
               <div className="min-w-0">
                 <p className="text-sm font-medium">Password</p>
-                <p className="mt-0.5 text-sm text-muted-foreground tracking-widest">
-                  ••••••••••••
-                </p>
+                <p className="mt-0.5 text-sm text-muted-foreground tracking-widest">••••••••••••</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   You&apos;ll need your current password to set a new one.
                 </p>
               </div>
               <div className="shrink-0 flex flex-col gap-2 items-end">
                 <ChangePasswordDialog />
-                <Button asChild variant="ghost" size="sm" className="text-xs h-7 text-muted-foreground">
+                <Button
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs h-7 text-muted-foreground"
+                >
                   <Link href="/auth/forgot-password">Forgot password?</Link>
                 </Button>
               </div>

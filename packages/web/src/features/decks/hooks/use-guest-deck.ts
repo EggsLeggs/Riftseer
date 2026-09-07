@@ -88,17 +88,14 @@ export function useGuestDeck(formats: readonly DeckFormatOption[]): GuestDeckEdi
     setReady(true);
   }, []);
 
-  const update = React.useCallback(
-    (change: (current: GuestDeck) => GuestDeck) => {
-      setDeck((current) => {
-        if (!current) return current;
-        const next = { ...change(current), updated_at: new Date().toISOString() };
-        setPersisted(writeGuestDeck(next));
-        return next;
-      });
-    },
-    [],
-  );
+  const update = React.useCallback((change: (current: GuestDeck) => GuestDeck) => {
+    setDeck((current) => {
+      if (!current) return current;
+      const next = { ...change(current), updated_at: new Date().toISOString() };
+      setPersisted(writeGuestDeck(next));
+      return next;
+    });
+  }, []);
 
   const applyChanges = React.useCallback(
     (changes: DeckCardChange[], template?: AddableCard) => {

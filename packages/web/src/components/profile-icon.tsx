@@ -12,10 +12,7 @@ const SIZES = {
   lg: "size-16 text-lg",
 } as const;
 
-export function profileInitials(
-  username?: string | null,
-  handle?: string | null,
-): string {
+export function profileInitials(username?: string | null, handle?: string | null): string {
   const source = username?.trim() || handle?.trim() || "?";
   return source.slice(0, 2).toUpperCase();
 }

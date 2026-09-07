@@ -82,9 +82,7 @@ export interface AdminPrintingListFilters {
 
 export type AdminOracleRelationships = Ok<OracleById["relationships"]["get"]>;
 
-export type AdminRelationshipEntry = Body<
-  OracleById["relationships"]["put"]
->["entries"][number];
+export type AdminRelationshipEntry = Body<OracleById["relationships"]["put"]>["entries"][number];
 
 export type AdminRelationshipKind = AdminRelationshipEntry["kind"];
 
@@ -117,8 +115,7 @@ export type AdminFormatZoneRule = AdminFormat["zone_rules"][number];
 export type AdminDeckZone = AdminFormatZoneRule["zone"];
 
 /** Only the statuses a format disagrees with; the rest fall through. */
-export type AdminFormatSeverityOverride =
-  AdminFormat["severity_overrides"][number];
+export type AdminFormatSeverityOverride = AdminFormat["severity_overrides"][number];
 
 export type AdminViolationSeverity = AdminFormatSeverityOverride["severity"];
 
@@ -130,9 +127,7 @@ export type AdminFormatZoneRuleInput = Body<ZoneRuleByZone["put"]>;
  * override so the status falls back to the shared mapping — which is why it is
  * absent from {@link AdminViolationSeverity}.
  */
-export type AdminViolationSeverityInput = Body<
-  SeverityByStatus["put"]
->["severity"];
+export type AdminViolationSeverityInput = Body<SeverityByStatus["put"]>["severity"];
 
 export type AdminFormatZoneRuleMutationResult = Ok<ZoneRuleByZone["put"]>;
 
@@ -152,9 +147,7 @@ export type AdminLegalityStatus = AdminPrintingLegalityEntry["status"];
  * the row — so it is deliberately absent from `AdminLegalityStatus` and display
  * code cannot render it as a badge.
  */
-export type AdminLegalityStatusInput = Body<
-  PrintingById["legalities"]["put"]
->["status"];
+export type AdminLegalityStatusInput = Body<PrintingById["legalities"]["put"]>["status"];
 
 export type AdminPrintingRulings = Ok<PrintingById["rulings"]["get"]>;
 
@@ -164,14 +157,9 @@ export type AdminRulingType = AdminPrintingRuling["type"];
 
 // ─── Rulings tab (`/admin/rulings`) ───────────────────────────────────────────
 
-export const ADMIN_RULING_TARGET_KINDS = [
-  "oracle",
-  "printing",
-  "query",
-] as const;
+export const ADMIN_RULING_TARGET_KINDS = ["oracle", "printing", "query"] as const;
 
-export type AdminRulingTargetKind =
-  (typeof ADMIN_RULING_TARGET_KINDS)[number];
+export type AdminRulingTargetKind = (typeof ADMIN_RULING_TARGET_KINDS)[number];
 
 /**
  * Derived, like every other response shape here, rather than restated.
@@ -191,9 +179,7 @@ export type AdminRuling = AdminRulingsPage["rulings"][number];
 export type AdminRulingTarget = AdminRuling["targets"][number];
 
 /** Target input — the API derives the AST, so only the query text is sent. */
-export type AdminRulingTargetInput = Body<
-  AdminRoutes["rulings"]["post"]
->["targets"][number];
+export type AdminRulingTargetInput = Body<AdminRoutes["rulings"]["post"]>["targets"][number];
 
 export interface AdminRulingsQuery {
   q?: string;
@@ -235,18 +221,12 @@ export type AdminReviewKind = AdminReviewEntry["kind"];
 export type AdminReviewSource = AdminReviewEntry["source"];
 
 /** The only fields ingest proposes; prices are never queued. */
-export type AdminReviewField = NonNullable<
-  AdminReviewEntry["payload"]["field"]
->;
+export type AdminReviewField = NonNullable<AdminReviewEntry["payload"]["field"]>;
 
-export type AdminReviewProduct = NonNullable<
-  AdminReviewEntry["payload"]["product"]
->;
+export type AdminReviewProduct = NonNullable<AdminReviewEntry["payload"]["product"]>;
 
 /** A printing the official gallery lists, as filed for review. */
-export type AdminReviewGalleryCard = NonNullable<
-  AdminReviewEntry["payload"]["gallery"]
->;
+export type AdminReviewGalleryCard = NonNullable<AdminReviewEntry["payload"]["gallery"]>;
 
 // Runtime lists for the filter selects. `satisfies` ties each to the derived
 // union, so a value the API drops (or gains) fails to compile here.
@@ -286,9 +266,7 @@ export type AdminAuditPage = Ok<AdminRoutes["audit-log"]["get"]>;
 
 export type AdminAuditEntry = AdminAuditPage["entries"][number];
 
-type AdminAuditQuery = NonNullable<
-  NonNullable<Body<AdminRoutes["audit-log"]["get"]>>["query"]
->;
+type AdminAuditQuery = NonNullable<NonNullable<Body<AdminRoutes["audit-log"]["get"]>>["query"]>;
 
 /**
  * The audit-log filters as callers hold them. The wire query is all strings;

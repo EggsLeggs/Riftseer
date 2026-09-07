@@ -1,9 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  deckListFormats,
-  filterDeckSummaries,
-  pageDeckSummaries,
-} from "./deck-list-filter";
+import { deckListFormats, filterDeckSummaries, pageDeckSummaries } from "./deck-list-filter";
 import type { DeckSummary } from "./types";
 
 function summary(overrides: Partial<DeckSummary>): DeckSummary {

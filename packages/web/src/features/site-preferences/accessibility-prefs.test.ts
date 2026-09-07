@@ -27,9 +27,7 @@ describe("parseStoredAccessibilityPrefs", () => {
   });
 
   test("a blob from before the deck fields existed still parses", () => {
-    const parsed = parseStoredAccessibilityPrefs(
-      JSON.stringify({ cardResultsView: "table" }),
-    );
+    const parsed = parseStoredAccessibilityPrefs(JSON.stringify({ cardResultsView: "table" }));
     expect(parsed.cardResultsView).toBe("table");
     expect(parsed.deckListView).toBe("list");
     expect(parsed.deckGroupMode).toBe("type");

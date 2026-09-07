@@ -67,12 +67,7 @@ export function CardLegalityGrid({
   if (legalities.length === 0) return null;
 
   return (
-    <ul
-      className={cn(
-        "grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2",
-        className,
-      )}
-    >
+    <ul className={cn("grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2", className)}>
       {legalities.map((legality) => (
         <li key={legality.format_id} className="flex items-start gap-2.5">
           <LegalityStatusBadge status={legality.status} />
@@ -84,9 +79,7 @@ export function CardLegalityGrid({
                 behind a hover: "Banned" without a reason is the question this
                 answers, and a tooltip does not exist on touch. */}
             {legality.note ? (
-              <span className="text-muted-foreground block text-xs leading-5">
-                {legality.note}
-              </span>
+              <span className="text-muted-foreground block text-xs leading-5">{legality.note}</span>
             ) : null}
           </span>
         </li>

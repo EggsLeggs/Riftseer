@@ -165,9 +165,8 @@ export function DeckPrimerEditor({
         <DialogHeader>
           <DialogTitle>Guide</DialogTitle>
           <DialogDescription>
-            Markdown for the write-up. [[Card]] mentions a card, ![[Card]] shows
-            it, [@handle] names a user. Icons and keywords use the same tokens
-            as card text.
+            Markdown for the write-up. [[Card]] mentions a card, ![[Card]] shows it, [@handle] names
+            a user. Icons and keywords use the same tokens as card text.
           </DialogDescription>
         </DialogHeader>
 
@@ -206,14 +205,26 @@ export function DeckPrimerEditor({
 
         {showWrite && (
           <div className="flex flex-wrap items-center gap-0.5">
-            <Tool icon={HeadingIcon} label="Heading" onClick={() => insert("\n## ", "", "Heading")} />
+            <Tool
+              icon={HeadingIcon}
+              label="Heading"
+              onClick={() => insert("\n## ", "", "Heading")}
+            />
             <Tool icon={BoldIcon} label="Bold" onClick={() => insert("**", "**", "bold")} />
             <Tool icon={ItalicIcon} label="Italic" onClick={() => insert("*", "*", "italic")} />
-            <Tool icon={StrikethroughIcon} label="Strikethrough" onClick={() => insert("~~", "~~", "text")} />
+            <Tool
+              icon={StrikethroughIcon}
+              label="Strikethrough"
+              onClick={() => insert("~~", "~~", "text")}
+            />
             <Tool icon={QuoteIcon} label="Quote" onClick={() => insert("\n> ", "", "quote")} />
             <Tool icon={CodeIcon} label="Code" onClick={() => insert("`", "`", "code")} />
             <Tool icon={ListIcon} label="Bullet list" onClick={() => insert("\n- ", "", "item")} />
-            <Tool icon={ListOrderedIcon} label="Numbered list" onClick={() => insert("\n1. ", "", "item")} />
+            <Tool
+              icon={ListOrderedIcon}
+              label="Numbered list"
+              onClick={() => insert("\n1. ", "", "item")}
+            />
             <Tool icon={LinkIcon} label="Link" onClick={() => insert("[", "](https://)", "text")} />
             <Tool
               icon={RectangleHorizontalIcon}
@@ -225,11 +236,7 @@ export function DeckPrimerEditor({
               label="Embed a card image"
               onClick={() => setCardInsert("embed")}
             />
-            <Tool
-              icon={LayersIcon}
-              label="Card images"
-              onClick={() => setCardInsert("embed")}
-            />
+            <Tool icon={LayersIcon} label="Card images" onClick={() => setCardInsert("embed")} />
             <Popover open={userOpen} onOpenChange={setUserOpen}>
               <PopoverTrigger asChild>
                 <Button type="button" variant="ghost" size="icon-sm" aria-label="Mention a user">

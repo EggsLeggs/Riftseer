@@ -98,7 +98,6 @@ export const deckQueryKeys = {
   comments: (id: string) => ["decks", "comments", id] as const,
   byHandle: (handle: string) => ["decks", "handle", handle] as const,
   detail: (id: string) => ["decks", "detail", id] as const,
-  revisions: (id: string, limit?: number) =>
-    ["decks", "revisions", id, limit ?? null] as const,
+  revisions: (id: string, limit?: number) => ["decks", "revisions", id, limit ?? null] as const,
   export: (id: string) => ["decks", "export", id] as const,
 };

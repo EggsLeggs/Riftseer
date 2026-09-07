@@ -118,11 +118,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       httpOnly: false,
       maxAge: 60 * 60 * 24 * 30,
     });
-    response.cookies.set(
-      "rs_user",
-      JSON.stringify({ id: data.user.id, email: data.user.email }),
-      { ...cookieOpts, httpOnly: true, maxAge: 60 * 60 * 24 * 30 },
-    );
+    response.cookies.set("rs_user", JSON.stringify({ id: data.user.id, email: data.user.email }), {
+      ...cookieOpts,
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 30,
+    });
 
     return response;
   } catch (err) {

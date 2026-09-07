@@ -76,7 +76,5 @@ export function domainWashRgb(name: string): string | null {
 
 /** Drops the placeholder "Colorless" domain, which has no rune of its own. */
 export function meaningfulCardDomains(oracle: { domains: string[] }): string[] {
-  return oracle.domains.filter(
-    (d) => d.trim() !== "" && d.trim().toLowerCase() !== "colorless",
-  );
+  return oracle.domains.filter((d) => d.trim() !== "" && d.trim().toLowerCase() !== "colorless");
 }

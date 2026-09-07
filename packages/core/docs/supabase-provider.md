@@ -10,10 +10,10 @@ sidebar_position: 6
 
 ## Configuration
 
-| Env var | Default | Purpose |
-| --- | --- | --- |
-| `SUPABASE_URL` | required | Supabase project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | required | Service-role JWT |
+| Env var                     | Default          | Purpose                                                                    |
+| --------------------------- | ---------------- | -------------------------------------------------------------------------- |
+| `SUPABASE_URL`              | required         | Supabase project URL                                                       |
+| `SUPABASE_SERVICE_ROLE_KEY` | required         | Service-role JWT                                                           |
 | `CACHE_REFRESH_INTERVAL_MS` | `21600000` (6 h) | How often the provider refreshes cached stats (`cardCount`, `lastRefresh`) |
 
 Enable with: `CARD_PROVIDER=supabase`

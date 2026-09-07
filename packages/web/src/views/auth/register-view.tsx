@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { registerAction } from "@/features/auth/actions";
 
 const schema = z.object({
@@ -29,7 +36,11 @@ export function RegisterView() {
   const [state, action, pending] = useActionState(registerAction, null);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<Fields>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<Fields>({
     resolver: zodResolver(schema),
   });
 
@@ -79,7 +90,11 @@ export function RegisterView() {
               className="mt-0.5 size-4 shrink-0 accent-primary"
               aria-describedby="accepted_terms_description"
             />
-            <label htmlFor="accepted_terms" id="accepted_terms_description" className="cursor-pointer">
+            <label
+              htmlFor="accepted_terms"
+              id="accepted_terms_description"
+              className="cursor-pointer"
+            >
               I agree to the{" "}
               <Link href="/terms" className="underline underline-offset-4" target="_blank">
                 Terms of Service
@@ -100,7 +115,9 @@ export function RegisterView() {
               aria-invalid={!!errors.username}
               {...register("username")}
             />
-            {errors.username && <p className="text-xs text-destructive">{errors.username.message}</p>}
+            {errors.username && (
+              <p className="text-xs text-destructive">{errors.username.message}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="handle">Username</Label>
@@ -117,10 +134,13 @@ export function RegisterView() {
                 {...register("handle")}
               />
             </div>
-            {errors.handle
-              ? <p className="text-xs text-destructive">{errors.handle.message}</p>
-              : <p className="text-xs text-muted-foreground">Your unique handle — letters, numbers, underscores</p>
-            }
+            {errors.handle ? (
+              <p className="text-xs text-destructive">{errors.handle.message}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Your unique handle — letters, numbers, underscores
+              </p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="email">Email</Label>
@@ -142,7 +162,9 @@ export function RegisterView() {
               aria-invalid={!!errors.password}
               {...register("password")}
             />
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
           </div>
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Creating account…" : "Create account"}

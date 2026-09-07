@@ -7,26 +7,16 @@ import { env } from "@/lib/env";
 
 import { CustomConsentBanner } from "./custom-consent-banner";
 
-export function ConsentManagerClient({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export function ConsentManagerClient({ children }: { children: ReactNode }) {
   const overrideCountry = env.NEXT_PUBLIC_CONSENT_OVERRIDE_COUNTRY;
-  const allowOverride =
-    env.NODE_ENV !== "production" && Boolean(overrideCountry);
+  const allowOverride = env.NODE_ENV !== "production" && Boolean(overrideCountry);
 
   return (
     <ConsentManagerProvider
       options={{
         mode: "hosted",
         backendURL: "/api/c15t",
-        consentCategories: [
-          "necessary",
-          "functionality",
-          "measurement",
-          "marketing",
-        ],
+        consentCategories: ["necessary", "functionality", "measurement", "marketing"],
         i18n: {
           locale: "en",
           messages: {

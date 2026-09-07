@@ -47,10 +47,7 @@ export function CardSearchTrigger({ className }: CardSearchTriggerProps) {
     >
       <SearchIcon className="size-4 shrink-0 opacity-60" aria-hidden="true" />
       <span className="flex-1 truncate text-left">Search cards…</span>
-      <Kbd
-        aria-hidden="true"
-        className="hidden text-muted-foreground sm:inline-flex"
-      >
+      <Kbd aria-hidden="true" className="hidden text-muted-foreground sm:inline-flex">
         <span>{modKey}</span>
         <span>K</span>
       </Kbd>

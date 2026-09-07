@@ -22,14 +22,14 @@ construction rule (copy limits, domain matching, zone eligibility) reads oracle
 fields. Three copies of one card split across two arts are three copies against
 the limit and two rows in the list.
 
-| Zone | Notes |
-| --- | --- |
-| `legend` | Exactly one card |
-| `main` | The deck proper |
-| `sideboard` | |
-| `runes` | |
-| `battlefields` | |
-| `considering` | Ours, not a game zone; counts toward nothing |
+| Zone           | Notes                                        |
+| -------------- | -------------------------------------------- |
+| `legend`       | Exactly one card                             |
+| `main`         | The deck proper                              |
+| `sideboard`    |                                              |
+| `runes`        |                                              |
+| `battlefields` |                                              |
+| `considering`  | Ours, not a game zone; counts toward nothing |
 
 The chosen champion is a **flag on a `main` row**, not a zone: you may run three
 copies and nominate one of them.
@@ -93,17 +93,17 @@ it rather than fetching card detail per row.
 
 Visibility and role are orthogonal.
 
-| Visibility | Who can read |
-| --- | --- |
-| `public` | Anyone, and it appears in the owner's public list |
+| Visibility | Who can read                                          |
+| ---------- | ----------------------------------------------------- |
+| `public`   | Anyone, and it appears in the owner's public list     |
 | `unlisted` | Anyone holding the id — never listed for another user |
-| `private` | The owner and collaborators |
+| `private`  | The owner and collaborators                           |
 
-| Role | Capability |
-| --- | --- |
-| owner | Everything, and the only role that may delete the deck, manage collaborators, or change `visibility` |
+| Role   | Capability                                                                                                             |
+| ------ | ---------------------------------------------------------------------------------------------------------------------- |
+| owner  | Everything, and the only role that may delete the deck, manage collaborators, or change `visibility`                   |
 | editor | Card mutations and metadata patches, but not `visibility` — being invited to help build is not consent to be published |
-| viewer | Read only |
+| viewer | Read only                                                                                                              |
 
 The Worker holds a service-role key and bypasses RLS, so the route code in
 `src/routes/decks.ts` is the real authorisation boundary; the database policies
@@ -116,36 +116,36 @@ deck exists.
 
 ## Endpoints at a glance
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/v1/decks` | Your decks, or a user's by `?handle` |
-| `POST` | `/api/v1/decks` | Create a deck |
-| `GET` | `/api/v1/decks/:id` | Cards, derived tokens and violations |
-| `PATCH` | `/api/v1/decks/:id` | Name, description, primer, format, visibility |
-| `DELETE` | `/api/v1/decks/:id` | Owner only |
-| `PUT` | `/api/v1/decks/:id/cards` | Batch zone mutation |
-| `PUT` | `/api/v1/decks/:id/card-tags` | Replace one card's manual tags |
-| `POST` | `/api/v1/decks/:id/favorite` | Favorite (idempotent) |
-| `DELETE` | `/api/v1/decks/:id/favorite` | Unfavorite (idempotent) |
-| `POST` | `/api/v1/decks/:id/views` | Count a view (deduplicated) |
-| `GET` | `/api/v1/decks/:id/comments` | List comments (flat; client builds the tree) |
-| `POST` | `/api/v1/decks/:id/comments` | Comment or reply |
-| `DELETE` | `/api/v1/decks/:id/comments/:commentId` | Tombstone a comment (author or deck owner) |
-| `GET` | `/api/v1/deck-folders` | Your folders (`?deck=` adds membership) |
-| `POST` | `/api/v1/deck-folders` | Create a folder |
-| `GET` | `/api/v1/deck-folders/:id` | One folder and its readable decks |
-| `PATCH` | `/api/v1/deck-folders/:id` | Rename a folder |
-| `DELETE` | `/api/v1/deck-folders/:id` | Delete a folder (decks untouched) |
-| `PUT` | `/api/v1/deck-folders/:id/decks/:deckId` | File a deck (idempotent) |
-| `DELETE` | `/api/v1/deck-folders/:id/decks/:deckId` | Unfile a deck (idempotent) |
-| `GET` | `/api/v1/decks/:id/revisions` | Edit history; `?limit=` 1–50, default 50 |
-| `POST` | `/api/v1/decks/:id/invite` | Create or regenerate the invite link |
-| `DELETE` | `/api/v1/decks/:id/invite` | Disable the invite link |
-| `POST` | `/api/v1/decks/join/:code` | Redeem an invite link |
-| `POST` | `/api/v1/decks/:id/collaborators` | Invite by handle (owner only) |
-| `DELETE` | `/api/v1/decks/:id/collaborators?handle=` | Remove (owner only) |
-| `POST` | `/api/v1/decks/import` | Import Moxfield-style text |
-| `GET` | `/api/v1/decks/:id/export` | Export Moxfield-style text |
+| Method   | Path                                      | Description                                   |
+| -------- | ----------------------------------------- | --------------------------------------------- |
+| `GET`    | `/api/v1/decks`                           | Your decks, or a user's by `?handle`          |
+| `POST`   | `/api/v1/decks`                           | Create a deck                                 |
+| `GET`    | `/api/v1/decks/:id`                       | Cards, derived tokens and violations          |
+| `PATCH`  | `/api/v1/decks/:id`                       | Name, description, primer, format, visibility |
+| `DELETE` | `/api/v1/decks/:id`                       | Owner only                                    |
+| `PUT`    | `/api/v1/decks/:id/cards`                 | Batch zone mutation                           |
+| `PUT`    | `/api/v1/decks/:id/card-tags`             | Replace one card's manual tags                |
+| `POST`   | `/api/v1/decks/:id/favorite`              | Favorite (idempotent)                         |
+| `DELETE` | `/api/v1/decks/:id/favorite`              | Unfavorite (idempotent)                       |
+| `POST`   | `/api/v1/decks/:id/views`                 | Count a view (deduplicated)                   |
+| `GET`    | `/api/v1/decks/:id/comments`              | List comments (flat; client builds the tree)  |
+| `POST`   | `/api/v1/decks/:id/comments`              | Comment or reply                              |
+| `DELETE` | `/api/v1/decks/:id/comments/:commentId`   | Tombstone a comment (author or deck owner)    |
+| `GET`    | `/api/v1/deck-folders`                    | Your folders (`?deck=` adds membership)       |
+| `POST`   | `/api/v1/deck-folders`                    | Create a folder                               |
+| `GET`    | `/api/v1/deck-folders/:id`                | One folder and its readable decks             |
+| `PATCH`  | `/api/v1/deck-folders/:id`                | Rename a folder                               |
+| `DELETE` | `/api/v1/deck-folders/:id`                | Delete a folder (decks untouched)             |
+| `PUT`    | `/api/v1/deck-folders/:id/decks/:deckId`  | File a deck (idempotent)                      |
+| `DELETE` | `/api/v1/deck-folders/:id/decks/:deckId`  | Unfile a deck (idempotent)                    |
+| `GET`    | `/api/v1/decks/:id/revisions`             | Edit history; `?limit=` 1–50, default 50      |
+| `POST`   | `/api/v1/decks/:id/invite`                | Create or regenerate the invite link          |
+| `DELETE` | `/api/v1/decks/:id/invite`                | Disable the invite link                       |
+| `POST`   | `/api/v1/decks/join/:code`                | Redeem an invite link                         |
+| `POST`   | `/api/v1/decks/:id/collaborators`         | Invite by handle (owner only)                 |
+| `DELETE` | `/api/v1/decks/:id/collaborators?handle=` | Remove (owner only)                           |
+| `POST`   | `/api/v1/decks/import`                    | Import Moxfield-style text                    |
+| `GET`    | `/api/v1/decks/:id/export`                | Export Moxfield-style text                    |
 
 Reads take optional auth — who is asking changes the answer, but anonymous is
 allowed. Every write requires a bearer token.

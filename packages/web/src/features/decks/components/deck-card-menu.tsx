@@ -99,8 +99,7 @@ export function DeckCardMenuItems({
   actions: DeckCardMenuActions;
 }) {
   const kit = KITS[kind];
-  const { onQuantityChange, onMoveZone, onToggleChampion, onChangePrinting, onEditTags } =
-    actions;
+  const { onQuantityChange, onMoveZone, onToggleChampion, onChangePrinting, onEditTags } = actions;
   const editable = canEdit && !!onQuantityChange;
 
   // This component exists only while its menu is open, so the query runs the
@@ -127,10 +126,7 @@ export function DeckCardMenuItems({
             <kit.SubTrigger>Quantity</kit.SubTrigger>
             <kit.SubContent>
               {QUANTITY_CHOICES.map((quantity) => (
-                <kit.Item
-                  key={quantity}
-                  onSelect={() => onQuantityChange?.(card, quantity)}
-                >
+                <kit.Item key={quantity} onSelect={() => onQuantityChange?.(card, quantity)}>
                   <span className="w-3 text-right tabular-nums">{quantity}</span>
                   {card.quantity === quantity && (
                     <CheckIcon className="ml-auto size-3.5" aria-hidden="true" />
@@ -161,10 +157,7 @@ export function DeckCardMenuItems({
           )}
 
           {onChangePrinting && (detail.isPending || otherPrintings) && (
-            <kit.Item
-              disabled={detail.isPending}
-              onSelect={() => onChangePrinting(card)}
-            >
+            <kit.Item disabled={detail.isPending} onSelect={() => onChangePrinting(card)}>
               Change printing…
             </kit.Item>
           )}

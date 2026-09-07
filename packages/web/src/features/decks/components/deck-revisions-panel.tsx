@@ -98,11 +98,7 @@ export function DeckRevisionsPanel({
     return <p className="text-muted-foreground text-sm">Loading history…</p>;
   }
   if (revisions.isError) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {(revisions.error as Error).message}
-      </p>
-    );
+    return <p className="text-muted-foreground text-sm">{(revisions.error as Error).message}</p>;
   }
   if (revisions.data.items.length === 0) {
     return <p className="text-muted-foreground text-sm">No edits recorded yet.</p>;

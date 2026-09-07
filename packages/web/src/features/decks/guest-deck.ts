@@ -127,7 +127,9 @@ function nullableNum(value: unknown): number | null {
 }
 
 function strList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 /**
@@ -240,8 +242,7 @@ export function parseGuestDeck(raw: string | null | undefined): GuestDeck | null
     format: str(blob.format) ?? GUEST_DECK_DEFAULT_FORMAT,
     cards,
     legalities,
-    updated_at:
-      typeof blob.updated_at === "string" ? blob.updated_at : new Date(0).toISOString(),
+    updated_at: typeof blob.updated_at === "string" ? blob.updated_at : new Date(0).toISOString(),
   };
 }
 
@@ -470,9 +471,7 @@ export function guestDeckTextCards(deck: GuestDeck): DeckTextCard[] {
     quantity: card.quantity,
     name: card.name,
     ...(card.set_code ? { set_code: card.set_code } : {}),
-    ...(card.set_code && card.collector_number
-      ? { collector_number: card.collector_number }
-      : {}),
+    ...(card.set_code && card.collector_number ? { collector_number: card.collector_number } : {}),
     ...(card.is_champion ? { is_champion: true } : {}),
   }));
 }

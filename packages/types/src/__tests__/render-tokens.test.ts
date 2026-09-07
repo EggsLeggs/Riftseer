@@ -46,12 +46,10 @@ describe("tokenDisplayName", () => {
 describe("formatTokenDisplayList", () => {
   it("joins with and / commas", () => {
     expect(formatTokenDisplayList(["energy_3"])).toBe("3 Energy");
-    expect(formatTokenDisplayList(["energy_3", "rune_rainbow"])).toBe(
-      "3 Energy and Power",
+    expect(formatTokenDisplayList(["energy_3", "rune_rainbow"])).toBe("3 Energy and Power");
+    expect(formatTokenDisplayList(["energy_1", "rune_order", "rune_order"])).toBe(
+      "1 Energy, Order, and Order",
     );
-    expect(
-      formatTokenDisplayList(["energy_1", "rune_order", "rune_order"]),
-    ).toBe("1 Energy, Order, and Order");
   });
 });
 
@@ -76,9 +74,17 @@ describe("tokenizeCardTextInline", () => {
 
   it("absorbs a keyword's trailing costs and its arrow", () => {
     expect(
-      tokenizeCardTextInline("[Empower] :rb_energy_3::rb_rune_body:[Empowered][>] I have +3 :rb_might:."),
+      tokenizeCardTextInline(
+        "[Empower] :rb_energy_3::rb_rune_body:[Empowered][>] I have +3 :rb_might:.",
+      ),
     ).toEqual([
-      { kind: "keyword", label: "Empower", arrow: false, stackLeft: false, costs: ["energy_3", "rune_body"] },
+      {
+        kind: "keyword",
+        label: "Empower",
+        arrow: false,
+        stackLeft: false,
+        costs: ["energy_3", "rune_body"],
+      },
       { kind: "keyword", label: "Empowered", arrow: true, stackLeft: false, costs: [] },
       { kind: "text", text: " I have +3 " },
       { kind: "icon", keys: ["might"] },

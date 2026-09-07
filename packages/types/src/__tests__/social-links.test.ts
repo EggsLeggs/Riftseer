@@ -78,7 +78,9 @@ describe("validateSocialLink", () => {
   });
 
   test("bluesky accepts profile URLs", () => {
-    expect(validateSocialLink("bluesky", "https://bsky.app/profile/riftseer.bsky.social")).toBeNull();
+    expect(
+      validateSocialLink("bluesky", "https://bsky.app/profile/riftseer.bsky.social"),
+    ).toBeNull();
     expect(validateSocialLink("bluesky", "https://bsky.app/riftseer")).not.toBeNull();
   });
 

@@ -23,8 +23,7 @@ function domainColor(oracle: Pick<Oracle, "domains">): number {
 }
 
 function tcgplayerPrice(printing: Printing | null | undefined): string | null {
-  const price =
-    printing?.prices?.tcgplayer?.normal ?? printing?.prices?.tcgplayer?.foil;
+  const price = printing?.prices?.tcgplayer?.normal ?? printing?.prices?.tcgplayer?.foil;
   return price == null ? null : `$${price.toFixed(2)}`;
 }
 
@@ -46,8 +45,7 @@ export function buildCardEmbed(
   const power = oracle.power;
   const imageUrl = printingImageUrl(printing, "normal");
   const setCode = printing?.set?.set_code;
-  const collectorNumber =
-    printing?.collector_label ?? printing?.collector_number;
+  const collectorNumber = printing?.collector_label ?? printing?.collector_number;
   const plainText = oracle.text?.plain;
 
   if (typeLine) {
@@ -88,9 +86,7 @@ export function buildCardEmbed(
     fields.push({ name: "Artist", value: printing.artist, inline: false });
   }
 
-  const description = plainText
-    ? renderTextForDiscord(plainText, emojiMap)
-    : undefined;
+  const description = plainText ? renderTextForDiscord(plainText, emojiMap) : undefined;
 
   const footerText = [setCode, printing?.set?.set_name, collectorNumber]
     .filter(Boolean)
@@ -121,10 +117,7 @@ export function buildCardImageEmbed(
     image: imageUrl ? { url: imageUrl } : undefined,
     footer: {
       text:
-        [
-          printing?.set?.set_code,
-          printing?.collector_label ?? printing?.collector_number,
-        ]
+        [printing?.set?.set_code, printing?.collector_label ?? printing?.collector_number]
           .filter(Boolean)
           .join(" · ") || "Riftseer",
     },
@@ -159,9 +152,7 @@ export function buildSetsEmbed(sets: CardSet[]): APIEmbed {
     sections.push(["__Main Sets__", ...mainSets.map(formatSetLine)].join("\n"));
   }
   if (promoSets.length > 0) {
-    sections.push(
-      ["__Promo & Special Sets__", ...promoSets.map(formatSetLine)].join("\n"),
-    );
+    sections.push(["__Promo & Special Sets__", ...promoSets.map(formatSetLine)].join("\n"));
   }
 
   const description = sections.join("\n\n");

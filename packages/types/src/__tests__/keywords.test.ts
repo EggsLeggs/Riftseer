@@ -51,9 +51,7 @@ describe("takeKeywordBadgeCosts", () => {
       keys: ["energy_3", "rune_rainbow"],
       end: 31,
     });
-    expect(
-      takeKeywordBadgeCosts(":rb_energy_2::rb_rune_fury:: Double", 0),
-    ).toEqual({
+    expect(takeKeywordBadgeCosts(":rb_energy_2::rb_rune_fury:: Double", 0)).toEqual({
       keys: [],
       end: 0,
     });
@@ -63,8 +61,7 @@ describe("takeKeywordBadgeCosts", () => {
 describe("KEYWORD_TAG_REGEX", () => {
   it("optionally consumes a trailing arrow marker", () => {
     const re = new RegExp(KEYWORD_TAG_REGEX.source, "g");
-    const plain =
-      "[Action][&gt;] move.[Empowered][>] ready.[Accelerate] alone.";
+    const plain = "[Action][&gt;] move.[Empowered][>] ready.[Accelerate] alone.";
     const hits: Array<{ label: string; arrow: boolean }> = [];
     let match: RegExpExecArray | null;
     while ((match = re.exec(plain)) !== null) {

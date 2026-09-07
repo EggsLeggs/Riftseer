@@ -15,13 +15,7 @@ import { useSitePreferences } from "@/features/site-preferences/site-preferences
 import { cn } from "@/lib/utils";
 
 /** Rarities we ship artwork for; anything else renders as text only. */
-const RARITIES_WITH_ICONS = new Set([
-  "common",
-  "showcase",
-  "uncommon",
-  "rare",
-  "epic",
-]);
+const RARITIES_WITH_ICONS = new Set(["common", "showcase", "uncommon", "rare", "epic"]);
 
 /** Energy cost bubble. Gear cards show a diamond instead of a circle. */
 export function EnergyCost({
@@ -35,11 +29,7 @@ export function EnergyCost({
 }) {
   return (
     <span
-      className={cn(
-        "icon-energy-value",
-        cardIsGear(oracle) && "icon-energy-gear",
-        className,
-      )}
+      className={cn("icon-energy-value", cardIsGear(oracle) && "icon-energy-gear", className)}
       data-value={energy}
       aria-label={`${energy} energy`}
     />
@@ -60,19 +50,11 @@ export function PowerStat({ power }: { power: number }) {
  * `signed` renders an equipment's Might *bonus* (`+2`, and `+0` where the card
  * prints one), which reads as a modifier rather than a stat.
  */
-export function MightStat({
-  might,
-  signed = false,
-}: {
-  might: number;
-  signed?: boolean;
-}) {
+export function MightStat({ might, signed = false }: { might: number; signed?: boolean }) {
   return (
     <span className="inline-flex items-center gap-1">
       <span className="icon-might" aria-hidden="true" />
-      <span className="tabular-nums">
-        {signed && might >= 0 ? `+${might}` : might}
-      </span>
+      <span className="tabular-nums">{signed && might >= 0 ? `+${might}` : might}</span>
       <span className="sr-only">{signed ? "might bonus" : "might"}</span>
     </span>
   );
@@ -81,10 +63,7 @@ export function MightStat({
 export function RarityIcon({ rarity }: { rarity: string }) {
   if (!RARITIES_WITH_ICONS.has(rarity.toLowerCase())) return null;
   return (
-    <span
-      className={cn("icon-rarity", `icon-rarity-${rarity.toLowerCase()}`)}
-      aria-hidden="true"
-    />
+    <span className={cn("icon-rarity", `icon-rarity-${rarity.toLowerCase()}`)} aria-hidden="true" />
   );
 }
 
@@ -102,9 +81,7 @@ export function DomainRunes({
   if (domains.length === 0) return null;
 
   return (
-    <span
-      className={cn("inline-flex flex-wrap items-center gap-x-3 gap-y-1", className)}
-    >
+    <span className={cn("inline-flex flex-wrap items-center gap-x-3 gap-y-1", className)}>
       {domains.map((domain) => {
         const key = domain.toLowerCase();
         const hasGlyph = hasRuneGlyph(key);
@@ -163,13 +140,7 @@ export function ChampionIcon({
   className?: string;
   label?: string;
 }) {
-  return (
-    <span
-      className={cn("icon-champion shrink-0", className)}
-      role="img"
-      aria-label={label}
-    />
-  );
+  return <span className={cn("icon-champion shrink-0", className)} role="img" aria-label={label} />;
 }
 
 /**

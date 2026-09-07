@@ -81,7 +81,9 @@ const SANDBOX: FormatRules = { zones: [] };
 function completeDeck(extra: DeckEntry[] = []): DeckState {
   const main: DeckEntry[] = [champion({ quantity: 3 })];
   for (let i = 0; i < 12; i++) {
-    main.push(entry({ oracle_id: `o-${i}`, printing_id: `p-${i}`, name: `Unit ${i}`, quantity: 3 }));
+    main.push(
+      entry({ oracle_id: `o-${i}`, printing_id: `p-${i}`, name: `Unit ${i}`, quantity: 3 }),
+    );
   }
   main.push(entry({ oracle_id: "o-last", printing_id: "p-last", name: "Last", quantity: 1 }));
   return {
@@ -153,7 +155,11 @@ describe("zone eligibility", () => {
   });
 
   test("keeps legends, runes and battlefields out of the main deck", () => {
-    for (const card of [legend({ zone: "main" }), rune({ zone: "main" }), battlefield({ zone: "main" })]) {
+    for (const card of [
+      legend({ zone: "main" }),
+      rune({ zone: "main" }),
+      battlefield({ zone: "main" }),
+    ]) {
       const violations = validateDeck({ entries: [card] }, STANDARD);
       expect(violations).toContainEqual(
         expect.objectContaining({ code: "wrong_zone", zone: "main", oracle_id: card.oracle_id }),
@@ -162,7 +168,10 @@ describe("zone eligibility", () => {
   });
 
   test("routes runes and battlefields to their own zones without complaint", () => {
-    expect(codes({ entries: [rune(), battlefield()] }, SANDBOX)).toEqual(["no_legend", "no_champion"]);
+    expect(codes({ entries: [rune(), battlefield()] }, SANDBOX)).toEqual([
+      "no_legend",
+      "no_champion",
+    ]);
   });
 
   test("a main-deck card may sit in the sideboard or considering", () => {
@@ -192,7 +201,9 @@ describe("zone eligibility", () => {
   });
 
   test("the champion flag only belongs on a main row", () => {
-    const state = completeDeck([rune({ oracle_id: "o-r2", printing_id: "p-r2", is_champion: true })]);
+    const state = completeDeck([
+      rune({ oracle_id: "o-r2", printing_id: "p-r2", is_champion: true }),
+    ]);
     expect(validateDeck(state, STANDARD)).toContainEqual(
       expect.objectContaining({ code: "wrong_zone", zone: "runes", printing_id: "p-r2" }),
     );
@@ -202,7 +213,12 @@ describe("zone eligibility", () => {
 describe("domains", () => {
   test("requires every card domain to be covered by the legend", () => {
     const state = completeDeck([
-      entry({ zone: "sideboard", oracle_id: "o-chaos", printing_id: "p-chaos", domains: ["Chaos"] }),
+      entry({
+        zone: "sideboard",
+        oracle_id: "o-chaos",
+        printing_id: "p-chaos",
+        domains: ["Chaos"],
+      }),
     ]);
     expect(validateDeck(state, STANDARD)).toContainEqual(
       expect.objectContaining({ code: "domain_not_covered", printing_id: "p-chaos" }),
@@ -212,7 +228,12 @@ describe("domains", () => {
   test("allows domainless cards", () => {
     const state = completeDeck([
       entry({ zone: "sideboard", oracle_id: "o-neutral", printing_id: "p-neutral", domains: [] }),
-      entry({ zone: "sideboard", oracle_id: "o-undef", printing_id: "p-undef", domains: undefined }),
+      entry({
+        zone: "sideboard",
+        oracle_id: "o-undef",
+        printing_id: "p-undef",
+        domains: undefined,
+      }),
     ]);
     expect(codes(state, STANDARD)).toEqual([]);
   });
@@ -226,7 +247,12 @@ describe("domains", () => {
 
   test("considering counts toward nothing, domains included", () => {
     const state = completeDeck([
-      entry({ zone: "considering", oracle_id: "o-chaos", printing_id: "p-chaos", domains: ["Chaos"] }),
+      entry({
+        zone: "considering",
+        oracle_id: "o-chaos",
+        printing_id: "p-chaos",
+        domains: ["Chaos"],
+      }),
     ]);
     expect(codes(state, STANDARD)).toEqual([]);
   });
@@ -245,11 +271,18 @@ describe("domains", () => {
 
   test("swapping in a narrower legend only reports the newly uncovered cards", () => {
     const full = completeDeck([
-      entry({ zone: "sideboard", oracle_id: "o-order", printing_id: "p-order", domains: ["Order"] }),
+      entry({
+        zone: "sideboard",
+        oracle_id: "o-order",
+        printing_id: "p-order",
+        domains: ["Order"],
+      }),
     ]);
     const swapped = {
       entries: full.entries.map((e) =>
-        e.zone === "legend" ? legend({ oracle_id: "o-legend2", printing_id: "p-legend2", domains: ["Fury"] }) : e,
+        e.zone === "legend"
+          ? legend({ oracle_id: "o-legend2", printing_id: "p-legend2", domains: ["Fury"] })
+          : e,
       ),
     };
     expect(validateDeck(swapped, STANDARD)).toEqual([
@@ -300,9 +333,9 @@ describe("copy limits", () => {
         champion({ zone: "sideboard", printing_id: "p-vayne-b", quantity: 2, is_champion: false }),
       ],
     };
-    expect(codes(state, { zones: [{ zone: "main", copy_limit: 3 }, { zone: "sideboard" }] })).toEqual([
-      "copy_limit_exceeded",
-    ]);
+    expect(
+      codes(state, { zones: [{ zone: "main", copy_limit: 3 }, { zone: "sideboard" }] }),
+    ).toEqual(["copy_limit_exceeded"]);
   });
 
   test("the group limit is the minimum of its members' limits", () => {
@@ -325,7 +358,12 @@ describe("copy limits", () => {
       entries: [
         legend(),
         champion({ quantity: 3 }),
-        champion({ zone: "considering", printing_id: "p-vayne-c", quantity: 5, is_champion: false }),
+        champion({
+          zone: "considering",
+          printing_id: "p-vayne-c",
+          quantity: 5,
+          is_champion: false,
+        }),
       ],
     };
     expect(codes(state, { zones: [{ zone: "main", copy_limit: 3 }] })).toEqual([]);
@@ -366,7 +404,9 @@ describe("zone sizes", () => {
 
   test("caps runes and battlefields the same way", () => {
     const overRunes = completeDeck();
-    overRunes.entries = overRunes.entries.map((e) => (e.zone === "runes" ? { ...e, quantity: 13 } : e));
+    overRunes.entries = overRunes.entries.map((e) =>
+      e.zone === "runes" ? { ...e, quantity: 13 } : e,
+    );
     expect(codes(overRunes, STANDARD)).toEqual(["zone_over_max"]);
 
     const underBattlefields = completeDeck();
@@ -376,7 +416,12 @@ describe("zone sizes", () => {
 
   test("considering has no size", () => {
     const extras = Array.from({ length: 30 }, (_, i) =>
-      entry({ zone: "considering", oracle_id: `o-maybe-${i}`, printing_id: `p-maybe-${i}`, quantity: 4 }),
+      entry({
+        zone: "considering",
+        oracle_id: `o-maybe-${i}`,
+        printing_id: `p-maybe-${i}`,
+        quantity: 4,
+      }),
     );
     expect(codes(completeDeck(extras), STANDARD)).toEqual([]);
   });
@@ -444,7 +489,9 @@ describe("legality", () => {
 
   test("a single copy of a restricted card warns but breaks no limit", () => {
     const state = completeDeck();
-    state.entries = state.entries.map((e) => (e.oracle_id === "o-vayne" ? { ...e, quantity: 1 } : e));
+    state.entries = state.entries.map((e) =>
+      e.oracle_id === "o-vayne" ? { ...e, quantity: 1 } : e,
+    );
     state.entries.push(entry({ oracle_id: "o-filler", printing_id: "p-filler", quantity: 2 }));
     const legalities: LegalityMap = { oracles: { "o-vayne": { status: "restricted" } } };
     expect(codes(state, STANDARD, legalities)).toEqual(["legality"]);
@@ -452,7 +499,9 @@ describe("legality", () => {
 
   test("a hard copy limit still errors even when the card is restricted", () => {
     const state = completeDeck();
-    state.entries = state.entries.map((e) => (e.oracle_id === "o-vayne" ? { ...e, quantity: 4 } : e));
+    state.entries = state.entries.map((e) =>
+      e.oracle_id === "o-vayne" ? { ...e, quantity: 4 } : e,
+    );
     const legalities: LegalityMap = { oracles: { "o-vayne": { status: "restricted" } } };
     const copy = validateDeck(state, STANDARD, legalities).find(
       (v) => v.code === "copy_limit_exceeded",
@@ -485,7 +534,9 @@ describe("legality", () => {
 describe("shape", () => {
   test("never throws, whatever it is handed", () => {
     expect(() => validateDeck({ entries: [] })).not.toThrow();
-    expect(validateDeck({ entries: [entry({ card_type: undefined, domains: undefined })] })).toEqual([
+    expect(
+      validateDeck({ entries: [entry({ card_type: undefined, domains: undefined })] }),
+    ).toEqual([
       expect.objectContaining({ code: "no_legend" }),
       expect.objectContaining({ code: "no_champion" }),
     ]);

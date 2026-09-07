@@ -10,9 +10,7 @@ interface CardSearchContextValue {
   triggerId: string;
 }
 
-const CardSearchContext = React.createContext<CardSearchContextValue | null>(
-  null,
-);
+const CardSearchContext = React.createContext<CardSearchContextValue | null>(null);
 
 export function useCardSearch(): CardSearchContextValue {
   const ctx = React.useContext(CardSearchContext);

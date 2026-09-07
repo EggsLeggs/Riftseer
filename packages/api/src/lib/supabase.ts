@@ -19,8 +19,7 @@ const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
  * to whichever database the rest of the app is using.
  */
 export const supabaseAuthUrl = process.env.SUPABASE_AUTH_URL || supabaseUrl;
-const supabaseAuthAnonKey =
-  process.env.SUPABASE_AUTH_ANON_KEY || supabaseAnonKey;
+const supabaseAuthAnonKey = process.env.SUPABASE_AUTH_ANON_KEY || supabaseAnonKey;
 
 export const authClient =
   supabaseAuthUrl && supabaseAuthAnonKey

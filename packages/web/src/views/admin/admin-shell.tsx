@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BookOpen,
-  Gavel,
-  Inbox,
-  Layers,
-  LayoutDashboard,
-  Library,
-  ScrollText,
-} from "lucide-react";
+import { BookOpen, Gavel, Inbox, Layers, LayoutDashboard, Library, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ADMIN_LINKS = [

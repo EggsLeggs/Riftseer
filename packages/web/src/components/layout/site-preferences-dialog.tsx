@@ -74,10 +74,7 @@ function ThemePreferenceControl({ id }: { id: string }) {
         <Label id={`${id}-theme-label`} className="text-sm font-medium text-foreground">
           Color theme
         </Label>
-        <p
-          id={`${id}-theme-hint`}
-          className="text-xs leading-relaxed text-muted-foreground"
-        >
+        <p id={`${id}-theme-hint`} className="text-xs leading-relaxed text-muted-foreground">
           Choose light, dark, or match your device settings.
         </p>
       </div>
@@ -110,18 +107,10 @@ function ThemePreferenceControl({ id }: { id: string }) {
   );
 }
 
-function SitePreferencesDialogContent({
-  onDismiss,
-}: {
-  onDismiss: () => void;
-}) {
+function SitePreferencesDialogContent({ onDismiss }: { onDismiss: () => void }) {
   const switchId = React.useId();
-  const {
-    accessibility,
-    canPersistAccessibility,
-    consentReady,
-    patchAccessibility,
-  } = useSitePreferences();
+  const { accessibility, canPersistAccessibility, consentReady, patchAccessibility } =
+    useSitePreferences();
 
   return (
     <AppDialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
@@ -135,10 +124,7 @@ function SitePreferencesDialogContent({
       </div>
 
       <div className="space-y-6 px-4 py-4 sm:px-5">
-        <section
-          className="space-y-3"
-          aria-labelledby={`${switchId}-appearance-heading`}
-        >
+        <section className="space-y-3" aria-labelledby={`${switchId}-appearance-heading`}>
           <div className="space-y-1">
             <h2
               id={`${switchId}-appearance-heading`}
@@ -165,18 +151,14 @@ function SitePreferencesDialogContent({
                 id={`${switchId}-detail-view-hint`}
                 className="text-xs leading-relaxed text-muted-foreground"
               >
-                Default layout for individual card pages. You can still switch on
-                the page itself.
+                Default layout for individual card pages. You can still switch on the page itself.
               </p>
             </div>
             <ToggleGroup
               type="single"
               value={accessibility.cardDetailView}
               onValueChange={(next) => {
-                if (
-                  next &&
-                  (CARD_DETAIL_VIEW_OPTIONS as readonly string[]).includes(next)
-                ) {
+                if (next && (CARD_DETAIL_VIEW_OPTIONS as readonly string[]).includes(next)) {
                   patchAccessibility({
                     cardDetailView: next as CardDetailViewPreference,
                   });
@@ -212,18 +194,15 @@ function SitePreferencesDialogContent({
                 id={`${switchId}-results-view-hint`}
                 className="text-xs leading-relaxed text-muted-foreground"
               >
-                Default layout for All Cards, search, and set browse. Page toggles
-                still override for that visit.
+                Default layout for All Cards, search, and set browse. Page toggles still override
+                for that visit.
               </p>
             </div>
             <ToggleGroup
               type="single"
               value={accessibility.cardResultsView}
               onValueChange={(next) => {
-                if (
-                  next &&
-                  (CARD_RESULTS_VIEW_OPTIONS as readonly string[]).includes(next)
-                ) {
+                if (next && (CARD_RESULTS_VIEW_OPTIONS as readonly string[]).includes(next)) {
                   patchAccessibility({
                     cardResultsView: next as CardResultsViewPreference,
                   });
@@ -254,10 +233,7 @@ function SitePreferencesDialogContent({
           {consentReady && !canPersistAccessibility ? (
             <p className="text-xs leading-relaxed text-muted-foreground">
               Layout choices apply for this session. Enable{" "}
-              <strong className="font-medium text-foreground">
-                functional cookies
-              </strong>{" "}
-              in{" "}
+              <strong className="font-medium text-foreground">functional cookies</strong> in{" "}
               <ConsentDialogLink
                 className="text-foreground underline-offset-4 hover:underline"
                 onClick={() => {
@@ -273,10 +249,7 @@ function SitePreferencesDialogContent({
           ) : null}
         </section>
 
-        <section
-          className="space-y-3"
-          aria-labelledby={`${switchId}-accessibility-heading`}
-        >
+        <section className="space-y-3" aria-labelledby={`${switchId}-accessibility-heading`}>
           <div className="space-y-1">
             <h2
               id={`${switchId}-accessibility-heading`}
@@ -295,9 +268,7 @@ function SitePreferencesDialogContent({
             <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm leading-relaxed text-muted-foreground">
               <p>
                 To remember accessibility choices in this browser, enable{" "}
-                <strong className="font-medium text-foreground">
-                  functional cookies
-                </strong>{" "}
+                <strong className="font-medium text-foreground">functional cookies</strong>{" "}
                 (preferences &amp; embedded content) in{" "}
                 <ConsentDialogLink
                   className="text-foreground underline-offset-4 hover:underline"
@@ -329,8 +300,8 @@ function SitePreferencesDialogContent({
                     id={`${switchId}-card-names-hint`}
                     className="text-xs leading-relaxed text-muted-foreground"
                   >
-                    Shows each card&apos;s name under its image on the search results
-                    grid instead of overlaying selectable text on the artwork.
+                    Shows each card&apos;s name under its image on the search results grid instead
+                    of overlaying selectable text on the artwork.
                   </p>
                 </div>
                 <Switch
@@ -355,8 +326,8 @@ function SitePreferencesDialogContent({
                     id={`${switchId}-text-symbols-hint`}
                     className="text-xs leading-relaxed text-muted-foreground"
                   >
-                    Shows readable labels where icons stand in for words or costs,
-                    such as “Exhaust” or “3 Energy”.
+                    Shows readable labels where icons stand in for words or costs, such as “Exhaust”
+                    or “3 Energy”.
                   </p>
                 </div>
                 <Switch

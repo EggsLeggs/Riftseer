@@ -25,7 +25,12 @@ describe("domainKey", () => {
 
   it("names every key the way the card prints it", () => {
     expect(DOMAIN_KEYS.map(domainDisplayName)).toEqual([
-      "Body", "Calm", "Chaos", "Fury", "Mind", "Order",
+      "Body",
+      "Calm",
+      "Chaos",
+      "Fury",
+      "Mind",
+      "Order",
     ]);
   });
 });
@@ -33,7 +38,12 @@ describe("domainKey", () => {
 describe("colours", () => {
   it("has a rune fill for every domain and nothing else", () => {
     expect(DOMAIN_KEYS.map(domainRuneHex)).toEqual([
-      "#E87600", "#488C38", "#6A4094", "#DF1620", "#0F6FA6", "#D2B400",
+      "#E87600",
+      "#488C38",
+      "#6A4094",
+      "#DF1620",
+      "#0F6FA6",
+      "#D2B400",
     ]);
     expect(domainRuneHex("Fury")).toBe("#DF1620");
     expect(domainRuneHex("Light")).toBeNull();
@@ -58,7 +68,8 @@ describe("hasRuneGlyph", () => {
 describe("meaningfulCardDomains", () => {
   it("drops the Colorless placeholder and blanks, keeping spelling", () => {
     expect(meaningfulCardDomains({ domains: ["Colorless", "Fury", "", " Order"] })).toEqual([
-      "Fury", " Order",
+      "Fury",
+      " Order",
     ]);
   });
 });

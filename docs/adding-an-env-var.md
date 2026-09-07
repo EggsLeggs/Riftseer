@@ -97,7 +97,7 @@ deploys with `--env production`, and wrangler does not inherit bindings under
       to `publicNames`. The production deploy runs this to prove the value
       the bundle was compiled with equals the value the Worker serves.
 - [ ] `.github/workflows/web.yml` — a new `NEXT_PUBLIC_*` value is a GitHub
-      Actions repository *variable* passed to both the build and deploy jobs.
+      Actions repository _variable_ passed to both the build and deploy jobs.
 - [ ] `packages/web/.env.local.example` and the web section of `.env.example` —
       `bun dev:web` loads the root `.env`.
 - [ ] Local wrangler runs (`bun run preview:web`) read secrets from the

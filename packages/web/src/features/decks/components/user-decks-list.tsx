@@ -13,13 +13,7 @@ import { DeckSummaryCard } from "./deck-summary-card";
  * own profile, only the public ones on anybody else's — so there is nothing to
  * filter here.
  */
-export function UserDecksList({
-  handle,
-  isOwnProfile,
-}: {
-  handle: string;
-  isOwnProfile: boolean;
-}) {
+export function UserDecksList({ handle, isOwnProfile }: { handle: string; isOwnProfile: boolean }) {
   const decks = useQuery({
     queryKey: deckQueryKeys.byHandle(handle),
     queryFn: async () => {
@@ -44,9 +38,7 @@ export function UserDecksList({
   if (decks.data.items.length === 0) {
     return (
       <p className="text-muted-foreground py-8 text-center text-sm">
-        {isOwnProfile
-          ? "You have no decks yet."
-          : "This user has no public decks."}
+        {isOwnProfile ? "You have no decks yet." : "This user has no public decks."}
       </p>
     );
   }

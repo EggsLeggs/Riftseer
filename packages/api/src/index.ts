@@ -50,8 +50,7 @@ function requireWorkerEnv(): CardImageEnv {
 // bindings themselves only arrive with the first request.
 const adminImageBindings: AdminImageBindings = {
   bucket: {
-    put: (key, value, options) =>
-      requireWorkerEnv().CARD_IMAGES.put(key, value, options),
+    put: (key, value, options) => requireWorkerEnv().CARD_IMAGES.put(key, value, options),
     delete: (key) => requireWorkerEnv().CARD_IMAGES.delete(key),
   },
   queue: {
@@ -71,11 +70,7 @@ export const app = buildApp(createProvider(), {
 // Elysia's body parser consumes the body stream before our route handler runs,
 // so we intercept the webhook path here, before handing the request to Elysia.
 export default {
-  async fetch(
-    request: Request,
-    bindings: CardImageEnv,
-    ctx: WaitUntilContext,
-  ): Promise<Response> {
+  async fetch(request: Request, bindings: CardImageEnv, ctx: WaitUntilContext): Promise<Response> {
     workerEnv = bindings;
     const url = new URL(request.url);
     return withExecutionContext(ctx, () => {

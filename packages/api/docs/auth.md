@@ -22,18 +22,18 @@ Creates a new user account.
 { "email": "user@example.com", "password": "hunter2!!" }
 ```
 
-| Field | Type | Required | Notes |
-|-------|------|----------|-------|
-| `email` | string | yes | |
-| `password` | string | yes | Min 8 characters |
+| Field      | Type   | Required | Notes            |
+| ---------- | ------ | -------- | ---------------- |
+| `email`    | string | yes      |                  |
+| `password` | string | yes      | Min 8 characters |
 
 **Responses**
 
-| Status | Meaning |
-|--------|---------|
-| `200` | Account created; returns a session (email confirmation disabled) |
-| `202` | Account created; confirmation email sent — no session until confirmed |
-| `400` | Validation error or account already exists |
+| Status | Meaning                                                               |
+| ------ | --------------------------------------------------------------------- |
+| `200`  | Account created; returns a session (email confirmation disabled)      |
+| `202`  | Account created; confirmation email sent — no session until confirmed |
+| `400`  | Validation error or account already exists                            |
 
 **200 body**
 
@@ -70,11 +70,11 @@ Authenticates with email and password.
 
 **Responses**
 
-| Status | Meaning |
-|--------|---------|
-| `200` | Returns a session |
-| `400` | Missing fields or malformed request |
-| `401` | Invalid credentials or unconfirmed email |
+| Status | Meaning                                  |
+| ------ | ---------------------------------------- |
+| `200`  | Returns a session                        |
+| `400`  | Missing fields or malformed request      |
+| `401`  | Invalid credentials or unconfirmed email |
 
 **200 body** — same shape as `register` 200.
 
@@ -92,10 +92,10 @@ Exchanges a refresh token for a new access token and refresh token. Refresh toke
 
 **Responses**
 
-| Status | Meaning |
-|--------|---------|
-| `200` | Returns a new session |
-| `401` | Refresh token invalid or expired |
+| Status | Meaning                          |
+| ------ | -------------------------------- |
+| `200`  | Returns a new session            |
+| `401`  | Refresh token invalid or expired |
 
 **200 body** — same shape as `register` 200.
 
@@ -113,10 +113,10 @@ Authorization: Bearer <access_token>
 
 **Responses**
 
-| Status | Meaning |
-|--------|---------|
-| `200` | Session revoked |
-| `401` | Missing or invalid `Authorization` header |
+| Status | Meaning                                   |
+| ------ | ----------------------------------------- |
+| `200`  | Session revoked                           |
+| `401`  | Missing or invalid `Authorization` header |
 
 **200 body**
 
@@ -140,10 +140,10 @@ Authorization: Bearer <access_token>
 
 **Responses**
 
-| Status | Meaning |
-|--------|---------|
-| `200` | Returns user profile |
-| `401` | Missing or invalid token |
+| Status | Meaning                  |
+| ------ | ------------------------ |
+| `200`  | Returns user profile     |
+| `401`  | Missing or invalid token |
 
 **200 body**
 

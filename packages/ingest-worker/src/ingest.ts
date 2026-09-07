@@ -21,11 +21,7 @@ import { logger } from "./utils.ts";
 import { fetchAllSets, fetchAllPages } from "./sources/riftcodex.ts";
 import { fetchGroups, fetchAllGroupResults } from "./sources/tcgcsv.ts";
 import { fetchGalleryCards } from "./sources/riftbound-gallery.ts";
-import {
-  applyGalleryEquipment,
-  buildGalleryIndex,
-  type GalleryIndex,
-} from "./pipeline/gallery.ts";
+import { applyGalleryEquipment, buildGalleryIndex, type GalleryIndex } from "./pipeline/gallery.ts";
 import { normalizeSets, normalizePrintings } from "./pipeline/normalize.ts";
 import {
   buildProductMap,
@@ -41,11 +37,7 @@ import {
 } from "./pipeline/reconcile.ts";
 import { linkOracles } from "./pipeline/link.ts";
 import { buildOracles } from "./pipeline/oracles.ts";
-import {
-  ingestCatalogue,
-  loadOracleIdsByKey,
-  refreshRulingRuleMatches,
-} from "./pipeline/db.ts";
+import { ingestCatalogue, loadOracleIdsByKey, refreshRulingRuleMatches } from "./pipeline/db.ts";
 import { collapseDuplicates } from "./pipeline/dedup.ts";
 import {
   applyLockedProductLinks,
@@ -139,9 +131,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       const tcgGroups = await fetchGroups(timeoutMs);
       setGroupMap = matchTcgGroupsToSets(sets, tcgGroups);
       const matchedGroupIds = new Set(setGroupMap.values());
-      const matchedGroups = tcgGroups.filter((group) =>
-        matchedGroupIds.has(group.groupId)
-      );
+      const matchedGroups = tcgGroups.filter((group) => matchedGroupIds.has(group.groupId));
       const groupResults = await fetchAllGroupResults(matchedGroups, timeoutMs);
       productMap = buildProductMap(groupResults);
       const enrichment = enrichPrintings(printings, productMap, setGroupMap);
@@ -192,11 +182,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       adminPreserved: 0,
     };
     try {
-      preparedImages = await preparePrintingImageJobs(
-        printings,
-        durable,
-        env.CARD_IMAGE_BASE_URL,
-      );
+      preparedImages = await preparePrintingImageJobs(printings, durable, env.CARD_IMAGE_BASE_URL);
     } catch (err) {
       logger.warn("Image preparation failed — upserting without image hashes", {
         error: String(err),
@@ -204,13 +190,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     }
 
     // 9. The one step that must succeed.
-    const written = await ingestCatalogue(
-      supabase,
-      sets,
-      oracles,
-      deltas,
-      relationships,
-    );
+    const written = await ingestCatalogue(supabase, sets, oracles, deltas, relationships);
 
     // 10. Reconciliation runs after the upsert: `proposed_oracle_id` is a uuid,
     // and an oracle this run created has none until it commits. Both observers
@@ -224,21 +204,14 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     if (productMap || galleryIndex) {
       try {
         const entries = [
-          ...(productMap
-            ? buildReconciliationEntries(printings, productMap, setGroupMap)
-            : []),
-          ...(galleryIndex
-            ? buildGalleryReconciliationEntries(printings, galleryIndex)
-            : []),
+          ...(productMap ? buildReconciliationEntries(printings, productMap, setGroupMap) : []),
+          ...(galleryIndex ? buildGalleryReconciliationEntries(printings, galleryIndex) : []),
         ];
         const proposedKeys = entries
           .map((entry) => entry.payload.oracle_key)
           .filter((key): key is string => Boolean(key));
         if (proposedKeys.length > 0) {
-          attachProposedOracleIds(
-            entries,
-            await loadOracleIdsByKey(supabase, proposedKeys),
-          );
+          attachProposedOracleIds(entries, await loadOracleIdsByKey(supabase, proposedKeys));
         }
         await syncReconciliationQueue(supabase, entries, observedBothSources);
         reviewEntriesCount = entries.length;

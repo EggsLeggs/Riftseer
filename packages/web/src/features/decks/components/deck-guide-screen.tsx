@@ -50,17 +50,13 @@ export function DeckGuideScreen({
         )}
       </div>
 
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight sm:text-3xl">
-        {deck.name}
-      </h1>
+      <h1 className="mb-6 text-2xl font-semibold tracking-tight sm:text-3xl">{deck.name}</h1>
 
       {deck.primer ? (
         <DeckPrimer primer={deck.primer} />
       ) : (
         <p className="text-muted-foreground text-sm">
-          {canEdit
-            ? "No guide yet. Write one whenever you are ready."
-            : "This deck has no guide."}
+          {canEdit ? "No guide yet. Write one whenever you are ready." : "This deck has no guide."}
         </p>
       )}
 
@@ -78,7 +74,12 @@ export function DeckGuideScreen({
           <DrawerTitle className="sr-only">Deck list</DrawerTitle>
           <div className="flex justify-center px-4 pt-1 pb-3">
             <DrawerClose asChild>
-              <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 px-3 text-xs">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 px-3 text-xs"
+              >
                 <ChevronDownIcon className="size-3.5" aria-hidden="true" />
                 Hide deck
               </Button>

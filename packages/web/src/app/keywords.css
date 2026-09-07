@@ -274,12 +274,7 @@
   text-transform: uppercase;
   white-space: nowrap;
   /* Flat left (meets capsule); right edge at ~80° like .card-keyword. */
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    calc(100% - var(--type-inset)) 100%,
-    0 100%
-  );
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--type-inset)) 100%, 0 100%);
 }
 
 /*
@@ -303,12 +298,7 @@
   bottom: -1.5px;
   left: 0;
   background: #fff;
-  clip-path: polygon(
-    0 0,
-    100% 0,
-    calc(100% - var(--type-inset)) 100%,
-    0 100%
-  );
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--type-inset)) 100%, 0 100%);
 }
 
 .card-type-badge--rune .card-type-badge-label {
@@ -322,32 +312,17 @@
 .dark .card-type-badge--rune.card-type-badge--plain .card-type-badge-label-shell::before {
   /* Full parallelogram — white stroke all around when there's no capsule. */
   inset: -1.5px;
-  clip-path: polygon(
-    var(--type-inset) 0,
-    100% 0,
-    calc(100% - var(--type-inset)) 100%,
-    0 100%
-  );
+  clip-path: polygon(var(--type-inset) 0, 100% 0, calc(100% - var(--type-inset)) 100%, 0 100%);
 }
 
 .card-type-badge--rune.card-type-badge--plain .card-type-badge-label {
   padding-left: 0.5em;
-  clip-path: polygon(
-    var(--type-inset) 0,
-    100% 0,
-    calc(100% - var(--type-inset)) 100%,
-    0 100%
-  );
+  clip-path: polygon(var(--type-inset) 0, 100% 0, calc(100% - var(--type-inset)) 100%, 0 100%);
 }
 
 /* No type glyph — full parallelogram like classification tags. */
 .card-type-badge--plain:not(.card-type-badge--rune) .card-type-badge-label {
   margin-left: 0;
   padding-left: 0.5em;
-  clip-path: polygon(
-    var(--type-inset) 0,
-    100% 0,
-    calc(100% - var(--type-inset)) 100%,
-    0 100%
-  );
+  clip-path: polygon(var(--type-inset) 0, 100% 0, calc(100% - var(--type-inset)) 100%, 0 100%);
 }

@@ -77,9 +77,7 @@ export function DeckCardPreview({
             >
               {card.name}
             </Link>
-            {setLine && (
-              <p className="text-muted-foreground text-xs tabular-nums">{setLine}</p>
-            )}
+            {setLine && <p className="text-muted-foreground text-xs tabular-nums">{setLine}</p>}
           </div>
         )}
 

@@ -15,25 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  LEGALITY_STATUS_LABELS,
-  LegalityStatusBadge,
-} from "@/features/cards/card-legalities";
+import { LEGALITY_STATUS_LABELS, LegalityStatusBadge } from "@/features/cards/card-legalities";
 import { listPrintingLegalitiesAction } from "@/features/admin/actions";
 import {
   adminCardLegalitiesQueryKey,
   useCardLegalityMutations,
 } from "@/features/admin/hooks/use-admin-mutations";
-import type {
-  AdminLegalityStatusInput,
-  AdminPrintingLegalityEntry,
-} from "@/features/admin/types";
-import {
-  AdminSection,
-  CheckboxField,
-  SelectField,
-  TextField,
-} from "./admin-form-field";
+import type { AdminLegalityStatusInput, AdminPrintingLegalityEntry } from "@/features/admin/types";
+import { AdminSection, CheckboxField, SelectField, TextField } from "./admin-form-field";
 
 const STATUS_OPTIONS: Array<{ value: AdminLegalityStatusInput; label: string }> = [
   { value: "default", label: "Default / inherit" },
@@ -74,10 +63,7 @@ export function AdminCardLegalitiesPanel({ printing }: { printing: Printing }) {
     return entry.scope === targetScope ? (entry.note ?? "") : "";
   }
 
-  function save(
-    entry: AdminPrintingLegalityEntry,
-    status: AdminLegalityStatusInput,
-  ) {
+  function save(entry: AdminPrintingLegalityEntry, status: AdminLegalityStatusInput) {
     setLegality.mutate([
       printing.id,
       entry.format_code,
@@ -130,9 +116,7 @@ export function AdminCardLegalitiesPanel({ printing }: { printing: Printing }) {
               <TableHead>Format</TableHead>
               <TableHead>Effective</TableHead>
               <TableHead>Set by</TableHead>
-              <TableHead>
-                {applyToAll ? "Oracle status" : "Printing status"}
-              </TableHead>
+              <TableHead>{applyToAll ? "Oracle status" : "Printing status"}</TableHead>
               <TableHead>Note</TableHead>
               <TableHead />
             </TableRow>
@@ -146,9 +130,7 @@ export function AdminCardLegalitiesPanel({ printing }: { printing: Printing }) {
                   <TableCell>
                     <LegalityBadge status={entry.status} />
                   </TableCell>
-                  <TableCell className="text-muted-foreground capitalize">
-                    {entry.scope}
-                  </TableCell>
+                  <TableCell className="text-muted-foreground capitalize">{entry.scope}</TableCell>
                   <TableCell>
                     <SelectField
                       id={`legality-${entry.format_code}`}
@@ -192,9 +174,7 @@ export function AdminCardLegalitiesPanel({ printing }: { printing: Printing }) {
                       onClick={() => save(entry, status)}
                     >
                       <Save aria-hidden="true" />
-                      <span className="sr-only">
-                        Save the {entry.format_name} note
-                      </span>
+                      <span className="sr-only">Save the {entry.format_name} note</span>
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -205,10 +185,9 @@ export function AdminCardLegalitiesPanel({ printing }: { printing: Printing }) {
       )}
 
       <p className="text-muted-foreground mt-3 text-xs">
-        The note is admin-authored explanation text, shown to players wherever
-        the status is reported — the deck builder puts it in the legality
-        tooltip. Changing the status saves immediately; editing a note saves on
-        the row&apos;s save button.
+        The note is admin-authored explanation text, shown to players wherever the status is
+        reported — the deck builder puts it in the legality tooltip. Changing the status saves
+        immediately; editing a note saves on the row&apos;s save button.
       </p>
     </AdminSection>
   );
@@ -223,8 +202,7 @@ export function AdminCardLegalitiesPanel({ printing }: { printing: Printing }) {
  * blank — the admin is the person who needs to see an unexpected value.
  */
 export function LegalityBadge({ status }: { status: string }) {
-  const known =
-    status in LEGALITY_STATUS_LABELS ? (status as LegalityStatus) : null;
+  const known = status in LEGALITY_STATUS_LABELS ? (status as LegalityStatus) : null;
   if (!known) {
     return (
       <span className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">

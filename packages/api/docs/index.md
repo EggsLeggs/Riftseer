@@ -68,12 +68,12 @@ Errors return a JSON body with `error` (human-readable message) and `code` (mach
 }
 ```
 
-| Status | Meaning |
-| --- | --- |
-| `400` | Bad request — missing or invalid parameter |
-| `401` | Unauthenticated — missing or invalid token (auth routes only) |
-| `404` | Resource not found |
-| `500` | Internal server error |
+| Status | Meaning                                                       |
+| ------ | ------------------------------------------------------------- |
+| `400`  | Bad request — missing or invalid parameter                    |
+| `401`  | Unauthenticated — missing or invalid token (auth routes only) |
+| `404`  | Resource not found                                            |
+| `500`  | Internal server error                                         |
 
 ---
 
@@ -108,15 +108,15 @@ export default app
 
 Route modules live in `packages/api/src/routes/`:
 
-| Module | Routes |
-| --- | --- |
-| `meta.ts` | `/health`, `/meta` |
-| `cards.ts` | `/cards`, `/cards/random`, `/cards/detail`, `/cards/:id`, `/cards/:id/text`, `/cards/by-slug/*`, `/cards/resolve`, `/printings/:id` |
-| `sets.ts` | `/sets` |
-| `formats.ts` | `/formats` |
-| `decks.ts` | `/decks`, `/decks/:id`, `/decks/:id/cards`, `/decks/:id/revisions`, `/decks/:id/invite`, `/decks/:id/collaborators`, `/decks/join/:code`, `/decks/import`, `/decks/:id/export` |
-| `auth.ts` | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/me`, `/auth/reset-password` |
-| `admin.ts` | `/admin/oracles/*`, `/admin/printings/*`, `/admin/sets/*`, `/admin/formats/*`, `/admin/rulings/*`, `/admin/reconciliation/*` |
+| Module       | Routes                                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `meta.ts`    | `/health`, `/meta`                                                                                                                                                             |
+| `cards.ts`   | `/cards`, `/cards/random`, `/cards/detail`, `/cards/:id`, `/cards/:id/text`, `/cards/by-slug/*`, `/cards/resolve`, `/printings/:id`                                            |
+| `sets.ts`    | `/sets`                                                                                                                                                                        |
+| `formats.ts` | `/formats`                                                                                                                                                                     |
+| `decks.ts`   | `/decks`, `/decks/:id`, `/decks/:id/cards`, `/decks/:id/revisions`, `/decks/:id/invite`, `/decks/:id/collaborators`, `/decks/join/:code`, `/decks/import`, `/decks/:id/export` |
+| `auth.ts`    | `/auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/me`, `/auth/reset-password`                                                  |
+| `admin.ts`   | `/admin/oracles/*`, `/admin/printings/*`, `/admin/sets/*`, `/admin/formats/*`, `/admin/rulings/*`, `/admin/reconciliation/*`                                                   |
 
 ---
 
@@ -145,75 +145,75 @@ This means the API has no opinion on where data comes from — swapping the prov
 
 ## Endpoints
 
-| Method | Path | Doc |
-| --- | --- | --- |
-| `GET` | `/api/v1/health` | [Meta](./meta.md) |
-| `GET` | `/api/v1/meta` | [Meta](./meta.md) |
-| `GET` | `/api/v1/cards` | [Search](./search.md) |
-| `GET` | `/api/v1/cards/random` | [Cards](./cards.md) |
-| `GET` | `/api/v1/cards/detail` | [Cards](./cards.md) |
-| `GET` | `/api/v1/cards/:id` | [Cards](./cards.md) |
-| `GET` | `/api/v1/cards/:id/text` | [Cards](./cards.md) |
-| `GET` | `/api/v1/cards/by-slug/*` | [Cards](./cards.md) |
-| `POST` | `/api/v1/cards/resolve` | [Cards](./cards.md) |
-| `GET` | `/api/v1/printings/:id` | [Cards](./cards.md) |
-| `GET` | `/api/v1/sets` | [Sets](./sets.md) |
-| `GET` | `/api/v1/formats` | [Formats](./formats.md) |
-| `GET` | `/api/v1/decks` | [Decks](./decks.md) |
-| `POST` | `/api/v1/decks` | [Decks](./decks.md) |
-| `GET` | `/api/v1/decks/:id` | [Decks](./decks.md) |
-| `PATCH` | `/api/v1/decks/:id` | [Decks](./decks.md) |
-| `DELETE` | `/api/v1/decks/:id` | [Decks](./decks.md) |
-| `PUT` | `/api/v1/decks/:id/cards` | [Decks](./decks.md) |
-| `GET` | `/api/v1/decks/:id/revisions` | [Decks](./decks.md) |
-| `POST` | `/api/v1/decks/:id/invite` | [Decks](./decks.md) |
-| `DELETE` | `/api/v1/decks/:id/invite` | [Decks](./decks.md) |
-| `POST` | `/api/v1/decks/join/:code` | [Decks](./decks.md) |
-| `POST` | `/api/v1/decks/:id/collaborators` | [Decks](./decks.md) |
-| `DELETE` | `/api/v1/decks/:id/collaborators` | [Decks](./decks.md) |
-| `POST` | `/api/v1/decks/import` | [Decks](./decks.md) |
-| `GET` | `/api/v1/decks/:id/export` | [Decks](./decks.md) |
-| `POST` | `/api/v1/auth/register` | [Auth](./auth.md) |
-| `POST` | `/api/v1/auth/login` | [Auth](./auth.md) |
-| `POST` | `/api/v1/auth/refresh` | [Auth](./auth.md) |
-| `POST` | `/api/v1/auth/logout` | [Auth](./auth.md) |
-| `POST` | `/api/v1/auth/forgot-password` | [Auth](./auth.md) |
-| `GET` | `/api/v1/auth/me` | [Auth](./auth.md) |
-| `POST` | `/api/v1/auth/reset-password` | [Auth](./auth.md) |
-| `GET` | `/api/v1/admin/audit-log` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/reconciliation` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/reconciliation/:id/confirm` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/reconciliation/:id/dismiss` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/oracles` | [Admin](./admin.md) |
-| `PATCH` | `/api/v1/admin/oracles/:id` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/oracles/:id` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/oracles/:id/restore` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/oracles/:id/relationships` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/oracles/:id/relationships` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/printings` | [Admin](./admin.md) |
-| `PATCH` | `/api/v1/admin/printings/:id` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/printings/:id` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/printings/:id/restore` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/printings/:id/regenerate-slug` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/printings/:id/deltas` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/printings/:id/deltas` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/printings/:id/image` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/printings/:id/legalities` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/printings/:id/legalities` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/printings/:id/rulings` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/sets` | [Admin](./admin.md) |
-| `PATCH` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/sets/:setCode` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/formats` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/formats` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/formats/order` | [Admin](./admin.md) |
-| `PATCH` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/formats/:code` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/formats/:code/zone-rules/:zone` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/formats/:code/zone-rules/:zone` | [Admin](./admin.md) |
-| `PUT` | `/api/v1/admin/formats/:code/severities/:legality_status` | [Admin](./admin.md) |
-| `GET` | `/api/v1/admin/rulings` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/rulings/preview` | [Admin](./admin.md) |
-| `POST` | `/api/v1/admin/rulings` | [Admin](./admin.md) |
-| `PATCH` | `/api/v1/admin/rulings/:rulingId` | [Admin](./admin.md) |
-| `DELETE` | `/api/v1/admin/rulings/:rulingId` | [Admin](./admin.md) |
+| Method   | Path                                                      | Doc                     |
+| -------- | --------------------------------------------------------- | ----------------------- |
+| `GET`    | `/api/v1/health`                                          | [Meta](./meta.md)       |
+| `GET`    | `/api/v1/meta`                                            | [Meta](./meta.md)       |
+| `GET`    | `/api/v1/cards`                                           | [Search](./search.md)   |
+| `GET`    | `/api/v1/cards/random`                                    | [Cards](./cards.md)     |
+| `GET`    | `/api/v1/cards/detail`                                    | [Cards](./cards.md)     |
+| `GET`    | `/api/v1/cards/:id`                                       | [Cards](./cards.md)     |
+| `GET`    | `/api/v1/cards/:id/text`                                  | [Cards](./cards.md)     |
+| `GET`    | `/api/v1/cards/by-slug/*`                                 | [Cards](./cards.md)     |
+| `POST`   | `/api/v1/cards/resolve`                                   | [Cards](./cards.md)     |
+| `GET`    | `/api/v1/printings/:id`                                   | [Cards](./cards.md)     |
+| `GET`    | `/api/v1/sets`                                            | [Sets](./sets.md)       |
+| `GET`    | `/api/v1/formats`                                         | [Formats](./formats.md) |
+| `GET`    | `/api/v1/decks`                                           | [Decks](./decks.md)     |
+| `POST`   | `/api/v1/decks`                                           | [Decks](./decks.md)     |
+| `GET`    | `/api/v1/decks/:id`                                       | [Decks](./decks.md)     |
+| `PATCH`  | `/api/v1/decks/:id`                                       | [Decks](./decks.md)     |
+| `DELETE` | `/api/v1/decks/:id`                                       | [Decks](./decks.md)     |
+| `PUT`    | `/api/v1/decks/:id/cards`                                 | [Decks](./decks.md)     |
+| `GET`    | `/api/v1/decks/:id/revisions`                             | [Decks](./decks.md)     |
+| `POST`   | `/api/v1/decks/:id/invite`                                | [Decks](./decks.md)     |
+| `DELETE` | `/api/v1/decks/:id/invite`                                | [Decks](./decks.md)     |
+| `POST`   | `/api/v1/decks/join/:code`                                | [Decks](./decks.md)     |
+| `POST`   | `/api/v1/decks/:id/collaborators`                         | [Decks](./decks.md)     |
+| `DELETE` | `/api/v1/decks/:id/collaborators`                         | [Decks](./decks.md)     |
+| `POST`   | `/api/v1/decks/import`                                    | [Decks](./decks.md)     |
+| `GET`    | `/api/v1/decks/:id/export`                                | [Decks](./decks.md)     |
+| `POST`   | `/api/v1/auth/register`                                   | [Auth](./auth.md)       |
+| `POST`   | `/api/v1/auth/login`                                      | [Auth](./auth.md)       |
+| `POST`   | `/api/v1/auth/refresh`                                    | [Auth](./auth.md)       |
+| `POST`   | `/api/v1/auth/logout`                                     | [Auth](./auth.md)       |
+| `POST`   | `/api/v1/auth/forgot-password`                            | [Auth](./auth.md)       |
+| `GET`    | `/api/v1/auth/me`                                         | [Auth](./auth.md)       |
+| `POST`   | `/api/v1/auth/reset-password`                             | [Auth](./auth.md)       |
+| `GET`    | `/api/v1/admin/audit-log`                                 | [Admin](./admin.md)     |
+| `GET`    | `/api/v1/admin/reconciliation`                            | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/reconciliation/:id/confirm`                | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/reconciliation/:id/dismiss`                | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/oracles`                                   | [Admin](./admin.md)     |
+| `PATCH`  | `/api/v1/admin/oracles/:id`                               | [Admin](./admin.md)     |
+| `DELETE` | `/api/v1/admin/oracles/:id`                               | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/oracles/:id/restore`                       | [Admin](./admin.md)     |
+| `GET`    | `/api/v1/admin/oracles/:id/relationships`                 | [Admin](./admin.md)     |
+| `PUT`    | `/api/v1/admin/oracles/:id/relationships`                 | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/printings`                                 | [Admin](./admin.md)     |
+| `PATCH`  | `/api/v1/admin/printings/:id`                             | [Admin](./admin.md)     |
+| `DELETE` | `/api/v1/admin/printings/:id`                             | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/printings/:id/restore`                     | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/printings/:id/regenerate-slug`             | [Admin](./admin.md)     |
+| `GET`    | `/api/v1/admin/printings/:id/deltas`                      | [Admin](./admin.md)     |
+| `PUT`    | `/api/v1/admin/printings/:id/deltas`                      | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/printings/:id/image`                       | [Admin](./admin.md)     |
+| `GET`    | `/api/v1/admin/printings/:id/legalities`                  | [Admin](./admin.md)     |
+| `PUT`    | `/api/v1/admin/printings/:id/legalities`                  | [Admin](./admin.md)     |
+| `GET`    | `/api/v1/admin/printings/:id/rulings`                     | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/sets`                                      | [Admin](./admin.md)     |
+| `PATCH`  | `/api/v1/admin/sets/:setCode`                             | [Admin](./admin.md)     |
+| `DELETE` | `/api/v1/admin/sets/:setCode`                             | [Admin](./admin.md)     |
+| `GET`    | `/api/v1/admin/formats`                                   | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/formats`                                   | [Admin](./admin.md)     |
+| `PUT`    | `/api/v1/admin/formats/order`                             | [Admin](./admin.md)     |
+| `PATCH`  | `/api/v1/admin/formats/:code`                             | [Admin](./admin.md)     |
+| `DELETE` | `/api/v1/admin/formats/:code`                             | [Admin](./admin.md)     |
+| `PUT`    | `/api/v1/admin/formats/:code/zone-rules/:zone`            | [Admin](./admin.md)     |
+| `DELETE` | `/api/v1/admin/formats/:code/zone-rules/:zone`            | [Admin](./admin.md)     |
+| `PUT`    | `/api/v1/admin/formats/:code/severities/:legality_status` | [Admin](./admin.md)     |
+| `GET`    | `/api/v1/admin/rulings`                                   | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/rulings/preview`                           | [Admin](./admin.md)     |
+| `POST`   | `/api/v1/admin/rulings`                                   | [Admin](./admin.md)     |
+| `PATCH`  | `/api/v1/admin/rulings/:rulingId`                         | [Admin](./admin.md)     |
+| `DELETE` | `/api/v1/admin/rulings/:rulingId`                         | [Admin](./admin.md)     |

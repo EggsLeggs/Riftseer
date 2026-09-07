@@ -44,48 +44,34 @@ export const DEFAULT_SITE_ACCESSIBILITY_PREFS: SiteAccessibilityPreferences = {
 };
 
 function parseDetailView(raw: unknown): CardDetailViewPreference {
-  if (
-    typeof raw === "string" &&
-    (CARD_DETAIL_VIEW_OPTIONS as readonly string[]).includes(raw)
-  ) {
+  if (typeof raw === "string" && (CARD_DETAIL_VIEW_OPTIONS as readonly string[]).includes(raw)) {
     return raw as CardDetailViewPreference;
   }
   return DEFAULT_SITE_ACCESSIBILITY_PREFS.cardDetailView;
 }
 
 function parseResultsView(raw: unknown): CardResultsViewPreference {
-  if (
-    typeof raw === "string" &&
-    (CARD_RESULTS_VIEW_OPTIONS as readonly string[]).includes(raw)
-  ) {
+  if (typeof raw === "string" && (CARD_RESULTS_VIEW_OPTIONS as readonly string[]).includes(raw)) {
     return raw as CardResultsViewPreference;
   }
   return DEFAULT_SITE_ACCESSIBILITY_PREFS.cardResultsView;
 }
 
 function parseDeckListView(raw: unknown): DeckListViewPreference {
-  if (
-    typeof raw === "string" &&
-    (DECK_LIST_VIEW_OPTIONS as readonly string[]).includes(raw)
-  ) {
+  if (typeof raw === "string" && (DECK_LIST_VIEW_OPTIONS as readonly string[]).includes(raw)) {
     return raw as DeckListViewPreference;
   }
   return DEFAULT_SITE_ACCESSIBILITY_PREFS.deckListView;
 }
 
 function parseDeckGroupMode(raw: unknown): DeckGroupModePreference {
-  if (
-    typeof raw === "string" &&
-    (DECK_GROUP_MODE_OPTIONS as readonly string[]).includes(raw)
-  ) {
+  if (typeof raw === "string" && (DECK_GROUP_MODE_OPTIONS as readonly string[]).includes(raw)) {
     return raw as DeckGroupModePreference;
   }
   return DEFAULT_SITE_ACCESSIBILITY_PREFS.deckGroupMode;
 }
 
-export function parseStoredAccessibilityPrefs(
-  raw: string | null,
-): SiteAccessibilityPreferences {
+export function parseStoredAccessibilityPrefs(raw: string | null): SiteAccessibilityPreferences {
   if (!raw) return { ...DEFAULT_SITE_ACCESSIBILITY_PREFS };
   try {
     const parsed = JSON.parse(raw) as Partial<SiteAccessibilityPreferences>;
@@ -124,14 +110,9 @@ export function readAccessibilityPrefsFromStorage(): SiteAccessibilityPreference
   }
 }
 
-export function writeAccessibilityPrefsToStorage(
-  prefs: SiteAccessibilityPreferences,
-) {
+export function writeAccessibilityPrefsToStorage(prefs: SiteAccessibilityPreferences) {
   try {
-    window.localStorage.setItem(
-      SITE_ACCESSIBILITY_STORAGE_KEY,
-      JSON.stringify(prefs),
-    );
+    window.localStorage.setItem(SITE_ACCESSIBILITY_STORAGE_KEY, JSON.stringify(prefs));
   } catch {
     // Ignore quota / private mode failures.
   }

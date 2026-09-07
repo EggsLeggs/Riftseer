@@ -36,9 +36,7 @@ const DEFAULT_PAGE_SIZE: PageSize = 60;
 
 function parseStoredPageSize(raw: string | null): PageSize | null {
   const n = Number.parseInt(raw ?? "", 10);
-  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n)
-    ? (n as PageSize)
-    : null;
+  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? (n as PageSize) : null;
 }
 
 function parseViewParam(raw: string | null): CardResultsView | null {
@@ -51,9 +49,11 @@ function parseViewParam(raw: string | null): CardResultsView | null {
 function galleryErrorInfo(err: unknown): { title: string; detail: string } {
   if (err instanceof CardApiError) {
     if (err.code === "timeout") return { title: "Request timed out", detail: "Please try again." };
-    if (err.code === "network") return { title: "Couldn't connect", detail: "Check your connection and try again." };
+    if (err.code === "network")
+      return { title: "Couldn't connect", detail: "Check your connection and try again." };
     if (err.status === 400 && err.detail) return { title: "Invalid query", detail: err.detail };
-    if (err.status != null && err.status >= 500) return { title: "Service unavailable", detail: "Try again shortly." };
+    if (err.status != null && err.status >= 500)
+      return { title: "Service unavailable", detail: "Try again shortly." };
   }
   return { title: "Something went wrong", detail: "Please try again." };
 }
@@ -73,8 +73,7 @@ export function CardGalleryView() {
   const pageParam = Number.parseInt(searchParams.get("page") ?? "1", 10);
   const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const offset = (requestedPage - 1) * perPage;
-  const resultsView =
-    parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
+  const resultsView = parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
 
   const isBrowse = trimmed.length === 0 && !meta.set;
 
@@ -179,14 +178,13 @@ export function CardGalleryView() {
           <h1 className="text-xl font-semibold tracking-tight">
             {trimmed ? (
               <>
-                Results for{" "}
-                <span className="text-muted-foreground">"{trimmed}"</span>
+                Results for <span className="text-muted-foreground">"{trimmed}"</span>
               </>
             ) : (
               "All Cards"
             )}
           </h1>
-          {!activeQuery.isFetching && !activeQuery.isError && (total > 0) && (
+          {!activeQuery.isFetching && !activeQuery.isError && total > 0 && (
             <p className="mt-1 text-sm text-muted-foreground">
               {cardTotal === total
                 ? `${total} ${total === 1 ? "card" : "cards"}`
@@ -219,7 +217,9 @@ export function CardGalleryView() {
               className={cn(CARD_BROWSE_SELECT_CLASS, "w-22")}
             >
               {PAGE_SIZE_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n}</option>
+                <option key={n} value={n}>
+                  {n}
+                </option>
               ))}
             </select>
           </div>
@@ -238,7 +238,10 @@ export function CardGalleryView() {
         <SearchSkeleton count={perPage} view={resultsView} />
       ) : cards.length > 0 ? (
         resultsView === "images" ? (
-          <CardGrid cards={cards} cardNamePlacement={showCardNamesBelowSearch ? "below" : "overlay"} />
+          <CardGrid
+            cards={cards}
+            cardNamePlacement={showCardNamesBelowSearch ? "below" : "overlay"}
+          />
         ) : resultsView === "details" ? (
           <CardDetailsResults cards={cards} />
         ) : (

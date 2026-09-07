@@ -8,9 +8,7 @@ const DATABASE_SCRIPT = path.resolve(
   import.meta.dirname,
   "../../../../scripts/database-tests/database.mjs",
 );
-const POSTGREST_URL = new URL(
-  process.env.RIFTSEER_POSTGREST_URL ?? "http://localhost:3001",
-);
+const POSTGREST_URL = new URL(process.env.RIFTSEER_POSTGREST_URL ?? "http://localhost:3001");
 const ACTOR = "00000000-0000-0000-0000-0000000000aa";
 const VAYNE_OGN = "aaa000000000000000000001";
 const VAYNE_VEN = "aaa000000000000000000002";
@@ -78,7 +76,10 @@ integration("oracle/printing database contracts", () => {
         return fetch(url, {
           method: request.method,
           headers,
-          body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.text(),
+          body:
+            request.method === "GET" || request.method === "HEAD"
+              ? undefined
+              : await request.text(),
         });
       },
     });
@@ -106,21 +107,46 @@ integration("oracle/printing database contracts", () => {
     expect(warhammer?.might_bonus).toBe(0);
 
     const printings = await provider.getPrintingsForOracle(vayne!.id);
-    expect(printings.map(({ set, rarity, differs_from_oracle }) => [set?.set_code, rarity, differs_from_oracle])).toEqual([
+    expect(
+      printings.map(({ set, rarity, differs_from_oracle }) => [
+        set?.set_code,
+        rarity,
+        differs_from_oracle,
+      ]),
+    ).toEqual([
       ["OGN", "Rare", true],
       ["VEN", "Showcase", false],
       ["PRM", "Rare", false],
     ]);
 
-    const sentinel = await provider.searchPrintingsByAst({ op: "filter", field: "tag", value: "sentinel" });
+    const sentinel = await provider.searchPrintingsByAst({
+      op: "filter",
+      field: "tag",
+      value: "sentinel",
+    });
     expect(sentinel.printings.map(({ id }) => id).sort()).toEqual([VAYNE_PRM, VAYNE_VEN].sort());
-    const showcase = await provider.searchPrintingsByAst({ op: "filter", field: "rarity", value: "showcase" });
+    const showcase = await provider.searchPrintingsByAst({
+      op: "filter",
+      field: "rarity",
+      value: "showcase",
+    });
     expect(showcase.printings.map(({ id }) => id)).toEqual([VAYNE_VEN]);
 
-    const scoped = await provider.resolveRequest({ raw: "Vayne|VEN-SP3", name: "Vayne", set: "VEN", collector: "SP3" });
-    expect(scoped).toMatchObject({ matchType: "exact", oracle: { name: "Vayne" }, printing: { id: VAYNE_VEN } });
+    const scoped = await provider.resolveRequest({
+      raw: "Vayne|VEN-SP3",
+      name: "Vayne",
+      set: "VEN",
+      collector: "SP3",
+    });
+    expect(scoped).toMatchObject({
+      matchType: "exact",
+      oracle: { name: "Vayne" },
+      printing: { id: VAYNE_VEN },
+    });
     const brush = await provider.getOracleByKey("brush");
-    expect((await provider.getOracleRelationships(brush!.id)).makes_tokens.map(({ name }) => name)).toEqual(["Sprite"]);
+    expect(
+      (await provider.getOracleRelationships(brush!.id)).makes_tokens.map(({ name }) => name),
+    ).toEqual(["Sprite"]);
 
     expect((await provider.getLegalities(VAYNE_OGN))[0]?.status).toBe("banned");
     expect((await provider.getLegalities(VAYNE_VEN))[0]?.status).toBe("legal");
@@ -128,16 +154,36 @@ integration("oracle/printing database contracts", () => {
   });
 
   test("printing deltas add, remove, override, and clear only their own printing", async () => {
-    await sql(`select admin_set_printing_delta('${VAYNE_OGN}', '{"tags_added":["Elite"],"tags_removed":["Sentinel"],"energy_override":9,"cleared_fields":["power"]}'::jsonb, '${ACTOR}')`);
-    const rows = await sqlJson<Array<{ printing_id: string; tags: string[]; energy: number; power: number | null }>>(`
+    await sql(
+      `select admin_set_printing_delta('${VAYNE_OGN}', '{"tags_added":["Elite"],"tags_removed":["Sentinel"],"energy_override":9,"cleared_fields":["power"]}'::jsonb, '${ACTOR}')`,
+    );
+    const rows = await sqlJson<
+      Array<{ printing_id: string; tags: string[]; energy: number; power: number | null }>
+    >(`
       select json_agg(json_build_object('printing_id', printing_id, 'tags', tags, 'energy', energy, 'power', power) order by printing_id)
       from resolved_printings where oracle_id = (select id from oracles where oracle_key = 'vayne')
     `);
-    expect(rows[0]).toMatchObject({ printing_id: VAYNE_OGN, tags: ["Elite", "Marksman"], energy: 9, power: null });
-    expect(rows.slice(1).every(({ tags, energy, power }) => tags.includes("Sentinel") && !tags.includes("Elite") && energy === 3 && power === 2)).toBe(true);
+    expect(rows[0]).toMatchObject({
+      printing_id: VAYNE_OGN,
+      tags: ["Elite", "Marksman"],
+      energy: 9,
+      power: null,
+    });
+    expect(
+      rows
+        .slice(1)
+        .every(
+          ({ tags, energy, power }) =>
+            tags.includes("Sentinel") && !tags.includes("Elite") && energy === 3 && power === 2,
+        ),
+    ).toBe(true);
 
     await sql(`select admin_set_printing_delta('${VAYNE_OGN}', null, '${ACTOR}')`);
-    expect(await sql(`select tags @> array['Sentinel']::text[] from resolved_printings where printing_id = '${VAYNE_OGN}'`)).toBe("t");
+    expect(
+      await sql(
+        `select tags @> array['Sentinel']::text[] from resolved_printings where printing_id = '${VAYNE_OGN}'`,
+      ),
+    ).toBe("t");
   });
 
   test("locked oracle and printing fields survive contradictory ingest values", async () => {
@@ -150,7 +196,12 @@ integration("oracle/printing database contracts", () => {
         p_prune := false
       )
     `);
-    const state = await sqlJson<{ energy: number; oracle_locks: string[]; rarity: string; printing_locks: string[] }>(`
+    const state = await sqlJson<{
+      energy: number;
+      oracle_locks: string[];
+      rarity: string;
+      printing_locks: string[];
+    }>(`
       select json_build_object(
         'energy', o.energy, 'oracle_locks', o.locked_fields,
         'rarity', p.rarity, 'printing_locks', p.locked_fields)
@@ -163,29 +214,63 @@ integration("oracle/printing database contracts", () => {
   });
 
   test("preferred-printing ranking favors hosted art while an admin lock wins", async () => {
-    expect(await sql("select preferred_printing_id from oracles where oracle_key='vayne'" )).toBe(VAYNE_OGN);
-    await sql(`update printings set image_hosted_at=now() where id='${VAYNE_VEN}'; select refresh_preferred_printings(null)`);
-    expect(await sql("select preferred_printing_id from oracles where oracle_key='vayne'" )).toBe(VAYNE_VEN);
+    expect(await sql("select preferred_printing_id from oracles where oracle_key='vayne'")).toBe(
+      VAYNE_OGN,
+    );
+    await sql(
+      `update printings set image_hosted_at=now() where id='${VAYNE_VEN}'; select refresh_preferred_printings(null)`,
+    );
+    expect(await sql("select preferred_printing_id from oracles where oracle_key='vayne'")).toBe(
+      VAYNE_VEN,
+    );
 
-    await sql(`update oracles set preferred_printing_id='${VAYNE_OGN}', preferred_printing_locked=true where oracle_key='vayne'; update printings set image_hosted_at=now() where id='${VAYNE_PRM}'; select refresh_preferred_printings(null)`);
-    expect(await sql("select preferred_printing_id from oracles where oracle_key='vayne'" )).toBe(VAYNE_OGN);
+    await sql(
+      `update oracles set preferred_printing_id='${VAYNE_OGN}', preferred_printing_locked=true where oracle_key='vayne'; update printings set image_hosted_at=now() where id='${VAYNE_PRM}'; select refresh_preferred_printings(null)`,
+    );
+    expect(await sql("select preferred_printing_id from oracles where oracle_key='vayne'")).toBe(
+      VAYNE_OGN,
+    );
   });
 
   test("the projection refreshes after oracle, printing, delta, and relationship writes", async () => {
-    await sql(`update oracles set name='Vayne Prime', name_normalized='vayne prime' where oracle_key='vayne'`);
-    expect(await sql("select count(*) from resolved_printings where name='Vayne Prime'" )).toBe("3");
+    await sql(
+      `update oracles set name='Vayne Prime', name_normalized='vayne prime' where oracle_key='vayne'`,
+    );
+    expect(await sql("select count(*) from resolved_printings where name='Vayne Prime'")).toBe("3");
 
     await sql(`update printings set rarity='Epic' where id='${VAYNE_VEN}'`);
-    expect(await sql(`select rarity from resolved_printings where printing_id='${VAYNE_VEN}'`)).toBe("Epic");
+    expect(
+      await sql(`select rarity from resolved_printings where printing_id='${VAYNE_VEN}'`),
+    ).toBe("Epic");
 
-    await sql(`insert into printing_deltas(printing_id,tags_added,source) values('${VAYNE_VEN}',array['Elite'],'admin')`);
-    expect(await sql(`select tags @> array['Elite']::text[] from resolved_printings where printing_id='${VAYNE_VEN}'`)).toBe("t");
+    await sql(
+      `insert into printing_deltas(printing_id,tags_added,source) values('${VAYNE_VEN}',array['Elite'],'admin')`,
+    );
+    expect(
+      await sql(
+        `select tags @> array['Elite']::text[] from resolved_printings where printing_id='${VAYNE_VEN}'`,
+      ),
+    ).toBe("t");
 
-    await sql(`insert into oracle_relationships(from_oracle_id,to_oracle_id,kind,source) select b.id,w.id,'makes_token','admin' from oracles b cross join oracles w where b.oracle_key='brush' and w.oracle_key='warhammer'`);
-    expect(await sql("select produces @> array['Warhammer']::text[] from resolved_printings where printing_id='bbb000000000000000000001'" )).toBe("t");
+    await sql(
+      `insert into oracle_relationships(from_oracle_id,to_oracle_id,kind,source) select b.id,w.id,'makes_token','admin' from oracles b cross join oracles w where b.oracle_key='brush' and w.oracle_key='warhammer'`,
+    );
+    expect(
+      await sql(
+        "select produces @> array['Warhammer']::text[] from resolved_printings where printing_id='bbb000000000000000000001'",
+      ),
+    ).toBe("t");
 
-    expect(await sql(`select card_search_ast_to_sql('{"op":"filter","field":"tag","value":"Elite"}'::jsonb)`)).toContain("unnest(r.tags)");
-    await expect(sql(`select card_search_ast_to_sql('{"op":"filter","field":"future","value":"x"}'::jsonb)`)).rejects.toThrow("Unsupported filter field");
-    await expect(sql(`select card_search_ast_to_sql('{"op":"future"}'::jsonb)`)).rejects.toThrow("Unknown AST op");
+    expect(
+      await sql(
+        `select card_search_ast_to_sql('{"op":"filter","field":"tag","value":"Elite"}'::jsonb)`,
+      ),
+    ).toContain("unnest(r.tags)");
+    await expect(
+      sql(`select card_search_ast_to_sql('{"op":"filter","field":"future","value":"x"}'::jsonb)`),
+    ).rejects.toThrow("Unsupported filter field");
+    await expect(sql(`select card_search_ast_to_sql('{"op":"future"}'::jsonb)`)).rejects.toThrow(
+      "Unknown AST op",
+    );
   });
 });

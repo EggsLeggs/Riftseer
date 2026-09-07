@@ -12,11 +12,11 @@ Source: `packages/discord-bot/`
 
 ## Slash commands
 
-| Command | Options | Description |
-| --- | --- | --- |
-| `/card` | `name` (required), `set`, `image` | Look up a card; set `image:true` for image-focused replies |
-| `/random` | — | Return a random card |
-| `/sets` | — | List all sets |
+| Command   | Options                           | Description                                                |
+| --------- | --------------------------------- | ---------------------------------------------------------- |
+| `/card`   | `name` (required), `set`, `image` | Look up a card; set `image:true` for image-focused replies |
+| `/random` | —                                 | Return a random card                                       |
+| `/sets`   | —                                 | List all sets                                              |
 
 ---
 
@@ -52,11 +52,11 @@ bun run typecheck
 
 ### Secrets (`wrangler secret put`)
 
-| Secret | Source |
-| --- | --- |
-| `DISCORD_PUBLIC_KEY` | Developer Portal → Application → General Information |
-| `DISCORD_BOT_TOKEN` | Developer Portal → Bot |
-| `DISCORD_APPLICATION_ID` | Developer Portal → General Information |
+| Secret                   | Source                                               |
+| ------------------------ | ---------------------------------------------------- |
+| `DISCORD_PUBLIC_KEY`     | Developer Portal → Application → General Information |
+| `DISCORD_BOT_TOKEN`      | Developer Portal → Bot                               |
+| `DISCORD_APPLICATION_ID` | Developer Portal → General Information               |
 
 ### Public vars
 

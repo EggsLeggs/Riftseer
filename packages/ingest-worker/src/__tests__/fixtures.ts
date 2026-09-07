@@ -1,9 +1,6 @@
 import type { IngestOracle, IngestPrinting } from "../pipeline/types.ts";
 
-export function printing(
-  id: string,
-  overrides: Partial<IngestPrinting> = {},
-): IngestPrinting {
+export function printing(id: string, overrides: Partial<IngestPrinting> = {}): IngestPrinting {
   return {
     id,
     name: overrides.name ?? `Card ${id}`,
@@ -27,10 +24,7 @@ export function printing(
   };
 }
 
-export function oracle(
-  key: string,
-  overrides: Partial<IngestOracle> = {},
-): IngestOracle {
+export function oracle(key: string, overrides: Partial<IngestOracle> = {}): IngestOracle {
   const name = overrides.name ?? key;
   return {
     oracle_key: key,

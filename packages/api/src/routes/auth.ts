@@ -41,8 +41,7 @@ export interface AuthRoutesOptions {
 
 export function authRoutes(options: AuthRoutesOptions = {}) {
   const protectedAuthPlugin = options.protectedAuthPlugin ?? authPlugin;
-  const getAdminUserIds =
-    options.getAdminUserIds ?? (() => process.env.ADMIN_USER_IDS);
+  const getAdminUserIds = options.getAdminUserIds ?? (() => process.env.ADMIN_USER_IDS);
 
   return (
     new Elysia()
@@ -66,7 +65,8 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
           if (!/^[a-z0-9_]{3,30}$/.test(handle)) {
             set.status = 400;
             return {
-              error: "Handle must be 3–30 characters and contain only lowercase letters, numbers, and underscores.",
+              error:
+                "Handle must be 3–30 characters and contain only lowercase letters, numbers, and underscores.",
               code: "INVALID_HANDLE",
             };
           }
@@ -100,20 +100,25 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             },
           });
           if (error) {
-            set.status = (error.status && error.status >= 500) ? 503 : 400;
+            set.status = error.status && error.status >= 500 ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
 
           if (data.user) {
-            const { error: adminError } = await authAdminClient.auth.admin.updateUserById(data.user.id, {
-              app_metadata: {
-                ...consentMeta,
-                registration_consent_recorded_at: acceptedAt,
+            const { error: adminError } = await authAdminClient.auth.admin.updateUserById(
+              data.user.id,
+              {
+                app_metadata: {
+                  ...consentMeta,
+                  registration_consent_recorded_at: acceptedAt,
+                },
               },
-            });
+            );
             if (adminError) {
               console.error("[auth/register] app_metadata update failed:", adminError.message);
-              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(data.user.id);
+              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(
+                data.user.id,
+              );
               if (deleteError) {
                 console.error("[auth/register] rollback deleteUser failed:", deleteError.message);
               }
@@ -129,7 +134,9 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
               .insert({ id: data.user.id, username, handle });
             if (profileError) {
               console.error("[auth/register] profile insert failed:", profileError.message);
-              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(data.user.id);
+              const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(
+                data.user.id,
+              );
               if (deleteError) {
                 console.error("[auth/register] rollback deleteUser failed:", deleteError.message);
               }
@@ -138,7 +145,10 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
                 return { error: "That handle is already taken.", code: "HANDLE_TAKEN" };
               }
               set.status = 500;
-              return { error: "Registration could not be completed. Please try again.", code: "PROFILE_CREATE_FAILED" };
+              return {
+                error: "Registration could not be completed. Please try again.",
+                code: "PROFILE_CREATE_FAILED",
+              };
             }
           }
 
@@ -168,13 +178,29 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             email: t.String({ description: "User email address" }),
             password: t.String({ minLength: 8, description: "Password (min 8 characters)" }),
             accepted_terms: t.Boolean({
-              description: "Must be true — records acceptance of Terms and Privacy Policy at signup.",
+              description:
+                "Must be true — records acceptance of Terms and Privacy Policy at signup.",
             }),
-            username: t.String({ minLength: 1, maxLength: 50, description: "Display name (non-unique)" }),
-            handle: t.String({ minLength: 3, maxLength: 30, description: "Unique @handle (lowercase letters, numbers, underscores)" }),
-            options: t.Optional(t.Object({
-              redirect_to: t.Optional(t.String({ description: "URL to redirect to after email confirmation. Pass window.location.origin + '/auth/callback'." })),
-            })),
+            username: t.String({
+              minLength: 1,
+              maxLength: 50,
+              description: "Display name (non-unique)",
+            }),
+            handle: t.String({
+              minLength: 3,
+              maxLength: 30,
+              description: "Unique @handle (lowercase letters, numbers, underscores)",
+            }),
+            options: t.Optional(
+              t.Object({
+                redirect_to: t.Optional(
+                  t.String({
+                    description:
+                      "URL to redirect to after email confirmation. Pass window.location.origin + '/auth/callback'.",
+                  }),
+                ),
+              }),
+            ),
           }),
           response: {
             200: SessionSchema,
@@ -207,7 +233,8 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             password: body.password,
           });
           if (error) {
-            set.status = error.status === 401 ? 401 : (error.status && error.status >= 500) ? 503 : 400;
+            set.status =
+              error.status === 401 ? 401 : error.status && error.status >= 500 ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
 
@@ -276,7 +303,8 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
           detail: {
             tags: ["Auth"],
             summary: "Login",
-            description: "Authenticates with email and password. Returns an access token and refresh token.",
+            description:
+              "Authenticates with email and password. Returns an access token and refresh token.",
           },
         },
       )
@@ -293,7 +321,7 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             refresh_token: body.refresh_token,
           });
           if (error) {
-            set.status = (error.status && error.status >= 500) ? 503 : 401;
+            set.status = error.status && error.status >= 500 ? 503 : 401;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
           if (!data.session) {
@@ -397,7 +425,7 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             redirectTo: body.options?.redirect_to,
           });
           if (error) {
-            set.status = (error.status && error.status >= 500) ? 503 : 400;
+            set.status = error.status && error.status >= 500 ? 503 : 400;
             return { error: error.message, code: error.code ?? "AUTH_ERROR" };
           }
           return { message: "If that email is registered, a password reset link has been sent." };
@@ -405,9 +433,16 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
         {
           body: t.Object({
             email: t.String({ description: "Email address of the account to reset" }),
-            options: t.Optional(t.Object({
-              redirect_to: t.Optional(t.String({ description: "URL to redirect to after clicking the reset link. Pass window.location.origin + '/auth/reset-password'." })),
-            })),
+            options: t.Optional(
+              t.Object({
+                redirect_to: t.Optional(
+                  t.String({
+                    description:
+                      "URL to redirect to after clicking the reset link. Pass window.location.origin + '/auth/reset-password'.",
+                  }),
+                ),
+              }),
+            ),
           }),
           response: {
             200: t.Object({ message: t.String() }),
@@ -534,9 +569,12 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
                 return { error: "Current password is incorrect.", code: "INVALID_CREDENTIALS" };
               }
               // Update password using admin client
-              const { error: updateError } = await authAdminClient.auth.admin.updateUserById(user.id, {
-                password: body.new_password,
-              });
+              const { error: updateError } = await authAdminClient.auth.admin.updateUserById(
+                user.id,
+                {
+                  password: body.new_password,
+                },
+              );
               if (updateError) {
                 set.status = 500;
                 return { error: "Failed to update password.", code: "UPDATE_FAILED" };
@@ -546,7 +584,10 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             {
               body: t.Object({
                 current_password: t.String({ description: "Current account password" }),
-                new_password: t.String({ minLength: 8, description: "New password (min 8 characters)" }),
+                new_password: t.String({
+                  minLength: 8,
+                  description: "New password (min 8 characters)",
+                }),
               }),
               response: {
                 200: t.Object({ message: t.String() }),
@@ -558,7 +599,8 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
               detail: {
                 tags: ["Auth"],
                 summary: "Change password",
-                description: "Changes the authenticated user's password. Requires the current password for verification.",
+                description:
+                  "Changes the authenticated user's password. Requires the current password for verification.",
               },
             },
           )
@@ -591,7 +633,9 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
                 const payload = (await res.json().catch(() => ({}))) as Record<string, unknown>;
                 set.status = res.status >= 500 ? 503 : res.status === 401 ? 401 : 400;
                 return {
-                  error: String(payload.error_description ?? payload.msg ?? "Password update failed"),
+                  error: String(
+                    payload.error_description ?? payload.msg ?? "Password update failed",
+                  ),
                   code: "UPDATE_FAILED",
                 };
               }
@@ -599,7 +643,10 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             },
             {
               body: t.Object({
-                password: t.String({ minLength: 8, description: "New password (min 8 characters)" }),
+                password: t.String({
+                  minLength: 8,
+                  description: "New password (min 8 characters)",
+                }),
               }),
               response: {
                 200: t.Object({ message: t.String() }),

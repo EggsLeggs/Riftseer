@@ -12,20 +12,17 @@ async function sendFallbackMessage(
   env: Env,
 ): Promise<void> {
   try {
-    const res = await fetch(
-      `${WEBHOOK_BASE}/${env.DISCORD_APPLICATION_ID}/${interaction.token}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
-        },
-        body: JSON.stringify({
-          content: "Something went wrong. Please try again.",
-          flags: 64, // ephemeral
-        }),
+    const res = await fetch(`${WEBHOOK_BASE}/${env.DISCORD_APPLICATION_ID}/${interaction.token}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bot ${env.DISCORD_BOT_TOKEN}`,
       },
-    );
+      body: JSON.stringify({
+        content: "Something went wrong. Please try again.",
+        flags: 64, // ephemeral
+      }),
+    });
     if (!res.ok) {
       const body = await res.text();
       console.error(

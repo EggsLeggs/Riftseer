@@ -38,9 +38,7 @@ function push(map: Map<string, DeckViolation[]>, key: string, value: DeckViolati
   else map.set(key, [value]);
 }
 
-export function indexDeckViolations(
-  violations: readonly DeckViolation[],
-): DeckViolationIndex {
+export function indexDeckViolations(violations: readonly DeckViolation[]): DeckViolationIndex {
   const index: DeckViolationIndex = {
     byPrinting: new Map(),
     byOracle: new Map(),
@@ -94,9 +92,7 @@ export interface DeckViolationCounts {
   total: number;
 }
 
-export function countDeckViolations(
-  violations: readonly DeckViolation[],
-): DeckViolationCounts {
+export function countDeckViolations(violations: readonly DeckViolation[]): DeckViolationCounts {
   const counts: DeckViolationCounts = { error: 0, warning: 0, info: 0, total: 0 };
   for (const violation of violations) {
     counts[violationSeverity(violation)] += 1;
@@ -112,9 +108,7 @@ export function countDeckViolations(
  * by swapping the art, and a banned oracle is fixed by cutting the card. The
  * two look identical without this.
  */
-export function violationScopeNote(
-  violation: Pick<DeckViolation, "scope">,
-): string | null {
+export function violationScopeNote(violation: Pick<DeckViolation, "scope">): string | null {
   if (violation.scope === "printing") {
     return "This printing only — another art of the same card may be legal.";
   }

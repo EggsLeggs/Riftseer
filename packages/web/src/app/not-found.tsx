@@ -13,12 +13,10 @@ export default function NotFound() {
       />
 
       <div className="flex flex-col items-center gap-3">
-        <h1 className="text-3xl font-bold tracking-tight">
-          You got lost in the jungle
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">You got lost in the jungle</h1>
         <p className="text-muted-foreground max-w-sm">
-          There&apos;s nothing to show here. We may have deleted this page or
-          moved it to a new home. Sorry about that!
+          There&apos;s nothing to show here. We may have deleted this page or moved it to a new
+          home. Sorry about that!
         </p>
       </div>
 

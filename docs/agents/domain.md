@@ -33,7 +33,6 @@ This is a multi-context repo: a Bun workspace where each package owns its own do
 
 `packages/raycast-extension` and `packages/reddit-bot` sit outside the Bun workspace and are not mounted by the docs site. They still take a `CONTEXT.md` if their domain needs one; put their ADRs in the root `docs/adr/`.
 
-
 ## Use the glossary's vocabulary
 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in the relevant `CONTEXT.md`. Don't drift to synonyms the glossary explicitly avoids.

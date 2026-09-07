@@ -34,13 +34,7 @@ export function ShareButton({ title, path }: { title: string; path: string }) {
   }
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={pending}
-      onClick={share}
-    >
+    <Button type="button" variant="outline" size="sm" disabled={pending} onClick={share}>
       <Share2Icon aria-hidden="true" />
       Share
     </Button>

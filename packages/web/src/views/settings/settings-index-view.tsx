@@ -58,7 +58,9 @@ export function SettingsIndexView() {
                     <span className="font-semibold text-sm">{title}</span>
                     <ChevronRight className="size-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
                   </div>
-                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{description}</p>
+                  <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                    {description}
+                  </p>
                 </div>
               </CardContent>
             </Card>

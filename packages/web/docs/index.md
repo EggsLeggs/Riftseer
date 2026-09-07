@@ -13,13 +13,13 @@ sidebar_position: 1
 
 ## Stack
 
-| Piece | Choice |
-| --- | --- |
-| Framework | Next.js App Router |
-| UI | React 19, Tailwind, shadcn/ui |
-| Data | Eden Treaty client → Elysia API; TanStack Query on the client |
-| Deploy | `@opennextjs/cloudflare` + Wrangler |
-| Consent | c15t (Postgres via Supabase transaction pooler) |
+| Piece     | Choice                                                        |
+| --------- | ------------------------------------------------------------- |
+| Framework | Next.js App Router                                            |
+| UI        | React 19, Tailwind, shadcn/ui                                 |
+| Data      | Eden Treaty client → Elysia API; TanStack Query on the client |
+| Deploy    | `@opennextjs/cloudflare` + Wrangler                           |
+| Consent   | c15t (Postgres via Supabase transaction pooler)               |
 
 ---
 
@@ -61,11 +61,11 @@ bun run deploy
 
 ### Environment
 
-| Variable | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_API_URL` | Riftseer API base (local default `http://localhost:8789`) |
-| `NEXT_PUBLIC_APP_URL` | Public site origin (OAuth / email `redirect_to`) |
-| `C15T_DATABASE_URL` | Supabase transaction pooler URI for consent (port 6543, `?prepare=false`) |
+| Variable              | Purpose                                                                   |
+| --------------------- | ------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_API_URL` | Riftseer API base (local default `http://localhost:8789`)                 |
+| `NEXT_PUBLIC_APP_URL` | Public site origin (OAuth / email `redirect_to`)                          |
+| `C15T_DATABASE_URL`   | Supabase transaction pooler URI for consent (port 6543, `?prepare=false`) |
 
 Public values must match at **build time** and **Worker runtime**. `wrangler.jsonc` owns runtime bindings; Workers Builds (or CI) must supply the same public vars used for the Next.js build.
 

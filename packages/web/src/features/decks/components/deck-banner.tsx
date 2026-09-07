@@ -255,9 +255,7 @@ export function DeckBanner({
               mask, so nothing shows there. */}
           <div
             className="absolute inset-y-0 right-0 w-full sm:w-(--banner-holder-w)"
-            style={
-              { "--banner-holder-w": `${FRAMING.holderWidthPct}%` } as React.CSSProperties
-            }
+            style={{ "--banner-holder-w": `${FRAMING.holderWidthPct}%` } as React.CSSProperties}
           >
             <img
               src={imageUrl}

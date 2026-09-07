@@ -37,9 +37,7 @@ The response always includes both result arrays and says which one is populated:
   "total": 1,
   "offset": 0,
   "limit": 10,
-  "cards": [
-    { "object": "oracle", "preferred_printing": { "object": "printing" } }
-  ],
+  "cards": [{ "object": "oracle", "preferred_printing": { "object": "printing" } }],
   "printings": []
 }
 ```

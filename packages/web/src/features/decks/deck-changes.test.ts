@@ -124,10 +124,7 @@ describe("applyDeckCardChanges", () => {
   });
 
   test("leaves the champion flag alone unless the change carries one", () => {
-    const result = applyDeckCardChanges(
-      [card({ is_champion: true })],
-      [change({ quantity: 2 })],
-    );
+    const result = applyDeckCardChanges([card({ is_champion: true })], [change({ quantity: 2 })]);
     expect(result[0]!.is_champion).toBe(true);
   });
 });
@@ -181,7 +178,12 @@ describe("deckPrintingSwapChanges", () => {
   test("empties the old row and refills the same zone under the new printing", () => {
     const changes = deckPrintingSwapChanges([card({ quantity: 3 })], card({ quantity: 3 }), target);
     expect(changes[0]).toEqual({ zone: "main", printing_id: "p1", oracle_id: "o1", quantity: 0 });
-    expect(changes[1]).toMatchObject({ zone: "main", printing_id: "p2", oracle_id: "o1", quantity: 3 });
+    expect(changes[1]).toMatchObject({
+      zone: "main",
+      printing_id: "p2",
+      oracle_id: "o1",
+      quantity: 3,
+    });
     expect(changes[1]!.is_champion).toBeFalsy();
   });
 

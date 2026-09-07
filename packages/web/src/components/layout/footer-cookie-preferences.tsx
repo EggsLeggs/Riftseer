@@ -12,10 +12,7 @@ export function FooterCookiePreferencesLink() {
 
   const jurisdiction = locationInfo?.jurisdiction;
   const canChooseCookies =
-    !isLoadingConsentInfo &&
-    hasFetchedBanner &&
-    jurisdiction != null &&
-    jurisdiction !== "NONE";
+    !isLoadingConsentInfo && hasFetchedBanner && jurisdiction != null && jurisdiction !== "NONE";
 
   if (!canChooseCookies) {
     return null;

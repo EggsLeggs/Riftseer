@@ -10,10 +10,7 @@ import { ADMIN_AUDIT_ACTIONS } from "../admin-actions.ts";
  * A copy that drifts here does not throw — the audit-log filter simply returns
  * nothing — so the only useful assertion is against the migration itself.
  */
-const MIGRATIONS_DIR = path.resolve(
-  import.meta.dirname,
-  "../../../../supabase/migrations",
-);
+const MIGRATIONS_DIR = path.resolve(import.meta.dirname, "../../../../supabase/migrations");
 
 /** `admin__log(p_actor, 'oracle.patch', …)` and the one dynamic caller. */
 function actionsWrittenBySql(): Set<string> {

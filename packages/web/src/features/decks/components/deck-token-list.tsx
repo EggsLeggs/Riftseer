@@ -58,11 +58,7 @@ export function DeckTokenList({
   }, [cards]);
 
   if (tokens.length === 0) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        No cards in this deck make tokens.
-      </p>
-    );
+    return <p className="text-muted-foreground text-sm">No cards in this deck make tokens.</p>;
   }
 
   const resolved = details.map((query) => query.data ?? undefined);

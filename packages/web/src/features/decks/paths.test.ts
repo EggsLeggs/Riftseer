@@ -23,9 +23,7 @@ describe("deckSlugTail", () => {
 
 describe("deckHref", () => {
   test("is id-first, so the tail is cosmetic", () => {
-    expect(deckHref({ id: "abc123", name: "Yasuo Fury" })).toBe(
-      "/deck/abc123/yasuo-fury",
-    );
+    expect(deckHref({ id: "abc123", name: "Yasuo Fury" })).toBe("/deck/abc123/yasuo-fury");
   });
 
   test("renaming changes only the tail, never the resolvable part", () => {

@@ -48,16 +48,7 @@ export interface DeckGroup<T> {
  * order a game uses the cards, and an unrecognised type sorts after the known
  * ones rather than being dropped.
  */
-const TYPE_ORDER = [
-  "legend",
-  "champion",
-  "unit",
-  "spell",
-  "gear",
-  "rune",
-  "battlefield",
-  "token",
-];
+const TYPE_ORDER = ["legend", "champion", "unit", "spell", "gear", "rune", "battlefield", "token"];
 
 function typeKey(value: string | null | undefined): string {
   return value?.trim().toLowerCase() ?? "";
@@ -73,7 +64,10 @@ function domainKey(domains: string[]): string {
   return cleaned.length > 0 ? cleaned.join("+") : "";
 }
 
-function bucketFor(card: GroupableCard, mode: DeckGroupMode): {
+function bucketFor(
+  card: GroupableCard,
+  mode: DeckGroupMode,
+): {
   key: string;
   label: string;
   sort: number;

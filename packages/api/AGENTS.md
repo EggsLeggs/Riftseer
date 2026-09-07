@@ -25,7 +25,7 @@ Nine route files, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` on
 - `src/routes/auth.ts` — register, login, refresh, logout, password reset, email change, `/auth/me`.
 - `src/routes/users.ts` — public profiles, followers, following, `/users/me`, follow and unfollow.
 - `src/routes/metafy.ts` — Metafy OAuth connect, callback, status, disconnect.
-- `src/routes/formats.ts` — public `GET /formats`. Format *mutations* live in `admin.ts`.
+- `src/routes/formats.ts` — public `GET /formats`. Format _mutations_ live in `admin.ts`.
 - `src/routes/sets.ts` — public `GET /sets`.
 - `src/routes/meta.ts` — `GET /health` and `GET /meta`.
 

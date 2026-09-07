@@ -14,25 +14,21 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import {
-  cardsApi,
-  cardsQueryKeys,
-  CardApiError,
-  type CardResult,
-} from "./api";
+import { cardsApi, cardsQueryKeys, CardApiError, type CardResult } from "./api";
 import { cardHref } from "@riftseer/types/render";
 import { printingImageUrl } from "@riftseer/types";
 
 function searchErrorInfo(err: unknown): { title: string; detail: string } {
   if (err instanceof CardApiError) {
-    if (err.code === "timeout")
-      return { title: "Search timed out", detail: "Please try again." };
+    if (err.code === "timeout") return { title: "Search timed out", detail: "Please try again." };
     if (err.code === "network")
       return { title: "Couldn't connect", detail: "Check your connection and try again." };
-    if (err.status === 400 && err.detail)
-      return { title: "Invalid query", detail: err.detail };
+    if (err.status === 400 && err.detail) return { title: "Invalid query", detail: err.detail };
     if (err.status != null && err.status >= 500)
-      return { title: "Search unavailable", detail: "The search service is having issues. Try again shortly." };
+      return {
+        title: "Search unavailable",
+        detail: "The search service is having issues. Try again shortly.",
+      };
   }
   return { title: "Something went wrong", detail: "Please try again." };
 }
@@ -108,7 +104,7 @@ export function CardSearchDialog({
     retry: false,
   });
 
-  const cards = trimmed ? search.data?.cards ?? [] : [];
+  const cards = trimmed ? (search.data?.cards ?? []) : [];
   const showLoading = trimmed.length > 0 && search.isFetching && !search.isError;
   const errorInfo = search.isError ? searchErrorInfo(search.error) : null;
 
@@ -187,9 +183,7 @@ export function CardSearchDialog({
               </div>
             </div>
           ) : showLoading && cards.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-              Searching…
-            </div>
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">Searching…</div>
           ) : !showLoading && search.data != null && cards.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
               <img
@@ -211,10 +205,9 @@ export function CardSearchDialog({
             <CommandGroup heading="Cards">
               {cards.map((result) => {
                 const { oracle, printing } = result;
-                const setCode = [
-                  printing.set?.set_code?.toUpperCase(),
-                  printing.collector_number,
-                ].filter(Boolean).join(" · ");
+                const setCode = [printing.set?.set_code?.toUpperCase(), printing.collector_number]
+                  .filter(Boolean)
+                  .join(" · ");
                 const imageUrl = printingImageUrl(printing, "small");
                 return (
                   <CommandItem
@@ -255,10 +248,7 @@ export function CardSearchDialog({
             <>
               <CommandSeparator />
               <CommandGroup>
-                <CommandItem
-                  value={`__view_all__${trimmed}`}
-                  onSelect={goToSearchPage}
-                >
+                <CommandItem value={`__view_all__${trimmed}`} onSelect={goToSearchPage}>
                   <SearchIcon className="size-4 opacity-60" />
                   <span className="flex-1">View all results for "{trimmed}"</span>
                   <Kbd
@@ -275,7 +265,9 @@ export function CardSearchDialog({
         </CommandList>
         <div className="flex items-center gap-4 border-t border-border px-3 py-2 text-xs text-muted-foreground">
           {trimmed && search.data?.total != null && (
-            <span>{search.data.total} result{search.data.total !== 1 ? "s" : ""}</span>
+            <span>
+              {search.data.total} result{search.data.total !== 1 ? "s" : ""}
+            </span>
           )}
           <div className="ml-auto flex items-center gap-3">
             <span className="flex items-center gap-1">

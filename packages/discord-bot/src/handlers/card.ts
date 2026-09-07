@@ -19,20 +19,13 @@ export async function handleCard(
     (o) => o.name === "set" && o.type === ApplicationCommandOptionType.String,
   );
   const imageOpt = options.find(
-    (o) =>
-      o.name === "image" && o.type === ApplicationCommandOptionType.Boolean,
+    (o) => o.name === "image" && o.type === ApplicationCommandOptionType.Boolean,
   );
 
-  const cardName =
-    "value" in (name ?? {}) ? (name as { value: string }).value : "";
-  const setCode =
-    setOpt && "value" in setOpt
-      ? (setOpt as { value: string }).value
-      : undefined;
+  const cardName = "value" in (name ?? {}) ? (name as { value: string }).value : "";
+  const setCode = setOpt && "value" in setOpt ? (setOpt as { value: string }).value : undefined;
   const imageOnly =
-    imageOpt && "value" in imageOpt
-      ? (imageOpt as { value: boolean }).value
-      : false;
+    imageOpt && "value" in imageOpt ? (imageOpt as { value: boolean }).value : false;
 
   const request = setCode ? `${cardName}|${setCode}` : cardName;
 
@@ -53,12 +46,7 @@ export async function handleCard(
   const emojiMap = await getEmojiMap(env);
   const embed = imageOnly
     ? buildCardImageEmbed(result.oracle, result.printing, env.SITE_BASE_URL)
-    : buildCardEmbed(
-        result.oracle,
-        result.printing,
-        env.SITE_BASE_URL,
-        emojiMap,
-      );
+    : buildCardEmbed(result.oracle, result.printing, env.SITE_BASE_URL, emojiMap);
 
   await patchResponse(interaction, env, { embeds: [embed] });
 }

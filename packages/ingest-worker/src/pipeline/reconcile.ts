@@ -178,9 +178,7 @@ function claimedProductIds(printings: IngestPrinting[]): Set<number> {
  * more than one does. An ambiguous key (alternate art sharing a number) yields
  * no suggestion rather than a wrong one.
  */
-function buildCollectorIndex(
-  printings: IngestPrinting[],
-): Map<string, IngestPrinting | null> {
+function buildCollectorIndex(printings: IngestPrinting[]): Map<string, IngestPrinting | null> {
   const index = new Map<string, IngestPrinting | null>();
   for (const printing of printings) {
     const setCode = printing.set_code;
@@ -192,10 +190,7 @@ function buildCollectorIndex(
   return index;
 }
 
-function productPayload(
-  product: EnrichedProduct,
-  setCode: string | null,
-): ReconciliationProduct {
+function productPayload(product: EnrichedProduct, setCode: string | null): ReconciliationProduct {
   return {
     product_id: product.productId,
     name: product.name,
@@ -218,9 +213,7 @@ function unmatchedEntry(
     source: "tcgplayer",
     payload: {
       product: productPayload(product, setCode),
-      ...(proposed
-        ? { printing_id: proposed.id, printing_name: proposed.name }
-        : {}),
+      ...(proposed ? { printing_id: proposed.id, printing_name: proposed.name } : {}),
     },
     proposed_printing_id: proposed?.id ?? null,
   };
@@ -303,10 +296,7 @@ export function buildReconciliationEntries(
     // disagreement — compare against every candidate the matcher accepts.
     if (product.collectorNumber) {
       const candidates = collectorCandidates(printing);
-      if (
-        candidates.length > 0 &&
-        !candidates.includes(product.collectorNumber)
-      ) {
+      if (candidates.length > 0 && !candidates.includes(product.collectorNumber)) {
         entries.push(
           diffEntry(
             printing,
@@ -337,42 +327,21 @@ export function buildReconciliationEntries(
       product.rarity.toLowerCase() !== "showcase" &&
       printingRarity?.toLowerCase() !== product.rarity.toLowerCase()
     ) {
-      entries.push(
-        diffEntry(
-          printing,
-          product,
-          setCode,
-          "rarity",
-          printingRarity,
-          product.rarity,
-        ),
-      );
+      entries.push(diffEntry(printing, product, setCode, "rarity", printingRarity, product.rarity));
     }
 
     const productReleased = toDatePart(product.releasedOn);
     const printingReleased = toDatePart(printing.released_at);
-    if (
-      productReleased &&
-      printingReleased &&
-      productReleased !== printingReleased
-    ) {
+    if (productReleased && printingReleased && productReleased !== printingReleased) {
       entries.push(
-        diffEntry(
-          printing,
-          product,
-          setCode,
-          "released_at",
-          printingReleased,
-          productReleased,
-        ),
+        diffEntry(printing, product, setCode, "released_at", printingReleased, productReleased),
       );
     }
   }
 
   logger.info("Built reconciliation entries", {
     total: entries.length,
-    unmatchedProducts: entries.filter((e) => e.kind === "unmatched_product")
-      .length,
+    unmatchedProducts: entries.filter((e) => e.kind === "unmatched_product").length,
     fieldDiffs: entries.filter((e) => e.kind === "field_diff").length,
     sealedSkipped,
   });
@@ -409,10 +378,7 @@ function labelledNumber(
   return typeof id === "number" && Number.isFinite(id) ? id : null;
 }
 
-function galleryCardPayload(
-  raw: RawGalleryCard,
-  riftboundId: string,
-): ReconciliationGalleryCard {
+function galleryCardPayload(raw: RawGalleryCard, riftboundId: string): ReconciliationGalleryCard {
   const collector = galleryPrintedCollectorNumber(raw);
   const variants = printedVariantSignals(riftboundId);
   const equipment = galleryEquipment(raw);
@@ -425,8 +391,7 @@ function galleryCardPayload(
     collector_number: collector,
     rarity: raw.rarity?.value?.label ?? null,
     type: raw.cardType?.type?.[0]?.label ?? null,
-    image_url:
-      (raw.cardImage as { url?: string } | undefined)?.url ?? null,
+    image_url: (raw.cardImage as { url?: string } | undefined)?.url ?? null,
     energy: labelledNumber(raw.energy),
     might: labelledNumber(raw.might),
     power: labelledNumber(raw.power),
@@ -457,36 +422,12 @@ function galleryFieldPairs(
       comparableValue(printing.collector_number),
       comparableValue(galleryPrintedCollectorNumber(raw)),
     ],
-    [
-      "rarity",
-      comparableValue(printing.rarity),
-      comparableValue(raw.rarity?.value?.label),
-    ],
-    [
-      "type",
-      comparableValue(printing.card_type),
-      comparableValue(raw.cardType?.type?.[0]?.label),
-    ],
-    [
-      "energy",
-      comparableValue(printing.energy),
-      comparableValue(raw.energy?.value?.id),
-    ],
-    [
-      "might",
-      comparableValue(printing.might),
-      comparableValue(raw.might?.value?.id),
-    ],
-    [
-      "power",
-      comparableValue(printing.power),
-      comparableValue(raw.power?.value?.id),
-    ],
-    [
-      "text",
-      comparableText(printing.text_rich),
-      comparableText(raw.text?.richText?.body),
-    ],
+    ["rarity", comparableValue(printing.rarity), comparableValue(raw.rarity?.value?.label)],
+    ["type", comparableValue(printing.card_type), comparableValue(raw.cardType?.type?.[0]?.label)],
+    ["energy", comparableValue(printing.energy), comparableValue(raw.energy?.value?.id)],
+    ["might", comparableValue(printing.might), comparableValue(raw.might?.value?.id)],
+    ["power", comparableValue(printing.power), comparableValue(raw.power?.value?.id)],
+    ["text", comparableText(printing.text_rich), comparableText(raw.text?.richText?.body)],
   ];
 }
 

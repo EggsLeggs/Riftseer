@@ -76,8 +76,7 @@ export function DeckCardTagsDialog({
         <DialogHeader>
           <DialogTitle>Tags{card ? ` — ${card.name}` : ""}</DialogTitle>
           <DialogDescription>
-            Your own labels for this card in this deck. Everyone who can see
-            the deck sees them.
+            Your own labels for this card in this deck. Everyone who can see the deck sees them.
           </DialogDescription>
         </DialogHeader>
 

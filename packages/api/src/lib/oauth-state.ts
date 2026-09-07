@@ -66,7 +66,11 @@ export async function issueOAuthState(
   const payload = base64UrlEncode(
     encoder.encode(JSON.stringify({ ...claims, nonce: crypto.randomUUID() })),
   );
-  const signature = await crypto.subtle.sign("HMAC", await stateKey(secret), encoder.encode(payload));
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    await stateKey(secret),
+    encoder.encode(payload),
+  );
   return `${payload}.${base64UrlEncode(new Uint8Array(signature))}`;
 }
 

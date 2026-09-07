@@ -115,9 +115,7 @@ export async function dismissReviewEntryAction(
   entryId: string,
   note?: string,
 ): Promise<AdminResult<AdminReviewMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.dismissReviewEntry(token, entryId, note),
-  );
+  const result = await withToken((token) => adminApi.dismissReviewEntry(token, entryId, note));
   if (result.ok) revalidatePath("/admin/review");
   return result;
 }
@@ -125,9 +123,7 @@ export async function dismissReviewEntryAction(
 export async function createOracleAction(
   definition: AdminOracleDefinition,
 ): Promise<AdminResult<AdminOracleMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.createOracle(token, definition),
-  );
+  const result = await withToken((token) => adminApi.createOracle(token, definition));
   if (result.ok) revalidatePath("/admin/cards");
   return result;
 }
@@ -136,9 +132,7 @@ export async function patchOracleAction(
   oracleId: string,
   patch: AdminOraclePatch,
 ): Promise<AdminResult<AdminOracleMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.patchOracle(token, oracleId, patch),
-  );
+  const result = await withToken((token) => adminApi.patchOracle(token, oracleId, patch));
   if (result.ok) revalidatePath("/card", "layout");
   return result;
 }
@@ -147,9 +141,7 @@ export async function deleteOracleAction(
   oracleId: string,
   reason?: string,
 ): Promise<AdminResult<AdminOracleMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.deleteOracle(token, oracleId, reason),
-  );
+  const result = await withToken((token) => adminApi.deleteOracle(token, oracleId, reason));
   if (result.ok) revalidatePath("/card", "layout");
   return result;
 }
@@ -168,9 +160,7 @@ export async function restorePrintingAction(
   printingId: string,
   publicSlug?: string,
 ): Promise<AdminResult<AdminPrintingMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.restorePrinting(token, printingId),
-  );
+  const result = await withToken((token) => adminApi.restorePrinting(token, printingId));
   if (result.ok) revalidatePrinting(printingId, publicSlug);
   return result;
 }
@@ -201,9 +191,7 @@ export async function patchPrintingAction(
   patch: AdminPrintingPatch,
   publicSlug?: string,
 ): Promise<AdminResult<AdminPrintingMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.patchPrinting(token, printingId, patch),
-  );
+  const result = await withToken((token) => adminApi.patchPrinting(token, printingId, patch));
   if (result.ok) revalidatePrinting(printingId, publicSlug);
   return result;
 }
@@ -212,9 +200,7 @@ export async function deletePrintingAction(
   printingId: string,
   reason?: string,
 ): Promise<AdminResult<AdminPrintingMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.deletePrinting(token, printingId, reason),
-  );
+  const result = await withToken((token) => adminApi.deletePrinting(token, printingId, reason));
   if (result.ok) revalidatePrinting(printingId);
   return result;
 }
@@ -230,9 +216,7 @@ export async function setPrintingDeltaAction(
   delta: AdminPrintingDelta | null,
   publicSlug?: string,
 ): Promise<AdminResult<AdminPrintingMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.setPrintingDelta(token, printingId, delta),
-  );
+  const result = await withToken((token) => adminApi.setPrintingDelta(token, printingId, delta));
   if (result.ok) revalidatePrinting(printingId, publicSlug);
   return result;
 }
@@ -241,9 +225,7 @@ export async function regenerateSlugAction(
   cardId: string,
   previousSlug?: string,
 ): Promise<AdminResult<AdminSlugMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.regenerateSlug(token, cardId),
-  );
+  const result = await withToken((token) => adminApi.regenerateSlug(token, cardId));
   if (result.ok) {
     revalidatePrinting(cardId, previousSlug);
     revalidatePath(`/card/${result.data.public_slug}`);
@@ -261,9 +243,7 @@ export async function setRelationshipsAction(
   oracleId: string,
   entries: AdminRelationshipEntry[],
 ): Promise<AdminResult<AdminOracleMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.setRelationships(token, oracleId, entries),
-  );
+  const result = await withToken((token) => adminApi.setRelationships(token, oracleId, entries));
   if (result.ok) {
     revalidatePath("/card", "layout");
     revalidatePath("/admin/cards");
@@ -275,9 +255,7 @@ export async function uploadCardImageAction(
   cardId: string,
   formData: FormData,
 ): Promise<AdminResult<AdminImageMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.uploadCardImage(token, cardId, formData),
-  );
+  const result = await withToken((token) => adminApi.uploadCardImage(token, cardId, formData));
   if (result.ok) revalidatePrinting(cardId);
   return result;
 }
@@ -294,10 +272,7 @@ const MAX_IMPORT_REDIRECTS = 3;
  * it to a list means a poisoned payload cannot turn this Worker into a probe
  * for arbitrary internal addresses.
  */
-const IMPORT_HOST_ALLOWLIST = new Set([
-  "cmsassets.rgpub.io",
-  "assetcdn.rgpub.io",
-]);
+const IMPORT_HOST_ALLOWLIST = new Set(["cmsassets.rgpub.io", "assetcdn.rgpub.io"]);
 
 const INVALID_IMPORT_URL = {
   ok: false as const,
@@ -325,10 +300,7 @@ function allowedImportUrl(value: string): URL | null {
  * buffering it whole — `Content-Length` is upstream's claim, not a guarantee.
  * Returns null when the source is empty or oversized.
  */
-async function readCappedBody(
-  response: Response,
-  limit: number,
-): Promise<Uint8Array | null> {
+async function readCappedBody(response: Response, limit: number): Promise<Uint8Array | null> {
   const declared = Number(response.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > limit) return null;
 
@@ -412,9 +384,7 @@ export async function importCardImageFromUrlAction(
       });
 
       const location =
-        response.status >= 300 && response.status < 400
-          ? response.headers.get("location")
-          : null;
+        response.status >= 300 && response.status < 400 ? response.headers.get("location") : null;
       if (!location) break;
 
       if (hop >= MAX_IMPORT_REDIRECTS) {
@@ -468,11 +438,9 @@ export async function importCardImageFromUrlAction(
   const formData = new FormData();
   formData.append(
     "file",
-    new File(
-      [Uint8Array.from(bytes)],
-      `gallery.${extensionForImageType(contentType)}`,
-      { type: contentType },
-    ),
+    new File([Uint8Array.from(bytes)], `gallery.${extensionForImageType(contentType)}`, {
+      type: contentType,
+    }),
   );
   const alt = accessibilityText?.trim();
   if (alt) formData.append("accessibility_text", alt);
@@ -484,9 +452,7 @@ export async function createSetAction(
   setCode: string,
   definition: AdminSetDefinition,
 ): Promise<AdminResult<AdminSetMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.createSet(token, setCode, definition),
-  );
+  const result = await withToken((token) => adminApi.createSet(token, setCode, definition));
   if (result.ok) {
     revalidatePath("/admin/sets");
     revalidatePath("/sets");
@@ -499,9 +465,7 @@ export async function patchSetAction(
   patch: AdminSetPatch,
   note?: string,
 ): Promise<AdminResult<AdminSetMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.patchSet(token, setCode, patch, note),
-  );
+  const result = await withToken((token) => adminApi.patchSet(token, setCode, patch, note));
   if (result.ok) {
     revalidatePath("/admin/sets");
     revalidatePath("/sets");
@@ -514,9 +478,7 @@ export async function deleteSetAction(
   setCode: string,
   reason?: string,
 ): Promise<AdminResult<AdminSetMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.deleteSet(token, setCode, reason),
-  );
+  const result = await withToken((token) => adminApi.deleteSet(token, setCode, reason));
   if (result.ok) {
     revalidatePath("/admin/sets");
     revalidatePath("/sets");
@@ -536,9 +498,7 @@ function revalidateFormats() {
   revalidatePath("/card", "layout");
 }
 
-export async function listFormatsAction(): Promise<
-  AdminResult<AdminFormatListResult>
-> {
+export async function listFormatsAction(): Promise<AdminResult<AdminFormatListResult>> {
   return withToken((token) => adminApi.listFormats(token));
 }
 
@@ -554,9 +514,7 @@ export async function patchFormatAction(
   code: string,
   patch: AdminFormatPatch,
 ): Promise<AdminResult<AdminFormatMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.patchFormat(token, code, patch),
-  );
+  const result = await withToken((token) => adminApi.patchFormat(token, code, patch));
   if (result.ok) revalidateFormats();
   return result;
 }
@@ -587,9 +545,7 @@ export async function setFormatZoneRuleAction(
   zone: AdminDeckZone,
   rule: AdminFormatZoneRuleInput,
 ): Promise<AdminResult<AdminFormatZoneRuleMutationResult>> {
-  const result = await withToken((token) =>
-    adminApi.setFormatZoneRule(token, code, zone, rule),
-  );
+  const result = await withToken((token) => adminApi.setFormatZoneRule(token, code, zone, rule));
   if (result.ok) revalidateFormatRules();
   return result;
 }
@@ -598,9 +554,7 @@ export async function deleteFormatZoneRuleAction(
   code: string,
   zone: AdminDeckZone,
 ): Promise<AdminResult<AdminFormatZoneRuleDeleteResult>> {
-  const result = await withToken((token) =>
-    adminApi.deleteFormatZoneRule(token, code, zone),
-  );
+  const result = await withToken((token) => adminApi.deleteFormatZoneRule(token, code, zone));
   if (result.ok) revalidateFormatRules();
   return result;
 }
@@ -620,9 +574,7 @@ export async function setFormatLegalitySeverityAction(
 export async function reorderFormatsAction(
   codes: string[],
 ): Promise<AdminResult<AdminReorderResult>> {
-  const result = await withToken((token) =>
-    adminApi.reorderFormats(token, codes),
-  );
+  const result = await withToken((token) => adminApi.reorderFormats(token, codes));
   if (result.ok) revalidateFormats();
   return result;
 }
@@ -644,14 +596,7 @@ export async function setCardLegalityAction(
   note?: string | null,
 ): Promise<AdminResult<AdminLegalityMutationResult>> {
   const result = await withToken((token) =>
-    adminApi.setCardLegality(
-      token,
-      cardId,
-      formatCode,
-      status,
-      applyToAllPrintings,
-      note,
-    ),
+    adminApi.setCardLegality(token, cardId, formatCode, status, applyToAllPrintings, note),
   );
   if (result.ok) {
     // An oracle-level status changes every printing's page, and the sibling slugs
@@ -705,9 +650,7 @@ export async function patchRulingAction(
   rulingId: string,
   patch: AdminRulingRecordPatch,
 ): Promise<AdminResult<{ ok: true; ruling: AdminRuling }>> {
-  const result = await withToken((token) =>
-    adminApi.patchRuling(token, rulingId, patch),
-  );
+  const result = await withToken((token) => adminApi.patchRuling(token, rulingId, patch));
   if (result.ok) revalidateRulings();
   return result;
 }
@@ -715,9 +658,7 @@ export async function patchRulingAction(
 export async function deleteRulingAction(
   rulingId: string,
 ): Promise<AdminResult<{ ok: true; ruling_id: string }>> {
-  const result = await withToken((token) =>
-    adminApi.deleteRuling(token, rulingId),
-  );
+  const result = await withToken((token) => adminApi.deleteRuling(token, rulingId));
   if (result.ok) revalidateRulings();
   return result;
 }

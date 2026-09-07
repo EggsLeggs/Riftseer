@@ -22,11 +22,6 @@ export async function handleRandom(
   }
 
   const emojiMap = await getEmojiMap(env);
-  const embed = buildCardEmbed(
-    data,
-    data.preferred_printing,
-    env.SITE_BASE_URL,
-    emojiMap,
-  );
+  const embed = buildCardEmbed(data, data.preferred_printing, env.SITE_BASE_URL, emojiMap);
   await patchResponse(interaction, env, { embeds: [embed] });
 }

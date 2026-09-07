@@ -9,11 +9,7 @@ import { cn } from "@/lib/utils";
 /** Keeps banner action labels on a single line (c15t buttons can wrap by default on narrow widths). */
 const ACTION_LABEL_ROW = "whitespace-nowrap";
 
-const OPTIONAL_OFF: AllConsentNames[] = [
-  "experience",
-  "measurement",
-  "marketing",
-];
+const OPTIONAL_OFF: AllConsentNames[] = ["experience", "measurement", "marketing"];
 
 /** Preset: necessary + functionality on; analytics & marketing off. */
 function EssentialsAndPreferencesButton({
@@ -68,16 +64,10 @@ export function CustomConsentBanner() {
               const { key, ...rest } = props;
               switch (action) {
                 case "reject":
-                  return (
-                    <EssentialsAndPreferencesButton key={key} {...rest} />
-                  );
+                  return <EssentialsAndPreferencesButton key={key} {...rest} />;
                 case "accept":
                   return (
-                    <ConsentBanner.AcceptButton
-                      key={key}
-                      {...rest}
-                      className={ACTION_LABEL_ROW}
-                    />
+                    <ConsentBanner.AcceptButton key={key} {...rest} className={ACTION_LABEL_ROW} />
                   );
                 case "customize":
                   return (

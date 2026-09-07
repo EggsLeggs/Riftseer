@@ -35,10 +35,9 @@ const publicDir = join(import.meta.dir, "../../web/public");
 
 // ─── Fetch existing emojis so we can skip duplicates ─────────────────────────
 
-const listRes = await fetch(
-  `https://discord.com/api/v10/applications/${appId}/emojis`,
-  { headers: { Authorization: `Bot ${token}` } },
-);
+const listRes = await fetch(`https://discord.com/api/v10/applications/${appId}/emojis`, {
+  headers: { Authorization: `Bot ${token}` },
+});
 
 if (!listRes.ok) {
   console.error(`Failed to list emojis (${listRes.status}): ${await listRes.text()}`);
@@ -91,17 +90,14 @@ for (const entry of EMOJI_FILES) {
 
   const imageData = `data:${mime};base64,${buffer.toString("base64")}`;
 
-  const res = await fetch(
-    `https://discord.com/api/v10/applications/${appId}/emojis`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bot ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name: entry.emojiName, image: imageData }),
+  const res = await fetch(`https://discord.com/api/v10/applications/${appId}/emojis`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({ name: entry.emojiName, image: imageData }),
+  });
 
   if (res.ok) {
     const emoji = (await res.json()) as { id: string; name: string };
@@ -116,6 +112,4 @@ for (const entry of EMOJI_FILES) {
   await new Promise((r) => setTimeout(r, 500));
 }
 
-console.log(
-  `\nDone — ${uploaded} uploaded, ${skipped} skipped (already existed).`,
-);
+console.log(`\nDone — ${uploaded} uploaded, ${skipped} skipped (already existed).`);

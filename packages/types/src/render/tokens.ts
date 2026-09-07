@@ -81,9 +81,8 @@ export function replaceIconTokens(
   text: string,
   replace: (key: string, match: string) => string,
 ): string {
-  return text.replace(
-    new RegExp(TOKEN_REGEX.source, "g"),
-    (match: string, key: string) => replace(key, match),
+  return text.replace(new RegExp(TOKEN_REGEX.source, "g"), (match: string, key: string) =>
+    replace(key, match),
   );
 }
 
@@ -120,10 +119,7 @@ export type CardTextToken =
 export function tokenizeCardTextInline(text: string): InlineCardTextToken[] {
   const tokens: InlineCardTextToken[] = [];
   // Groups: 1 = icon key, 2 = keyword label, 3 = optional arrow marker.
-  const regex = new RegExp(
-    `${TOKEN_REGEX.source}|${KEYWORD_TAG_REGEX.source}`,
-    "g",
-  );
+  const regex = new RegExp(`${TOKEN_REGEX.source}|${KEYWORD_TAG_REGEX.source}`, "g");
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let pendingStackLeft = false;
@@ -206,9 +202,7 @@ export function tokenizeCardTextLine(line: string): CardTextToken[] {
     if (segment.startsWith("_") && segment.endsWith("_") && segment.length > 2) {
       out.push({
         kind: "italic",
-        tokens: tokenizeCardTextInline(
-          restoreIconTokens(segment.slice(1, -1), iconTokens),
-        ),
+        tokens: tokenizeCardTextInline(restoreIconTokens(segment.slice(1, -1), iconTokens)),
       });
       continue;
     }
@@ -228,10 +222,7 @@ const ESCAPED_TOKEN_PLACEHOLDER = /\uE002(\d+)\uE003/g;
 export function maskIconTokens(text: string): { masked: string; tokens: string[] } {
   const tokens: string[] = [];
   // Escape literal sentinel-shaped runs so restore only replaces generated markers.
-  const escaped = text.replace(
-    TOKEN_PLACEHOLDER,
-    (_, index: string) => `\uE002${index}\uE003`,
-  );
+  const escaped = text.replace(TOKEN_PLACEHOLDER, (_, index: string) => `\uE002${index}\uE003`);
   const masked = escaped.replace(new RegExp(TOKEN_REGEX.source, "g"), (match) => {
     const index = tokens.length;
     tokens.push(match);

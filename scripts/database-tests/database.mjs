@@ -6,8 +6,7 @@ import pg from "pg";
 const { Client } = pg;
 const repoRoot = path.resolve(import.meta.dirname, "../..");
 const databaseUrl =
-  process.env.RIFTSEER_DATABASE_URL ??
-  "postgres://postgres:postgres@localhost:55433/riftseer";
+  process.env.RIFTSEER_DATABASE_URL ?? "postgres://postgres:postgres@localhost:55433/riftseer";
 
 async function runFile(client, relativePath) {
   const sql = await readFile(path.join(repoRoot, relativePath), "utf8");
@@ -25,9 +24,7 @@ async function runFile(client, relativePath) {
  */
 async function runMigrations(client) {
   const dir = path.join(repoRoot, "supabase/migrations");
-  const files = (await readdir(dir))
-    .filter((name) => name.endsWith(".sql"))
-    .sort();
+  const files = (await readdir(dir)).filter((name) => name.endsWith(".sql")).sort();
   if (files.length === 0) throw new Error("no migrations found");
   for (const name of files) {
     await runFile(client, path.join("supabase/migrations", name));

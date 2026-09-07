@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { forgotPasswordAction } from "@/features/auth/actions";
 
 const schema = z.object({
@@ -21,7 +28,10 @@ type Fields = z.infer<typeof schema>;
 export function ForgotPasswordView() {
   const [state, action, pending] = useActionState(forgotPasswordAction, null);
 
-  const { register, formState: { errors } } = useForm<Fields>({
+  const {
+    register,
+    formState: { errors },
+  } = useForm<Fields>({
     resolver: zodResolver(schema),
   });
 

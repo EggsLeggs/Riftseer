@@ -29,9 +29,9 @@ function deckCard(overrides: Partial<DeckCard>): DeckCard {
 describe("eligibleZones", () => {
   test("routes runes and battlefields away from the main deck", () => {
     expect(eligibleZones({ oracle_id: "o", printing_id: "p", card_type: "Rune" })[0]).toBe("runes");
-    expect(
-      eligibleZones({ oracle_id: "o", printing_id: "p", card_type: "Battlefield" })[0],
-    ).toBe("battlefields");
+    expect(eligibleZones({ oracle_id: "o", printing_id: "p", card_type: "Battlefield" })[0]).toBe(
+      "battlefields",
+    );
     expect(eligibleZones({ oracle_id: "o", printing_id: "p", card_type: "Legend" })).toEqual([
       "legend",
     ]);
@@ -52,9 +52,9 @@ describe("resolveAddZone", () => {
   });
 
   test("ignores a requested zone the card may not sit in", () => {
-    expect(
-      resolveAddZone({ oracle_id: "o", printing_id: "p", card_type: "Legend" }, "main"),
-    ).toBe("legend");
+    expect(resolveAddZone({ oracle_id: "o", printing_id: "p", card_type: "Legend" }, "main")).toBe(
+      "legend",
+    );
   });
 });
 
@@ -101,8 +101,7 @@ describe("deckAddChange", () => {
   test("keeps a champion flag the row already carries", () => {
     const cards = [deckCard({ quantity: 1, is_champion: true })];
     expect(
-      deckAddChange(cards, { oracle_id: "o1", printing_id: "p1", card_type: "Unit" })
-        .is_champion,
+      deckAddChange(cards, { oracle_id: "o1", printing_id: "p1", card_type: "Unit" }).is_champion,
     ).toBe(true);
   });
 

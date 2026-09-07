@@ -48,13 +48,13 @@ sources, but stable completed media URLs point at the Riftseer domain.
 
 The `media.media_urls` object on a card may contain the following keys:
 
-| Key | Notes |
-| --- | --- |
-| `small` | WebP, approximately 200 px wide |
-| `normal` | WebP, approximately 400 px wide |
-| `large` | WebP, up to approximately 1000 px wide |
-| `original` | Original source bytes |
-| `png` | Legacy upstream fallback when hosted media is unavailable |
+| Key        | Notes                                                     |
+| ---------- | --------------------------------------------------------- |
+| `small`    | WebP, approximately 200 px wide                           |
+| `normal`   | WebP, approximately 400 px wide                           |
+| `large`    | WebP, up to approximately 1000 px wide                    |
+| `original` | Original source bytes                                     |
+| `png`      | Legacy upstream fallback when hosted media is unavailable |
 
 Check for `null` / `undefined` before using any image URL because a card may
 have no source or may still be waiting for asynchronous variant generation.
@@ -71,11 +71,8 @@ const imageUrl = card.media?.media_urls?.normal ?? null;
 
 `media.accessibility_text` contains a plain-text description of the card art where available. Use it as the `alt` attribute on image elements:
 
-```html
-<img
-  src={card.media.media_urls.normal}
-  alt={card.media.accessibility_text ?? card.name}
-/>
+```tsx
+<img src={card.media.media_urls.normal} alt={card.media.accessibility_text ?? card.name} />
 ```
 
 ### Attribution

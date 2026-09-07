@@ -53,10 +53,7 @@ describe("groupDeckCards by type", () => {
   });
 
   test("sorts cards inside a group by name", () => {
-    const groups = groupDeckCards([
-      card({ name: "Zed" }),
-      card({ name: "Ahri" }),
-    ]);
+    const groups = groupDeckCards([card({ name: "Zed" }), card({ name: "Ahri" })]);
     expect(groups[0]!.cards.map((entry) => entry.name)).toEqual(["Ahri", "Zed"]);
   });
 });
@@ -105,11 +102,7 @@ describe("groupDeckCards by energy", () => {
       ],
       "energy",
     );
-    expect(groups.map((group) => group.label)).toEqual([
-      "0 energy",
-      "2 energy",
-      "10 energy",
-    ]);
+    expect(groups.map((group) => group.label)).toEqual(["0 energy", "2 energy", "10 energy"]);
   });
 
   test("names the value so a heading is not two bare numbers", () => {

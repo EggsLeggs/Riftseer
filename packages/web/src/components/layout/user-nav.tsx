@@ -53,10 +53,7 @@ export function UserNav({ handle, isSupporter, isMember, isAdmin }: UserNavProps
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={() => startTransition(() => logoutAction())}
-          disabled={pending}
-        >
+        <DropdownMenuItem onSelect={() => startTransition(() => logoutAction())} disabled={pending}>
           {pending ? "Signing out…" : "Sign out"}
         </DropdownMenuItem>
       </AppDropdownMenuContent>

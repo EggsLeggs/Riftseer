@@ -4,11 +4,7 @@ import { useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Star, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  connectMetafyAction,
-  disconnectMetafyAction,
-  refreshMetafyStatusAction,
-} from "./actions";
+import { connectMetafyAction, disconnectMetafyAction, refreshMetafyStatusAction } from "./actions";
 import type { MetafyStatusResult } from "./types";
 
 interface MetafyAccountPanelProps {
@@ -60,11 +56,7 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
       if ("error" in result) {
         setFeedback({ message: result.error, isError: true });
       } else {
-        setStatus((prev) =>
-          prev?.linked
-            ? { ...prev, is_supporter: result.is_supporter }
-            : prev,
-        );
+        setStatus((prev) => (prev?.linked ? { ...prev, is_supporter: result.is_supporter } : prev));
         setFeedback({
           message: result.is_supporter
             ? "You are an active Metafy supporter."
@@ -88,11 +80,7 @@ export function MetafyAccountPanel({ initialStatus }: MetafyAccountPanelProps) {
   if (!status?.linked) {
     return (
       <div className="flex flex-col items-end gap-1.5">
-        <Button
-          size="sm"
-          onClick={handleConnect}
-          disabled={connectPending}
-        >
+        <Button size="sm" onClick={handleConnect} disabled={connectPending}>
           {connectPending ? "Redirecting…" : "Link Metafy Account"}
         </Button>
         {feedbackMessage}

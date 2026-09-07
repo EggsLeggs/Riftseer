@@ -28,18 +28,22 @@ export interface EmojiFile {
  */
 export const EMOJI_FILES: EmojiFile[] = [
   // ── Stats (SVG — converted to PNG by setup-emojis script) ──────────────────
-  { tokenKey: "exhaust",      emojiName: "rb_exhaust",      file: "icons/stats/exhaust.svg" },
-  { tokenKey: "might",        emojiName: "rb_might",        file: "icons/stats/might.svg" },
-  { tokenKey: "power",        emojiName: "rb_power",        file: "icons/stats/card_type_rune.svg" },
+  { tokenKey: "exhaust", emojiName: "rb_exhaust", file: "icons/stats/exhaust.svg" },
+  { tokenKey: "might", emojiName: "rb_might", file: "icons/stats/might.svg" },
+  { tokenKey: "power", emojiName: "rb_power", file: "icons/stats/card_type_rune.svg" },
   // ── Domain runes (PNG available) ───────────────────────────────────────────
-  { tokenKey: "rune_fury",    emojiName: "rb_rune_fury",    file: "icons/domains/rune_fury.png" },
-  { tokenKey: "rune_calm",    emojiName: "rb_rune_calm",    file: "icons/domains/rune_calm.png" },
-  { tokenKey: "rune_mind",    emojiName: "rb_rune_mind",    file: "icons/domains/rune_mind.png" },
-  { tokenKey: "rune_body",    emojiName: "rb_rune_body",    file: "icons/domains/rune_body.png" },
-  { tokenKey: "rune_chaos",   emojiName: "rb_rune_chaos",   file: "icons/domains/rune_chaos.png" },
-  { tokenKey: "rune_order",   emojiName: "rb_rune_order",   file: "icons/domains/rune_order.png" },
+  { tokenKey: "rune_fury", emojiName: "rb_rune_fury", file: "icons/domains/rune_fury.png" },
+  { tokenKey: "rune_calm", emojiName: "rb_rune_calm", file: "icons/domains/rune_calm.png" },
+  { tokenKey: "rune_mind", emojiName: "rb_rune_mind", file: "icons/domains/rune_mind.png" },
+  { tokenKey: "rune_body", emojiName: "rb_rune_body", file: "icons/domains/rune_body.png" },
+  { tokenKey: "rune_chaos", emojiName: "rb_rune_chaos", file: "icons/domains/rune_chaos.png" },
+  { tokenKey: "rune_order", emojiName: "rb_rune_order", file: "icons/domains/rune_order.png" },
   // ── Rainbow domain (SVG — converted to PNG) ─────────────────────────────────
-  { tokenKey: "rune_rainbow", emojiName: "rb_rune_rainbow", file: "icons/domains/rune_rainbow.svg" },
+  {
+    tokenKey: "rune_rainbow",
+    emojiName: "rb_rune_rainbow",
+    file: "icons/domains/rune_rainbow.svg",
+  },
 ];
 
 /**
@@ -47,7 +51,7 @@ export const EMOJI_FILES: EmojiFile[] = [
  * Used by renderTextForDiscord when no Discord emoji is available.
  */
 export const TOKEN_DISCORD_FALLBACK: Record<string, string> = {
-  energy:   "⚡",
+  energy: "⚡",
   energy_0: "⓪",
   energy_1: "①",
   energy_2: "②",
@@ -67,10 +71,7 @@ export const TOKEN_DISCORD_FALLBACK: Record<string, string> = {
  * @param text - Raw card text containing :rb_<key>: sequences
  * @param emojiMap - token key → Discord emoji ID, from getEmojiMap() in emoji-cache.ts
  */
-export function renderTextForDiscord(
-  text: string,
-  emojiMap: Record<string, string>,
-): string {
+export function renderTextForDiscord(text: string, emojiMap: Record<string, string>): string {
   return replaceIconTokens(normalizeCardTextLayout(text), (key, match) => {
     const id = emojiMap[key];
     if (id) {

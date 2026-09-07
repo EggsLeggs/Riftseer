@@ -296,9 +296,17 @@ export const adminApi = {
     setCode: string,
     definition: AdminPrintingDefinition,
   ): Promise<AdminResult<AdminPrintingMutationResult>> {
-    return request({ method: "POST", path: "/printings", accessToken, body: {
-      id, oracle_id: oracleId, set_code: setCode, definition,
-    } });
+    return request({
+      method: "POST",
+      path: "/printings",
+      accessToken,
+      body: {
+        id,
+        oracle_id: oracleId,
+        set_code: setCode,
+        definition,
+      },
+    });
   },
 
   patchPrinting(
@@ -306,7 +314,12 @@ export const adminApi = {
     printingId: string,
     patch: AdminPrintingPatch,
   ): Promise<AdminResult<AdminPrintingMutationResult>> {
-    return request({ method: "PATCH", path: printingPath(printingId), accessToken, body: { patch } });
+    return request({
+      method: "PATCH",
+      path: printingPath(printingId),
+      accessToken,
+      body: { patch },
+    });
   },
 
   deletePrinting(
@@ -314,7 +327,12 @@ export const adminApi = {
     printingId: string,
     reason?: string,
   ): Promise<AdminResult<AdminPrintingMutationResult>> {
-    return request({ method: "DELETE", path: printingPath(printingId), accessToken, body: reason ? { reason } : {} });
+    return request({
+      method: "DELETE",
+      path: printingPath(printingId),
+      accessToken,
+      body: reason ? { reason } : {},
+    });
   },
 
   /**
@@ -333,7 +351,12 @@ export const adminApi = {
     printingId: string,
     delta: AdminPrintingDelta | null,
   ): Promise<AdminResult<AdminPrintingMutationResult>> {
-    return request({ method: "PUT", path: printingPath(printingId, "/deltas"), accessToken, body: { delta } });
+    return request({
+      method: "PUT",
+      path: printingPath(printingId, "/deltas"),
+      accessToken,
+      body: { delta },
+    });
   },
 
   /** Lift a soft delete. The row was never removed; `deleted_at` just hid it. */
@@ -444,9 +467,7 @@ export const adminApi = {
   // ── Formats ─────────────────────────────────────────────────────────────────
 
   /** Includes retired formats and the counts a delete would cascade away. */
-  listFormats(
-    accessToken: string,
-  ): Promise<AdminResult<AdminFormatListResult>> {
+  listFormats(accessToken: string): Promise<AdminResult<AdminFormatListResult>> {
     return request({ method: "GET", path: "/formats", accessToken });
   },
 
@@ -475,10 +496,7 @@ export const adminApi = {
     });
   },
 
-  deleteFormat(
-    accessToken: string,
-    code: string,
-  ): Promise<AdminResult<AdminFormatDeleteResult>> {
+  deleteFormat(accessToken: string, code: string): Promise<AdminResult<AdminFormatDeleteResult>> {
     return request({
       method: "DELETE",
       path: formatPath(code),
@@ -533,10 +551,7 @@ export const adminApi = {
   },
 
   /** Send the complete ordered list — an unknown code is rejected, not skipped. */
-  reorderFormats(
-    accessToken: string,
-    codes: string[],
-  ): Promise<AdminResult<AdminReorderResult>> {
+  reorderFormats(accessToken: string, codes: string[]): Promise<AdminResult<AdminReorderResult>> {
     return request({
       method: "PUT",
       path: "/formats/order",

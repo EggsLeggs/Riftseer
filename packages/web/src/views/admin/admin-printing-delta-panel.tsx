@@ -16,10 +16,16 @@ import type { AdminPrintingDelta, AdminPrintingDeltaRead } from "@/features/admi
 import { AdminSection } from "./admin-form-field";
 
 const SCALAR_FIELDS = [
-  ["name", "Name"], ["card_type", "Type"], ["supertype", "Supertype"],
-  ["energy", "Energy"], ["might", "Might"], ["power", "Power"],
-  ["might_bonus", "Might bonus"], ["text_rich", "Rules text (rich)"],
-  ["text_plain", "Rules text (plain)"], ["equipment_text", "Equipment text"],
+  ["name", "Name"],
+  ["card_type", "Type"],
+  ["supertype", "Supertype"],
+  ["energy", "Energy"],
+  ["might", "Might"],
+  ["power", "Power"],
+  ["might_bonus", "Might bonus"],
+  ["text_rich", "Rules text (rich)"],
+  ["text_plain", "Rules text (plain)"],
+  ["equipment_text", "Equipment text"],
 ] as const;
 
 type ScalarField = (typeof SCALAR_FIELDS)[number][0];
@@ -36,10 +42,25 @@ type Draft = Record<ScalarField, string> & {
 };
 
 const EMPTY: Draft = {
-  name: "", card_type: "", supertype: "", energy: "", might: "", power: "",
-  might_bonus: "", text_rich: "", text_plain: "", equipment_text: "", cleared: [],
-  tags_added: "", tags_removed: "", domains_added: "", domains_removed: "",
-  keywords_added: "", keywords_removed: "", meta_flags_added: "", meta_flags_removed: "",
+  name: "",
+  card_type: "",
+  supertype: "",
+  energy: "",
+  might: "",
+  power: "",
+  might_bonus: "",
+  text_rich: "",
+  text_plain: "",
+  equipment_text: "",
+  cleared: [],
+  tags_added: "",
+  tags_removed: "",
+  domains_added: "",
+  domains_removed: "",
+  keywords_added: "",
+  keywords_removed: "",
+  meta_flags_added: "",
+  meta_flags_removed: "",
 };
 
 const ARRAY_FIELDS = ["tags", "domains", "keywords", "meta_flags"] as const;
@@ -57,7 +78,11 @@ type DeltaRow = NonNullable<AdminPrintingDeltaRead["delta"]> &
     cleared_fields: string[];
   };
 
-const list = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+const list = (value: string) =>
+  value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 /**
  * Stored delta row → editable draft. `PUT /deltas` replaces the row wholesale,
@@ -98,7 +123,13 @@ function oracleValue(oracle: Oracle, field: ScalarField): unknown {
   return oracle[field];
 }
 
-export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; printing: Printing }) {
+export function AdminPrintingDeltaPanel({
+  oracle,
+  printing,
+}: {
+  oracle: Oracle;
+  printing: Printing;
+}) {
   const { delta } = usePrintingMutations();
   const stored = useQuery({
     queryKey: adminPrintingDeltaQueryKey(printing.id),
@@ -130,14 +161,23 @@ export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; 
         ? Number(value)
         : value;
     }
-    for (const key of ["tags_added", "tags_removed", "domains_added", "domains_removed", "keywords_added", "keywords_removed", "meta_flags_added", "meta_flags_removed"] as const) {
+    for (const key of [
+      "tags_added",
+      "tags_removed",
+      "domains_added",
+      "domains_removed",
+      "keywords_added",
+      "keywords_removed",
+      "meta_flags_added",
+      "meta_flags_removed",
+    ] as const) {
       const values = list(draft[key]);
       if (values.length > 0) payload[key] = values;
     }
     if (draft.cleared.length > 0) payload.cleared_fields = draft.cleared;
     await delta.mutateAsync([
       printing.id,
-      Object.keys(payload).length > 0 ? payload as AdminPrintingDelta : null,
+      Object.keys(payload).length > 0 ? (payload as AdminPrintingDelta) : null,
       printing.public_slug,
     ]);
   }
@@ -149,33 +189,69 @@ export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; 
     >
       {stored.isPending ? (
         <p className="text-muted-foreground mb-4 flex items-center gap-2 text-sm">
-          <Loader2 className="size-4 animate-spin" />Loading the stored delta…
+          <Loader2 className="size-4 animate-spin" />
+          Loading the stored delta…
         </p>
       ) : stored.isError ? (
         <p className="text-destructive mb-4 text-sm">
-          Couldn&apos;t load the stored delta. Saving now would replace it with only what is typed here — reload before editing.
+          Couldn&apos;t load the stored delta. Saving now would replace it with only what is typed
+          here — reload before editing.
         </p>
       ) : stored.data?.delta ? (
         <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          This printing carries an admin delta, loaded below. Saving replaces it wholesale, so clear a field to drop it rather than deleting the row.
+          This printing carries an admin delta, loaded below. Saving replaces it wholesale, so clear
+          a field to drop it rather than deleting the row.
         </p>
       ) : printing.differs_from_oracle ? (
         // A delta row is PK'd on printing_id and carries one source, so a
         // printing that differs without an admin row differs because of ingest.
         <p className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          This printing differs from its oracle through an <strong>ingest</strong> delta, which records genuine upstream divergence. Saving here replaces it with an admin delta.
+          This printing differs from its oracle through an <strong>ingest</strong> delta, which
+          records genuine upstream divergence. Saving here replaces it with an admin delta.
         </p>
       ) : null}
       <div className="overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
-          <thead><tr className="bg-muted/50 text-left"><th className="p-2">Field</th><th className="p-2">Oracle</th><th className="p-2">Override</th><th className="p-2">Remove</th></tr></thead>
+          <thead>
+            <tr className="bg-muted/50 text-left">
+              <th className="p-2">Field</th>
+              <th className="p-2">Oracle</th>
+              <th className="p-2">Override</th>
+              <th className="p-2">Remove</th>
+            </tr>
+          </thead>
           <tbody>
             {SCALAR_FIELDS.map(([field, label]) => (
               <tr key={field} className="border-t align-top">
                 <th className="p-2 text-left font-medium">{label}</th>
-                <td className="max-w-72 whitespace-pre-wrap p-2 text-muted-foreground">{String(oracleValue(oracle, field) ?? "—")}</td>
-                <td className="p-2"><Input aria-label={`${label} override`} value={draft[field]} disabled={draft.cleared.includes(field)} onChange={(event) => setDraft((current) => ({ ...current, [field]: event.target.value }))} /></td>
-                <td className="p-2 text-center"><input type="checkbox" aria-label={`Remove ${label}`} checked={draft.cleared.includes(field)} onChange={(event) => setDraft((current) => ({ ...current, cleared: event.target.checked ? [...current.cleared, field] : current.cleared.filter((item) => item !== field) }))} /></td>
+                <td className="max-w-72 whitespace-pre-wrap p-2 text-muted-foreground">
+                  {String(oracleValue(oracle, field) ?? "—")}
+                </td>
+                <td className="p-2">
+                  <Input
+                    aria-label={`${label} override`}
+                    value={draft[field]}
+                    disabled={draft.cleared.includes(field)}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, [field]: event.target.value }))
+                    }
+                  />
+                </td>
+                <td className="p-2 text-center">
+                  <input
+                    type="checkbox"
+                    aria-label={`Remove ${label}`}
+                    checked={draft.cleared.includes(field)}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        cleared: event.target.checked
+                          ? [...current.cleared, field]
+                          : current.cleared.filter((item) => item !== field),
+                      }))
+                    }
+                  />
+                </td>
               </tr>
             ))}
           </tbody>
@@ -185,10 +261,35 @@ export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; 
         {(["tags", "domains", "keywords", "meta_flags"] as const).map((field) => (
           <div key={field} className="rounded-md border p-3">
             <p className="mb-2 font-medium capitalize">{field.replace("_", " ")}</p>
-            <p className="mb-3 text-xs text-muted-foreground">Oracle: {oracle[field].join(", ") || "—"}</p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Oracle: {oracle[field].join(", ") || "—"}
+            </p>
             <div className="grid gap-2 sm:grid-cols-2">
-              <div><Label htmlFor={`${field}-added`}>Added</Label><Input id={`${field}-added`} value={draft[`${field}_added`]} onChange={(event) => setDraft((current) => ({ ...current, [`${field}_added`]: event.target.value }))} placeholder="Comma-separated" /></div>
-              <div><Label htmlFor={`${field}-removed`}>Removed</Label><Input id={`${field}-removed`} value={draft[`${field}_removed`]} onChange={(event) => setDraft((current) => ({ ...current, [`${field}_removed`]: event.target.value }))} placeholder="Comma-separated" /></div>
+              <div>
+                <Label htmlFor={`${field}-added`}>Added</Label>
+                <Input
+                  id={`${field}-added`}
+                  value={draft[`${field}_added`]}
+                  onChange={(event) =>
+                    setDraft((current) => ({ ...current, [`${field}_added`]: event.target.value }))
+                  }
+                  placeholder="Comma-separated"
+                />
+              </div>
+              <div>
+                <Label htmlFor={`${field}-removed`}>Removed</Label>
+                <Input
+                  id={`${field}-removed`}
+                  value={draft[`${field}_removed`]}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      [`${field}_removed`]: event.target.value,
+                    }))
+                  }
+                  placeholder="Comma-separated"
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -196,8 +297,24 @@ export function AdminPrintingDeltaPanel({ oracle, printing }: { oracle: Oracle; 
       {/* Saving before the stored row has loaded would replace it with an empty
           draft, which is the wipe this panel used to perform on every save. */}
       <div className="mt-4 flex gap-2">
-        <Button type="button" disabled={delta.isPending || !stored.isSuccess} onClick={() => void save()}>{delta.isPending ? "Saving…" : "Save delta"}</Button>
-        <Button type="button" variant="outline" disabled={delta.isPending} onClick={() => { setDraft(EMPTY); void delta.mutateAsync([printing.id, null, printing.public_slug]); }}>Clear admin delta</Button>
+        <Button
+          type="button"
+          disabled={delta.isPending || !stored.isSuccess}
+          onClick={() => void save()}
+        >
+          {delta.isPending ? "Saving…" : "Save delta"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={delta.isPending}
+          onClick={() => {
+            setDraft(EMPTY);
+            void delta.mutateAsync([printing.id, null, printing.public_slug]);
+          }}
+        >
+          Clear admin delta
+        </Button>
       </div>
     </AdminSection>
   );

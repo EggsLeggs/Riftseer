@@ -23,10 +23,15 @@ describe("stable public slugs", () => {
   it("builds printing segments from printing-level fields", () => {
     expect(buildPublicSlugSegments(base)).toEqual(["ogn", "21", "sun-disc"]);
     expect(buildPublicSlugSegments({ ...base, alternateArt: true })).toEqual([
-      "ogn", "21a", "sun-disc",
+      "ogn",
+      "21a",
+      "sun-disc",
     ]);
     expect(buildPublicSlugSegments({ ...base, signature: true })).toEqual([
-      "ogn", "21", "signature", "sun-disc",
+      "ogn",
+      "21",
+      "signature",
+      "sun-disc",
     ]);
   });
 

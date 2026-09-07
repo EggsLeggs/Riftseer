@@ -13,11 +13,7 @@ import { Label } from "@/components/ui/label";
 import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
 import { DeckExportDialog } from "@/features/decks/components/deck-export-dialog";
 import { DeckWorkspace } from "@/features/decks/components/deck-workspace";
-import {
-  formatSelectOptions,
-  formatsApi,
-  formatsQueryKeys,
-} from "@/features/decks/formats";
+import { formatSelectOptions, formatsApi, formatsQueryKeys } from "@/features/decks/formats";
 import {
   GUEST_DECK_DEFAULT_FORMAT,
   guestDeckTextCards,
@@ -76,8 +72,8 @@ export function GuestDeckBuilderView() {
           <div className="min-w-0">
             <h1 className="text-xl font-semibold tracking-tight">New deck</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Building without an account. This deck is kept in this browser —
-              sign in whenever you want to save it, or{" "}
+              Building without an account. This deck is kept in this browser — sign in whenever you
+              want to save it, or{" "}
               <Link href={importDeckHref()} className="underline underline-offset-4">
                 import a list
               </Link>{" "}

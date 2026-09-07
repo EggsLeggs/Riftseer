@@ -20,13 +20,7 @@ import type { DeckDetail } from "../types";
 const NAME_MAX = 120;
 const DESCRIPTION_MAX = 500;
 
-export function DeckEditableTitle({
-  deck,
-  canEdit,
-}: {
-  deck: DeckDetail;
-  canEdit: boolean;
-}) {
+export function DeckEditableTitle({ deck, canEdit }: { deck: DeckDetail; canEdit: boolean }) {
   const mutations = useDeckMutations(deck.id);
   const [draft, setDraft] = React.useState<string | null>(null);
   const heading = "mt-1 text-2xl font-semibold tracking-tight sm:text-3xl";
@@ -79,13 +73,7 @@ export function DeckEditableTitle({
   );
 }
 
-export function DeckEditableDescription({
-  deck,
-  canEdit,
-}: {
-  deck: DeckDetail;
-  canEdit: boolean;
-}) {
+export function DeckEditableDescription({ deck, canEdit }: { deck: DeckDetail; canEdit: boolean }) {
   const mutations = useDeckMutations(deck.id);
   const [draft, setDraft] = React.useState<string | null>(null);
 
@@ -136,9 +124,7 @@ export function DeckEditableDescription({
     );
   }
 
-  const text = (
-    <p className="mt-3 text-sm whitespace-pre-line">{deck.description}</p>
-  );
+  const text = <p className="mt-3 text-sm whitespace-pre-line">{deck.description}</p>;
   if (!canEdit) {
     return <div className="text-muted-foreground">{text}</div>;
   }

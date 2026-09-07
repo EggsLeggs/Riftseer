@@ -40,9 +40,7 @@ describe("buildCommentTree", () => {
   });
 
   test("an orphan parent promotes the reply to a root instead of dropping it", () => {
-    const tree = buildCommentTree([
-      comment({ id: "reply", parent_id: "missing", depth: 3 }),
-    ]);
+    const tree = buildCommentTree([comment({ id: "reply", parent_id: "missing", depth: 3 })]);
     expect(tree).toHaveLength(1);
     expect(tree[0]?.comment.id).toBe("reply");
   });

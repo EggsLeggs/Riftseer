@@ -42,7 +42,9 @@ export function metafyRoutes() {
 
           const { data } = await authAdminClient
             .from("linked_accounts")
-            .select("provider, provider_username, is_supporter, is_member, linked_at, status_checked_at")
+            .select(
+              "provider, provider_username, is_supporter, is_member, linked_at, status_checked_at",
+            )
             .eq("user_id", user.id)
             .eq("provider", "metafy")
             .maybeSingle();
@@ -217,23 +219,21 @@ export function metafyRoutes() {
 
           // Upsert linked account
           const now = new Date().toISOString();
-          const { error: upsertError } = await authAdminClient
-            .from("linked_accounts")
-            .upsert(
-              {
-                user_id: user.id,
-                provider: "metafy",
-                provider_user_id: providerUserId,
-                provider_username: providerUsername,
-                access_token: tokens.access_token,
-                refresh_token: tokens.refresh_token ?? null,
-                is_supporter: isSupporter,
-                is_member: isMember,
-                status_checked_at: now,
-                linked_at: now,
-              },
-              { onConflict: "user_id,provider" },
-            );
+          const { error: upsertError } = await authAdminClient.from("linked_accounts").upsert(
+            {
+              user_id: user.id,
+              provider: "metafy",
+              provider_user_id: providerUserId,
+              provider_username: providerUsername,
+              access_token: tokens.access_token,
+              refresh_token: tokens.refresh_token ?? null,
+              is_supporter: isSupporter,
+              is_member: isMember,
+              status_checked_at: now,
+              linked_at: now,
+            },
+            { onConflict: "user_id,provider" },
+          );
 
           if (upsertError) {
             set.status = 500;
@@ -291,7 +291,10 @@ export function metafyRoutes() {
             .eq("provider", "metafy");
 
           if (error) {
-            console.error(`[auth/metafy/disconnect] delete failed for user ${user.id}:`, error.message);
+            console.error(
+              `[auth/metafy/disconnect] delete failed for user ${user.id}:`,
+              error.message,
+            );
             set.status = 500;
             return { error: "Failed to disconnect Metafy account", code: "DB_ERROR" };
           }

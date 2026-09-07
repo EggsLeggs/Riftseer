@@ -3,36 +3,27 @@ import type { CardDataProvider } from "@riftseer/core";
 
 export function metaRoutes(cardProvider: CardDataProvider, startTime: number) {
   return new Elysia()
-    .get(
-      "/health",
-      () => ({ status: "ok", uptimeMs: Date.now() - startTime }),
-      {
-        response: t.Object({ status: t.String(), uptimeMs: t.Number() }),
-        detail: {
-          tags: ["Meta"],
-          summary: "Health check",
-          description:
-            "Returns 200 if the server is running. For load balancers and uptime " +
-            "monitors — it does not check the card provider or the database.",
-        },
+    .get("/health", () => ({ status: "ok", uptimeMs: Date.now() - startTime }), {
+      response: t.Object({ status: t.String(), uptimeMs: t.Number() }),
+      detail: {
+        tags: ["Meta"],
+        summary: "Health check",
+        description:
+          "Returns 200 if the server is running. For load balancers and uptime " +
+          "monitors — it does not check the card provider or the database.",
       },
-    )
+    })
     .get(
       "/meta",
       () => {
-        const { lastRefresh, oracleCount, printingCount } =
-          cardProvider.getStats();
-        const cacheAgeSeconds = lastRefresh
-          ? Math.floor(Date.now() / 1000 - lastRefresh)
-          : null;
+        const { lastRefresh, oracleCount, printingCount } = cardProvider.getStats();
+        const cacheAgeSeconds = lastRefresh ? Math.floor(Date.now() / 1000 - lastRefresh) : null;
 
         return {
           provider: cardProvider.sourceName,
           oracleCount,
           printingCount,
-          lastRefresh: lastRefresh
-            ? new Date(lastRefresh * 1000).toISOString()
-            : null,
+          lastRefresh: lastRefresh ? new Date(lastRefresh * 1000).toISOString() : null,
           cacheAgeSeconds,
           uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
         };

@@ -33,11 +33,7 @@ export interface AdminAuditPage {
   total: number;
 }
 
-export type AdminLegalityStatus =
-  | "legal"
-  | "restricted"
-  | "not_legal"
-  | "banned";
+export type AdminLegalityStatus = "legal" | "restricted" | "not_legal" | "banned";
 
 export type AdminDeckZone =
   | "legend"
@@ -442,10 +438,7 @@ export interface AdminPrintingImageSource {
 }
 
 export interface AdminDataRepository {
-  callRpc(
-    name: string,
-    args: Record<string, unknown>,
-  ): Promise<AdminRpcResult>;
+  callRpc(name: string, args: Record<string, unknown>): Promise<AdminRpcResult>;
   /** Exactly the fields a printing slug is derived from. Null when unknown. */
   getSlugPrinting(printingId: string): Promise<SlugPrinting | null>;
   /** An oracle's display name — the name segment of a new printing's slug. */
@@ -457,10 +450,7 @@ export interface AdminDataRepository {
    * proposes `<base>` or `<base>-<n>`, so the caller scopes the read to that
    * prefix instead of loading the whole catalogue.
    */
-  getTakenPrintingSlugs(
-    baseSlug: string,
-    excludePrintingId?: string,
-  ): Promise<Set<string>>;
+  getTakenPrintingSlugs(baseSlug: string, excludePrintingId?: string): Promise<Set<string>>;
   getTakenOracleSlugs(baseSlug: string): Promise<Set<string>>;
   /**
    * Point a printing at an admin-uploaded source and lock its image against the
@@ -479,9 +469,7 @@ export interface AdminDataRepository {
    * Return null when the printing does not exist, so callers can 404 rather
    * than render an empty table for an id that never existed.
    */
-  listPrintingLegalities(
-    printingId: string,
-  ): Promise<AdminPrintingLegalities | null>;
+  listPrintingLegalities(printingId: string): Promise<AdminPrintingLegalities | null>;
   listPrintingRulings(printingId: string): Promise<AdminPrintingRulings | null>;
   /**
    * Null when the printing does not exist; a delta with every field empty when
@@ -490,19 +478,13 @@ export interface AdminDataRepository {
   getPrintingDelta(
     printingId: string,
   ): Promise<{ printing_id: string; delta: AdminPrintingDelta | null } | null>;
-  listOracleRelationships(
-    oracleId: string,
-  ): Promise<AdminOracleRelationships | null>;
-  listReconciliation(
-    query: AdminReconciliationQuery,
-  ): Promise<AdminReconciliationPage>;
+  listOracleRelationships(oracleId: string): Promise<AdminOracleRelationships | null>;
+  listReconciliation(query: AdminReconciliationQuery): Promise<AdminReconciliationPage>;
   /**
    * Read one entry so the API can build the confirm patch. Returns null for an
    * unknown id, which the route reports as a 404 without calling the RPC.
    */
-  getReconciliationEntry(
-    entryId: string,
-  ): Promise<AdminReconciliationEntry | null>;
+  getReconciliationEntry(entryId: string): Promise<AdminReconciliationEntry | null>;
   listRulings(query: AdminRulingsQuery): Promise<AdminRulingsPage>;
   /** Evaluate a rule AST without storing it, for the editor's match readout. */
   previewRule(ast: unknown, limit: number): Promise<AdminRulePreview>;
@@ -557,9 +539,7 @@ const ADMIN_PRINTING_LIST_COLUMNS = `
  * arrays is the bug this shape has already produced once — a `.length` check on
  * `printing_deltas` evaluated false for every printing that really had one.
  */
-function parseAdminPrintingListEntry(
-  row: Record<string, unknown>,
-): AdminPrintingListEntry {
+function parseAdminPrintingListEntry(row: Record<string, unknown>): AdminPrintingListEntry {
   const oracle = isRecord(row.oracles) ? row.oracles : {};
   const set = isRecord(row.sets) ? row.sets : {};
   const delta = isRecord(row.printing_deltas) ? row.printing_deltas : null;
@@ -571,25 +551,21 @@ function parseAdminPrintingListEntry(
     oracle_id: typeof oracle.id === "string" ? oracle.id : "",
     is_token: oracle.is_token === true,
     set_code: typeof set.set_code === "string" ? set.set_code : null,
-    collector_number:
-      typeof row.collector_number === "string" ? row.collector_number : null,
+    collector_number: typeof row.collector_number === "string" ? row.collector_number : null,
     rarity: typeof row.rarity === "string" ? row.rarity : null,
     public_slug: String(row.public_slug ?? ""),
     source: String(row.source ?? "riftcodex"),
     deleted_at: typeof row.deleted_at === "string" ? row.deleted_at : null,
     locked_fields: stringArray(row.locked_fields),
     oracle_locked_fields: stringArray(oracle.locked_fields),
-    delta_source:
-      deltaSource === "ingest" || deltaSource === "admin" ? deltaSource : null,
+    delta_source: deltaSource === "ingest" || deltaSource === "admin" ? deltaSource : null,
     // A row is hosted only once the full R2 variant set exists, which is what
     // `image_hosted_at` records — a source URL alone is not a hosted image.
     has_hosted_image: typeof row.image_hosted_at === "string",
   };
 }
 
-export function createAdminDataRepository(
-  client: SupabaseClient,
-): AdminDataRepository {
+export function createAdminDataRepository(client: SupabaseClient): AdminDataRepository {
   const rpc = async (name: string, args: Record<string, unknown>) => {
     const { data, error } = await client.rpc(name, args);
     if (error) throw new AdminRepositoryError(error.message, error.code);
@@ -628,9 +604,7 @@ export function createAdminDataRepository(
         name: data.name,
         setCode: typeof data.set_code === "string" ? data.set_code : undefined,
         collectorNumber:
-          typeof data.collector_number === "string"
-            ? data.collector_number
-            : undefined,
+          typeof data.collector_number === "string" ? data.collector_number : undefined,
         alternateArt: data.is_alternate_art === true,
         signature: data.is_signature === true,
       };
@@ -654,9 +628,7 @@ export function createAdminDataRepository(
         .eq("id", printingId)
         .maybeSingle();
       if (error) throw new AdminRepositoryError(error.message, error.code);
-      return isRecord(data) && typeof data.oracle_id === "string"
-        ? data.oracle_id
-        : null;
+      return isRecord(data) && typeof data.oracle_id === "string" ? data.oracle_id : null;
     },
 
     async getTakenPrintingSlugs(baseSlug, excludePrintingId) {
@@ -727,9 +699,7 @@ export function createAdminDataRepository(
           // The variants for the previous source no longer describe this
           // printing; the queue consumer republishes once it has built them.
           image_hosted_at: null,
-          ...(media.alt_text === undefined
-            ? {}
-            : { image_alt_text: media.alt_text }),
+          ...(media.alt_text === undefined ? {} : { image_alt_text: media.alt_text }),
           locked_fields: [...locked].sort(),
         })
         .eq("id", printingId);
@@ -783,10 +753,7 @@ export function createAdminDataRepository(
         .order("name", { ascending: true });
 
       if (formats.error) {
-        throw new AdminRepositoryError(
-          formats.error.message,
-          formats.error.code,
-        );
+        throw new AdminRepositoryError(formats.error.message, formats.error.code);
       }
 
       // Selecting the rows and counting them here would silently stop at
@@ -810,18 +777,13 @@ export function createAdminDataRepository(
         client
           .from("format_zone_rules")
           .select("format_id, zone, min_count, max_count, copy_limit"),
-        client
-          .from("format_legality_severities")
-          .select("format_id, status, severity"),
+        client.from("format_legality_severities").select("format_id, status, severity"),
       ]);
       if (rules.error) {
         throw new AdminRepositoryError(rules.error.message, rules.error.code);
       }
       if (severities.error) {
-        throw new AdminRepositoryError(
-          severities.error.message,
-          severities.error.code,
-        );
+        throw new AdminRepositoryError(severities.error.message, severities.error.code);
       }
 
       const rulesByFormat = new Map<string, AdminFormatZoneRule[]>();
@@ -886,9 +848,7 @@ export function createAdminDataRepository(
       return {
         printing_id: printingId,
         oracle_id: oracleId,
-        entries: Array.isArray(data)
-          ? data.filter(isRecord).map(parseLegalityEntry)
-          : [],
+        entries: Array.isArray(data) ? data.filter(isRecord).map(parseLegalityEntry) : [],
       };
     },
 
@@ -922,9 +882,7 @@ export function createAdminDataRepository(
       return {
         printing_id: printingId,
         oracle_id: oracleId,
-        entries: Array.isArray(data)
-          ? data.filter(isRecord).map(parsePrintingRuling)
-          : [],
+        entries: Array.isArray(data) ? data.filter(isRecord).map(parsePrintingRuling) : [],
       };
     },
 
@@ -979,10 +937,7 @@ export function createAdminDataRepository(
 
       if (query.setCode) request = request.eq("sets.set_code", query.setCode);
       if (query.q) {
-        request = request.ilike(
-          "oracles.name",
-          `%${escapeLikePattern(query.q)}%`,
-        );
+        request = request.ilike("oracles.name", `%${escapeLikePattern(query.q)}%`);
       }
 
       const { data, error, count } = await request
@@ -1003,14 +958,8 @@ export function createAdminDataRepository(
     async getStats() {
       // head:true — the counts are the whole point, the rows are not.
       const [sets, oracles, printings, pending] = await Promise.all([
-        client
-          .from("sets")
-          .select("id", { count: "exact", head: true })
-          .is("deleted_at", null),
-        client
-          .from("oracles")
-          .select("id", { count: "exact", head: true })
-          .is("deleted_at", null),
+        client.from("sets").select("id", { count: "exact", head: true }).is("deleted_at", null),
+        client.from("oracles").select("id", { count: "exact", head: true }).is("deleted_at", null),
         client
           .from("printings")
           .select("id", { count: "exact", head: true })
@@ -1117,11 +1066,8 @@ export function createAdminDataRepository(
               name: typeof row.name === "string" ? row.name : "",
               set_code: typeof row.set_code === "string" ? row.set_code : null,
               collector_number:
-                typeof row.collector_number === "string"
-                  ? row.collector_number
-                  : null,
-              public_slug:
-                typeof row.public_slug === "string" ? row.public_slug : null,
+                typeof row.collector_number === "string" ? row.collector_number : null,
+              public_slug: typeof row.public_slug === "string" ? row.public_slug : null,
             }))
           : [],
       };
@@ -1129,12 +1075,7 @@ export function createAdminDataRepository(
   };
 }
 
-const LEGALITY_STATUSES = new Set<string>([
-  "legal",
-  "restricted",
-  "not_legal",
-  "banned",
-]);
+const LEGALITY_STATUSES = new Set<string>(["legal", "restricted", "not_legal", "banned"]);
 
 const DECK_ZONES = new Set<string>([
   "legend",
@@ -1152,9 +1093,7 @@ function nullableInteger(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function parseLegalityEntry(
-  row: Record<string, unknown>,
-): AdminPrintingLegalityEntry {
+function parseLegalityEntry(row: Record<string, unknown>): AdminPrintingLegalityEntry {
   const status =
     typeof row.status === "string" && LEGALITY_STATUSES.has(row.status)
       ? (row.status as AdminLegalityStatus)
@@ -1165,15 +1104,13 @@ function parseLegalityEntry(
     // `legalities_for_printing` names the column `name`, not `format_name`.
     format_name: typeof row.name === "string" ? row.name : "",
     status,
-    scope:
-      row.scope === "printing" || row.scope === "oracle" ? row.scope : "default",
+    scope: row.scope === "printing" || row.scope === "oracle" ? row.scope : "default",
     note: typeof row.note === "string" && row.note ? row.note : null,
   };
 }
 
 function parsePrintingRuling(row: Record<string, unknown>): AdminPrintingRuling {
-  const scope =
-    row.scope === "printing" || row.scope === "rule" ? row.scope : "oracle";
+  const scope = row.scope === "printing" || row.scope === "rule" ? row.scope : "oracle";
   return {
     id: String(row.id ?? ""),
     type: row.type === "note" ? "note" : "ruling",
@@ -1190,11 +1127,7 @@ function parsePrintingRuling(row: Record<string, unknown>): AdminPrintingRuling 
   };
 }
 
-const RELATIONSHIP_KINDS = new Set<string>([
-  "makes_token",
-  "character",
-  "signature",
-]);
+const RELATIONSHIP_KINDS = new Set<string>(["makes_token", "character", "signature"]);
 
 function parseEdges(value: unknown, idKey: string): AdminRelationshipEdge[] {
   if (!Array.isArray(value)) return [];
@@ -1216,8 +1149,7 @@ function parseEdges(value: unknown, idKey: string): AdminRelationshipEdge[] {
 }
 
 function parseRulingTarget(row: Record<string, unknown>): AdminRulingTarget {
-  const kind =
-    row.kind === "printing" || row.kind === "query" ? row.kind : "oracle";
+  const kind = row.kind === "printing" || row.kind === "query" ? row.kind : "oracle";
   return {
     id: String(row.id ?? ""),
     kind,
@@ -1238,9 +1170,7 @@ function parseRuling(row: Record<string, unknown>): AdminRuling {
     dated: typeof row.dated === "string" ? row.dated : null,
     source: typeof row.source === "string" ? row.source : null,
     active: row.active !== false,
-    targets: Array.isArray(row.targets)
-      ? row.targets.filter(isRecord).map(parseRulingTarget)
-      : [],
+    targets: Array.isArray(row.targets) ? row.targets.filter(isRecord).map(parseRulingTarget) : [],
     created_at: typeof row.created_at === "string" ? row.created_at : null,
     updated_at: typeof row.updated_at === "string" ? row.updated_at : null,
   };
@@ -1273,25 +1203,20 @@ const RECONCILIATION_FIELDS = new Set<string>([
   "text",
 ]);
 
-function parseReconciliationProduct(
-  value: unknown,
-): AdminReconciliationProduct {
+function parseReconciliationProduct(value: unknown): AdminReconciliationProduct {
   const row = isRecord(value) ? value : {};
   return {
     product_id: Number(row.product_id ?? 0),
     name: typeof row.name === "string" ? row.name : "",
     url: typeof row.url === "string" ? row.url : "",
     image_url: typeof row.image_url === "string" ? row.image_url : null,
-    collector_number:
-      typeof row.collector_number === "string" ? row.collector_number : null,
+    collector_number: typeof row.collector_number === "string" ? row.collector_number : null,
     group_id: Number(row.group_id ?? 0),
     set_code: typeof row.set_code === "string" ? row.set_code : null,
   };
 }
 
-function parseReconciliationGalleryCard(
-  value: unknown,
-): AdminReconciliationGalleryCard {
+function parseReconciliationGalleryCard(value: unknown): AdminReconciliationGalleryCard {
   const row = isRecord(value) ? value : {};
   const str = (key: string): string | null =>
     typeof row[key] === "string" ? (row[key] as string) : null;
@@ -1323,9 +1248,7 @@ function parseReconciliationGalleryCard(
   };
 }
 
-function parseReconciliationEntry(
-  row: Record<string, unknown>,
-): AdminReconciliationEntry {
+function parseReconciliationEntry(row: Record<string, unknown>): AdminReconciliationEntry {
   const payload = isRecord(row.payload) ? row.payload : {};
   const field =
     typeof payload.field === "string" && RECONCILIATION_FIELDS.has(payload.field)
@@ -1341,10 +1264,7 @@ function parseReconciliationEntry(
         : "unmatched_product",
     source,
     fingerprint: typeof row.fingerprint === "string" ? row.fingerprint : "",
-    status:
-      row.status === "confirmed" || row.status === "dismissed"
-        ? row.status
-        : "pending",
+    status: row.status === "confirmed" || row.status === "dismissed" ? row.status : "pending",
     payload: {
       // Only the half its source populates, and only when the row actually
       // carries it: a gallery entry has no TCGPlayer product, and synthesising
@@ -1356,28 +1276,17 @@ function parseReconciliationEntry(
         ? { gallery: parseReconciliationGalleryCard(payload.gallery) }
         : {}),
       ...(field ? { field } : {}),
-      current_value:
-        typeof payload.current_value === "string" ? payload.current_value : null,
-      proposed_value:
-        typeof payload.proposed_value === "string"
-          ? payload.proposed_value
-          : null,
-      ...(typeof payload.printing_id === "string"
-        ? { printing_id: payload.printing_id }
-        : {}),
-      ...(typeof payload.oracle_id === "string"
-        ? { oracle_id: payload.oracle_id }
-        : {}),
+      current_value: typeof payload.current_value === "string" ? payload.current_value : null,
+      proposed_value: typeof payload.proposed_value === "string" ? payload.proposed_value : null,
+      ...(typeof payload.printing_id === "string" ? { printing_id: payload.printing_id } : {}),
+      ...(typeof payload.oracle_id === "string" ? { oracle_id: payload.oracle_id } : {}),
       ...(typeof payload.printing_name === "string"
         ? { printing_name: payload.printing_name }
         : {}),
     },
     proposed_printing_id:
-      typeof row.proposed_printing_id === "string"
-        ? row.proposed_printing_id
-        : null,
-    proposed_oracle_id:
-      typeof row.proposed_oracle_id === "string" ? row.proposed_oracle_id : null,
+      typeof row.proposed_printing_id === "string" ? row.proposed_printing_id : null,
+    proposed_oracle_id: typeof row.proposed_oracle_id === "string" ? row.proposed_oracle_id : null,
     note: typeof row.note === "string" ? row.note : null,
     resolved_by: typeof row.resolved_by === "string" ? row.resolved_by : null,
     resolved_at: typeof row.resolved_at === "string" ? row.resolved_at : null,

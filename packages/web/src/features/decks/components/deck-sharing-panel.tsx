@@ -43,12 +43,8 @@ function CollaboratorRow({
         {collaborator.username ?? handle ?? collaborator.user_id}
         {handle && <span className="text-muted-foreground ml-1.5">@{handle}</span>}
       </span>
-      <span className="text-muted-foreground shrink-0 text-xs capitalize">
-        {collaborator.role}
-      </span>
-      <span className="text-muted-foreground shrink-0 text-xs">
-        via {collaborator.added_via}
-      </span>
+      <span className="text-muted-foreground shrink-0 text-xs capitalize">{collaborator.role}</span>
+      <span className="text-muted-foreground shrink-0 text-xs">via {collaborator.added_via}</span>
       {handle && (
         <Button
           type="button"
@@ -88,8 +84,7 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
   // Revoke fire while Regenerate is still in flight, and `inviteCode` then
   // settles on whichever answered last — possibly a code the server no longer
   // holds, until something refetches.
-  const invitePending =
-    mutations.setInvite.isPending || mutations.clearInvite.isPending;
+  const invitePending = mutations.setInvite.isPending || mutations.clearInvite.isPending;
 
   const createInvite = async () => {
     try {
@@ -129,8 +124,8 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
       <section>
         <h3 className="mb-1 text-sm font-medium">Invite link</h3>
         <p className="text-muted-foreground mb-3 text-xs">
-          Anyone with the link joins with the role you choose. Regenerating
-          replaces the link; people who already joined keep their access.
+          Anyone with the link joins with the role you choose. Regenerating replaces the link;
+          people who already joined keep their access.
         </p>
 
         <div className="flex flex-wrap items-end gap-2">
@@ -142,11 +137,7 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
             onChange={(event) => setRole(event.target.value as DeckCollaboratorRole)}
             options={ROLE_OPTIONS}
           />
-          <Button
-            type="button"
-            onClick={createInvite}
-            disabled={invitePending}
-          >
+          <Button type="button" onClick={createInvite} disabled={invitePending}>
             {inviteCode ? "Regenerate link" : "Create link"}
           </Button>
           {inviteCode && (
@@ -188,8 +179,7 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
       <section>
         <h3 className="mb-1 text-sm font-medium">Collaborators</h3>
         <p className="text-muted-foreground mb-3 text-xs">
-          Editors can change cards and details. Only you can change who can see
-          the deck.
+          Editors can change cards and details. Only you can change who can see the deck.
         </p>
 
         <form onSubmit={addCollaborator} className="mb-3 flex flex-wrap items-end gap-2">

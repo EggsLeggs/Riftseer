@@ -299,8 +299,7 @@ export function validateSocialLinks(links: Record<string, string>): string | nul
   for (const [platformId, value] of Object.entries(links)) {
     const err = validateSocialLink(platformId, value);
     if (err) {
-      const label =
-        PLATFORM_LABELS[platformId as SocialPlatformId] ?? platformId;
+      const label = PLATFORM_LABELS[platformId as SocialPlatformId] ?? platformId;
       return `${label}: ${err}`;
     }
   }

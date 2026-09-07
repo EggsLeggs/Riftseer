@@ -75,7 +75,10 @@ interface GalleryResponse {
  * catalogue gaps *and* 36 unknown ids on every run.
  */
 export function normalizeGalleryId(id: string): string {
-  return id.trim().toLowerCase().replace(/-(\d+)-star-/, "-$1*-");
+  return id
+    .trim()
+    .toLowerCase()
+    .replace(/-(\d+)-star-/, "-$1*-");
 }
 
 /**
@@ -87,9 +90,7 @@ export function normalizeGalleryId(id: string): string {
  * `SFD-T03` — so it is read for that and only that: an unprefixed code is
  * zero-padded (`OGN-042a/298`) where the stored number is not.
  */
-export function galleryPrintedCollectorNumber(
-  raw: RawGalleryCard,
-): string | null {
+export function galleryPrintedCollectorNumber(raw: RawGalleryCard): string | null {
   const printed = raw.publicCode?.split("-")[1]?.split("/")[0];
   const prefix = printed?.match(/^([a-z]+)(\d+)$/i);
   if (prefix) return `${prefix[1]!.toUpperCase()}${prefix[2]}`;
@@ -153,9 +154,7 @@ export function galleryRulesText(raw: RawGalleryCard): string | null {
  * Fetch every gallery card. Throws on transport or shape failure — the caller
  * treats the whole gallery step as non-fatal, exactly like TCGPlayer.
  */
-export async function fetchGalleryCards(
-  config: RiftboundGalleryConfig,
-): Promise<RawGalleryCard[]> {
+export async function fetchGalleryCards(config: RiftboundGalleryConfig): Promise<RawGalleryCard[]> {
   const base = config.baseUrl.replace(/\/$/, "");
   const all: RawGalleryCard[] = [];
 
@@ -177,9 +176,7 @@ export async function fetchGalleryCards(
         },
       });
       if (!res.ok) {
-        throw new Error(
-          `gallery returned ${res.status} ${res.statusText} for from=${from}`,
-        );
+        throw new Error(`gallery returned ${res.status} ${res.statusText} for from=${from}`);
       }
       body = (await res.json()) as GalleryResponse;
     } finally {
@@ -196,9 +193,7 @@ export async function fetchGalleryCards(
     // would read as equipment-less and its review entries would be pruned as
     // "no longer reported". Fail so the caller skips the whole step instead.
     if (page + 1 >= MAX_PAGES) {
-      throw new Error(
-        `gallery pagination exceeded ${MAX_PAGES} pages (totalPages=${totalPages})`,
-      );
+      throw new Error(`gallery pagination exceeded ${MAX_PAGES} pages (totalPages=${totalPages})`);
     }
   }
 

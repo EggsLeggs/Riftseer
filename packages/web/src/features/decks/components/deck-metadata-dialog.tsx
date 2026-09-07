@@ -15,11 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  SelectField,
-  TextAreaField,
-  TextField,
-} from "@/views/admin/admin-form-field";
+import { SelectField, TextAreaField, TextField } from "@/views/admin/admin-form-field";
 import { formatSelectOptions, formatsApi, formatsQueryKeys } from "../formats";
 import { useDeckMutations } from "../hooks/use-deck-mutations";
 import type { DeckDetail, DeckPatch, DeckVisibility } from "../types";

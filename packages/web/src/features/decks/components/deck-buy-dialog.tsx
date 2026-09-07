@@ -13,12 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppSelectContent } from "@/components/layout/clear-body-pointer-events";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -68,7 +63,9 @@ export function DeckBuyDialog({
     }
     if (affiliate === "cardmarket") {
       try {
-        await navigator.clipboard.writeText(lines.map((line) => formatBuyLine(line, includeSetCodes)).join("\n"));
+        await navigator.clipboard.writeText(
+          lines.map((line) => formatBuyLine(line, includeSetCodes)).join("\n"),
+        );
         toast.success("List copied. Paste it into Cardmarket.");
       } catch {
         toast.error("Could not copy the list.");
@@ -85,8 +82,8 @@ export function DeckBuyDialog({
         <DialogHeader>
           <DialogTitle>Buy options</DialogTitle>
           <DialogDescription>
-            Open a store with this deck as a shopping list. Purchases through
-            TCGPlayer may earn Riftseer a commission.
+            Open a store with this deck as a shopping list. Purchases through TCGPlayer may earn
+            Riftseer a commission.
           </DialogDescription>
         </DialogHeader>
 

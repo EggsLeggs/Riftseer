@@ -10,10 +10,10 @@ Two lightweight endpoints for server health and provider state.
 
 ## Endpoints at a glance
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/v1/health` | Liveness probe |
-| `GET` | `/api/v1/meta` | Provider stats and cache state |
+| Method | Path             | Description                    |
+| ------ | ---------------- | ------------------------------ |
+| `GET`  | `/api/v1/health` | Liveness probe                 |
+| `GET`  | `/api/v1/meta`   | Provider stats and cache state |
 
 ---
 
@@ -41,12 +41,12 @@ Returns the current state of the card data provider — useful for confirming th
 }
 ```
 
-| Field | Notes |
-| --- | --- |
-| `provider` | Always `supabase` — the active `CardDataProvider` implementation |
-| `cardCount` | Number of cards counted during the last Supabase connectivity check |
-| `lastRefresh` | ISO timestamp of the last successful connectivity check; `null` on a cold isolate that hasn't completed warmup |
-| `cacheAgeSeconds` | Seconds since last refresh; `null` if no refresh has completed yet |
-| `uptimeSeconds` | Seconds since the current isolate started |
+| Field             | Notes                                                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `provider`        | Always `supabase` — the active `CardDataProvider` implementation                                               |
+| `cardCount`       | Number of cards counted during the last Supabase connectivity check                                            |
+| `lastRefresh`     | ISO timestamp of the last successful connectivity check; `null` on a cold isolate that hasn't completed warmup |
+| `cacheAgeSeconds` | Seconds since last refresh; `null` if no refresh has completed yet                                             |
+| `uptimeSeconds`   | Seconds since the current isolate started                                                                      |
 
 On Cloudflare Workers, `cardCount` and `lastRefresh` are populated during `warmup()` at isolate startup. If the isolate is recycled, these reset to zero/null until the next request triggers warmup again.

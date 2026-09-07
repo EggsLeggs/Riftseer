@@ -10,9 +10,9 @@ All set endpoints are under `/api/v1/sets`. For full request/response schemas, t
 
 ## Endpoints at a glance
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/v1/sets` | List all sets with card counts |
+| Method | Path           | Description                    |
+| ------ | -------------- | ------------------------------ |
+| `GET`  | `/api/v1/sets` | List all sets with card counts |
 
 ---
 
@@ -29,9 +29,7 @@ Response:
 ```json
 {
   "count": 3,
-  "sets": [
-    { "setCode": "OGN", "setName": "Origins", "cardCount": 250 }
-  ]
+  "sets": [{ "setCode": "OGN", "setName": "Origins", "cardCount": 250 }]
 }
 ```
 

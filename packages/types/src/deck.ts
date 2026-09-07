@@ -60,12 +60,7 @@ export const DECK_ZONE_LABELS: Record<DeckZone, string> = {
  * status added here reaches deck validation and the public card page together
  * and every exhaustive `Record<…>` label map fails to compile until it does.
  */
-export const LEGALITY_STATUSES = [
-  "legal",
-  "restricted",
-  "not_legal",
-  "banned",
-] as const;
+export const LEGALITY_STATUSES = ["legal", "restricted", "not_legal", "banned"] as const;
 
 export type LegalityStatus = (typeof LEGALITY_STATUSES)[number];
 

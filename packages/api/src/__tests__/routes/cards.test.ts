@@ -29,17 +29,21 @@ async function get(path: string) {
   const response = await app.handle(new Request(`http://localhost${path}`));
   const text = await response.text();
   let body: unknown = text;
-  try { body = JSON.parse(text); } catch {}
+  try {
+    body = JSON.parse(text);
+  } catch {}
   return { response, body: body as any };
 }
 
 async function post(path: string, body: unknown) {
-  const response = await app.handle(new Request(`http://localhost${path}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  }));
-  return { response, body: await response.json() as any };
+  const response = await app.handle(
+    new Request(`http://localhost${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+  return { response, body: (await response.json()) as any };
 }
 
 describe("card routes", () => {
@@ -52,8 +56,10 @@ describe("card routes", () => {
       ...(await new StubProvider().getOracleById(STUB_ORACLE_ID))!,
       might_bonus: 0,
     });
-    const zero = await buildApp(zeroProvider).handle(new Request(`http://localhost/api/v1/cards/${STUB_ORACLE_ID}`));
-    expect((await zero.json() as any).might_bonus).toBe(0);
+    const zero = await buildApp(zeroProvider).handle(
+      new Request(`http://localhost/api/v1/cards/${STUB_ORACLE_ID}`),
+    );
+    expect(((await zero.json()) as any).might_bonus).toBe(0);
   });
 
   it("accepts an oracle key as the card handle", async () => {
@@ -88,7 +94,11 @@ describe("card routes", () => {
   it("returns one physical printing by id", async () => {
     const { response, body } = await get(`/api/v1/printings/${STUB_ALT_PRINTING_ID}`);
     expect(response.status).toBe(200);
-    expect(body).toMatchObject({ object: "printing", oracle_id: STUB_ORACLE_ID, rarity: "Uncommon" });
+    expect(body).toMatchObject({
+      object: "printing",
+      oracle_id: STUB_ORACLE_ID,
+      rarity: "Uncommon",
+    });
     expect(body.riftseer_uri).toBe("https://riftseer.com/card/ogn/22a/sun-disc");
   });
 
@@ -115,13 +125,20 @@ describe("card routes", () => {
   });
 
   it("accepts either oracle or printing slugs in detail", async () => {
-    expect((await get("/api/v1/cards/detail?slug=sun-disc")).body.printing.id).toBe(STUB_PRINTING_ID);
-    expect((await get("/api/v1/cards/detail?slug=ogn/22a/sun-disc")).body.printing.id).toBe(STUB_ALT_PRINTING_ID);
+    expect((await get("/api/v1/cards/detail?slug=sun-disc")).body.printing.id).toBe(
+      STUB_PRINTING_ID,
+    );
+    expect((await get("/api/v1/cards/detail?slug=ogn/22a/sun-disc")).body.printing.id).toBe(
+      STUB_ALT_PRINTING_ID,
+    );
   });
 
   it("requires exactly one detail selector", async () => {
     expect((await get("/api/v1/cards/detail")).response.status).toBe(400);
-    expect((await get(`/api/v1/cards/detail?oracle=${STUB_ORACLE_ID}&printing=${STUB_PRINTING_ID}`)).response.status).toBe(400);
+    expect(
+      (await get(`/api/v1/cards/detail?oracle=${STUB_ORACLE_ID}&printing=${STUB_PRINTING_ID}`))
+        .response.status,
+    ).toBe(400);
   });
 
   it("strips prices by default and includes them only on request", async () => {
@@ -183,13 +200,19 @@ describe("card routes", () => {
       requests: ["Sun Disc", "Sun Disc|OGN-22", "Missing"],
     });
     expect(response.status).toBe(200);
-    expect(body.results[0]).toMatchObject({ matchType: "exact", oracle: { id: STUB_ORACLE_ID }, printing: { id: STUB_PRINTING_ID } });
+    expect(body.results[0]).toMatchObject({
+      matchType: "exact",
+      oracle: { id: STUB_ORACLE_ID },
+      printing: { id: STUB_PRINTING_ID },
+    });
     expect(body.results[1].printing.id).toBe(STUB_ALT_PRINTING_ID);
     expect(body.results[2]).toMatchObject({ matchType: "not-found", oracle: null, printing: null });
   });
 
   it("caps resolve batches at twenty", async () => {
-    const { response, body } = await post("/api/v1/cards/resolve", { requests: Array(21).fill("Sun Disc") });
+    const { response, body } = await post("/api/v1/cards/resolve", {
+      requests: Array(21).fill("Sun Disc"),
+    });
     expect(response.status).toBe(400);
     expect(body.code).toBe("TOO_MANY_REQUESTS");
   });

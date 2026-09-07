@@ -94,10 +94,7 @@ export function formatBuyLine(line: DeckBuyLine, includeSetCodes: boolean): stri
   return `${line.quantity} ${line.name}${set}`;
 }
 
-export function formatBuyList(
-  lines: readonly DeckBuyLine[],
-  includeSetCodes = false,
-): string {
+export function formatBuyList(lines: readonly DeckBuyLine[], includeSetCodes = false): string {
   return lines.map((line) => formatBuyLine(line, includeSetCodes)).join("\n");
 }
 
@@ -106,9 +103,7 @@ export function tcgplayerMassEntryUrl(
   lines: readonly DeckBuyLine[],
   includeSetCodes = false,
 ): string {
-  const encoded = lines
-    .map((line) => formatBuyLine(line, includeSetCodes))
-    .join("||");
+  const encoded = lines.map((line) => formatBuyLine(line, includeSetCodes)).join("||");
   const params = new URLSearchParams({
     productlineName: "Riftbound",
     c: encoded,

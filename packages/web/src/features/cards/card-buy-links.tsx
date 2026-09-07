@@ -93,8 +93,8 @@ export function CardBuyLinks({
         ))}
       </div>
       <p className="text-muted-foreground mt-2 text-xs">
-        Prices are provided for reference and may be out of date. Purchases through these
-        links may earn Riftseer a commission.
+        Prices are provided for reference and may be out of date. Purchases through these links may
+        earn Riftseer a commission.
       </p>
     </section>
   );
