@@ -22,9 +22,14 @@ import type {
   AdminRulingType,
 } from "@/features/admin/types";
 import { cn } from "@/lib/utils";
-import { AdminPageHeader } from "./admin-page-header";
-import { AdminListState, AdminPager } from "./admin-list";
-import { CheckboxField, SelectField, TextAreaField, TextField } from "./admin-form-field";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminListState, AdminPager } from "@/features/admin/components/admin-list";
+import {
+  CheckboxField,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const PAGE_SIZE = 25;

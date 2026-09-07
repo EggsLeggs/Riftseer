@@ -25,8 +25,14 @@ import {
 } from "@/features/admin/review-draft";
 import type { AdminOracleDefinition, AdminPrintingDefinition } from "@/features/admin/types";
 import { setsApi, setsQueryKeys } from "@/features/sets/api";
-import { AdminPageHeader } from "./admin-page-header";
-import { AdminSection, CheckboxField, FieldGrid, SelectField, TextField } from "./admin-form-field";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import {
+  AdminSection,
+  CheckboxField,
+  FieldGrid,
+  SelectField,
+  TextField,
+} from "@/features/admin/components/admin-form-field";
 
 const EMPTY: GalleryPrefill = {
   name: "",

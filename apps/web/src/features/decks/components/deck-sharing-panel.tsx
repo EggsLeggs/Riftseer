@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SelectField } from "@/views/admin/admin-form-field";
+import { SelectField } from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
 import { deckJoinHref } from "../paths";

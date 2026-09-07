@@ -20,9 +20,9 @@ import { setsApi, setsQueryKeys, type SetInfo } from "@/features/sets/api";
 import { listPrintingsAction } from "@/features/admin/actions";
 import { usePrintingMutations } from "@/features/admin/hooks/use-admin-mutations";
 import type { AdminPrintingListEntry, AdminPrintingState } from "@/features/admin/types";
-import { AdminPageHeader } from "./admin-page-header";
-import { AdminListState, AdminPager } from "./admin-list";
-import { SelectField, TextField } from "./admin-form-field";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminListState, AdminPager } from "@/features/admin/components/admin-list";
+import { SelectField, TextField } from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const PAGE_SIZE = 40;

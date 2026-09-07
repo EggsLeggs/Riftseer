@@ -21,8 +21,8 @@ import { toDateInputValue } from "@/features/admin/dates";
 import { useSetMutations } from "@/features/admin/hooks/use-admin-mutations";
 import { useInlineRowEdit } from "@/features/admin/hooks/use-inline-row-edit";
 import type { AdminSetPatch } from "@/features/admin/types";
-import { AdminPageHeader } from "./admin-page-header";
-import { CheckboxField } from "./admin-form-field";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { CheckboxField } from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface SetDraft {

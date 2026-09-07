@@ -19,7 +19,8 @@ bun run cf-typegen  # after a wrangler.jsonc change
 
 ## Layout and boundaries
 
-- `app/` owns routing and layouts, `views/` compose pages, `features/` own domain behaviour and API access, `components/` are reusable UI, `lib/` holds cross-feature primitives, `providers/` holds client-state wiring. New shared non-UI code goes in `lib/` or `providers/`, never `components/`.
+- `app/` owns routing and layouts, `features/` own domain behaviour and API access, `components/` are reusable UI, `lib/` holds cross-feature primitives, `providers/` holds client-state wiring. New shared non-UI code goes in `lib/` or `providers/`, never `components/`.
+- `views/` is one component per route, composed from `features/*/components` and `components/ui`. A primitive or a panel never lives in `views/`; the admin form fields sat there and grew deck-feature importers of a view directory.
 - Server components are the default. Client components are for state, interactivity or browser APIs; client-side server state goes through TanStack Query.
 - Every Riftseer data and auth operation goes through the Elysia API. The only direct database connection is c15t's consent backend; never import Supabase in page, view or feature code.
 - API calls live in feature API modules. `src/lib/api/client.ts` is the Eden contract; `src/lib/api/request.ts` holds the shared timeout, no-store and `CardApiError` handling, so a failure reaches the error boundary instead of hanging a render.

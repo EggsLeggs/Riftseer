@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/session";
-import { AdminNav } from "@/views/admin/admin-shell";
+import { AdminNav } from "@/features/admin/components/admin-shell";
 
 export const metadata: Metadata = {
   title: "Admin — Riftseer",

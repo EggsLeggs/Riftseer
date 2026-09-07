@@ -34,9 +34,9 @@ import type {
   AdminReviewPage,
   AdminReviewStatus,
 } from "@/features/admin/types";
-import { AdminPageHeader } from "./admin-page-header";
-import { SelectField } from "./admin-form-field";
-import { AdminListState, AdminPager } from "./admin-list";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { SelectField } from "@/features/admin/components/admin-form-field";
+import { AdminListState, AdminPager } from "@/features/admin/components/admin-list";
 
 const PAGE_SIZE = 50;
 

@@ -11,7 +11,11 @@ import { DECK_VISIBILITY_OPTIONS } from "@/features/decks/components/deck-metada
 import { useDeckLifecycleMutations } from "@/features/decks/hooks/use-deck-mutations";
 import { deckHref, myDecksHref, newDeckHref } from "@/features/decks/paths";
 import type { DeckImportProblem, DeckVisibility } from "@/features/decks/types";
-import { SelectField, TextAreaField, TextField } from "@/views/admin/admin-form-field";
+import {
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/features/admin/components/admin-form-field";
 
 /**
  * `/decks/import`. Moxfield-style text in, a deck out.
