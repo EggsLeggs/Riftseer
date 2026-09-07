@@ -303,7 +303,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         },
         detail: {
           tags: ["Cards"],
-          summary: "Get a card by oracle id",
+          summary: "Get a card by oracle UUID, oracle_key or slug",
           description:
             "Returns one card by oracle UUID, `oracle_key`, or single-segment oracle " +
             "slug. Does not accept a printing id — use `/printings/:id` for those.",

@@ -1383,11 +1383,17 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                   set.status = 400;
                   return { error: "No such comment to reply to.", code: "NO_SUCH_PARENT" };
                 }
-                parentId = parent.id;
                 // The cap flattens rather than refuses: reply eight becomes a
                 // sibling of reply seven, which is what the collapsed UI shows
-                // anyway.
-                depth = Math.min(parent.depth + 1, COMMENT_DEPTH_MAX);
+                // anyway. Reuse the grandparent so client-side nesting cannot
+                // exceed the capped level via parent_id.
+                if (parent.depth >= COMMENT_DEPTH_MAX) {
+                  parentId = parent.parent_id;
+                  depth = COMMENT_DEPTH_MAX;
+                } else {
+                  parentId = parent.id;
+                  depth = parent.depth + 1;
+                }
               }
 
               const row = await repository.insertComment({
