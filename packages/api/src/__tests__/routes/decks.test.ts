@@ -849,18 +849,33 @@ describe("comments", () => {
   test("the depth cap flattens instead of refusing", async () => {
     const deck = repository.seedDeck({ visibility: "public" });
     let parentId: string | undefined;
-    let last: { depth: number } = { depth: 0 };
+    let depthSevenParentId: string | null = null;
+    let last: { id: string; parent_id: string | null; depth: number } = {
+      id: "",
+      parent_id: null,
+      depth: 0,
+    };
     for (let i = 0; i < 10; i += 1) {
       const posted = await request("POST", `/decks/${deck.id}/comments`, "stranger-token", {
         body: `reply ${i}`,
         ...(parentId ? { parent_id: parentId } : {}),
       });
       expect(posted.status).toBe(201);
-      const row = (await posted.json()) as { id: string; depth: number };
+      const row = (await posted.json()) as {
+        id: string;
+        parent_id: string | null;
+        depth: number;
+      };
+      if (row.depth === 7 && depthSevenParentId === null) {
+        depthSevenParentId = row.parent_id;
+      }
       parentId = row.id;
       last = row;
     }
     expect(last.depth).toBe(7);
+    expect(depthSevenParentId).not.toBeNull();
+    // Deeper replies stay at depth 7 as siblings of the capped parent.
+    expect(last.parent_id).toBe(depthSevenParentId);
   });
 
   test("comments on an unreadable deck answer 404 both ways", async () => {

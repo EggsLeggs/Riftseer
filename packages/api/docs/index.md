@@ -81,7 +81,7 @@ Errors return a JSON body with `error` (human-readable message) and `code` (mach
 
 All routes are versioned under a path prefix (`/api/v1/...`). The version is part of the URL, not a header. If a breaking change is ever needed, a new `/api/v2/...` prefix will be introduced alongside v1 — old versions are not removed.
 
-The Swagger UI at `/api/swagger` documents all active versions.
+The interactive reference at `/docs` documents all active versions.
 
 ---
 
