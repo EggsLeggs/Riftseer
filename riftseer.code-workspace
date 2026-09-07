@@ -1,0 +1,121 @@
+// Multi-root workspace: ROOT plus one child root per app and package. Open
+// with `code riftseer.code-workspace`. Child roots are hidden from ROOT via
+// `files.exclude` so every file appears exactly once in the explorer.
+//
+// Window-scoped settings (title bar colour, typescript.tsdk) have to live
+// here: in a multi-root workspace VS Code ignores them in a folder's
+// .vscode/settings.json. That file still carries them for `code .`.
+{
+  "folders": [
+    { "name": "ROOT", "path": "." },
+    { "name": "api", "path": "apps/api" },
+    { "name": "web", "path": "apps/web" },
+    { "name": "ingest-worker", "path": "apps/ingest-worker" },
+    { "name": "discord-bot", "path": "apps/discord-bot" },
+    { "name": "reddit-bot", "path": "apps/reddit-bot" },
+    { "name": "raycast-extension", "path": "apps/raycast-extension" },
+    { "name": "types", "path": "packages/types" },
+    { "name": "core", "path": "packages/core" },
+  ],
+  "settings": {
+    "files.exclude": {
+      "apps/api": true,
+      "apps/web": true,
+      "apps/ingest-worker": true,
+      "apps/discord-bot": true,
+      "apps/reddit-bot": true,
+      "apps/raycast-extension": true,
+      "packages/types": true,
+      "packages/core": true,
+      "**/.next": true,
+    },
+    "files.readonlyInclude": {
+      "**/openapi.json": true,
+      "**/bun.lock": true,
+      "**/package-lock.json": true,
+      "**/worker-configuration.d.ts": true,
+      "**/cloudflare-env.d.ts": true,
+    },
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "workbench.colorCustomizations": {
+      "titleBar.activeBackground": "#ab2235",
+      "titleBar.activeForeground": "#ffffff",
+      "titleBar.inactiveBackground": "#ab223599",
+      "titleBar.inactiveForeground": "#ffffffcc",
+    },
+  },
+  // Every task runs a root package.json script from ROOT, so the tasks stay
+  // in sync with `bun run <script>` on the command line. `dev:api:local` and
+  // `dev:web` are background tasks: VS Code treats them as started once the
+  // server prints its ready line, which is what lets a launch config wait
+  // on them.
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "db:local:up",
+        "type": "shell",
+        "command": "bun run db:local:up",
+        "options": { "cwd": "${workspaceFolder:ROOT}" },
+        "problemMatcher": [],
+      },
+      {
+        "label": "dev:api:local",
+        "type": "shell",
+        // The inspector port is explicit so the `api` attach config and the
+        // ingest worker (9231) never race for wrangler's default.
+        "command": "bun run dev:api:local --inspector-port 9229",
+        "options": { "cwd": "${workspaceFolder:ROOT}" },
+        "dependsOn": ["db:local:up"],
+        "isBackground": true,
+        "presentation": { "panel": "dedicated", "group": "dev" },
+        "problemMatcher": {
+          "owner": "wrangler",
+          "pattern": { "regexp": "^$", "file": 1, "location": 2, "message": 3 },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "Starting local server",
+            "endsPattern": "Ready on http://",
+          },
+        },
+      },
+      {
+        "label": "dev:web",
+        "type": "shell",
+        "command": "bun run dev:web",
+        "options": { "cwd": "${workspaceFolder:ROOT}" },
+        "isBackground": true,
+        "presentation": { "panel": "dedicated", "group": "dev" },
+        "problemMatcher": {
+          "owner": "next",
+          "pattern": { "regexp": "^$", "file": 1, "location": 2, "message": 3 },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "Next\\.js",
+            "endsPattern": "Ready in",
+          },
+        },
+      },
+    ],
+  },
+  // One F5: `dev:api:local` brings the docker database up and waits for
+  // wrangler's ready line, then the api debugger attaches and web starts
+  // under its own debugger. Only the docker-pinned scripts appear here;
+  // `dev:prod` stays an explicit command-line opt-in.
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [],
+    "compounds": [
+      {
+        "name": "Riftseer: db + api + web",
+        "preLaunchTask": "dev:api:local",
+        "configurations": [
+          { "folder": "api", "name": "api: attach to wrangler dev" },
+          { "folder": "web", "name": "web: next dev" },
+        ],
+        "stopAll": true,
+      },
+    ],
+  },
+}

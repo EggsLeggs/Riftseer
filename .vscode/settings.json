@@ -6,5 +6,20 @@
   "[javascript][javascriptreact][typescript][typescriptreact][json][jsonc][markdown][yaml][css]": {
     "editor.defaultFormatter": "oxc.oxc-vscode"
   },
-  "oxc.enable.oxfmt": true
+  "oxc.enable.oxfmt": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "files.readonlyInclude": {
+    "apps/api/openapi.json": true,
+    "bun.lock": true,
+    "apps/*/package-lock.json": true,
+    "apps/*/src/worker-configuration.d.ts": true,
+    "apps/web/cloudflare-env.d.ts": true
+  },
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#ab2235",
+    "titleBar.activeForeground": "#ffffff",
+    "titleBar.inactiveBackground": "#ab223599",
+    "titleBar.inactiveForeground": "#ffffffcc"
+  }
 }
