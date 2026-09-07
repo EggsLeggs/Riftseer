@@ -12,11 +12,11 @@
     "type-check": "tsc --build"
   },
   "dependencies": {
-    "@devvit/public-api": "^0.12.18",
+    "@devvit/public-api": "^0.14.0",
     "@riftseer/types": "file:../types"
   },
   "devDependencies": {
-    "devvit": "^0.12.18",
+    "devvit": "^0.14.0",
     "dotenv-cli": "^11.0.0",
     "esbuild": "^0.28.0",
     "typescript": "^5.9.3"
