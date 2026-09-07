@@ -12,32 +12,70 @@
  *
  * Runs under bun, not node: node 22 claims `--env-file` for itself even when
  * it appears after the script path, and never hands it to wrangler.
+ *
+ * Bun also loads the repository's root `.env` into `process.env` for every
+ * script it runs, and wrangler reads a Worker's declared secrets from
+ * `process.env` ahead of any `--env-file`. The root `.env` is the web dev
+ * server's file and holds production values, so left alone it silently
+ * pointed `bun dev` at production. Every key it defines is dropped from the
+ * environment wrangler is spawned with; a Worker's values come from its own
+ * `.dev.vars*` files and nowhere else.
  */
 
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
-const repoRoot = path.resolve(import.meta.dirname, "..");
-const [pkg, ...extra] = process.argv.slice(2);
-
-if (!pkg) {
-  console.error("usage: bun scripts/wrangler-dev.mjs <package> [wrangler dev args...]");
-  process.exit(2);
+/** The variable names a dotenv file defines, ignoring comments and blanks. */
+export function dotenvKeys(text) {
+  const keys = [];
+  for (const raw of text.split("\n")) {
+    const line = raw.trim();
+    if (line === "" || line.startsWith("#")) continue;
+    const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
+    if (match) keys.push(match[1]);
+  }
+  return keys;
 }
 
-const cwd = path.join(repoRoot, "apps", pkg);
-const wrangler = path.join(cwd, "node_modules", ".bin", "wrangler");
-const persistTo = path.join(repoRoot, ".wrangler", "shared");
-
-const child = spawn(wrangler, ["dev", "--persist-to", persistTo, ...extra], {
-  cwd,
-  stdio: "inherit",
-});
-
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, () => child.kill(signal));
+/** A copy of `env` without the given keys. */
+export function withoutKeys(env, keys) {
+  const drop = new Set(keys);
+  return Object.fromEntries(Object.entries(env).filter(([key]) => !drop.has(key)));
 }
 
-child.on("exit", (code, signal) => {
-  process.exit(code ?? (signal ? 1 : 0));
-});
+function rootDotenvKeys(repoRoot) {
+  try {
+    return dotenvKeys(readFileSync(path.join(repoRoot, ".env"), "utf8"));
+  } catch {
+    return [];
+  }
+}
+
+if (import.meta.main) {
+  const repoRoot = path.resolve(import.meta.dirname, "..");
+  const [pkg, ...extra] = process.argv.slice(2);
+
+  if (!pkg) {
+    console.error("usage: bun scripts/wrangler-dev.mjs <package> [wrangler dev args...]");
+    process.exit(2);
+  }
+
+  const cwd = path.join(repoRoot, "apps", pkg);
+  const wrangler = path.join(cwd, "node_modules", ".bin", "wrangler");
+  const persistTo = path.join(repoRoot, ".wrangler", "shared");
+
+  const child = spawn(wrangler, ["dev", "--persist-to", persistTo, ...extra], {
+    cwd,
+    stdio: "inherit",
+    env: withoutKeys(process.env, rootDotenvKeys(repoRoot)),
+  });
+
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, () => child.kill(signal));
+  }
+
+  child.on("exit", (code, signal) => {
+    process.exit(code ?? (signal ? 1 : 0));
+  });
+}

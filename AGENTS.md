@@ -83,6 +83,7 @@ bun run db:local:psql
 - PostgREST catches shape bugs `psql` cannot: an embedded one-to-one comes back as an object or null, never an array.
 - `raycast-extension` and `reddit-bot` need `npm install` in their own directory.
 - A new env var or secret touches several files per Worker; a missed one is silently absent under local `wrangler dev`. `docs/adding-an-env-var.md` is the list.
+- The root `.env` belongs to the web dev server and holds production values. Bun loads it into every script it runs and wrangler reads declared secrets from `process.env` first, so `scripts/wrangler-dev.mjs` strips its keys before spawning. A Worker's local values live in its own `.dev.vars*` files, never in `.env`.
 
 ## Test data
 
