@@ -7,7 +7,7 @@ export * from "./src/deck-text.ts";
 export * from "./src/deck-validate.ts";
 export * from "./src/keywords.ts";
 export * from "./src/parser.ts";
-export * from "./src/icons.ts";
+export * from "./src/render/index.ts";
 export * from "./src/oracle.ts";
 export * from "./src/slug.ts";
 export * from "./src/social-links.ts";

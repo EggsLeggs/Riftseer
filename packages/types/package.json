@@ -7,12 +7,12 @@
   "exports": {
     ".": "./index.ts",
     "./card-text": "./src/card-text.ts",
+    "./render": "./src/render/index.ts",
     "./card-image": "./src/card-image.ts",
     "./deck": "./src/deck.ts",
     "./deck-text": "./src/deck-text.ts",
     "./deck-validate": "./src/deck-validate.ts",
     "./keywords": "./src/keywords.ts",
-    "./icons": "./src/icons.ts",
     "./oracle": "./src/oracle.ts",
     "./parser": "./src/parser.ts",
     "./admin-actions": "./src/admin-actions.ts",

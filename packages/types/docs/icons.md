@@ -1,84 +1,73 @@
 ---
-title: Icon Tokens
-sidebar_label: Icons
+title: Render Kernel
+sidebar_label: Render kernel
 sidebar_position: 5
 ---
 
-`src/icons.ts` exports the regex and token-to-CSS-class map for inline card text symbols. These are consumed by the frontend's `CardTextRenderer` component and by any client that wants to render card text with icon substitution.
+`src/render/` is the set of pure functions every Riftseer surface renders a card from: the web site, the Discord bot, the Reddit bot and the Raycast extension. It returns plain data — strings, token objects, colour values — and never touches React, the DOM or a Discord asset, so it is safe to import anywhere `@riftseer/types` is.
 
-Import from the sub-path export to keep it tree-shakeable:
-
-```typescript
-import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types/icons";
-```
-
-Both are also available on the default export:
+Import it through its one public entry point:
 
 ```typescript
-import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types";
+import { tokenizeCardTextLine, cardTypeLine } from "@riftseer/types/render";
 ```
+
+Everything is also on the package root (`@riftseer/types`). The files behind `render/index.ts` are private; the repository's boundary lint rejects a direct import of them.
 
 ---
 
-## Token format
+## Rules text
 
-Icon tokens appear inline in card `text.rich` strings:
+Card text arrives compressed, with `:rb_<key>:` icon tokens, `[Keyword]` badges and `_reminder text_` inline. Two functions turn it into something a surface can draw.
 
-```text
-:rb_<key>:
-```
+### `normalizeCardTextLayout(text, paragraphBreak = "\n")`
 
-Examples: `:rb_exhaust:`, `:rb_energy_3:`, `:rb_rune_fury:`
+Splits one compressed string into lines: one per ability or sentence, never inside a parenthetical, with HTML entities decoded. Run it first, then split on the break.
 
----
+### `tokenizeCardTextLine(line)`
 
-## `TOKEN_REGEX`
+Turns one line into a `CardTextToken[]`:
 
-```typescript
-const TOKEN_REGEX: RegExp = /:rb_(\w+):/g;
-```
+| `kind` | Fields | Meaning |
+| --- | --- | --- |
+| `text` | `text` | Prose |
+| `icon` | `keys` | A run of adjacent `:rb_…:` tokens, so `3 Energy and Power` can be one phrase |
+| `keyword` | `label`, `arrow`, `stackLeft`, `costs` | A `[Keyword]` badge; `[>]` sets `arrow`, a preceding `[>>]` sets `stackLeft`, trailing energy/rune costs are absorbed into `costs` |
+| `bracket` | `label` | A bracketed span that is not a keyword (`[NO TEXT]`) |
+| `italic` | `tokens` | Reminder text, with its own inline tokens |
 
-Matches any `:rb_<key>:` token. The first capture group is the key (e.g. `exhaust`, `rune_fury`).
+A surface maps each token to what it draws with. The web site maps them to elements and CSS classes; the clipboard formatter in this package maps them to `{3}` / `[Deflect]` text.
 
-Reset `lastIndex` between calls if reusing the regex across multiple strings, or clone it with `new RegExp(TOKEN_REGEX.source, TOKEN_REGEX.flags)`.
+### `replaceIconTokens(text, replace)`
 
----
+For text-only surfaces that leave keywords and italics as written and only substitute icons — Discord emoji references, Markdown images.
 
-## `TOKEN_ICON_MAP`
+### Labels
 
-```typescript
-const TOKEN_ICON_MAP: Record<string, string>
-```
-
-Maps token key → CSS class name. The frontend uses these class names to render SVG icons via CSS.
-
-| Key | CSS class |
-| --- | --- |
-| `exhaust` | `icon-exhaust` |
-| `energy` | `icon-energy` |
-| `might` | `icon-might` |
-| `power` | `icon-power` |
-| `rune_fury` | `icon-rune-fury` |
-| `rune_calm` | `icon-rune-calm` |
-| `rune_mind` | `icon-rune-mind` |
-| `rune_body` | `icon-rune-body` |
-| `rune_chaos` | `icon-rune-chaos` |
-| `rune_order` | `icon-rune-order` |
-| `rune_rainbow` | `icon-rune-rainbow` |
-
-Keys not present in the map should be rendered as plain text or ignored.
+`tokenDisplayName("energy_3")` is `3 Energy`; `tokenPlainLabel("rune_fury")` is `{Fury}`; `formatTokenDisplayList(["energy_3", "rune_rainbow"])` is `3 Energy and Power`.
 
 ---
 
-## Usage example
+## Domains
 
-```typescript
-import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types/icons";
+The six domains are `body`, `calm`, `chaos`, `fury`, `mind` and `order` (`DOMAIN_KEYS`). Upstream spells them capitalised and the rune token spells them as keys; `domainKey(name)` accepts either and returns the key or `null`.
 
-function renderRichText(rich: string): string {
-  return rich.replace(TOKEN_REGEX, (_, key) => {
-    const cls = TOKEN_ICON_MAP[key];
-    return cls ? `<span class="${cls}" aria-hidden="true"></span>` : `:rb_${key}:`;
-  });
-}
-```
+- `domainDisplayName(key)` — the printed spelling.
+- `domainRuneHex(name)` — the fill sampled from the rune art, for badges and embed stripes.
+- `domainWashRgb(name)` / `DOMAIN_WASH_RGB` / `NEUTRAL_DOMAIN_RGB` — softer space-separated RGB triples for decorative washes and bars; `rainbow` has one too.
+- `hasRuneGlyph(name)` — whether a printed rune exists for it (the six, plus `rainbow`).
+- `meaningfulCardDomains(oracle)` — the card's domains without the upstream `Colorless` placeholder.
+
+---
+
+## Type line
+
+`cardTypeLine(oracle)` renders the printed type line the same way everywhere: `Champion Unit`, `Signature Spell`, `Token Unit`, a bare `Legend`. It returns `null` for a card with no type. `cardTypeIconKey(oracle)` names the glyph that goes with it.
+
+---
+
+## Site URLs
+
+- `cardHref(printing)` / `oracleHref(oracle)` — relative paths for the site itself, preferring the pinned `public_slug` and falling back to the permanent `/card/<id>` route.
+- `absoluteRiftseerUri(siteOrigin, slug)` — what the API stamps onto payloads as `riftseer_uri`.
+- `cardSiteUrl(oracle, printing, siteOrigin)` — for clients: the API's `riftseer_uri` when present, the compatibility route otherwise.

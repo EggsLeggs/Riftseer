@@ -132,25 +132,3 @@ export function generateOracleSlug(
   }
   return base;
 }
-
-/** Strip trailing slashes from an origin like `https://riftseer.com/`. */
-export function normalizeSiteOrigin(origin: string): string {
-  return origin.replace(/\/+$/, "");
-}
-
-/**
- * Build an absolute site URL for a card.  Returns `undefined` when either the
- * origin or slug is empty so callers can no-op cleanly.
- */
-export function absoluteRiftseerUri(
-  siteOrigin: string | undefined | null,
-  publicSlug: string | undefined | null,
-): string | undefined {
-  if (!siteOrigin || !publicSlug) return undefined;
-  const origin = normalizeSiteOrigin(siteOrigin);
-  const path = publicSlug
-    .split("/")
-    .map((s) => encodeURIComponent(s))
-    .join("/");
-  return `${origin}/card/${path}`;
-}

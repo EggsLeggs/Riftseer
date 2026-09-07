@@ -1,11 +1,9 @@
 import { describe, expect, it } from "bun:test";
+import { repairFlavourText } from "../card-text.ts";
 import {
   decodeCardTextEntities,
   formatCardTextForClipboard,
-  maskIconTokens,
-  repairFlavourText,
-  restoreIconTokens,
-} from "../card-text.ts";
+} from "../render/index.ts";
 
 describe("repairFlavourText", () => {
   it("restores a missing opening dialogue quote before attribution", () => {
@@ -183,15 +181,11 @@ describe("decodeCardTextEntities", () => {
   });
 });
 
-describe("maskIconTokens / restoreIconTokens", () => {
+describe("token masking", () => {
   it("does not treat literal sentinel sequences as token placeholders", () => {
     const literal = "\uE0000\uE001";
-    const { masked, tokens } = maskIconTokens(
-      `${literal} costs :rb_energy_1: more.`,
-    );
-    expect(masked).toContain("\uE0020\uE003");
-    expect(restoreIconTokens(masked, tokens)).toBe(
-      `${literal} costs :rb_energy_1: more.`,
+    expect(formatCardTextForClipboard(`${literal} costs :rb_energy_1: more.`)).toBe(
+      `${literal} costs {1} more.`,
     );
   });
 });
