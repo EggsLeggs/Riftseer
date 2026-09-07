@@ -1,0 +1,134 @@
+# Applies pending supabase/migrations to the production database, using the
+# same SUPABASE_DB_URL secret the ingest-worker deploy gate verifies against.
+# Dry-run by default; pass apply=true to take a pg_dump backup (encrypted with
+# DB_BACKUP_ENCRYPTION_KEY, then uploaded as a workflow artifact) and apply
+# each missing migration in filename order, one transaction per file that also
+# records it in supabase_migrations.schema_migrations.
+name: DB Migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Actually apply (anything but 'true' is a dry run)"
+        required: false
+        default: "false"
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+# Least privilege for GITHUB_TOKEN. contents:read for checkout; actions:write
+# only so the encrypted backup can be uploaded as an artifact.
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # pg_dump must be >= the server's major version; the pgdg client is
+      # newer than whatever the runner image ships.
+      - name: Install postgresql-client-17
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Plan
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_DB_URL}" || { echo "SUPABASE_DB_URL secret is required"; exit 1; }
+
+          psql "${SUPABASE_DB_URL}" -tA -v ON_ERROR_STOP=1 -c \
+            "SELECT version FROM supabase_migrations.schema_migrations ORDER BY version;" \
+            | grep -E '^[0-9]+$' | sort -u > /tmp/applied
+
+          : > /tmp/missing
+          for f in supabase/migrations/*.sql; do
+            base=$(basename "$f"); ver="${base%%_*}"
+            echo "$ver" | grep -qE '^[0-9]{14}$' || continue
+            grep -qx "$ver" /tmp/applied || echo "$f" >> /tmp/missing
+          done
+
+          echo "Applied on remote: $(wc -l < /tmp/applied) version(s), latest $(tail -1 /tmp/applied || echo none)"
+          echo "Missing ($(wc -l < /tmp/missing)):"
+          cat /tmp/missing
+
+      # Plaintext dump never leaves the runner. Decrypt offline with:
+      #   openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 \
+      #     -in prod-backup.dump.enc -out prod-backup.dump \
+      #     -pass env:DB_BACKUP_ENCRYPTION_KEY
+      - name: Back up
+        if: ${{ github.event.inputs.apply == 'true' }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          DB_BACKUP_ENCRYPTION_KEY: ${{ secrets.DB_BACKUP_ENCRYPTION_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "${DB_BACKUP_ENCRYPTION_KEY}" || {
+            echo "DB_BACKUP_ENCRYPTION_KEY secret is required (passphrase for AES-256 dump encryption; restrict to DB admins)"
+            exit 1
+          }
+          pg_dump "${SUPABASE_DB_URL}" -Fc --no-owner -f /tmp/prod-backup.dump
+          openssl enc -aes-256-cbc -pbkdf2 -iter 100000 \
+            -in /tmp/prod-backup.dump \
+            -out /tmp/prod-backup.dump.enc \
+            -pass env:DB_BACKUP_ENCRYPTION_KEY
+          shred -u /tmp/prod-backup.dump 2>/dev/null || rm -f /tmp/prod-backup.dump
+          ls -la /tmp/prod-backup.dump.enc
+
+      - name: Upload encrypted backup artifact
+        if: ${{ github.event.inputs.apply == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-backup-${{ github.run_id }}
+          path: /tmp/prod-backup.dump.enc
+          retention-days: 30
+
+      - name: Apply
+        if: ${{ github.event.inputs.apply == 'true' }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          has_name=$(psql "${SUPABASE_DB_URL}" -tA -v ON_ERROR_STOP=1 -c \
+            "SELECT count(*) FROM information_schema.columns WHERE table_schema='supabase_migrations' AND table_name='schema_migrations' AND column_name='name';")
+
+          # SQL string literal: escape embedded single quotes as ''.
+          sql_quote() {
+            printf "'%s'" "$(printf '%s' "$1" | sed "s/'/''/g")"
+          }
+
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            base=$(basename "$f"); ver="${base%%_*}"; name="${base#*_}"; name="${name%.sql}"
+            echo "==> applying ${base}"
+            # Reject top-level COMMIT/END/ROLLBACK/ABORT so --single-transaction
+            # cannot end early (PL/pgSQL bodies inside dollar-quotes are allowed).
+            python3 .github/scripts/reject-toplevel-txn-end.py "$f"
+            # Migration body + schema_migrations row in one session/transaction so
+            # a committed schema change cannot land without its history record.
+            {
+              cat "$f"
+              printf '\n'
+              if [ "$has_name" = "1" ]; then
+                printf "INSERT INTO supabase_migrations.schema_migrations (version, name) VALUES (%s, %s);\n" \
+                  "$(sql_quote "$ver")" "$(sql_quote "$name")"
+              else
+                printf "INSERT INTO supabase_migrations.schema_migrations (version) VALUES (%s);\n" \
+                  "$(sql_quote "$ver")"
+              fi
+            } | psql "${SUPABASE_DB_URL}" -v ON_ERROR_STOP=1 --single-transaction -q
+          done < /tmp/missing
+
+          echo "==> verify"
+          psql "${SUPABASE_DB_URL}" -tA -v ON_ERROR_STOP=1 -c \
+            "SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 15;"
