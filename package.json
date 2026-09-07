@@ -19,10 +19,10 @@
   },
   "scripts": {
     "dev": "bun run dev:api:local & bun run dev:web & wait",
-    "dev:api": "cd packages/api && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared",
-    "dev:api:local": "cd packages/api && touch .dev.vars.local.secrets && ./node_modules/.bin/wrangler dev --persist-to ../../.wrangler/shared --env-file .dev.vars.local --env-file .dev.vars.local.secrets",
-    "dev:ingest": "cd packages/ingest-worker && ./node_modules/.bin/wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared",
-    "dev:ingest:local": "cd packages/ingest-worker && ./node_modules/.bin/wrangler dev --config wrangler.jsonc --port 8787 --inspector-port 9231 --persist-to ../../.wrangler/shared --env-file .dev.vars.local",
+    "dev:api": "bun scripts/wrangler-dev.mjs api",
+    "dev:api:local": "touch packages/api/.dev.vars.local.secrets && bun scripts/wrangler-dev.mjs api --env-file .dev.vars.local --env-file .dev.vars.local.secrets",
+    "dev:ingest": "bun scripts/wrangler-dev.mjs ingest-worker --config wrangler.jsonc --port 8787 --inspector-port 9231",
+    "dev:ingest:local": "bun scripts/wrangler-dev.mjs ingest-worker --config wrangler.jsonc --port 8787 --inspector-port 9231 --env-file .dev.vars.local",
     "dev:raycast": "cd packages/raycast-extension && npm run dev",
     "dev:web": "cd packages/web && bun run --env-file ../../.env dev",
     "build:web": "cd packages/web && bun run build",
@@ -38,7 +38,8 @@
     "db:local:psql": "docker compose exec postgres psql -U postgres -d riftseer",
     "test:db": "RIFTSEER_DATABASE_TESTS=1 RIFTSEER_DATABASE_URL=postgres://postgres:postgres@localhost:55432/riftseer_test RIFTSEER_POSTGREST_URL=http://localhost:54322/rest/v1 bun test packages/core/src/__tests__/database.integration.test.ts",
     "lint:boundaries": "./node_modules/.bin/depcruise --config .config/dependency-cruiser.cjs packages/types/src packages/core/src packages/api/src packages/ingest-worker/src packages/discord-bot/src packages/web/src",
-    "check": "bun run typecheck && bun test && node scripts/check-docs-references.mjs && bun run lint:md && bun run lint:boundaries",
+    "check": "bun run typecheck && bun test && node scripts/check-docs-references.mjs && bun run lint:md && bun run lint:boundaries && bun run check:wrangler",
+    "check:wrangler": "bun scripts/check-wrangler-consistency.mjs",
     "dev:prod": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait"
   },
   "devDependencies": {
