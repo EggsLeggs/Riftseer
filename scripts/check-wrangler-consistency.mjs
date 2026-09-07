@@ -80,30 +80,57 @@ for (const [binding, queue] of apiQueues) {
 // under --env but not bindings, so the block duplicates them by hand and the
 // two copies must agree. The name must match too: a different name deploys a
 // brand-new Worker instead of the one riftseer.com is attached to.
-const production = web.env?.production ?? {};
-if (production.name !== web.name) {
-  problems.push(
-    `packages/web/wrangler.jsonc: env.production.name is ${production.name}, top-level name is ${web.name}`,
-  );
-}
-for (const key of ["assets", "images", "services", "secrets", "compatibility_flags"]) {
-  if (!(key in production)) continue;
-  const top = JSON.stringify(web[key]);
-  const prod = JSON.stringify(production[key]);
-  if (top !== prod) {
-    problems.push(
-      `packages/web/wrangler.jsonc: env.production.${key} is ${prod}, top-level ${key} is ${top}`,
+//
+// images, services, and secrets must be present in env.production — skipping
+// a missing key used to hide a broken production deploy. assets and
+// compatibility_flags are still compared only when present.
+export const REQUIRED_PRODUCTION_SECTIONS = ["images", "services", "secrets"];
+export const COMPARED_PRODUCTION_SECTIONS = [
+  "assets",
+  "images",
+  "services",
+  "secrets",
+  "compatibility_flags",
+];
+
+export function productionBindingProblems(top, production = {}) {
+  const found = [];
+  if (production.name !== top.name) {
+    found.push(
+      `packages/web/wrangler.jsonc: env.production.name is ${production.name}, top-level name is ${top.name}`,
     );
   }
+  for (const key of COMPARED_PRODUCTION_SECTIONS) {
+    if (!(key in production)) {
+      if (REQUIRED_PRODUCTION_SECTIONS.includes(key)) {
+        found.push(
+          `packages/web/wrangler.jsonc: env.production is missing ${key}, which does not inherit under --env`,
+        );
+      }
+      continue;
+    }
+    const topValue = JSON.stringify(top[key]);
+    const prodValue = JSON.stringify(production[key]);
+    if (topValue !== prodValue) {
+      found.push(
+        `packages/web/wrangler.jsonc: env.production.${key} is ${prodValue}, top-level ${key} is ${topValue}`,
+      );
+    }
+  }
+  return found;
 }
 
-if (problems.length > 0) {
-  console.error("Wrangler configs disagree:\n");
-  for (const problem of problems) console.error(`  ${problem}`);
-  console.error(`\n${problems.length} problem(s).`);
-  process.exit(1);
-}
+problems.push(...productionBindingProblems(web, web.env?.production ?? {}));
 
-console.log(
-  `Wrangler configs agree: compatibility_date ${newest}, shared R2 and queue names, web env.production matches its top level.`,
-);
+if (import.meta.main) {
+  if (problems.length > 0) {
+    console.error("Wrangler configs disagree:\n");
+    for (const problem of problems) console.error(`  ${problem}`);
+    console.error(`\n${problems.length} problem(s).`);
+    process.exit(1);
+  }
+
+  console.log(
+    `Wrangler configs agree: compatibility_date ${newest}, shared R2 and queue names, web env.production matches its top level.`,
+  );
+}

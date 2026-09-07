@@ -1,20 +1,24 @@
 # Adding an environment variable
 
 Every Worker declares in its `wrangler.jsonc` what reaches the code. A key
-that is missing from that declaration does not error: it is silently absent,
-in `wrangler dev` and in production alike. This is the list of files a new
+that is missing from that declaration does not error in local runs: it is
+silently absent under `wrangler dev`. This is the list of files a new
 variable or secret has to touch, per Worker, so the value actually arrives.
 
 Decide two things first.
 
 - **Var or secret.** A var is a committed, non-confidential value and lives in
   `vars`. A secret is set remotely with `wrangler secret put <NAME>` from the
-  package directory and is listed under `secrets.required`.
-- **The allowlist is load-bearing.** Declaring `secrets.required` replaces
-  wrangler's `.dev.vars` inference. A secret the code reads but the list does
-  not name is dropped before it reaches the Worker, optional or not. The
-  comment above `secrets` in `packages/api/wrangler.jsonc` records the
-  incident that taught us this.
+  package directory. Required secrets are listed under `secrets.required`.
+- **`secrets.required` does two jobs.** Locally it filters `.dev.vars`/`.env`:
+  only listed keys are loaded, so an unlisted key the code reads is silently
+  absent under `wrangler dev`. On deploy it validates that every listed secret
+  is configured on the Worker and fails if any are missing. Optional secrets
+  stay out of the list — type them by hand (see `RIFTCODEX_API_KEY` and
+  `INGEST_SECRET` on the ingest worker) and set them with
+  `wrangler secret put`. The comment above `secrets` in
+  `packages/api/wrangler.jsonc` records the local-filtering incident that
+  taught us this.
 
 `bun run check:wrangler` catches the four configs disagreeing with each other
 (compatibility date, shared R2 and queue names, web's `env.production` block).
@@ -26,8 +30,8 @@ The API and `@riftseer/core` read `process.env.<NAME>`; the
 `nodejs_compat` flag populates it from the bindings.
 
 - [ ] `packages/api/wrangler.jsonc` — `vars` for a plain value, or the
-      `secrets.required` allowlist for a secret. Optional secrets go in the
-      allowlist too, with a comment saying they are optional.
+      `secrets.required` allowlist for a required secret. Optional secrets
+      stay out of the allowlist; type and set them separately.
 - [ ] `packages/api/src/worker-configuration.d.ts` — regenerate; the command
       is in the file's first comment line. Run it from `packages/api`.
 - [ ] `packages/api/.dev.vars.example` — document the key with a placeholder.
@@ -98,7 +102,8 @@ deploys with `--env production`, and wrangler does not inherit bindings under
       `bun dev:web` loads the root `.env`.
 - [ ] Local wrangler runs (`bun run preview:web`) read secrets from the
       gitignored `packages/web/.dev.vars`.
-- [ ] Production: `wrangler secret put <NAME>` from `packages/web`.
+- [ ] Production: `wrangler secret put <NAME> --env production` from
+      `packages/web`.
 
 ## Everywhere
 
