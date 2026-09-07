@@ -28,7 +28,7 @@ The following external domains are required by this app (submitted for [Reddit's
 
 This is the **only domain** the app fetches, and it is the app's own backend — not a third-party service.
 
-- API reference (Swagger): [http://docs.riftseer.com/api-reference](http://docs.riftseer.com/api-reference)
+- API reference: [https://api.riftseer.com/docs](https://api.riftseer.com/docs)
 
 **What it does:**
 When a user writes `[[Card Name]]`, the bot POSTs the token to `/api/v1/cards/resolve` on this host. The API performs:

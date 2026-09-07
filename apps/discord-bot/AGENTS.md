@@ -29,4 +29,4 @@ The bot registers three slash commands, defined in `src/commands.ts`: `/card nam
 - `@riftseer/core/icons` is safe here. Only the package root pulls in Node built-ins Workers cannot load.
 - `src/emoji-cache.ts` caches the application-emoji map in module scope with no TTL. A fresh `setup-emojis` run reaches warm isolates only when Cloudflare recycles them.
 
-The bot stores no user data. If persistence or additional logging is added, update the privacy policy and `docs/discord-bot.md`.
+The bot stores no user data. If persistence or additional logging is added, update the privacy policy and `docs/discord-bot.md`, the user-facing reference for this bot.

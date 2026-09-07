@@ -1,8 +1,4 @@
----
-title: Discord Bot
-sidebar_label: Discord Bot
-sidebar_position: 2
----
+# Discord bot
 
 The Riftseer Discord bot runs on **Cloudflare Workers**. It answers slash commands by calling the Riftseer API and replying with rich embeds (card stats, links, and optional card art).
 

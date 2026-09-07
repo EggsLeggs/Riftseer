@@ -15,12 +15,11 @@ dependencies`. Majors get a PR each, with two exceptions: GitHub Actions
   Bump that one by hand in `docker-compose.yml` and `test.yml` together.
 - Lockfile maintenance runs weekly. It regenerates `bun.lock` and the two
   standalone `package-lock.json` files even when no range moved.
-- Lockfile maintenance is not covered by `ignorePaths`. `docs/` is a workspace
-  member, so a root `bun install` re-resolves its dependencies and commits them
-  to `bun.lock` even though Renovate will not open a PR against
-  `docs/package.json`. That is how #156 moved the Docusaurus tree and broke
-  Mermaid SSR. `docs.yml` now runs on `bun.lock` as well, so the docs build
-  actually gets exercised when that happens.
+- Lockfile maintenance is not covered by `ignorePaths`. A root `bun install`
+  re-resolves every workspace member's tree into `bun.lock`, so a package can
+  move without any PR naming it. That is how #156 moved the old docs site's tree
+  and broke its build unnoticed; a workflow that only triggers on its own
+  paths misses a lockfile-only change.
 - A release has to be three days old before Renovate will propose it. Until
   then, the PR carries a pending `renovate/stability-days` check.
 - Vulnerability fixes come from the OSV database, not from Dependabot alerts.
@@ -70,5 +69,3 @@ npx --yes --package renovate renovate-config-validator .github/renovate.json5
   and it regenerates the lockfiles itself.
 - To close a PR and stop hearing about that version, close it. Renovate treats
   a closed PR as "ignore this version".
-- `ignorePaths` covers `docs/` while the Docusaurus site still exists. Remove
-  that entry when the site goes.

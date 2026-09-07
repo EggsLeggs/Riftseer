@@ -59,4 +59,4 @@ bun test packages/types
 
 - Exports are declared in `package.json` and re-exported from `index.ts`. Add a subpath export only for a runtime module consumers benefit from importing directly.
 - When the public shape changes, update the type first, then its API schema, provider and ingest writers, then clients.
-- Update the relevant card documentation, and review the privacy page if the change affects stored user data.
+- Review the privacy page if the change affects stored user data. Vocabulary is the root `CONTEXT.md`; reference read once is `docs/deck-model.md` (why the deck model is shaped as it is) and `docs/render-kernel.md` (the kernel's public functions).

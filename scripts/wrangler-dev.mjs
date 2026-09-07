@@ -13,13 +13,13 @@
  * Runs under bun, not node: node 22 claims `--env-file` for itself even when
  * it appears after the script path, and never hands it to wrangler.
  *
- * Bun also loads the repository's root `.env` into `process.env` for every
- * script it runs, and wrangler reads a Worker's declared secrets from
- * `process.env` ahead of any `--env-file`. The root `.env` is the web dev
- * server's file and holds production values, so left alone it silently
- * pointed `bun dev` at production. Every key it defines is dropped from the
- * environment wrangler is spawned with; a Worker's values come from its own
- * `.dev.vars*` files and nowhere else.
+ * `bunfig.toml` sets `env = false` so Bun does not auto-load the root `.env`,
+ * which belongs to the web dev server and holds production values. Web
+ * commands pass `--env-file` explicitly. Wrangler still reads a Worker's
+ * declared secrets from `process.env` ahead of any `--env-file`, so every key
+ * the root `.env` defines is dropped from the environment wrangler is spawned
+ * with as a safeguard. A Worker's values come from its own `.dev.vars*` files
+ * and nowhere else.
  */
 
 import { spawn } from "node:child_process";

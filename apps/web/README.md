@@ -16,7 +16,7 @@ From the monorepo root (after `bun install`):
 ```bash
 cd apps/web
 cp .env.local.example .env.local
-# Edit .env.local — see apps/web/CLAUDE.md for variable meanings
+# Edit .env.local; docs/adding-an-env-var.md at the root lists every variable
 ```
 
 ## Scripts
@@ -38,4 +38,4 @@ The app pins **Next.js 16.2.6**, which includes fixes for [CVE-2026-29057](https
 
 ## Docs
 
-Package conventions, auth flow, and Cloudflare constraints: **`CLAUDE.md`** in this directory.
+Package conventions, auth flow, and Cloudflare constraints: `AGENTS.md` in this directory.

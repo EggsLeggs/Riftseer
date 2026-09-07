@@ -33,7 +33,6 @@
     "apps/ingest-worker/src/worker-configuration.d.ts",
     "apps/web/cloudflare-env.d.ts",
     "apps/raycast-extension",
-    "docs",
     "apps/tts"
   ]
 }
