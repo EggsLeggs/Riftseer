@@ -82,6 +82,7 @@ bun run db:local:psql
 - The local stack is real Postgres and PostgREST behind a Supabase-shaped proxy, not a mock. It needs Docker.
 - PostgREST catches shape bugs `psql` cannot: an embedded one-to-one comes back as an object or null, never an array.
 - `raycast-extension` and `reddit-bot` need `npm install` in their own directory.
+- A new env var or secret touches several files per Worker; a missed one is silently absent under local `wrangler dev`. `docs/adding-an-env-var.md` is the list.
 
 ## Test data
 
