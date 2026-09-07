@@ -16,7 +16,7 @@
     "@riftseer/types": "file:../types"
   },
   "devDependencies": {
-    "devvit": "^0.12.18",
+    "devvit": "^0.14.2",
     "dotenv-cli": "^8.0.0",
     "esbuild": "^0.28.0",
     "typescript": "^5.9.3"
