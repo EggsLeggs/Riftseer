@@ -11,7 +11,7 @@ import {
 } from "@raycast/api";
 import { useFetch, useLocalStorage } from "@raycast/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Jimp from "jimp";
+import { Jimp, JimpMime } from "jimp";
 import { CardDetail, formatTypeLine } from "./components/CardDetail";
 import { parseMaxRecentHistory, useRecentCardHistory } from "./recentHistory";
 import type { Oracle } from "@riftseer/types";
@@ -33,7 +33,7 @@ async function rotateImageCW90(url: string): Promise<string> {
     try {
       const image = await Jimp.read(url);
       image.rotate(-90); // jimp rotate is CCW; -90 = CW 90°
-      const dataUrl = await image.getBase64Async(Jimp.MIME_JPEG);
+      const dataUrl = await image.getBase64(JimpMime.jpeg);
       rotatedImageCache.set(url, dataUrl);
       return dataUrl;
     } catch {
