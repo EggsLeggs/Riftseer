@@ -17,7 +17,7 @@ import type { PrintingImage } from "@riftseer/types";
 // ─── Deck data access ─────────────────────────────────────────────────────────
 //
 // Every deck read and write the API performs, behind one interface, mirroring
-// `admin-data.ts`. The routes hold the authorisation rules and nothing else;
+// `admin.repo.ts`. The routes hold the authorisation rules and nothing else;
 // this module holds the queries and nothing else, so a route test can run the
 // whole permission matrix against an in-memory stub.
 //

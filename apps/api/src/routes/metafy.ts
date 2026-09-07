@@ -1,5 +1,6 @@
 import { Elysia, t } from "elysia";
 import { supabaseClients, type SupabaseClients } from "../lib/supabase";
+import { createLinkedAccountsRepository } from "../repos/linked-accounts.repo";
 import { authPlugin as defaultAuthPlugin, type createAuthPlugin } from "../plugins/auth";
 import { issueOAuthState, verifyOAuthState } from "../lib/oauth-state";
 import { ErrorSchema } from "../schemas";
@@ -34,6 +35,7 @@ export interface MetafyRoutesOptions {
 
 export function metafyRoutes(options: MetafyRoutesOptions = {}) {
   const { authAdminClient } = options.clients ?? supabaseClients;
+  const linkedAccounts = authAdminClient ? createLinkedAccountsRepository(authAdminClient) : null;
   const routeAuthPlugin = options.authPlugin ?? defaultAuthPlugin;
 
   return new Elysia().use(
@@ -44,19 +46,12 @@ export function metafyRoutes(options: MetafyRoutesOptions = {}) {
       .get(
         "/auth/metafy/status",
         async ({ user, set }) => {
-          if (!authAdminClient) {
+          if (!linkedAccounts) {
             set.status = 503;
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
 
-          const { data } = await authAdminClient
-            .from("linked_accounts")
-            .select(
-              "provider, provider_username, is_supporter, is_member, linked_at, status_checked_at",
-            )
-            .eq("user_id", user.id)
-            .eq("provider", "metafy")
-            .maybeSingle();
+          const { data } = await linkedAccounts.getMetafyLink(user.id);
 
           if (!data) return { linked: false as const };
 
@@ -135,7 +130,7 @@ export function metafyRoutes(options: MetafyRoutesOptions = {}) {
       .post(
         "/auth/metafy/callback",
         async ({ body, user, set }) => {
-          if (!authAdminClient) {
+          if (!linkedAccounts) {
             set.status = 503;
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
@@ -228,21 +223,18 @@ export function metafyRoutes(options: MetafyRoutesOptions = {}) {
 
           // Upsert linked account
           const now = new Date().toISOString();
-          const { error: upsertError } = await authAdminClient.from("linked_accounts").upsert(
-            {
-              user_id: user.id,
-              provider: "metafy",
-              provider_user_id: providerUserId,
-              provider_username: providerUsername,
-              access_token: tokens.access_token,
-              refresh_token: tokens.refresh_token ?? null,
-              is_supporter: isSupporter,
-              is_member: isMember,
-              status_checked_at: now,
-              linked_at: now,
-            },
-            { onConflict: "user_id,provider" },
-          );
+          const { error: upsertError } = await linkedAccounts.upsertMetafyLink({
+            user_id: user.id,
+            provider: "metafy",
+            provider_user_id: providerUserId,
+            provider_username: providerUsername,
+            access_token: tokens.access_token,
+            refresh_token: tokens.refresh_token ?? null,
+            is_supporter: isSupporter,
+            is_member: isMember,
+            status_checked_at: now,
+            linked_at: now,
+          });
 
           if (upsertError) {
             set.status = 500;
@@ -288,16 +280,12 @@ export function metafyRoutes(options: MetafyRoutesOptions = {}) {
       .delete(
         "/auth/metafy/disconnect",
         async ({ user, set }) => {
-          if (!authAdminClient) {
+          if (!linkedAccounts) {
             set.status = 503;
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
 
-          const { error, count } = await authAdminClient
-            .from("linked_accounts")
-            .delete({ count: "exact" })
-            .eq("user_id", user.id)
-            .eq("provider", "metafy");
+          const { error, count } = await linkedAccounts.deleteMetafyLink(user.id);
 
           if (error) {
             console.error(
@@ -336,7 +324,7 @@ export function metafyRoutes(options: MetafyRoutesOptions = {}) {
       .post(
         "/auth/metafy/refresh-status",
         async ({ user, set }) => {
-          if (!authAdminClient) {
+          if (!linkedAccounts) {
             set.status = 503;
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
@@ -347,12 +335,7 @@ export function metafyRoutes(options: MetafyRoutesOptions = {}) {
             return { error: "Metafy OAuth not configured", code: "NOT_CONFIGURED" };
           }
 
-          const { data: linked } = await authAdminClient
-            .from("linked_accounts")
-            .select("access_token, provider_username, is_member, linked_at")
-            .eq("user_id", user.id)
-            .eq("provider", "metafy")
-            .maybeSingle();
+          const { data: linked } = await linkedAccounts.getMetafyToken(user.id);
 
           if (!linked) {
             set.status = 404;

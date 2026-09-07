@@ -20,7 +20,7 @@ import {
   type AdminDataRepository,
   type AdminReconciliationEntry,
   type AdminRpcResult,
-} from "../lib/admin-data";
+} from "../repos/admin.repo";
 import { adminPlugin, createAdminPlugin } from "../plugins/admin-auth";
 import { BadCardSearchQueryError, CARD_SEARCH_LIMITS, parseCardSearchQuery } from "@riftseer/core";
 import { ErrorSchema, LegalityStatusSchema } from "../schemas";

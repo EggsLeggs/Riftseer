@@ -1,4 +1,4 @@
-import type { DeckDataRepository, DeckRole, DeckRow } from "../lib/deck-data";
+import type { DeckDataRepository, DeckRole, DeckRow } from "../repos/decks.repo";
 
 // ─── Deck access ──────────────────────────────────────────────────────────────
 //

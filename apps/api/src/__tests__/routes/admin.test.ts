@@ -10,7 +10,7 @@ import {
   type AdminPrintingDelta,
   type AdminReconciliationEntry,
   type AdminRpcResult,
-} from "../../lib/admin-data.ts";
+} from "../../repos/admin.repo.ts";
 import { createAdminPlugin } from "../../plugins/admin-auth.ts";
 import { adminRoutes, type AdminImageBindings, type AdminImageJob } from "../../routes/admin.ts";
 

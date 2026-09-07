@@ -6,6 +6,8 @@ import {
   supabaseAnonKey,
 } from "../lib/supabase";
 import { authPlugin, createAuthPlugin } from "../plugins/auth";
+import { createLinkedAccountsRepository } from "../repos/linked-accounts.repo";
+import { createProfilesRepository } from "../repos/profiles.repo";
 import { isAdminUser } from "../plugins/admin-auth";
 import { ErrorSchema } from "../schemas";
 import { refreshMetafySupporterStatus } from "../lib/metafy";
@@ -50,6 +52,8 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
   const protectedAuthPlugin = options.protectedAuthPlugin ?? authPlugin;
   const getAdminUserIds = options.getAdminUserIds ?? (() => process.env.ADMIN_USER_IDS);
   const { authClient, authAdminClient } = options.clients ?? supabaseClients;
+  const profiles = authAdminClient ? createProfilesRepository(authAdminClient) : null;
+  const linkedAccounts = authAdminClient ? createLinkedAccountsRepository(authAdminClient) : null;
 
   return (
     new Elysia()
@@ -57,7 +61,7 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
       .post(
         "/auth/register",
         async ({ body, set }) => {
-          if (!authClient || !authAdminClient) {
+          if (!authClient || !authAdminClient || !profiles) {
             set.status = 503;
             return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
@@ -137,9 +141,11 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
               };
             }
 
-            const { error: profileError } = await authAdminClient
-              .from("profiles")
-              .insert({ id: data.user.id, username, handle });
+            const { error: profileError } = await profiles.insertProfile({
+              id: data.user.id,
+              username,
+              handle,
+            });
             if (profileError) {
               console.error("[auth/register] profile insert failed:", profileError.message);
               const { error: deleteError } = await authAdminClient.auth.admin.deleteUser(
@@ -247,12 +253,8 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
           }
 
           let profile: { handle: string; username: string } | null = null;
-          if (authAdminClient) {
-            const { data: prof } = await authAdminClient
-              .from("profiles")
-              .select("handle, username")
-              .eq("id", data.user.id)
-              .single();
+          if (profiles) {
+            const { data: prof } = await profiles.getSessionProfile(data.user.id);
             profile = prof;
           }
 
@@ -273,16 +275,11 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
           // Best-effort: refresh Metafy supporter status in the background on login.
           // Does not block or affect the login response.
           const communityId = process.env.METAFY_COMMUNITY_ID;
-          if (authAdminClient && communityId) {
-            const client = authAdminClient;
+          if (linkedAccounts && communityId) {
+            const repo = linkedAccounts;
             runInBackground(
               (async () => {
-                const { data: linked } = await client
-                  .from("linked_accounts")
-                  .select("access_token")
-                  .eq("user_id", data.user.id)
-                  .eq("provider", "metafy")
-                  .maybeSingle();
+                const { data: linked } = await repo.getMetafyAccessToken(data.user.id);
                 if (linked?.access_token) {
                   await refreshMetafySupporterStatus(
                     data.user.id,

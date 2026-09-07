@@ -25,7 +25,7 @@ import {
   type DeckVisibility,
   type FormatRow,
   type ProfileStub,
-} from "../lib/deck-data";
+} from "../repos/decks.repo";
 import { canRead, canWrite, roleFor } from "../authz/deck-access";
 import { authPlugin as defaultAuthPlugin, type createAuthPlugin } from "../plugins/auth";
 import {
