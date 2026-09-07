@@ -14,7 +14,7 @@
   "overrides": {
     "@sinclair/typebox": "0.34.52",
     "elysia": "1.4.30",
-    "kysely": "0.29.5",
+    "kysely": "0.28.17",
     "typescript": "6.0.3"
   },
   "scripts": {
@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "elysia": "1.4.30",
-    "kysely": "0.29.5",
+    "kysely": "0.28.17",
     "pg": "^8.20.0"
   },
   "packageManager": "bun@1.4.1",

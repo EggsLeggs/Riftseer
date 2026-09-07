@@ -20,4 +20,20 @@
   // Skip a release's first days so a compromised publish can be yanked before
   // it lands here.
   minimumReleaseAge: "3 days",
+  packageRules: [
+    {
+      // `@c15t/backend` pulls in fumadb, and fumadb still pins `kysely ^0.28`
+      // (0.3.0, the newest c15t ships). kysely 0.29 dropped the
+      // `DEFAULT_MIGRATION_TABLE` and `DEFAULT_MIGRATION_LOCK_TABLE` exports
+      // fumadb imports, so the root override taking 0.29 breaks the web build.
+      // `kysely-postgres-js` v4 wants 0.29 in turn, so it waits on the same
+      // thing. Drop both entries once c15t ships a fumadb 0.6 build.
+      matchPackageNames: ["kysely"],
+      allowedVersions: "<0.29.0",
+    },
+    {
+      matchPackageNames: ["kysely-postgres-js"],
+      allowedVersions: "<4.0.0",
+    },
+  ],
 }
