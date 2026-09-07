@@ -1,216 +1,107 @@
 # Riftseer
 
-Riftseer is a Riftbound TCG data platform. It is a multi-platform project that ingests data from various sources and provides a REST API used by numerous clients. Clients include the website, Discord bot, Table Top Simulator mod, and more.
+Riftseer is a Riftbound TCG data platform: a card catalogue ingested from RiftCodex, a REST API over it, and the clients that read that API. Scryfall plus Moxfield, for Riftbound. Everything a client shows, it got from the API; no client talks to the database.
 
-You can think of Riftseer as the Riftbound version of MTG's Scryfall and Moxfield.
+## Hard rules
 
-## What is the philosophy of Riftseer?
+Each of these already cost us something. Breaking one usually fails silently.
 
-Riftseer is designed to be a comprehensive and authoritative source of Riftbound TCG data. It is designed to be a platform for developers to build their own clients and tools on top of. It's important we maintain the things they love as we continue to iterate on the product. Here is a brief list of things we can never compromise on:
+- Read the package's `AGENTS.md` before changing it, and `CONTEXT.md` before naming a domain concept. Use the glossary's word, never a synonym it lists under _Avoid_.
+- `bun run check` is the gate. It runs lint, format, typecheck, tests, docs references, markdown lint, boundaries, wrangler consistency and spec drift, and `.github/workflows/test.yml` runs the same command on every PR. Green locally is green in CI.
+- Check `curl localhost:8787/` before an ingest. It reports the host the worker would write to plus a `local` flag, and an ingest rewrites the whole catalogue.
+- `bun dev` pins the docker database. `bun run dev:prod` reads `apps/api/.dev.vars`, which is conventionally production, and is the explicit opt-in.
+- Never make a PR unless the maintainer asks. Never co-author with the maintainer on commits or PRs.
+- Never commit implementation plans, research notes or agent scratch files. `.gitignore` will not catch them.
+- `supabase/migrations` is append-only after the squashed baseline. Validate a migration by running it; `bun run db:local:reset` surfaces the SQL error that reading it will not.
+- Printing ids must survive a rebuild. Deck rows and hosted image URLs are keyed on them.
+- Shared logic goes in `packages/types`, which has zero runtime dependencies. That is the only reason Workers, Devvit and browsers can all import it.
+- `apps/ingest-worker` never imports `@riftseer/core`; it pulls in Node built-ins Workers cannot load.
+- Prose and code follow `docs/standards.md`. If a rule here fights the task in front of you, say so loudly and get a maintainer's sign-off before breaking it.
 
-### 1. Open at the core
+## Philosophy
 
-Riftseer is truly open. We share our roadmap, we share how we think about things, and we share the code behind the platform. We work in the open and we strive to stay that way.
+Open at the core, performant without compromise, one implementation shared across every surface, cheap to run, and never assuming the existing code is the best way. Ambitious ideas, simple systems, software that feels obvious. Do not preserve complexity because it exists; do not add machinery because it looks architectural. Find the real constraint, then fight for the smallest model that makes the correct behaviour unsurprising. Measure twice, cut once, and yagni. When there is a better way than the existing code, be loud and ask.
 
-### 2. Performance without compromise
+These are good defaults, not law. The maintainer's stated preference overrides any of them.
 
-Riftseer is designed to be performant. We aim to cut out the bad tech decisions and "slop" and its important to regularly audit for performance regressions. Make sure all changes are considerate of the performance impact.
+## Vocabulary
 
-### 3. Multi-surface and avoid duplicating work
+- **you** are the agent changing Riftseer. **We** and **maintainers** are the people building it, and who you are talking to.
+- **user** is a person using a client. **client** is what they use: website, Discord bot, Reddit bot, Raycast extension, tts (the Table Top Simulator mod), the mobile app when it exists.
+- The card model, the deck model and everything else domain-shaped is defined once, in `CONTEXT.md`.
 
-Riftseer has a number of first-party surfaces that are maintained in this repository and others: web, discord bot, reddit devvit bot, table top simulator mod and soon to be a mobile app. We aim to share the code between these surfaces and avoid duplicating work wherever possible.
+## Where code lives
 
-### 4. Don't assume the existing code is the best way to do things
+`apps/` holds the deployable surfaces, `packages/` the libraries they share, `tooling/` the configs they share. Package names stay `@riftseer/*`, so a move never changes an import.
 
-There was a lot of technical debt in the early days of Riftseer. We aim to avoid repeating the same mistakes and to learn from the past. When making changes, always consider the existing code and ask yourself if there is a better way to do things. When there is, be loud and ask if we should resolve it.
-
-### 5. Keep costs low
-
-Riftseer is a small team and we aim to keep costs low/free. We aim to avoid unnecessary complexity and to keep the codebase as simple as possible. When making tech decisions, always consider the cost/benefit ratio and ask yourself if the complexity is worth the benefit.
-
-## A note from the product lead
-
-I like ambitious ideas, simple systems, and software that feels obvious. Do not preserve complexity just because it already exists. Do not introduce machinery because it looks architecturally impressive. Understand the real constraint, then fight for the smallest model that makes the correct behavior unsurprising.
-
-Channel both "measure twice, cut once" and "yagni". Fight scope creep. Try to honor the dev's intent in both a minimal and realistic fashion.
-
-The rest of this document is meant to help you navigate the codebase and make changes effectively. Think of these instructions less as "hard rules", more as "good defaults". The developer's preferences should be able to override anything here.
-
-## A small glossary
-
-We need to be on the same page with terminology. When communicating, use this language:
-
-- **you** means the agent reading this file and changing Riftseer.
-- **we**, **us**, and **maintainers** mean the people building Riftseer. They are who you are talking to now.
-- **user** means the person using Riftseer's platforms to interact with the data and their accounts.
-- **client** means the platform the user is using to interact with the data and their accounts (website, table top simulator mod, mobile app, etc.)
-- **tts** means the table top simulator mod.
-
-## Hit every surface
-
-A change to shared behaviour is not done when the website shows it.
-
-- Surfaces here: `apps/web`, `apps/discord-bot`, `apps/reddit-bot`, `apps/raycast-extension`. The TTS mod lives elsewhere; the mobile app does not exist yet.
-- No client queries the database. They resolve through the API, so a provider fix reaches all of them at once.
-- Shared logic goes in `packages/types`. Zero runtime dependencies is the only reason Workers, Devvit and browsers can all import it.
-- `reddit-bot` and `raycast-extension` sit outside the workspace and use `file:../../packages/types`. A types change reaches them only after an install in their own directory.
-- That is the usual way a "shared" fix silently misses two surfaces. Say so in the PR when you leave one behind on purpose.
+- `packages/types`: shared types, the card-mention parser, deck model and validation, slug and image derivation, the render kernel. Zero dependencies.
+- `packages/core`: `CardDataProvider`, the Supabase provider, the search grammar and its SQL renderer. Consumed by the API only.
+- `apps/api`: Elysia REST API on Workers. Owns `/api/v1` and the real authorisation boundary.
+- `apps/web`: Next.js App Router on Workers via OpenNext.
+- `apps/ingest-worker`: scheduled ingest and image hosting.
+- `apps/discord-bot`: Worker, slash commands.
+- `apps/raycast-extension` and `apps/reddit-bot`: standalone npm projects outside the workspace, importing `@riftseer/types` through `file:../../packages/types`. A types change reaches them only after `npm install` in their own directory.
+- `supabase/migrations`: the schema. `docker/`, `docker-compose.yml`, `scripts/database-tests/`: the local database stack and its fixture. `supabase/docs/supabase.md` covers both environments and how a migration reaches production.
+- `scripts/`: repository checks. `docs/`: plain markdown reference, read once, rendered by GitHub.
 
 ## Dev servers
 
-Run these from the repository root. This is a **Bun workspace** — `bun install`, not `npm install`. Each package's own AGENTS.md carries its package-specific commands.
+This is a Bun workspace: `bun install`, never `npm install`, except inside the two standalone packages. Run everything from the repository root.
 
 ```bash
-bun install             # all workspace members
-
-bun dev                 # API + web, pinned to the local docker database
-bun run dev:prod        # API + web, against whatever .dev.vars points at
-bun dev:api             # API alone at http://localhost:8789
-bun dev:web             # Next.js alone
-bun run dev:ingest      # ingest worker at http://localhost:8787
-bun run dev:ingest:local
-
-bun run db:local:up     # docker: Postgres :55432, PostgREST, Supabase-shaped proxy :54321
+bun dev                 # API :8789 + web :3000, pinned to the local docker database
+bun run dev:prod        # API + web against whatever .dev.vars points at
+bun dev:api             # API alone
+bun run dev:ingest      # ingest worker :8787; dev:ingest:local pins docker
+bun run db:local:up     # Postgres :55432, PostgREST, Supabase-shaped proxy :54321
 bun run db:local:reset  # drop the volume, rebuild from supabase/migrations
-bun run db:local:psql
 ```
 
-- `bun dev` and the `:local` scripts pin the docker database. They load `.dev.vars.local`, which holds docker placeholders and is committed on purpose.
-- `bun run dev:prod` uses whatever `apps/api/.dev.vars` contains, and that is conventionally production. It is the explicit opt-in; check before an ingest or an admin mutation.
-- `curl localhost:8787/` reports the host the ingest worker would write to, plus a `local` flag. An ingest rewrites the whole catalogue, so look first.
-- The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
-- The local stack is real Postgres and PostgREST behind a Supabase-shaped proxy, not a mock. It needs Docker.
+- The local stack is real Postgres and PostgREST behind a Supabase-shaped proxy, not a mock. It needs Docker, and it starts empty: fill it with a local ingest run.
 - PostgREST catches shape bugs `psql` cannot: an embedded one-to-one comes back as an object or null, never an array.
-- `raycast-extension` and `reddit-bot` need `npm install` in their own directory.
-- A new env var or secret touches several files per Worker; a missed one is silently absent under local `wrangler dev`. `docs/adding-an-env-var.md` is the list.
+- The `:local` scripts load `.dev.vars.local`, committed on purpose with docker placeholders. Real values that ride alongside go in the gitignored `.dev.vars.local.secrets`.
 - The root `.env` belongs to the web dev server and holds production values. Bun loads it into every script it runs and wrangler reads declared secrets from `process.env` first, so `scripts/wrangler-dev.mjs` strips its keys before spawning. A Worker's local values live in its own `.dev.vars*` files, never in `.env`.
-
-## Test data
-
-- `scripts/database-tests/fixture.sql` is the only fixture: 3 sets, 4 oracles, 6 printings, a delta, a relationship, a format, a legality and a ruling.
-- It loads through the real `ingest_catalogue` RPC rather than inserts, so it exercises production's write path. Extend it there.
-- `bun scripts/database-tests/database.mjs setup | reseed | query <sql>` drives it.
-- Most API tests need no database. `apps/api/src/__tests__/stub_card_provider.ts` is an in-memory `CardDataProvider`.
-- Reach for a real database only when the thing under test is the SQL.
-- The docker `riftseer` database gets schema only. Fill it with a real local ingest run.
-- `packages/core/src/__tests__/database.integration.test.ts` is gated behind `RIFTSEER_DATABASE_TESTS=1` and skipped by default.
+- The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
+- A new env var or secret touches several files per Worker, and a missed one is silently absent under `wrangler dev`. `docs/adding-an-env-var.md` is the checklist.
 
 ## Verifying
 
 ```bash
-bun run check                               # the gate: lint, format, typecheck, tests, docs references, markdown lint, boundaries, spec, wrangler
-bun run lint                                # oxlint, warnings fail
-bun run format:check                        # oxfmt --check
-bun run lint:fix                            # oxlint --fix, then oxfmt --write
-bun test                                    # types, core, api, ingest-worker, web, discord-bot
-bun run typecheck                           # tsc --noEmit for every package, including web and discord-bot
-bun run lint:boundaries                     # dependency-cruiser rules in .config/dependency-cruiser.cjs
-bun run test:db                             # needs db:local:up first
-bun run build:web
-bun run preview:web                         # builds and runs in workerd
+bun run check           # the gate
+bun run lint:fix        # oxlint --fix, then oxfmt --write
+bun test                # types, core, api, ingest-worker, web, discord-bot
+bun run test:db         # needs db:local:up first
+bun run preview:web     # builds and runs in workerd
 ```
 
-- `bun run check` is the gate. `.github/workflows/test.yml` runs it on every PR, unfiltered; CONTRIBUTING and CI name the same command, so a green local check is a green PR.
-- Boundary rules are structural invariants, not style: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports `@riftseer/core`.
-- **oxlint and oxfmt are the linter and formatter**, configured in `.oxlintrc.json` and `.oxfmtrc.json` at the root. They live there because ignore patterns resolve inside the config's own directory. No eslint, prettier or biome anywhere else; raycast keeps its own because `ray lint` requires them.
-- `bun run lint:fix` fixes and formats. The React Compiler rules (`set-state-in-effect`, `refs`, `immutability`) are off until the web deck-logic extraction; do not switch them on in passing.
+- oxlint and oxfmt are the linter and formatter, configured in `.oxlintrc.json` and `.oxfmtrc.json` at the root because ignore patterns resolve inside the config's own directory. No eslint, prettier or biome anywhere else; raycast keeps its own because `ray lint` requires them.
+- The React Compiler rules (`set-state-in-effect`, `refs`, `immutability`) are off until the web deck-logic extraction. Do not switch them on in passing.
+- Boundary rules in `.config/dependency-cruiser.cjs` are structural invariants: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports core, the render kernel is reached only through its index.
 - `bun dev` does not exercise the Workers runtime. Run `bun run preview:web` before shipping anything that touches web's server runtime or bindings.
-- `ingest-worker` spells it `type-check`. Everything else uses `typecheck`, and root `typecheck` covers every workspace member.
-- reddit-bot and raycast-extension are gated by `.github/workflows/standalone.yml` (`npm ci` + `tsc --noEmit` on their committed lockfiles).
-- Validate a migration by running it. `bun run db:local:reset` surfaces the SQL error that reading it will not.
+- `ingest-worker` spells it `type-check`; everything else says `typecheck`, and root `typecheck` covers every workspace member.
+- reddit-bot and raycast-extension are gated by `.github/workflows/standalone.yml`: `npm ci` plus `tsc --noEmit` on their committed lockfiles.
+- Most API tests need no database: `apps/api/src/__tests__/stub_card_provider.ts` is an in-memory `CardDataProvider`. Reach for a real database only when the thing under test is the SQL.
+- `scripts/database-tests/fixture.sql` is the only fixture, loaded through the real `ingest_catalogue` RPC so it exercises production's write path. Extend it there. `packages/core/src/__tests__/database.integration.test.ts` is gated behind `RIFTSEER_DATABASE_TESTS=1`.
+
+## Hit every surface
+
+A change to shared behaviour is not done when the website shows it. Surfaces here are `apps/web`, `apps/discord-bot`, `apps/reddit-bot` and `apps/raycast-extension`; the TTS mod lives elsewhere. Every client resolves through the API, so a provider fix reaches all of them at once, and a types change silently misses the two standalone packages until they reinstall. Say so in the PR when you leave a surface behind on purpose.
 
 ## Pull requests
 
-- Never make a PR unless the developer explicitly asks you to do so.
-- Conventional commit titles, plain language: fix(web): new threads no longer spike CPU.
+- Conventional commit titles in plain language: `fix(web): new threads no longer spike CPU`. One concern per PR; if the description says "also", split it.
 - Body: the problem in a sentence or two, then how you fixed it. End with the model and harness that did the work.
-- UI changes need before/after images. Motion or timing needs a short video.
-- Upload PR evidence to GitHub. Never commit PR-only screenshots or assets such as .github/pr-assets/.
-- One concern per PR. If the description says "also", split it.
-- Renovate opens the routine dependency PRs on a weekly schedule; OSV vulnerability fixes ignore it. `docs/renovate.md` covers the cadence and how to force a run.
+- UI changes need before/after images, motion needs a short video, uploaded to GitHub. Never commit PR-only assets.
+- Renovate opens the routine dependency PRs weekly; OSV vulnerability fixes ignore the schedule. `docs/renovate.md` covers the cadence and how to force a run.
 - When babysitting: poll checks and comments newer than the last push, verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when the bots are green on the latest commit.
-
-## Plans and work artefacts
-
-- Do not commit implementation plans, research notes, or agent scratch files. Keep temporary working material outside the worktree — nothing in `.gitignore` will catch it for you.
-- Track active maintainer work in the GitHub issue or project item that owns it. External proposals belong in Ideas discussions.
-- Durable architecture and decisions go in the package's own `docs/`, which the Docusaurus site reads in place. Update them when the product changes.
-- Rules an agent can break go in the nearest AGENTS.md. Reference it reads once goes in `docs/`. Neither, and it is probably not worth writing.
-- A merged PR is the implementation record. Close or update its tracking item when the work lands; do not preserve a second checklist in the repository.
-
-## Agent skills
-
-### Issue tracker
-
-Issues live in GitHub Issues on `EggsLeggs/Riftseer`, driven by the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Multi-context: a root `CONTEXT-MAP.md` pointing at one `CONTEXT.md` per package. See `docs/agents/domain.md`.
-
-## How it works
-
-**The card model.** Two levels. A field belongs to exactly one of them.
-
-- **Oracle** is the rules object: name, type, tags, domains, rules text, keywords, relationships. Its id is a UUID.
-- **Printing** is one physical card: art, artist, flavour, rarity, collector number, set, marketplace data. Its id is a text ObjectId.
-- `oracle_key` is a name-derived lookup slug, never identity. `oracleKeyForName()` uses it at one moment: when ingest guesses which oracle a new printing joins.
-- A printing it cannot match goes to review rather than silently creating a second oracle.
-
-**The catalogue.** `apps/ingest-worker`, every six hours, no user involved.
-
-- RiftCodex is the only source that may create a card. TCGPlayer and Riot's gallery enrich or observe, and either failing is non-fatal.
-- Fetch, dedupe, group printings into oracles, enrich, emit deltas, upsert in bounded batches, prune only once all of them land.
-- A trigger maintains `resolved_printings`, the flat projection search reads.
-- What cannot be reconciled goes to `reconciliation_queue` for `/admin/review`. Never auto-applied.
-
-**Accounts.** Supabase Auth, no ingest involved.
-
-- `auth.users` plus a 1:1 `profiles` row: handle, username, bio, pronouns, social links.
-- `follows` is a public social graph. `linked_accounts` holds Metafy, which drives supporter perks.
-- Decks are `decks` (`owner_id`), `deck_cards`, `deck_collaborators` and `deck_revisions`.
-
-**Where the halves meet.** One table, and only one.
-
-- `deck_cards` carries both `oracle_id` and `printing_id` behind a composite foreign key.
-- Rebuild printing ids and every deck loses its cards. This is why they must stay stable.
-
-**Who enforces access.**
-
-- The API Worker holds a service-role key and bypasses RLS. Migration policies are defence in depth, not the boundary.
-- `canRead()` and `canWrite()` in `apps/api/src/routes/decks.ts` decide deck access; `ADMIN_USER_IDS` decides admin.
-- Roles are `owner`, `editor`, `viewer`. `owner` is computed from `owner_id`, never stored, and visibility is orthogonal to role.
-- Web's `requireAuth()` and `requireAdmin()` are UX gates. A deck you may not read answers 404, never 403.
-
-## Where code lives
-
-Read a package's own AGENTS.md before changing it. This is the map, not the detail.
-
-- `apps/` holds the deployable surfaces, `packages/` the libraries they share, `tooling/` the configs they share. Package names stay `@riftseer/*`, so a move never changes an import.
-
-- `packages/types` — shared types, parser, deck model and validation, slug and image derivation. Zero dependencies; keep it that way.
-- `packages/core` — `CardDataProvider`, the Supabase provider, search grammar and its SQL renderer. Consumed by the API only.
-- `apps/api` — Elysia REST API on Workers. Owns `/api/v1` and the real authorisation boundary.
-- `apps/web` — Next.js App Router on Workers via OpenNext.
-- `apps/discord-bot` — Worker, slash commands.
-- `apps/ingest-worker` — scheduled ingest and image hosting. Never import `@riftseer/core` here; it pulls in Node built-ins Workers cannot load.
-- `apps/raycast-extension`, `apps/reddit-bot` — standalone npm projects outside the workspace.
-- `docs` — Docusaurus, a workspace member, reads each package's `docs/` in place.
-- `supabase/migrations` — append-only after the squashed baseline.
-- `scripts`, `docker` — repository checks, the test harness, the local database stack.
+- Track active work in the GitHub issue or project item that owns it (`docs/agents/issue-tracker.md`, labels in `docs/agents/triage-labels.md`). A merged PR is the implementation record; close its tracking item and keep no second checklist in the repository.
+- Rules an agent can break go in the nearest `AGENTS.md`. Vocabulary goes in `CONTEXT.md` (`docs/agents/domain.md` says how). Reference read once goes in `docs/` or a package's `docs/`. Neither, and it is probably not worth writing.
 
 ## Invariants
 
-Each of these already cost us something. Breaking one usually fails silently.
-
 - Rarity is printing-level. Sources disagreeing about it is real data, not review-queue noise.
-- Printing ids must survive a rebuild. `deck_cards` rows and hosted image URLs are both keyed on them.
-- A `printing_deltas` row means the card genuinely differs from its oracle. `locked_fields` means an admin decided. Never conflate them.
-- Ingest owns `source='ingest'` rows and never touches `source='admin'`. That plus soft deletes is the whole durability story — no override overlay.
+- A delta means the card genuinely differs from its oracle. A locked field means an admin decided. Never conflate them.
+- Ingest owns the deltas and relationships it wrote and never touches an admin's. That plus soft deletes is the whole durability story; there is no override overlay.
 - Relationships are oracle-to-oracle edges stored once. `used_by` is a reverse query, not a second row.
 - Search never resolves deltas at query time. `card_search_ast_to_sql` scans `resolved_printings`, exactly one flat relation.
 - The search grammar is also the ruling rule language. A leaf that cannot render to SQL must not parse.
@@ -218,28 +109,22 @@ Each of these already cost us something. Breaking one usually fails silently.
 - Format limits are data in `format_zone_rules`, never database constraints. Changing a format cannot make a saved deck unloadable.
 - Image URLs, slugs and keywords are derived, with one derivation each. Slugs are pinned on first insert so public URLs never drift.
 - A `might_bonus` of `0` is a real printed value. Presence decides equipment, never truthiness.
+- The API Worker holds a service-role key and bypasses RLS. `canRead()` and `canWrite()` in `apps/api/src/routes/decks.ts` decide deck access and `ADMIN_USER_IDS` decides admin; migration policies are defence in depth. Web's `requireAuth()` and `requireAdmin()` are UX gates. A deck you may not read answers 404, never 403.
+- `owner` is computed from `owner_id`, never stored, and visibility is orthogonal to role.
 
 ## Legal and consent
 
 Legal copy is code here, and it goes stale the same way code does.
 
 - Copy lives in `apps/web/src/views/privacy-view.tsx` and `terms-view.tsx`. Change the copy, change the "Last updated" date in the same diff.
-- Material changes bump `LEGAL_PRIVACY_VERSION` or `LEGAL_TERMS_VERSION` in `apps/api/wrangler.jsonc`, then need an API redeploy.
-- Those versions are stamped at registration and read nowhere else. A bump prompts nobody to re-accept; there is no re-consent flow to hook into.
-- A new column storing something about a person is a privacy-page change. So is new logging, a new third party, or changed bot behaviour.
+- Material changes bump `LEGAL_PRIVACY_VERSION` or `LEGAL_TERMS_VERSION` in `apps/api/wrangler.jsonc`, then need an API redeploy. Those versions are stamped at registration and read nowhere else; there is no re-consent flow to hook into.
+- A new column storing something about a person is a privacy-page change. So is new logging, a new third party, or changed bot behaviour. The privacy policy predates profiles, follows and decks, naming only email and password: raise this before extending those tables.
 - Terms carry a 13+ age floor and Riot's Legal Jibber Jabber attribution. Keep that attribution on anything showing card art or data.
 - Consent is c15t. `C15T_DATABASE_URL` is a transaction-pooler URL and must keep `prepare: false` and `max: 1`.
 - The terms prohibit API abuse but nothing enforces it. There is no rate limiting; `getRedisClient()`'s one caller is deck view dedup, not enforcement.
-- The privacy policy predates profiles, follows and decks, naming only email and password. Raise this before extending those tables.
 
 ## Taste
 
-- Inferred types over annotations. `any` is the enemy.
-- Comments describe how a thing is used, and move when the code moves. To be used mostly to describe functions, not to annotate every line of behavior.
-- If a rule here fights the task in front of you, say so loudly and get a human sign-off before breaking it.
-
-## Additional tips
-
-- Don't verify with browsers or computer use unless the user explicitly agrees or requests it.
-- Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
-- Never co-author with the user for PRs or commits.
+- Inferred types over annotations. `any` is the enemy. The rest is `docs/standards.md`.
+- Comments say how a thing is used and move when the code moves. Encode a constraint as a type, a test or a lint rule, then delete the comment.
+- Do not verify with browsers or computer use unless the maintainer asks. Security matters but is not over-indexed, especially for dev-mode and maintainer-only features.

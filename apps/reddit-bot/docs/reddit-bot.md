@@ -1,14 +1,6 @@
----
-title: Reddit Bot
-sidebar_label: Reddit Bot
-sidebar_position: 3
----
+# Reddit bot
 
-:::warning Not operational in production
-
-The bot is implemented and deployable as a **Devvit** app, but **Reddit has not yet approved outbound HTTP fetch** to the Riftseer API domain under their [HTTP fetch policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy). Until that approval lands, the app **cannot load card data** and will not function end-to-end for users.
-
-:::
+> **Not operational in production.** The bot is implemented and deployable as a **Devvit** app, but **Reddit has not yet approved outbound HTTP fetch** to the Riftseer API domain under their [HTTP fetch policy](https://developers.reddit.com/docs/capabilities/server/http-fetch-policy). Until that approval lands, the app **cannot load card data** and will not function end-to-end for users.
 
 Source: `apps/reddit-bot/` (standalone **npm** project — not part of the root Bun workspace).
 

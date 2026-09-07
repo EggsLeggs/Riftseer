@@ -1,52 +1,25 @@
----
-title: CORS, Rate Limits & Images
-sidebar_label: CORS, Rate Limits & Images
-sidebar_position: 7
----
+# CORS and hosted images
+
+What a third-party client needs to know that the OpenAPI spec at `/docs` does not say per endpoint.
 
 ## CORS
 
-The Riftseer API is public. CORS headers are set for **any** request that includes an `Origin` header, so client-side JavaScript on any domain can call the API directly without a proxy.
+The API is public. CORS headers are set for any request that carries an `Origin` header, so client-side JavaScript on any domain can call it without a proxy. Allowed methods: `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
 
-Allowed methods: `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`.
-
-### Using the API from client-side JavaScript
-
-No special setup is required. Standard `fetch` calls work from any origin:
-
-```js
-const res = await fetch("https://api.riftseer.com/api/v1/cards?name=bard");
-const { cards } = await res.json();
-```
-
-### Content Security Policy (CSP)
-
-If your site uses a CSP, add the following directives:
+A site with a Content Security Policy needs:
 
 ```text
 connect-src https://api.riftseer.com;
 img-src https://img.riftseer.com https://*.riftcodex.com https://tcgplayer-cdn.tcgplayer.com;
 ```
 
----
-
-## Rate limits
-
-There are currently no enforced rate limits on the API. Requests are not throttled or queued.
-
-Please be a good citizen: avoid hammering the endpoint in tight loops and cache responses where possible. The card index changes infrequently — results from `/api/v1/cards` and `/api/v1/sets` are safe to cache for the duration of a user session or longer.
-
----
+The card index changes every six hours at most. Results from `/api/v1/cards` and `/api/v1/sets` are safe to cache for a user session or longer.
 
 ## Images
 
-Card images are re-hosted in the `riftseer-cards` Cloudflare R2 bucket and
-served through `https://img.riftseer.com`. RiftCodex and TCGPlayer remain image
-sources, but stable completed media URLs point at the Riftseer domain.
+Card images are re-hosted in the `riftseer-cards` R2 bucket and served from `https://img.riftseer.com`. RiftCodex and TCGPlayer remain the image sources; the stable URLs point at the Riftseer domain, keyed on the printing id and versioned by `?v=<source hash>` so a corrected image bypasses immutable caches.
 
-### Available sizes
-
-The `media.media_urls` object on a card may contain the following keys:
+`media.media_urls` on a printing may contain:
 
 | Key        | Notes                                                     |
 | ---------- | --------------------------------------------------------- |
@@ -56,25 +29,8 @@ The `media.media_urls` object on a card may contain the following keys:
 | `original` | Original source bytes                                     |
 | `png`      | Legacy upstream fallback when hosted media is unavailable |
 
-Check for `null` / `undefined` before using any image URL because a card may
-have no source or may still be waiting for asynchronous variant generation.
+Check for `null` before using any of them: a printing may have no source, or may still be waiting for asynchronous variant generation.
 
-```typescript
-const imageUrl = card.media?.media_urls?.normal ?? null;
-```
+`media.orientation` is `"portrait"` or `"landscape"`; size the container from it rather than assuming an aspect ratio. `media.accessibility_text` is a plain-text description of the art where available; use it as the `alt` attribute, falling back to the card name.
 
-### Orientation
-
-`media.orientation` is either `"portrait"` (vertical, the common case) or `"landscape"` (horizontal). Use this to size your image container correctly rather than assuming aspect ratio.
-
-### Accessibility
-
-`media.accessibility_text` contains a plain-text description of the card art where available. Use it as the `alt` attribute on image elements:
-
-```tsx
-<img src={card.media.media_urls.normal} alt={card.media.accessibility_text ?? card.name} />
-```
-
-### Attribution
-
-Card images and data originate from Riot Games / Riftbound. When displaying card images, do not crop, distort, or overlay the card art in ways that obscure the artist credit.
+Card images and data are Riot Games' under their fan-content policy. Do not crop, distort or overlay the art in ways that obscure the artist credit, and keep the Legal Jibber Jabber attribution on anything that shows it.

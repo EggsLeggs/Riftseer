@@ -48,9 +48,10 @@ curl -X POST localhost:8787/ingest    # pulls the full catalogue from RiftCodex
 bun run check
 ```
 
-That one command is the CI gate: typecheck for every package, the test suite,
-guidance-file reference checks, markdown lint and dependency boundary rules.
-If it passes locally, the PR gate passes.
+That one command is the CI gate: lint, format, typecheck for every package,
+the test suite, guidance-file reference checks, markdown lint, dependency
+boundary rules, wrangler consistency and OpenAPI spec drift. If it passes
+locally, the PR gate passes.
 
 The two standalone npm packages are gated separately: `npm ci` plus
 `tsc --noEmit` in `apps/reddit-bot` and `apps/raycast-extension`.
@@ -62,8 +63,10 @@ An **oracle** is the rules object: name, type, rules text, keywords. A
 rarity, prices. Decks reference both, which is why printing ids must survive
 an ingest rebuild.
 
-`AGENTS.md` carries the full domain model, the invariants and the map of the
-codebase. Read it before changing anything; it is written for exactly that.
+`CONTEXT.md` is the glossary for that model and everything around it.
+`AGENTS.md` carries the invariants and the map of the codebase, and
+`docs/standards.md` the rules prose and code follow. Read them before changing
+anything; they are written for exactly that.
 
 ## License and attribution
 

@@ -27,4 +27,4 @@ npm run deploy
 - Reply ids need the `t1_` prefix for comments and `t3_` for posts.
 - Keep the empty TypeScript `types` override: it prevents Devvit's base configuration from introducing conflicting Vitest globals.
 
-The bot persists only replied comment/post ids for deduplication. Its API requests may be logged by Riftseer. If stored fields, logs, retention or request payloads change, update the privacy policy and `docs/reddit-bot.md`.
+The bot persists only replied comment/post ids for deduplication. Its API requests may be logged by Riftseer. If stored fields, logs, retention or request payloads change, update the privacy policy and `docs/reddit-bot.md`, the user-facing reference for this bot.

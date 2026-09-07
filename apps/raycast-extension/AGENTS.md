@@ -28,4 +28,4 @@ The Raycast Store author in `package.json` must be a real Raycast username befor
 - Keep React and Node types pinned to the peer range the installed Raycast API expects — currently `@types/react` 19.0.10 and `@types/node` 22.13.10, both exact.
 - A mismatch produces widespread JSX errors unrelated to the edited feature.
 
-Update `docs/raycast-extension.md` and `CHANGELOG.md` for user-visible changes. If local persistence, analytics or network behaviour changes, review the web privacy policy before publishing.
+Update `docs/raycast-extension.md` (the user-facing reference) and `CHANGELOG.md` for user-visible changes. If local persistence, analytics or network behaviour changes, review the web privacy policy before publishing.

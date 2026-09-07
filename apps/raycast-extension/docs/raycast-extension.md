@@ -1,8 +1,4 @@
----
-title: Raycast Extension
-sidebar_label: Raycast Extension
-sidebar_position: 4
----
+# Raycast extension
 
 The Riftseer Raycast extension lets you search Riftbound TCG cards and fetch a random card without leaving your keyboard.
 
@@ -79,12 +75,6 @@ Set these in Raycast preferences for the extension:
 | `apiBaseUrl` | `https://api.riftseer.com` | Riftseer API base URL |
 | `siteBaseUrl` | `https://riftseer.com` | Riftseer site URL (used for card page links) |
 | `maxRecentHistory` | `50` | Recent cards to keep locally; `0` disables recording and the empty-query Recent section |
-
----
-
-## Types
-
-`src/types.ts` is a local copy of the canonical card types from `packages/core/src/types.ts`. Since this package is a standalone npm project, it cannot import from `@riftseer/core` directly. When the `Card` shape changes in core, update `src/types.ts` to match.
 
 ---
 

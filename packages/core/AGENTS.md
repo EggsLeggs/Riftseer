@@ -30,4 +30,4 @@ bun test packages/core
 - Put shared runtime-neutral shapes and parsing helpers in `@riftseer/types`, not here.
 - Update `CardDataProvider`, its Supabase implementation and test doubles together when the storage contract changes.
 - Keep search grammar changes renderable by `card_search_ast_to_sql`. An accepted leaf without a SQL rendering is invalid by design.
-- Package documentation lives under `docs/`. Update it with externally visible provider or search behaviour.
+- The search grammar reference is `apps/api/docs/search.md`. Update it with externally visible search behaviour; the vocabulary is the root `CONTEXT.md`.

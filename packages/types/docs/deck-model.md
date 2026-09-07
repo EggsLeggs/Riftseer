@@ -1,8 +1,4 @@
----
-title: Deck Model
-sidebar_label: Deck Model
-sidebar_position: 3
----
+# Deck model
 
 Zero-dependency deck vocabulary, validator and text interchange format, shared by the web builder, the API and the database's own rule tables.
 
