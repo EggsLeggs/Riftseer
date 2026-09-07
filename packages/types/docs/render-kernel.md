@@ -1,6 +1,4 @@
----
-title: Render kernel
----
+# Render kernel
 
 `src/render/` is the set of pure functions every Riftseer surface renders a card from: the web site, the Discord bot, the Reddit bot and the Raycast extension. It returns plain data — strings, token objects, colour values — and never touches React, the DOM or a Discord asset, so it is safe to import anywhere `@riftseer/types` is.
 

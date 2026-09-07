@@ -1,6 +1,4 @@
----
-title: Database environments
----
+# Database environments
 
 Riftseer's services only care about a `SUPABASE_URL` and a `SUPABASE_SERVICE_ROLE_KEY`. Two things answer to those: the hosted Supabase project, and the local docker stack.
 
