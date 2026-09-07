@@ -7,7 +7,7 @@
  *   PostCreate     → same, for new self-posts (title + selftext).
  *
  * Deduplication:
- *   Devvit KV store tracks replied comment/post IDs so the bot never double-replies,
+ *   Devvit's Redis tracks replied comment/post IDs so the bot never double-replies,
  *   even across re-deploys.
  *
  * Card data:
@@ -33,7 +33,7 @@ import { buildReply } from "./handler.js";
 
 Devvit.configure({
   redditAPI: true, // post comment replies
-  kvStore: true, // track replied IDs
+  redis: true, // track replied IDs
   http: {
     domains: ["api.riftseer.com"],
   },
@@ -78,14 +78,14 @@ Devvit.addTrigger({
       if (comment.spam || comment.deleted) return;
       if (comment.author.toLowerCase().endsWith("bot")) return;
 
-      const kvKey = `replied:c:${comment.id}`;
-      if (await context.kvStore.get(kvKey)) {
+      const repliedKey = `replied:c:${comment.id}`;
+      if (await context.redis.get(repliedKey)) {
         console.log(`[Riftseer] Skipping comment ${comment.id} — already replied`);
         return;
       }
 
       const requests = parseCardRequests(comment.body);
-      await context.kvStore.put(kvKey, "1");
+      await context.redis.set(repliedKey, "1");
 
       if (requests.length === 0) {
         console.log(`[Riftseer] No [[...]] tokens in comment ${comment.id}`);
@@ -146,12 +146,12 @@ Devvit.addTrigger({
       const authorName = event.author?.name ?? "";
       if (authorName.toLowerCase().endsWith("bot")) return;
 
-      const kvKey = `replied:p:${post.id}`;
-      if (await context.kvStore.get(kvKey)) return;
+      const repliedKey = `replied:p:${post.id}`;
+      if (await context.redis.get(repliedKey)) return;
 
       const combined = `${post.title}\n\n${post.selftext}`;
       const requests = parseCardRequests(combined);
-      await context.kvStore.put(kvKey, "1");
+      await context.redis.set(repliedKey, "1");
 
       if (requests.length === 0) return;
 

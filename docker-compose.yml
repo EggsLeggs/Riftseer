@@ -71,7 +71,7 @@ services:
     restart: unless-stopped
 
   supabase-proxy:
-    image: nginx:1.27-alpine
+    image: nginx:1.31-alpine
     ports:
       - "54321:8000"   # dev catalogue
       - "54322:8001"   # throwaway used by the contract tests
