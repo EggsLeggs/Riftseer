@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Runs the root `dev:web` script in a debug terminal, so the Next.js
+      // server processes it spawns are attached automatically. Next's own
+      // recommended shape for server-side debugging.
+      "name": "web: next dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "bun run dev:web",
+      "cwd": "${workspaceFolder}/../..",
+      "autoAttachChildProcesses": true
+    }
+  ]
+}

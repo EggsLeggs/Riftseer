@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // Attaches to the inspector `bun run dev:api:local --inspector-port 9229`
+      // exposes; the workspace task of that name starts it. Shape follows
+      // Cloudflare's wrangler debugging guide.
+      "name": "api: attach to wrangler dev",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "cwd": "${workspaceFolder}",
+      "resolveSourceMapLocations": null,
+      "attachExistingChildren": false,
+      "autoAttachChildProcesses": false,
+      "sourceMaps": true,
+      "restart": true
+    }
+  ]
+}
