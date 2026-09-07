@@ -452,7 +452,7 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
           .post(
             "/auth/logout",
             async ({ headers, set }) => {
-              if (!authClient) {
+              if (!supabaseUrl || !supabaseAnonKey) {
                 set.status = 503;
                 return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
               }
