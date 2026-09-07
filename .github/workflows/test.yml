@@ -36,7 +36,7 @@ jobs:
           - 3001:3000
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -63,7 +63,7 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # Most documentation rot is a name that no longer resolves, and a grep
       # catches every one of those.
