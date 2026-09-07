@@ -19,6 +19,7 @@ shows, it got from there; no client talks to the database.
 | `apps/discord-bot`       | Slash commands on a Worker.                                                                                                             |
 | `apps/reddit-bot`        | Devvit app answering `[[Card Name]]` on Reddit. Standalone npm project.                                                                 |
 | `apps/raycast-extension` | Card search in Raycast. Standalone npm project.                                                                                         |
+| `apps/tts`               | The Tabletop Simulator mod: the save, the Lua extracted from it and the tools that round-trip them. Not a workspace member.             |
 | `supabase/migrations`    | The schema, append-only after the squashed baseline.                                                                                    |
 
 ## Running it
@@ -73,6 +74,14 @@ anything; they are written for exactly that.
 
 Source terms are in [LICENSE](LICENSE). The public API may be used under the
 conditions described there.
+
+`apps/tts` carries its own terms and the root LICENSE does not extend to it.
+Its MIT licence in `apps/tts/LICENSE` covers only the files `apps/tts/NOTICE`
+lists: the Python tools, the docs, the Riftbound deck loaders and battlefield
+controller, and amory's table art. The rest of the mod is Lua and XmlUI
+inherited from the "MTG 4 player table - scripted" Workshop mod and other
+upstream authors, with no explicit licence. Treat it as Workshop-derived,
+personal-use content unless you have those authors' permission.
 
 Riftseer is unofficial fan content, not approved or endorsed by Riot Games.
 Card data and art are the property of Riot Games under their
