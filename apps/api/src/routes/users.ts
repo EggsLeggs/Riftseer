@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { SOCIAL_PLATFORM_IDS, validateSocialLink } from "@riftseer/types/social-links";
-import { authAdminClient, authClient } from "../lib/supabase";
-import { authPlugin } from "../plugins/auth";
+import { supabaseClients, type SupabaseClients } from "../lib/supabase";
+import { authPlugin as defaultAuthPlugin, type createAuthPlugin } from "../plugins/auth";
 import { ErrorSchema } from "../schemas";
 
 const ProfileSchema = t.Object({
@@ -54,7 +54,10 @@ function clampPaging(query: { limit?: number; offset?: number }) {
 }
 
 /** Resolves profile stubs for `ids`, preserving the order of `ids`. */
-async function fetchProfileStubs(ids: string[]): Promise<ProfileStub[]> {
+async function fetchProfileStubs(
+  authAdminClient: SupabaseClients["authAdminClient"],
+  ids: string[],
+): Promise<ProfileStub[]> {
   if (!authAdminClient || ids.length === 0) return [];
   const { data } = await authAdminClient
     .from("profiles")
@@ -64,7 +67,16 @@ async function fetchProfileStubs(ids: string[]): Promise<ProfileStub[]> {
   return ids.map((id) => byId.get(id)).filter((p): p is ProfileStub => p !== undefined);
 }
 
-export function usersRoutes() {
+export interface UsersRoutesOptions {
+  authPlugin?: ReturnType<typeof createAuthPlugin>;
+  /** Supabase clients; the route tests inject an in-memory fake. */
+  clients?: SupabaseClients;
+}
+
+export function usersRoutes(options: UsersRoutesOptions = {}) {
+  const { authClient, authAdminClient } = options.clients ?? supabaseClients;
+  const routeAuthPlugin = options.authPlugin ?? defaultAuthPlugin;
+
   return (
     new Elysia()
 
@@ -208,7 +220,7 @@ export function usersRoutes() {
 
           const ids = (rows ?? []).map((r: { follower_id: string }) => r.follower_id);
 
-          return { items: await fetchProfileStubs(ids), total: count ?? 0 };
+          return { items: await fetchProfileStubs(authAdminClient, ids), total: count ?? 0 };
         },
         {
           params: t.Object({ handle: t.String() }),
@@ -259,7 +271,7 @@ export function usersRoutes() {
 
           const ids = (rows ?? []).map((r: { following_id: string }) => r.following_id);
 
-          return { items: await fetchProfileStubs(ids), total: count ?? 0 };
+          return { items: await fetchProfileStubs(authAdminClient, ids), total: count ?? 0 };
         },
         {
           params: t.Object({ handle: t.String() }),
@@ -282,7 +294,7 @@ export function usersRoutes() {
       // ── Protected routes ──────────────────────────────────────────────────
       .use(
         new Elysia()
-          .use(authPlugin)
+          .use(routeAuthPlugin)
 
           // ── PATCH /users/me ─────────────────────────────────────────────
           .patch(

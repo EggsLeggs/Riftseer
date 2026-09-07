@@ -1,5 +1,10 @@
 import { Elysia, t } from "elysia";
-import { authAdminClient, authClient, supabaseUrl, supabaseAnonKey } from "../lib/supabase";
+import {
+  supabaseClients,
+  type SupabaseClients,
+  supabaseUrl,
+  supabaseAnonKey,
+} from "../lib/supabase";
 import { authPlugin, createAuthPlugin } from "../plugins/auth";
 import { isAdminUser } from "../plugins/admin-auth";
 import { ErrorSchema } from "../schemas";
@@ -37,11 +42,14 @@ const UserSchema = t.Object({
 export interface AuthRoutesOptions {
   protectedAuthPlugin?: ReturnType<typeof createAuthPlugin>;
   getAdminUserIds?: () => string | undefined;
+  /** Supabase clients; the route tests inject an in-memory fake. */
+  clients?: SupabaseClients;
 }
 
 export function authRoutes(options: AuthRoutesOptions = {}) {
   const protectedAuthPlugin = options.protectedAuthPlugin ?? authPlugin;
   const getAdminUserIds = options.getAdminUserIds ?? (() => process.env.ADMIN_USER_IDS);
+  const { authClient, authAdminClient } = options.clients ?? supabaseClients;
 
   return (
     new Elysia()
@@ -551,7 +559,7 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
           .patch(
             "/auth/change-password",
             async ({ body, user, set }) => {
-              if (!authClient || !authAdminClient || !supabaseUrl || !supabaseAnonKey) {
+              if (!authClient || !authAdminClient) {
                 set.status = 503;
                 return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
               }

@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
-import { authAdminClient } from "../lib/supabase";
-import { authPlugin } from "../plugins/auth";
+import { supabaseClients, type SupabaseClients } from "../lib/supabase";
+import { authPlugin as defaultAuthPlugin, type createAuthPlugin } from "../plugins/auth";
 import { issueOAuthState, verifyOAuthState } from "../lib/oauth-state";
 import { ErrorSchema } from "../schemas";
 import {
@@ -26,10 +26,19 @@ const MetafyStatusSchema = t.Union([
   t.Intersect([t.Object({ linked: t.Literal(true) }), LinkedAccountSchema]),
 ]);
 
-export function metafyRoutes() {
+export interface MetafyRoutesOptions {
+  authPlugin?: ReturnType<typeof createAuthPlugin>;
+  /** Supabase clients; the route tests inject an in-memory fake. */
+  clients?: SupabaseClients;
+}
+
+export function metafyRoutes(options: MetafyRoutesOptions = {}) {
+  const { authAdminClient } = options.clients ?? supabaseClients;
+  const routeAuthPlugin = options.authPlugin ?? defaultAuthPlugin;
+
   return new Elysia().use(
     new Elysia()
-      .use(authPlugin)
+      .use(routeAuthPlugin)
 
       // ── GET /auth/metafy/status ────────────────────────────────────────────
       .get(
