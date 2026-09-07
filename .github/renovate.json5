@@ -1,5 +1,6 @@
 // Renovate needs the GitHub App installed on the repository before this file
-// does anything: https://github.com/apps/renovate
+// does anything: https://github.com/apps/renovate. docs/renovate.md covers the
+// cadence, where the logs are and how to force a run.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: [
@@ -20,7 +21,45 @@
   // Skip a release's first days so a compromised publish can be yanked before
   // it lands here.
   minimumReleaseAge: "3 days",
+  // Dependabot alerts are switched off on the repository, so GitHub gives
+  // Renovate no vulnerability signal. OSV does, and vulnerability PRs open
+  // outside the weekly window and past the hourly and concurrent PR limits.
+  osvVulnerabilityAlerts: true,
+  // ignorePaths is not mergeable: setting it here replaces the list
+  // config:recommended inherits from :ignoreModulesAndTests rather than adding
+  // to it, so that list is repeated verbatim before docs/. docs/ is the
+  // Docusaurus site, deleted in the docs chunk of the overhaul; delete that
+  // entry with it.
+  ignorePaths: [
+    "**/node_modules/**",
+    "**/bower_components/**",
+    "**/vendor/**",
+    "**/examples/**",
+    "**/__tests__/**",
+    "**/test/**",
+    "**/tests/**",
+    "**/__fixtures__/**",
+    "docs/**",
+  ],
   packageRules: [
+    {
+      // Action bumps are one-line tag or digest changes. One PR for all of
+      // them, majors included, instead of one per action. groupName alone does
+      // not do that: separateMajorMinor defaults to true and would split the
+      // group into `renovate/github-actions` and
+      // `renovate/major-github-actions`.
+      matchManagers: ["github-actions"],
+      groupName: "GitHub Actions",
+      separateMajorMinor: false,
+    },
+    {
+      // The docker and CI Postgres majors follow the hosted Supabase Postgres
+      // major, which Renovate cannot see. Bump them by hand when that moves.
+      matchDatasources: ["docker"],
+      matchPackageNames: ["postgres"],
+      matchUpdateTypes: ["major"],
+      enabled: false,
+    },
     {
       // `@c15t/backend` pulls in fumadb, and fumadb still pins `kysely ^0.28`
       // (0.3.0, the newest c15t ships). kysely 0.29 dropped the

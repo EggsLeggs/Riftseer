@@ -9,6 +9,10 @@ on:
       - "packages/api/**"
       - "supabase/docs/**"
       - ".github/workflows/docs.yml"
+      # docs/ is a workspace member, so lockfile maintenance re-resolves its
+      # dependency tree in the root lockfile without touching any path above.
+      # #156 did exactly that and broke Mermaid SSR unnoticed.
+      - "bun.lock"
   pull_request:
     branches: [main]
     paths:
@@ -17,6 +21,10 @@ on:
       - "packages/api/**"
       - "supabase/docs/**"
       - ".github/workflows/docs.yml"
+      # docs/ is a workspace member, so lockfile maintenance re-resolves its
+      # dependency tree in the root lockfile without touching any path above.
+      # #156 did exactly that and broke Mermaid SSR unnoticed.
+      - "bun.lock"
   workflow_dispatch:
 
 permissions:
