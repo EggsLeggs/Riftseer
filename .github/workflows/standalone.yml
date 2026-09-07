@@ -7,14 +7,14 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/reddit-bot/**"
-      - "packages/raycast-extension/**"
+      - "apps/reddit-bot/**"
+      - "apps/raycast-extension/**"
       - "packages/types/**"
       - ".github/workflows/standalone.yml"
   pull_request:
     paths:
-      - "packages/reddit-bot/**"
-      - "packages/raycast-extension/**"
+      - "apps/reddit-bot/**"
+      - "apps/raycast-extension/**"
       - "packages/types/**"
       - ".github/workflows/standalone.yml"
 
@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: packages/reddit-bot
+        working-directory: apps/reddit-bot
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: packages/raycast-extension
+        working-directory: apps/raycast-extension
     steps:
       - uses: actions/checkout@v7
         with:

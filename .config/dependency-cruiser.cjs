@@ -20,13 +20,13 @@ module.exports = {
       comment:
         "Reach a sibling package through its declared entry points " +
         "(@riftseer/x or a subpath export), never through its src/ internals.",
-      from: { path: "^packages/([^/]+)/" },
+      from: { path: "^(apps|packages)/([^/]+)/" },
       // Package-specifier imports (@riftseer/x/slug) resolve through strict
       // exports maps and arrive as non-"local" edges; the reachable sin is a
       // relative path that climbs out of one package into another's src/.
       to: {
-        path: "^packages/([^/]+)/src/",
-        pathNot: "^packages/$1/",
+        path: "^(apps|packages)/[^/]+/src/",
+        pathNot: "^$1/$2/",
         dependencyTypes: ["local"],
       },
     },
@@ -36,7 +36,7 @@ module.exports = {
       comment:
         "packages/core pulls in Node built-ins the Workers runtime cannot " +
         "load. The ingest worker keeps its own utils instead.",
-      from: { path: "^packages/ingest-worker/" },
+      from: { path: "^apps/ingest-worker/" },
       to: { path: "^packages/core/" },
     },
     {
@@ -56,7 +56,9 @@ module.exports = {
   options: {
     doNotFollow: { path: "node_modules" },
     tsPreCompilationDeps: true,
-    tsConfig: { fileName: "tsconfig.base.json" },
+    // No tsConfig: the base has no path mappings to contribute, and
+    // dependency-cruiser cannot parse a base that lives apart from its
+    // sources (TS18003) or one with `files: []` (TS18002).
     enhancedResolveOptions: {
       exportsFields: ["exports"],
       conditionNames: ["import", "require", "types", "default"],

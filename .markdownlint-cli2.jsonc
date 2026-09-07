@@ -13,6 +13,7 @@
     "docs/README.md",
     "docs/adding-an-env-var.md",
     "docs/renovate.md",
+    "apps/*/docs/**/*.md",
     "packages/*/docs/**/*.md",
     "supabase/docs/**/*.md",
   ],

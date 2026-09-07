@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/ingest-worker/**"
+      - "apps/ingest-worker/**"
       - "packages/types/**"
       - "package.json"
       - "bun.lock"
       - ".github/workflows/ingest-worker.yml"
   pull_request:
     paths:
-      - "packages/ingest-worker/**"
+      - "apps/ingest-worker/**"
       - "packages/types/**"
       - "package.json"
       - "bun.lock"
@@ -37,7 +37,7 @@ jobs:
           packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: packages/ingest-worker
+          workingDirectory: apps/ingest-worker
           command: deploy --dry-run --config wrangler.jsonc
 
   deploy:
@@ -127,5 +127,5 @@ jobs:
           packageManager: bun
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: packages/ingest-worker
+          workingDirectory: apps/ingest-worker
           command: deploy --config wrangler.jsonc

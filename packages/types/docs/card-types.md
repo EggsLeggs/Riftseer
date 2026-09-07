@@ -303,7 +303,7 @@ See [Deck model](./deck-model) for the zone vocabulary, `zoneForCard()`, `valida
 If a new field needs to be added to `Card`:
 
 1. Update `packages/types/src/card.ts`
-2. Update `packages/ingest-worker/src/riftcodex.ts` (`rawToCard`)
+2. Update `apps/ingest-worker/src/riftcodex.ts` (`rawToCard`)
 3. Update the row mapping in `packages/core/src/providers/supabase.ts` (`dbRowToCard`)
-4. Update the field table in `packages/api/docs/cards.md`
+4. Update the field table in `apps/api/docs/cards.md`
 5. Check `PrivacyPage.tsx` if the field affects what data is stored or shown

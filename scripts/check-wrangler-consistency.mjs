@@ -15,16 +15,16 @@
  * not node, for that reason.
  */
 
-import api from "../packages/api/wrangler.jsonc";
-import discordBot from "../packages/discord-bot/wrangler.jsonc";
-import ingest from "../packages/ingest-worker/wrangler.jsonc";
-import web from "../packages/web/wrangler.jsonc";
+import api from "../apps/api/wrangler.jsonc";
+import discordBot from "../apps/discord-bot/wrangler.jsonc";
+import ingest from "../apps/ingest-worker/wrangler.jsonc";
+import web from "../apps/web/wrangler.jsonc";
 
 const configs = [
-  ["packages/api/wrangler.jsonc", api],
-  ["packages/ingest-worker/wrangler.jsonc", ingest],
-  ["packages/web/wrangler.jsonc", web],
-  ["packages/discord-bot/wrangler.jsonc", discordBot],
+  ["apps/api/wrangler.jsonc", api],
+  ["apps/ingest-worker/wrangler.jsonc", ingest],
+  ["apps/web/wrangler.jsonc", web],
+  ["apps/discord-bot/wrangler.jsonc", discordBot],
 ];
 
 const problems = [];
@@ -52,7 +52,7 @@ for (const [binding, bucket] of apiBuckets) {
   const other = ingestBuckets.get(binding);
   if (other !== undefined && other !== bucket) {
     problems.push(
-      `packages/api/wrangler.jsonc and packages/ingest-worker/wrangler.jsonc: R2 binding ${binding} is ${bucket} in one and ${other} in the other`,
+      `apps/api/wrangler.jsonc and apps/ingest-worker/wrangler.jsonc: R2 binding ${binding} is ${bucket} in one and ${other} in the other`,
     );
   }
 }
@@ -63,7 +63,7 @@ for (const [binding, queue] of apiQueues) {
   const other = ingestQueues.get(binding);
   if (other !== undefined && other !== queue) {
     problems.push(
-      `packages/api/wrangler.jsonc and packages/ingest-worker/wrangler.jsonc: queue binding ${binding} produces to ${queue} in one and ${other} in the other`,
+      `apps/api/wrangler.jsonc and apps/ingest-worker/wrangler.jsonc: queue binding ${binding} produces to ${queue} in one and ${other} in the other`,
     );
   }
 }
@@ -73,7 +73,7 @@ const consumed = new Set((ingest.queues?.consumers ?? []).map((c) => c.queue));
 for (const [binding, queue] of apiQueues) {
   if (!consumed.has(queue)) {
     problems.push(
-      `packages/api/wrangler.jsonc: ${binding} produces to ${queue}, which packages/ingest-worker/wrangler.jsonc does not consume`,
+      `apps/api/wrangler.jsonc: ${binding} produces to ${queue}, which apps/ingest-worker/wrangler.jsonc does not consume`,
     );
   }
 }
@@ -99,14 +99,14 @@ export function productionBindingProblems(top, production = {}) {
   const found = [];
   if (production.name !== top.name) {
     found.push(
-      `packages/web/wrangler.jsonc: env.production.name is ${production.name}, top-level name is ${top.name}`,
+      `apps/web/wrangler.jsonc: env.production.name is ${production.name}, top-level name is ${top.name}`,
     );
   }
   for (const key of COMPARED_PRODUCTION_SECTIONS) {
     if (!(key in production)) {
       if (REQUIRED_PRODUCTION_SECTIONS.includes(key)) {
         found.push(
-          `packages/web/wrangler.jsonc: env.production is missing ${key}, which does not inherit under --env`,
+          `apps/web/wrangler.jsonc: env.production is missing ${key}, which does not inherit under --env`,
         );
       }
       continue;
@@ -115,7 +115,7 @@ export function productionBindingProblems(top, production = {}) {
     const prodValue = JSON.stringify(production[key]);
     if (topValue !== prodValue) {
       found.push(
-        `packages/web/wrangler.jsonc: env.production.${key} is ${prodValue}, top-level ${key} is ${topValue}`,
+        `apps/web/wrangler.jsonc: env.production.${key} is ${prodValue}, top-level ${key} is ${topValue}`,
       );
     }
   }

@@ -20,7 +20,7 @@ describe("productionBindingProblems", () => {
     };
 
     expect(productionBindingProblems(top, production)).toEqual([
-      "packages/web/wrangler.jsonc: env.production is missing services, which does not inherit under --env",
+      "apps/web/wrangler.jsonc: env.production is missing services, which does not inherit under --env",
     ]);
   });
 
@@ -33,7 +33,7 @@ describe("productionBindingProblems", () => {
     };
 
     expect(productionBindingProblems(top, production)).toEqual([
-      `packages/web/wrangler.jsonc: env.production.images is ${JSON.stringify(production.images)}, top-level images is ${JSON.stringify(top.images)}`,
+      `apps/web/wrangler.jsonc: env.production.images is ${JSON.stringify(production.images)}, top-level images is ${JSON.stringify(top.images)}`,
     ]);
   });
 

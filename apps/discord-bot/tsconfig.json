@@ -1,0 +1,10 @@
+{
+  "extends": "../../tooling/tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+    "isolatedModules": true
+  },
+  "include": ["src"]
+}

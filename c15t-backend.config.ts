@@ -2,7 +2,7 @@ import { defineConfig } from "@c15t/backend";
 import { kyselyAdapter } from "@c15t/backend/db/adapters/kysely";
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
-import { parseC15tTrustedOrigins } from "./packages/web/src/lib/c15t-trusted-origins";
+import { parseC15tTrustedOrigins } from "./apps/web/src/lib/c15t-trusted-origins";
 
 const databaseUrl = process.env.C15T_DATABASE_URL;
 if (!databaseUrl) {

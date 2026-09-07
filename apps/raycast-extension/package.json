@@ -1,0 +1,79 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "riftseer",
+  "title": "Riftseer — Riftbound Card Search",
+  "description": "Search Riftbound TCG cards via the Riftseer API.",
+  "icon": "icon.png",
+  "author": "amory",
+  "categories": [
+    "Fun"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "search-cards",
+      "title": "Search Cards",
+      "subtitle": "Riftseer",
+      "description": "Search for Riftbound TCG cards by name.",
+      "mode": "view"
+    },
+    {
+      "name": "random-card",
+      "title": "Random Card",
+      "subtitle": "Riftseer",
+      "description": "Fetch a random Riftbound TCG card.",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "apiBaseUrl",
+      "title": "API Base URL",
+      "description": "Base URL of the Riftseer API server (where /api/v1 routes live).",
+      "type": "textfield",
+      "required": true,
+      "default": "https://api.riftseer.com",
+      "placeholder": "https://api.riftseer.com"
+    },
+    {
+      "name": "siteBaseUrl",
+      "title": "Site Base URL",
+      "description": "Base URL of the Riftseer frontend (used for card links).",
+      "type": "textfield",
+      "required": true,
+      "default": "https://riftseer.com",
+      "placeholder": "https://riftseer.com"
+    },
+    {
+      "name": "maxRecentHistory",
+      "title": "Max Recent History",
+      "description": "How many recently viewed cards to remember and show when the search is empty. Use 0 to disable.",
+      "type": "textfield",
+      "required": false,
+      "default": "50",
+      "placeholder": "50"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^2.0.0",
+    "@raycast/utils": "^2.0.0",
+    "@riftseer/types": "file:../../packages/types",
+    "jimp": "^1.0.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^2.0.0",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "eslint": "^10.0.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.4.5"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "eslint src --fix && prettier --write src",
+    "lint": "eslint src && prettier --check src",
+    "lint:ray": "ray lint",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}

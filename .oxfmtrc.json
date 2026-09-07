@@ -9,12 +9,12 @@
   // is why the config lives at the root and not in .config/.
   "ignorePatterns": [
     // Generated.
-    "packages/api/openapi.json",
-    "packages/api/src/worker-configuration.d.ts",
-    "packages/ingest-worker/src/worker-configuration.d.ts",
-    "packages/web/cloudflare-env.d.ts",
+    "apps/api/openapi.json",
+    "apps/api/src/worker-configuration.d.ts",
+    "apps/ingest-worker/src/worker-configuration.d.ts",
+    "apps/web/cloudflare-env.d.ts",
     // Raycast's `ray lint` requires its own ESLint and Prettier.
-    "packages/raycast-extension",
+    "apps/raycast-extension",
     // Docusaurus, deleted in the docs chunk of the overhaul.
     "docs/doc-pages",
     "docs/src",

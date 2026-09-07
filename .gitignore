@@ -26,8 +26,8 @@ next-env.d.ts
 # npm lockfiles are ignored except for the two standalone npm packages,
 # whose installs must be reproducible in CI.
 package-lock.json
-!packages/reddit-bot/package-lock.json
-!packages/raycast-extension/package-lock.json
+!apps/reddit-bot/package-lock.json
+!apps/raycast-extension/package-lock.json
 
 # Supabase
 .supabase/

@@ -11,7 +11,7 @@
     "schedule:weekly",
   ],
   // Bun workspace at the root (bun.lock) plus the two standalone npm packages
-  // (packages/reddit-bot, packages/raycast-extension) with their own
+  // (apps/reddit-bot, apps/raycast-extension) with their own
   // package-lock.json. Renovate finds every package.json itself; this only
   // keeps the standalone lockfiles current when nothing in them is bumped.
   lockFileMaintenance: { enabled: true, extends: ["schedule:weekly"] },

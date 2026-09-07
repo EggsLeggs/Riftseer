@@ -31,7 +31,7 @@ This is a multi-context repo: a Bun workspace where each package owns its own do
     └── ingest-worker/
 ```
 
-`packages/raycast-extension` and `packages/reddit-bot` sit outside the Bun workspace and are not mounted by the docs site. They still take a `CONTEXT.md` if their domain needs one; put their ADRs in the root `docs/adr/`.
+`apps/raycast-extension` and `apps/reddit-bot` sit outside the Bun workspace and are not mounted by the docs site. They still take a `CONTEXT.md` if their domain needs one; put their ADRs in the root `docs/adr/`.
 
 ## Use the glossary's vocabulary
 

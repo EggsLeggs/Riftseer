@@ -1,4 +1,4 @@
-/** Platform ids — keep in sync with `packages/web/src/lib/social-platforms.ts`. */
+/** Platform ids — keep in sync with `apps/web/src/lib/social-platforms.ts`. */
 export const SOCIAL_PLATFORM_IDS = [
   "kick",
   "youtube",
