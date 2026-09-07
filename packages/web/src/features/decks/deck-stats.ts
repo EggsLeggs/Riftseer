@@ -141,7 +141,5 @@ function shares(
       else counts.set(key, { key, label, count: card.quantity });
     }
   }
-  return [...counts.values()].sort(
-    (a, b) => b.count - a.count || a.label.localeCompare(b.label),
-  );
+  return [...counts.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 }

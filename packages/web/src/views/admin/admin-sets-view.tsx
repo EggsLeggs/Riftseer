@@ -42,10 +42,10 @@ function draftFrom(info: SetInfo): SetDraft {
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 export function AdminSetsView() {
-  const { editing, draft, setDraft, startEdit, cancelEdit } = useInlineRowEdit<
-    SetInfo,
-    SetDraft
-  >(draftFrom, (info) => info.setCode);
+  const { editing, draft, setDraft, startEdit, cancelEdit } = useInlineRowEdit<SetInfo, SetDraft>(
+    draftFrom,
+    (info) => info.setCode,
+  );
   const [pendingDelete, setPendingDelete] = React.useState<SetInfo | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [newCode, setNewCode] = React.useState("");
@@ -174,9 +174,7 @@ export function AdminSetsView() {
               <Input
                 id="new-set-name"
                 value={newDraft.setName}
-                onChange={(e) =>
-                  setNewDraft((d) => ({ ...d, setName: e.target.value }))
-                }
+                onChange={(e) => setNewDraft((d) => ({ ...d, setName: e.target.value }))}
                 placeholder="Origins"
                 maxLength={200}
               />
@@ -187,23 +185,16 @@ export function AdminSetsView() {
                 id="new-set-date"
                 type="date"
                 value={newDraft.publishedOn}
-                onChange={(e) =>
-                  setNewDraft((d) => ({ ...d, publishedOn: e.target.value }))
-                }
+                onChange={(e) => setNewDraft((d) => ({ ...d, publishedOn: e.target.value }))}
               />
             </div>
             <CheckboxField
               id="new-set-promo"
               label="Promo set"
               checked={newDraft.isPromo}
-              onChange={(e) =>
-                setNewDraft((d) => ({ ...d, isPromo: e.target.checked }))
-              }
+              onChange={(e) => setNewDraft((d) => ({ ...d, isPromo: e.target.checked }))}
             />
-            <Button
-              onClick={() => void createSet()}
-              disabled={create.isPending}
-            >
+            <Button onClick={() => void createSet()} disabled={create.isPending}>
               {create.isPending ? "Creating…" : "Create set"}
             </Button>
           </div>
@@ -211,9 +202,7 @@ export function AdminSetsView() {
       )}
 
       {sets.isError ? (
-        <p className="text-destructive text-sm">
-          Couldn&apos;t load sets. Please try again.
-        </p>
+        <p className="text-destructive text-sm">Couldn&apos;t load sets. Please try again.</p>
       ) : sets.isPending ? (
         <p className="text-muted-foreground flex items-center gap-2 text-sm">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -250,9 +239,7 @@ export function AdminSetsView() {
                         aria-label="Set name"
                         value={draft.setName}
                         onChange={(e) =>
-                          setDraft((d) =>
-                            d ? { ...d, setName: e.target.value } : d,
-                          )
+                          setDraft((d) => (d ? { ...d, setName: e.target.value } : d))
                         }
                         maxLength={200}
                       />
@@ -267,13 +254,11 @@ export function AdminSetsView() {
                         type="date"
                         value={draft.publishedOn}
                         onChange={(e) =>
-                          setDraft((d) =>
-                            d ? { ...d, publishedOn: e.target.value } : d,
-                          )
+                          setDraft((d) => (d ? { ...d, publishedOn: e.target.value } : d))
                         }
                       />
                     ) : (
-                      (toDateInputValue(info.publishedOn) || "—")
+                      toDateInputValue(info.publishedOn) || "—"
                     )}
                   </TableCell>
                   <TableCell className="tabular-nums">{info.cardCount}</TableCell>
@@ -285,9 +270,7 @@ export function AdminSetsView() {
                         className="accent-primary size-4"
                         checked={draft.isPromo}
                         onChange={(e) =>
-                          setDraft((d) =>
-                            d ? { ...d, isPromo: e.target.checked } : d,
-                          )
+                          setDraft((d) => (d ? { ...d, isPromo: e.target.checked } : d))
                         }
                       />
                     ) : info.isPromo ? (
@@ -315,11 +298,7 @@ export function AdminSetsView() {
                         </>
                       ) : (
                         <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => startEdit(info)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => startEdit(info)}>
                             Edit
                           </Button>
                           <Button

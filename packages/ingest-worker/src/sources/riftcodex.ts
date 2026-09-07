@@ -230,9 +230,7 @@ export function rawToPrinting(raw: RawCard): IngestPrinting {
   // A Legend is a complete card type, not a Champion-supertype unit. A small
   // number of RiftCodex rows (notably OGN Yasuo - Unforgiven) contain both.
   const supertype =
-    cardType?.toLowerCase() === "legend"
-      ? undefined
-      : raw.classification?.supertype || undefined;
+    cardType?.toLowerCase() === "legend" ? undefined : raw.classification?.supertype || undefined;
   // Largest first: the hosted variants are transcoded down from whatever we
   // fetch, so a bigger source is never worse.
   const sourceImageUrl =
@@ -260,21 +258,14 @@ export function rawToPrinting(raw: RawCard): IngestPrinting {
 
     set_code: raw.set?.set_id?.toUpperCase(),
     artist: raw.media?.artist || undefined,
-    collector_number:
-      printedCollectorNumber(raw.riftbound_id, raw.collector_number) ||
-      undefined,
+    collector_number: printedCollectorNumber(raw.riftbound_id, raw.collector_number) || undefined,
     released_at: normalizeDate(raw.released_at),
     rarity: raw.classification?.rarity || undefined,
-    flavour_text: raw.text?.flavour
-      ? repairFlavourText(raw.text.flavour)
-      : undefined,
+    flavour_text: raw.text?.flavour ? repairFlavourText(raw.text.flavour) : undefined,
     finishes: raw.metadata?.finishes ?? [],
-    is_signature:
-      (raw.metadata?.signature ?? false) || variantSignals.signature,
-    is_alternate_art:
-      (raw.metadata?.alternate_art ?? false) || variantSignals.alternateArt,
-    is_overnumbered:
-      (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
+    is_signature: (raw.metadata?.signature ?? false) || variantSignals.signature,
+    is_alternate_art: (raw.metadata?.alternate_art ?? false) || variantSignals.alternateArt,
+    is_overnumbered: (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
     is_special_collection: variantSignals.specialCollection,
 
     riftcodex_id: raw.id,
@@ -364,10 +355,15 @@ export async function fetchAllPages(config: RiftCodexConfig): Promise<RawCard[]>
     if (res.status === 429) {
       retry429Count++;
       if (retry429Count > MAX_429_RETRIES) {
-        throw new Error(`Rate limited too many times fetching page ${page} (${retry429Count} retries)`);
+        throw new Error(
+          `Rate limited too many times fetching page ${page} (${retry429Count} retries)`,
+        );
       }
       const retryAfter = parseInt(res.headers.get("Retry-After") ?? "5", 10);
-      logger.warn("Rate limited by upstream, waiting", { retryAfterSec: retryAfter, retry429Count });
+      logger.warn("Rate limited by upstream, waiting", {
+        retryAfterSec: retryAfter,
+        retry429Count,
+      });
       await sleep(retryAfter * 1000);
       continue;
     }

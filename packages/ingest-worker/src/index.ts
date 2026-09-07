@@ -21,10 +21,7 @@ import { runIngest } from "./ingest.ts";
 
 export type { Env };
 
-async function secretsMatch(
-  provided: string,
-  expected: string,
-): Promise<boolean> {
+async function secretsMatch(provided: string, expected: string): Promise<boolean> {
   const encoder = new TextEncoder();
   const [providedHash, expectedHash] = await Promise.all([
     crypto.subtle.digest("SHA-256", encoder.encode(provided)),
@@ -34,11 +31,7 @@ async function secretsMatch(
 }
 
 export default {
-  async scheduled(
-    _event: ScheduledController,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<void> {
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       runIngest(env).then((result) => {
         if (!result.ok) {
@@ -48,11 +41,7 @@ export default {
     );
   },
 
-  async fetch(
-    request: Request,
-    env: Env,
-    _ctx: ExecutionContext,
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
     if (request.method === "GET" && new URL(request.url).pathname === "/") {
       // `target` is the host this worker would write to, reported before
       // anyone can trigger a run. An ingest prunes and rewrites the whole
@@ -78,16 +67,10 @@ export default {
       );
     }
 
-    if (
-      request.method === "POST" &&
-      new URL(request.url).pathname === "/ingest"
-    ) {
+    if (request.method === "POST" && new URL(request.url).pathname === "/ingest") {
       if (env.INGEST_SECRET) {
         const auth = request.headers.get("Authorization");
-        if (
-          !auth ||
-          !(await secretsMatch(auth, `Bearer ${env.INGEST_SECRET}`))
-        ) {
+        if (!auth || !(await secretsMatch(auth, `Bearer ${env.INGEST_SECRET}`))) {
           return new Response("Unauthorized", { status: 401 });
         }
       }

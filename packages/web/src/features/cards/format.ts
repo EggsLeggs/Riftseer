@@ -12,9 +12,7 @@ export const EMPTY_VALUE = "—";
  * TCGPlayer may expose a card only under the Foil subtype. Prefer the regular
  * printing when both exist, but do not hide a valid foil-only USD price.
  */
-export function tcgplayerUsdPrice(
-  prices: CardPriceEntry | null | undefined,
-): number | null {
+export function tcgplayerUsdPrice(prices: CardPriceEntry | null | undefined): number | null {
   return prices?.normal ?? prices?.foil ?? null;
 }
 
@@ -68,16 +66,12 @@ export interface TypeBadgeStyle {
  * Label: rune → black; battlefield / token → grey; legend / multi-domain → gold;
  * single domain → that domain's colour; otherwise grey.
  */
-export function typeBadgeStyle(
-  oracle: Oracle,
-  rarity?: string | null,
-): TypeBadgeStyle {
+export function typeBadgeStyle(oracle: Oracle, rarity?: string | null): TypeBadgeStyle {
   const typeKey = oracle.card_type?.trim().toLowerCase();
   const specialKey = oracle.supertype?.trim().toLowerCase();
   const rarityColor = typeBadgeRarityColor(rarity);
   const domains = meaningfulCardDomains(oracle);
-  const isToken =
-    oracle.is_token || typeKey === "token" || specialKey === "token";
+  const isToken = oracle.is_token || typeKey === "token" || specialKey === "token";
 
   if (typeKey === "rune") {
     return {
@@ -133,9 +127,7 @@ export function typeBadgeStyle(
  * Upstream marks cards with no ability as `[NO TEXT]` (sometimes without
  * brackets). Treat that sentinel — and blank strings — as absent rules text.
  */
-export function meaningfulRulesText(
-  plain: string | null | undefined,
-): string | undefined {
+export function meaningfulRulesText(plain: string | null | undefined): string | undefined {
   const trimmed = plain?.trim();
   if (!trimmed) return undefined;
   if (/^\[?no text\]?$/iu.test(trimmed)) return undefined;

@@ -45,18 +45,18 @@ TCGPlayer, gallery and `applyLockedProductLinks` each sit in their own try/catch
 - Relationships and the prune list go only in that final call. Batches always send `p_relationships: null` and `p_prune: false`.
 - `INGEST_RPC_CARD_BATCH_SIZE` is 150, not 300. At 300 cards (~700 KiB) Supabase returned repeated opaque `internal error`s.
 - Half the work held open per transaction is half the window a dropped connection can land in.
-- **Ingest RPCs retry opaque failures** in `pipeline/retry.ts`: four attempts, 750ms/1.5s/3s. Two consecutive runs once failed on *different* batches of identical data.
+- **Ingest RPCs retry opaque failures** in `pipeline/retry.ts`: four attempts, 750ms/1.5s/3s. Two consecutive runs once failed on _different_ batches of identical data.
 - Only opaque failures qualify — `internal error`, `fetch failed`, timeouts, delimited 502/503/504. A constraint violation is deterministic and surfaces immediately.
 - **`jsonb_to_recordset` maps by column name**, so a key sent under the wrong name does not error. The column arrives NULL and the field is silently dropped.
 - Verify payload changes with a round trip that reads the rows back, not by reading the SQL.
 - **Ingest writes no `meta_flags`.** That `is:` vocabulary is admin-authored, and an admin edit locks the column.
 - **One TCGPlayer product is applied to at most one printing.** Matching runs per collector-number candidate, most specific first (`113a` before `113`), each trying number+name then number alone.
-- The bare-number pass is guarded by `namesAgreeAllowingVariantSuffix`, because TCGPlayer marks variants in the *name* while Vendetta marks them on the *number*.
+- The bare-number pass is guarded by `namesAgreeAllowingVariantSuffix`, because TCGPlayer marks variants in the _name_ while Vendetta marks them on the _number_.
 - Doing exact-name lookups first, or bare number first, put alternate art on its base printing's product — publishing the wrong price and filing a rarity disagreement no admin could resolve.
 - Contention resolves per product: strongest tier, then least-variant printing, then lowest id. Losers also shed the contested `tcgplayer_id`.
-- **Champion ↔ legend linking joins on the *character* tag**, never any shared tag. A champion carries its region and species too.
+- **Champion ↔ legend linking joins on the _character_ tag**, never any shared tag. A champion carries its region and species too.
 - RiftCodex puts a species tag on some legends the printed card does not carry: Heart of the Tempest reads `LEGEND | KENNEN` but arrives tagged `Yordle, Kennen`, which linked every Yordle champion to Kennen.
-- `characterTags()` intersects a card's tags with the character half of its own name, before the ` - ` or `, ` epithet separator.
+- `characterTags()` intersects a card's tags with the character half of its own name, before the `-` or `, ` epithet separator.
 - Matching the character half matters: `Nidalee - Cat Form` and `Lillia - Fae Fawn` would otherwise claim `Cat` and `Fae`.
 - **Relationships are oracle → oracle, written once**: `makes_token`, `character`, `signature`. The reverse of each is a query, and siblings are `printings WHERE oracle_id = …`.
 - **The official gallery** supplies the `[Equip]` section RiftCodex has no field for, and nothing else.
@@ -70,7 +70,7 @@ TCGPlayer, gallery and `applyLockedProductLinks` each sit in their own try/catch
 - **`keywords` is not sent.** A database trigger derives it from the oracle's rules text on every write.
 - **Image idempotency lives in `image_source_hash`.** An unchanged hash keeps the existing R2 objects; a changed hash queues new variants.
 - Hosted URLs are derived from the printing id by `@riftseer/types/card-image`, and public URLs carry `?v=<hash>` so a corrected image bypasses immutable caches.
-- **The review queue prune is queue-wide**, so it runs only when *both* observers reported. Pruning on one source's findings would delete the other's entries.
+- **The review queue prune is queue-wide**, so it runs only when _both_ observers reported. Pruning on one source's findings would delete the other's entries.
 - Entries carry a fingerprint encoding the observed upstream value, so a dismissal sticks while a genuinely new disagreement resurfaces. Prices are never queued.
 
 ## Local development

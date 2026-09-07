@@ -3,10 +3,7 @@
 import * as React from "react";
 import { ListChecksIcon } from "lucide-react";
 
-import {
-  AppDialogContent,
-  AppSelectContent,
-} from "@/components/layout/clear-body-pointer-events";
+import { AppDialogContent, AppSelectContent } from "@/components/layout/clear-body-pointer-events";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,12 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DECK_ZONE_LABELS, DECK_ZONES } from "@riftseer/types/deck";
 import { deckZoneSections } from "../grouping";
 import type { DeckCard, DeckZone } from "../types";
@@ -162,9 +154,7 @@ export function DeckBulkEditDialog({
         </div>
 
         <div className="flex flex-col gap-2 border-t pt-3">
-          <p className="text-muted-foreground text-xs tabular-nums">
-            {picked.length} selected
-          </p>
+          <p className="text-muted-foreground text-xs tabular-nums">{picked.length} selected</p>
           <div className="flex flex-wrap items-end gap-2">
             <div className="flex min-w-36 flex-col gap-1">
               <span className="text-muted-foreground text-xs">Move to</span>

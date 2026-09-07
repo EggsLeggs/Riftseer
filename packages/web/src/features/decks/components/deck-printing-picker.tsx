@@ -5,12 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CheckIcon } from "lucide-react";
 import { printingImageUrl, type Printing } from "@riftseer/types";
 
-import {
-  Dialog,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AppDialogContent } from "@/components/layout/clear-body-pointer-events";
 import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
 import { RarityIcon } from "@/features/cards/card-icons";
@@ -53,9 +48,7 @@ export function DeckPrintingPicker({
         <DialogHeader>
           <DialogTitle>Change printing</DialogTitle>
           <DialogDescription>
-            {card
-              ? `Pick which printing of ${card.name} this deck uses.`
-              : "Pick a printing."}
+            {card ? `Pick which printing of ${card.name} this deck uses.` : "Pick a printing."}
           </DialogDescription>
         </DialogHeader>
 
@@ -90,7 +83,6 @@ export function DeckPrintingPicker({
                       isCurrent ? "bg-muted" : "hover:bg-muted/40",
                     )}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={printingImageUrl(printing, "small")}
                       alt=""
@@ -104,9 +96,7 @@ export function DeckPrintingPicker({
                       <span className="text-muted-foreground flex items-center gap-1.5 text-xs tabular-nums">
                         {printing.set?.set_code?.toUpperCase()}{" "}
                         {printing.collector_label ?? printing.collector_number}
-                        {printing.rarity && (
-                          <RarityIcon rarity={printing.rarity} />
-                        )}
+                        {printing.rarity && <RarityIcon rarity={printing.rarity} />}
                       </span>
                     </span>
                     <span className="text-muted-foreground shrink-0 text-right text-xs tabular-nums">

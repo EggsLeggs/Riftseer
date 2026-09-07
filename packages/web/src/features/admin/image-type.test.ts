@@ -1,14 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import {
-  detectImageContentType,
-  extensionForImageType,
-} from "./image-type";
+import { detectImageContentType, extensionForImageType } from "./image-type";
 
 describe("detectImageContentType", () => {
   test("recognises PNG and JPEG magic bytes", () => {
-    const png = new Uint8Array([
-      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00,
-    ]);
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
     expect(detectImageContentType(png.buffer)).toBe("image/png");
 
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00]);

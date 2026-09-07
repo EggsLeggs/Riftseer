@@ -55,8 +55,7 @@ export function AdminLockedFieldsNotice({ printingId }: { printingId: string }) 
       <div>
         <p className="font-medium">Admin-locked fields</p>
         <p className="text-muted-foreground mt-0.5 text-xs">
-          Ingest will keep the stored value for these columns. Saving a field here
-          locks it too.
+          Ingest will keep the stored value for these columns. Saving a field here locks it too.
         </p>
         <ul className="mt-1.5 space-y-0.5 text-xs">
           {locked.map(([level, fields]) => (

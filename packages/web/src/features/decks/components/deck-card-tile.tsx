@@ -99,7 +99,6 @@ export function DeckCardTile({
             )}
           >
             {imageUrl && !failed ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={imageUrl}
                 alt={card.name}
@@ -146,12 +145,7 @@ export function DeckCardTile({
               </button>
             </DropdownMenuTrigger>
             <AppDropdownMenuContent align="end" className="w-52">
-              <DeckCardMenuItems
-                kind="dropdown"
-                card={card}
-                canEdit={canEdit}
-                actions={actions}
-              />
+              <DeckCardMenuItems kind="dropdown" card={card} canEdit={canEdit} actions={actions} />
             </AppDropdownMenuContent>
           </DropdownMenu>
         </div>

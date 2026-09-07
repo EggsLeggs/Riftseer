@@ -189,9 +189,7 @@ export function AdminReviewView() {
         isPending={review.isPending}
         isEmpty={entries.length === 0}
         errorMessage={
-          review.error instanceof Error
-            ? review.error.message
-            : "Couldn't load the review queue."
+          review.error instanceof Error ? review.error.message : "Couldn't load the review queue."
         }
         loadingMessage="Loading review queue…"
         emptyMessage={
@@ -200,47 +198,44 @@ export function AdminReviewView() {
             : `No ${status} entries.`
         }
       >
-          <p className="text-muted-foreground mb-3 text-sm">
-            {total.toLocaleString()} {total === 1 ? "entry" : "entries"}
-            {totalPages > 1 ? ` · page ${page + 1} of ${totalPages}` : ""}
-          </p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Type</TableHead>
-                <TableHead>Discrepancy</TableHead>
-                <TableHead>Card</TableHead>
-                <TableHead>Seen</TableHead>
-                {status === "pending" && (
-                  <TableHead className="text-right">Actions</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entries.map((entry) => (
-                <ReviewRow
-                  key={entry.id}
-                  entry={entry}
-                  editable={status === "pending"}
-                  pending={confirm.isPending || dismiss.isPending}
-                  onConfirm={(printingId, oracleId) =>
-                    confirm.mutate([entry.id, printingId || undefined, oracleId || undefined])
-                  }
-                  onDismiss={() => dismiss.mutate([entry.id])}
-                />
-              ))}
-            </TableBody>
-          </Table>
+        <p className="text-muted-foreground mb-3 text-sm">
+          {total.toLocaleString()} {total === 1 ? "entry" : "entries"}
+          {totalPages > 1 ? ` · page ${page + 1} of ${totalPages}` : ""}
+        </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Type</TableHead>
+              <TableHead>Discrepancy</TableHead>
+              <TableHead>Card</TableHead>
+              <TableHead>Seen</TableHead>
+              {status === "pending" && <TableHead className="text-right">Actions</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entries.map((entry) => (
+              <ReviewRow
+                key={entry.id}
+                entry={entry}
+                editable={status === "pending"}
+                pending={confirm.isPending || dismiss.isPending}
+                onConfirm={(printingId, oracleId) =>
+                  confirm.mutate([entry.id, printingId || undefined, oracleId || undefined])
+                }
+                onDismiss={() => dismiss.mutate([entry.id])}
+              />
+            ))}
+          </TableBody>
+        </Table>
 
-          <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
+        <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
       </AdminListState>
 
       <p className="text-muted-foreground mt-8 text-xs leading-relaxed">
-        Prices are never queued here — they change every run and are applied
-        automatically. Confirming an unmatched product stores its TCGPlayer ID on
-        the card, so later ingests match and price it without asking again.
-        Missing printings: use Create to open a prefilled form; confirming stamps the
-        gallery&apos;s Riftbound ID onto the card.
+        Prices are never queued here — they change every run and are applied automatically.
+        Confirming an unmatched product stores its TCGPlayer ID on the card, so later ingests match
+        and price it without asking again. Missing printings: use Create to open a prefilled form;
+        confirming stamps the gallery&apos;s Riftbound ID onto the card.
       </p>
     </>
   );
@@ -260,8 +255,7 @@ function ReviewRow({
   onDismiss: () => void;
 }) {
   const router = useRouter();
-  const { product, gallery, field, current_value, proposed_value, printing_name } =
-    entry.payload;
+  const { product, gallery, field, current_value, proposed_value, printing_name } = entry.payload;
   // Field diffs are anchored to a known card; an unmatched product and a
   // missing card both need a target chosen, so the suggestion (where there is
   // one) is pre-filled and stays editable.
@@ -271,23 +265,19 @@ function ReviewRow({
   // Shown as context only. The API derives the oracle from the printing when the
   // entry does not name one, so this no longer gates Confirm.
   const oracleField =
-    isConfirmableReconciliationField(field) &&
-    reconciliationFieldScope(field) === "oracle";
+    isConfirmableReconciliationField(field) && reconciliationFieldScope(field) === "oracle";
 
   // A diff on a field the API cannot patch is dismiss-only; there is nothing
   // for confirming to write. `buildConfirmPatch` answers REVIEW_FIELD_UNSUPPORTED
   // for exactly these, so the button never promises a write the API rejects.
-  const unconfirmable =
-    entry.kind === "field_diff" && !isConfirmableReconciliationField(field);
+  const unconfirmable = entry.kind === "field_diff" && !isConfirmableReconciliationField(field);
   const unconfirmableId = `review-unconfirmable-${entry.id}`;
 
   function confirmEntry() {
     const printing = printingId.trim();
     const oracle = oracleId.trim();
     if (entry.kind === "unmatched_product" && !printing) {
-      toast.error(
-        "Enter the printing ID this product belongs to",
-      );
+      toast.error("Enter the printing ID this product belongs to");
       return;
     }
     onConfirm(printing, oracle);
@@ -299,9 +289,7 @@ function ReviewRow({
       return;
     }
     stashReviewCreateDraft(entry);
-    router.push(
-      `/admin/cards/new?review=${encodeURIComponent(entry.id)}`,
-    );
+    router.push(`/admin/cards/new?review=${encodeURIComponent(entry.id)}`);
   }
 
   return (
@@ -311,9 +299,7 @@ function ReviewRow({
           <Badge variant={entry.kind === "field_diff" ? "secondary" : "outline"}>
             {KIND_LABELS[entry.kind]}
           </Badge>
-          <span className="text-muted-foreground text-xs">
-            {SOURCE_LABELS[entry.source]}
-          </span>
+          <span className="text-muted-foreground text-xs">{SOURCE_LABELS[entry.source]}</span>
         </div>
       </TableCell>
 
@@ -332,9 +318,7 @@ function ReviewRow({
               </a>
               <span className="text-muted-foreground text-xs">
                 {product.set_code ?? "unknown set"}
-                {product.collector_number
-                  ? ` · #${product.collector_number}`
-                  : ""}
+                {product.collector_number ? ` · #${product.collector_number}` : ""}
                 {` · product ${product.product_id}`}
               </span>
             </>
@@ -347,9 +331,7 @@ function ReviewRow({
                 {gallery.public_code ?? gallery.riftbound_id}
                 {gallery.type ? ` · ${gallery.type}` : ""}
                 {gallery.rarity ? ` · ${gallery.rarity}` : ""}
-                {gallery.collector_number
-                  ? ` · #${gallery.collector_number}`
-                  : ""}
+                {gallery.collector_number ? ` · #${gallery.collector_number}` : ""}
               </span>
             </>
           ) : null}
@@ -357,9 +339,7 @@ function ReviewRow({
           {field && (
             <span className="text-xs">
               {FIELD_LABELS[field] ?? field}:{" "}
-              <span className="text-muted-foreground line-through">
-                {current_value || "empty"}
-              </span>{" "}
+              <span className="text-muted-foreground line-through">{current_value || "empty"}</span>{" "}
               → <span className="font-medium">{proposed_value}</span>
             </span>
           )}
@@ -387,12 +367,20 @@ function ReviewRow({
               placeholder="Printing ID"
               className="font-mono text-xs"
             />
-            {(oracleField || entry.kind === "unmatched_oracle") ? <Input aria-label="Oracle ID" value={oracleId} onChange={(event) => setOracleId(event.target.value)} placeholder="Oracle UUID" className="font-mono text-xs" /> : null}
-            {printing_name && entry.kind !== "missing_printing" && entry.kind !== "unmatched_oracle" && (
-              <span className="text-muted-foreground text-xs">
-                Suggested: {printing_name}
-              </span>
-            )}
+            {oracleField || entry.kind === "unmatched_oracle" ? (
+              <Input
+                aria-label="Oracle ID"
+                value={oracleId}
+                onChange={(event) => setOracleId(event.target.value)}
+                placeholder="Oracle UUID"
+                className="font-mono text-xs"
+              />
+            ) : null}
+            {printing_name &&
+              entry.kind !== "missing_printing" &&
+              entry.kind !== "unmatched_oracle" && (
+                <span className="text-muted-foreground text-xs">Suggested: {printing_name}</span>
+              )}
             {(entry.kind === "missing_printing" || entry.kind === "unmatched_oracle") && (
               <span className="text-muted-foreground text-xs">
                 Prefer Create — it prefills from the gallery.
@@ -409,49 +397,42 @@ function ReviewRow({
       {editable && (
         <TableCell>
           <div className="flex flex-col items-end gap-1">
-          <div className="flex justify-end gap-1">
-            {(entry.kind === "missing_printing" || entry.kind === "unmatched_oracle") && gallery && (
+            <div className="flex justify-end gap-1">
+              {(entry.kind === "missing_printing" || entry.kind === "unmatched_oracle") &&
+                gallery && (
+                  <Button variant="ghost" size="sm" disabled={pending} onClick={createMissingCard}>
+                    <Plus aria-hidden="true" />
+                    Create
+                  </Button>
+                )}
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={pending || unconfirmable}
+                onClick={confirmEntry}
+                // A disabled button is not focusable, so a `title` tooltip is
+                // unreachable by keyboard and unreliable for screen readers —
+                // the reason is rendered below instead.
+                aria-describedby={unconfirmable ? unconfirmableId : undefined}
+              >
+                <Check aria-hidden="true" />
+                Confirm
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 disabled={pending}
-                onClick={createMissingCard}
+                onClick={onDismiss}
+                title="Dismiss permanently"
               >
-                <Plus aria-hidden="true" />
-                Create
+                <X aria-hidden="true" />
+                Dismiss
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={pending || unconfirmable}
-              onClick={confirmEntry}
-              // A disabled button is not focusable, so a `title` tooltip is
-              // unreachable by keyboard and unreliable for screen readers —
-              // the reason is rendered below instead.
-              aria-describedby={unconfirmable ? unconfirmableId : undefined}
-            >
-              <Check aria-hidden="true" />
-              Confirm
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={pending}
-              onClick={onDismiss}
-              title="Dismiss permanently"
-            >
-              <X aria-hidden="true" />
-              Dismiss
-            </Button>
-          </div>
+            </div>
             {unconfirmable && (
-              <p
-                id={unconfirmableId}
-                className="text-muted-foreground max-w-64 text-right text-xs"
-              >
-                {FIELD_LABELS[field ?? ""] ?? field} differences can&apos;t be
-                applied automatically — edit the card, then dismiss this entry.
+              <p id={unconfirmableId} className="text-muted-foreground max-w-64 text-right text-xs">
+                {FIELD_LABELS[field ?? ""] ?? field} differences can&apos;t be applied automatically
+                — edit the card, then dismiss this entry.
               </p>
             )}
           </div>

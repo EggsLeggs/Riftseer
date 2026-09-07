@@ -25,11 +25,7 @@ import {
 } from "@/features/cards/card-icons";
 import { CardTags } from "@/features/cards/card-tags";
 import { CardText } from "@/features/cards/card-text";
-import {
-  cardHref,
-  cardTypeLine,
-  meaningfulCardDomains,
-} from "@riftseer/types/render";
+import { cardHref, cardTypeLine, meaningfulCardDomains } from "@riftseer/types/render";
 import {
   cardIsLandscapeOriented,
   formatEur,
@@ -127,13 +123,7 @@ export function CardResultsViewToggle({
 
 // ─── SearchSkeleton ───────────────────────────────────────────────────────────
 
-export function SearchSkeleton({
-  count,
-  view,
-}: {
-  count: number;
-  view: CardResultsView;
-}) {
+export function SearchSkeleton({ count, view }: { count: number; view: CardResultsView }) {
   const n = Math.min(count, view === "details" ? 5 : view === "table" ? 8 : 12);
 
   if (view === "details") {
@@ -212,24 +202,15 @@ export function CardDetailsResults({ cards }: { cards: CardResult[] }) {
                     </h2>
                     <span className="inline-flex shrink-0 items-center gap-2">
                       {oracle.energy != null ? (
-                        <EnergyCost
-                          energy={oracle.energy}
-                          oracle={oracle}
-                        />
+                        <EnergyCost energy={oracle.energy} oracle={oracle} />
                       ) : null}
-                      {oracle.power != null ? (
-                        <PowerStat power={oracle.power} />
-                      ) : null}
-                      {oracle.might != null ? (
-                        <MightStat might={oracle.might} />
-                      ) : null}
+                      {oracle.power != null ? <PowerStat power={oracle.power} /> : null}
+                      {oracle.might != null ? <MightStat might={oracle.might} /> : null}
                     </span>
                   </div>
                   <div className="text-muted-foreground inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                     <CardTypeLine oracle={oracle} rarity={printing.rarity} />
-                    {domains.length > 0 ? (
-                      <DomainRunes domains={domains} />
-                    ) : null}
+                    {domains.length > 0 ? <DomainRunes domains={domains} /> : null}
                   </div>
                   {oracle.tags.length > 0 ? <CardTags tags={oracle.tags} /> : null}
                   {rulesText ? (
@@ -244,16 +225,13 @@ export function CardDetailsResults({ cards }: { cards: CardResult[] }) {
                       USD {formatUsd(tcgplayerUsdPrice(printing.prices?.tcgplayer))}
                     </span>
                     <span className="tabular-nums">
-                      EUR{" "}
-                      {formatEur(printing.prices?.cardmarket?.normal ?? undefined)}
+                      EUR {formatEur(printing.prices?.cardmarket?.normal ?? undefined)}
                     </span>
                     {printing.set?.set_code ? (
                       <span className="uppercase">{printing.set.set_code}</span>
                     ) : null}
                     {printing.collector_number ? (
-                      <span className="tabular-nums">
-                        #{printing.collector_number}
-                      </span>
+                      <span className="tabular-nums">#{printing.collector_number}</span>
                     ) : null}
                   </div>
                   <DetailMetaChips printing={printing} />
@@ -307,23 +285,15 @@ function DetailsCardArt({ printing }: { printing: CardResult["printing"] }) {
     <div
       className={cn(
         "relative shrink-0 overflow-hidden rounded-lg bg-muted",
-        isLandscape
-          ? "aspect-[7/5] w-44 sm:w-52"
-          : "aspect-[5/7] w-28 sm:w-32",
+        isLandscape ? "aspect-[7/5] w-44 sm:w-52" : "aspect-[5/7] w-28 sm:w-32",
       )}
     >
       {!imageUrl || failed ? (
         <div className="flex h-full flex-col items-center justify-center gap-1 p-2">
-          <ImageOffIcon
-            className="size-5 text-muted-foreground/60"
-            aria-hidden="true"
-          />
-          <span className="text-center text-[10px] text-muted-foreground">
-            No image
-          </span>
+          <ImageOffIcon className="size-5 text-muted-foreground/60" aria-hidden="true" />
+          <span className="text-center text-[10px] text-muted-foreground">No image</span>
         </div>
       ) : (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={imageUrl}
           alt=""
@@ -350,18 +320,12 @@ export function CardTableResults({ cards }: { cards: CardResult[] }) {
           <TableHead className="tabular-nums">#</TableHead>
           <TableHead>Name</TableHead>
           <TableHead>Type</TableHead>
-          <TableHead className="min-w-[140px] whitespace-normal">
-            Tags
-          </TableHead>
+          <TableHead className="min-w-[140px] whitespace-normal">Tags</TableHead>
           <TableHead>Rarity</TableHead>
-          <TableHead className="min-w-[120px] whitespace-normal">
-            Artist
-          </TableHead>
+          <TableHead className="min-w-[120px] whitespace-normal">Artist</TableHead>
           <TableHead className="tabular-nums">USD</TableHead>
           <TableHead className="tabular-nums">EUR</TableHead>
-          <TableHead className="min-w-[100px] whitespace-normal">
-            Domains
-          </TableHead>
+          <TableHead className="min-w-[100px] whitespace-normal">Domains</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -530,10 +494,8 @@ export function CardThumbnail({
   const imageUrl = printingImageUrl(card.printing, "normal");
   const [failed, setFailed] = React.useState(false);
   const aspectClass = naturalLandscapeLayout ? "aspect-[7/5]" : "aspect-[5/7]";
-  const showOverlayName =
-    cardNamePlacement === "overlay" && Boolean(cardName);
-  const showBelowName =
-    cardNamePlacement === "below" && Boolean(cardName);
+  const showOverlayName = cardNamePlacement === "overlay" && Boolean(cardName);
+  const showBelowName = cardNamePlacement === "below" && Boolean(cardName);
 
   React.useEffect(() => {
     setFailed(false);
@@ -562,10 +524,7 @@ export function CardThumbnail({
               {cardName}
             </span>
           ) : null}
-          <ImageOffIcon
-            className="size-6 text-muted-foreground/60"
-            aria-hidden="true"
-          />
+          <ImageOffIcon className="size-6 text-muted-foreground/60" aria-hidden="true" />
           <span className="text-[10px] text-muted-foreground">Coming soon</span>
         </div>
         {belowCaption}
@@ -573,8 +532,7 @@ export function CardThumbnail({
     );
   }
 
-  const showRotatedInPortraitSlot =
-    isLandscape && !naturalLandscapeLayout;
+  const showRotatedInPortraitSlot = isLandscape && !naturalLandscapeLayout;
 
   return (
     <div className="flex w-full flex-col gap-1.5">
@@ -591,7 +549,6 @@ export function CardThumbnail({
         ) : null}
         {showRotatedInPortraitSlot ? (
           <div className="absolute left-1/2 top-1/2 h-[calc(100%*5/7)] w-[140%] -translate-x-1/2 -translate-y-1/2 origin-center -rotate-90">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt=""
@@ -602,7 +559,6 @@ export function CardThumbnail({
             />
           </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
             alt=""
@@ -620,10 +576,7 @@ export function CardThumbnail({
 
 // ─── Pagination helper ────────────────────────────────────────────────────────
 
-export function buildPageRange(
-  current: number,
-  total: number,
-): Array<number | "ellipsis"> {
+export function buildPageRange(current: number, total: number): Array<number | "ellipsis"> {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i + 1);
   }

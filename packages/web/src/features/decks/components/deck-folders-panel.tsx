@@ -8,11 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
-import {
-  createDeckFolderAction,
-  deleteDeckFolderAction,
-  listDeckFoldersAction,
-} from "../actions";
+import { createDeckFolderAction, deleteDeckFolderAction, listDeckFoldersAction } from "../actions";
 import { deckQueryKeys } from "../api";
 import { cn } from "@/lib/utils";
 
@@ -46,8 +42,7 @@ export function DeckFoldersPanel({
 
   const items = folders.data?.items ?? [];
   const selected = items.find((folder) => folder.id === selectedId) ?? null;
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: deckQueryKeys.all });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: deckQueryKeys.all });
 
   const create = async () => {
     const trimmed = name.trim();
@@ -148,9 +143,7 @@ export function DeckFoldersPanel({
         onOpenChange={setDeleting}
         title="Delete folder"
         description={
-          selected
-            ? `“${selected.name}” will be removed. The decks in it are untouched.`
-            : ""
+          selected ? `“${selected.name}” will be removed. The decks in it are untouched.` : ""
         }
         confirmLabel="Delete folder"
         destructive

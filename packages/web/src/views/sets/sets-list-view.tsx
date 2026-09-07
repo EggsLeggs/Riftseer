@@ -28,7 +28,9 @@ function SetCard({ set }: { set: SetInfo }) {
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-        <span>{set.cardCount} {set.cardCount === 1 ? "card" : "cards"}</span>
+        <span>
+          {set.cardCount} {set.cardCount === 1 ? "card" : "cards"}
+        </span>
         <span>{formatDate(set.publishedOn)}</span>
         {set.isPromo ? (
           <span className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide">

@@ -11,20 +11,7 @@ function orderedEntries(rulings: CardRuling[]): CardRuling[] {
   ];
 }
 
-const MONTHS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /**
  * `dated` is a plain `YYYY-MM-DD` date column. Eden Treaty revives ISO-looking
@@ -62,14 +49,8 @@ export function CardRulings({ rulings }: { rulings: CardRuling[] }) {
         const meta = [dated, entry.source].filter(Boolean).join(" · ");
         return (
           <li key={entry.id} className="mb-5 break-inside-avoid last:mb-0">
-            <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">
-              {entry.text}
-            </p>
-            {meta ? (
-              <p className="text-muted-foreground mt-1 text-xs italic">
-                ({meta})
-              </p>
-            ) : null}
+            <p className="max-w-prose text-sm leading-relaxed whitespace-pre-line">{entry.text}</p>
+            {meta ? <p className="text-muted-foreground mt-1 text-xs italic">({meta})</p> : null}
           </li>
         );
       })}

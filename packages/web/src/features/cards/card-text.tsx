@@ -34,10 +34,7 @@ function contrastingBw(hex: string): string {
 }
 
 function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /**
@@ -70,19 +67,13 @@ function plainTextFromSelection(root: HTMLElement): string | null {
   });
   holder.querySelectorAll("li").forEach((item, index) => {
     if (index > 0) {
-      item.parentNode?.insertBefore(
-        document.createTextNode("\n"),
-        item,
-      );
+      item.parentNode?.insertBefore(document.createTextNode("\n"), item);
     }
   });
   // Selection across ability paragraphs → keep a single newline between them.
   holder.querySelectorAll("p").forEach((paragraph, index) => {
     if (index > 0) {
-      paragraph.parentNode?.insertBefore(
-        document.createTextNode("\n"),
-        paragraph,
-      );
+      paragraph.parentNode?.insertBefore(document.createTextNode("\n"), paragraph);
     }
   });
 
@@ -123,11 +114,7 @@ function renderIconToken(
   const energy = ENERGY_VALUE_PATTERN.exec(iconKey);
   if (preferText) {
     return (
-      <span
-        key={reactKey}
-        className="text-foreground font-medium tabular-nums"
-        title={name}
-      >
+      <span key={reactKey} className="text-foreground font-medium tabular-nums" title={name}>
         {name}
       </span>
     );
@@ -135,10 +122,7 @@ function renderIconToken(
 
   const visual = energy ? (
     <span
-      className={cn(
-        "inline-icon icon-energy-value",
-        opts?.inKeyword && "card-keyword-energy",
-      )}
+      className={cn("inline-icon icon-energy-value", opts?.inKeyword && "card-keyword-energy")}
       data-value={energy[1]}
       aria-hidden={opts?.inKeyword ? true : undefined}
       aria-label={opts?.inKeyword ? undefined : name}
@@ -220,16 +204,10 @@ function KeywordBadge({
           "--keyword-energy-bg": style.color,
           "--keyword-energy-fg": energyFg,
           "--keyword-icon-filter":
-            energyFg === "#FFFFFF"
-              ? "brightness(0)"
-              : "brightness(0) invert(1)",
+            energyFg === "#FFFFFF" ? "brightness(0)" : "brightness(0) invert(1)",
         } as CSSProperties
       }
-      title={
-        costs.length > 0
-          ? `${display} ${formatTokenDisplayList(costs)}`
-          : display
-      }
+      title={costs.length > 0 ? `${display} ${formatTokenDisplayList(costs)}` : display}
       aria-hidden="true"
     >
       <span className="card-keyword-label">{display}</span>
@@ -267,11 +245,7 @@ interface RenderOpts {
 }
 
 /** Maps the kernel's token stream to elements: icons, badges, italics, prose. */
-function renderTokens(
-  tokens: CardTextToken[],
-  keyPrefix: string,
-  opts: RenderOpts,
-): ReactNode[] {
+function renderTokens(tokens: CardTextToken[], keyPrefix: string, opts: RenderOpts): ReactNode[] {
   const parts: ReactNode[] = [];
 
   tokens.forEach((token, index) => {
@@ -285,11 +259,7 @@ function renderTokens(
           // Adjacent `:rb_…:` runs read as one phrase (`3 Energy and Power`).
           const phrase = formatTokenDisplayList(token.keys);
           parts.push(
-            <span
-              key={key}
-              className="text-foreground font-medium tabular-nums"
-              title={phrase}
-            >
+            <span key={key} className="text-foreground font-medium tabular-nums" title={phrase}>
               {phrase}
             </span>,
           );
@@ -325,11 +295,7 @@ function renderTokens(
   return parts;
 }
 
-function renderLine(
-  line: string,
-  lineIndex: number,
-  opts: RenderOpts,
-): ReactNode[] {
+function renderLine(line: string, lineIndex: number, opts: RenderOpts): ReactNode[] {
   return renderTokens(tokenizeCardTextLine(line), `${lineIndex}`, opts);
 }
 
@@ -364,9 +330,7 @@ export function CardText({
   const preferText = accessibility.preferTextOverSymbols;
   const renderOpts: RenderOpts = { preferText, linkKeywords };
   const richBlocks = rich ? parseCardTextRich(rich) : null;
-  const lines = richBlocks
-    ? null
-    : normalizeCardTextLayout(text).split("\n");
+  const lines = richBlocks ? null : normalizeCardTextLayout(text).split("\n");
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -384,9 +348,7 @@ export function CardText({
         "text/html",
         plain
           .split("\n")
-          .map((line) =>
-            line.length === 0 ? "<br>" : `<p>${escapeHtml(line)}</p>`,
-          )
+          .map((line) => (line.length === 0 ? "<br>" : `<p>${escapeHtml(line)}</p>`))
           .join(""),
       );
     };
@@ -398,10 +360,7 @@ export function CardText({
   let lineCounter = 0;
 
   return (
-    <div
-      ref={rootRef}
-      className={cn("space-y-2 text-sm leading-relaxed", className)}
-    >
+    <div ref={rootRef} className={cn("space-y-2 text-sm leading-relaxed", className)}>
       {richBlocks
         ? richBlocks.map((block, blockIndex) => {
             if (block.type === "paragraph") {
@@ -411,10 +370,7 @@ export function CardText({
               });
             }
             return (
-              <ul
-                key={blockIndex}
-                className="list-disc space-y-1 pl-5 marker:text-foreground/70"
-              >
+              <ul key={blockIndex} className="list-disc space-y-1 pl-5 marker:text-foreground/70">
                 {block.items.map((item) => {
                   const index = lineCounter++;
                   const itemLines = item.split("\n");
@@ -432,9 +388,7 @@ export function CardText({
               </ul>
             );
           })
-        : lines!.map((line, index) => (
-            <p key={index}>{renderLine(line, index, renderOpts)}</p>
-          ))}
+        : lines!.map((line, index) => <p key={index}>{renderLine(line, index, renderOpts)}</p>)}
     </div>
   );
 }

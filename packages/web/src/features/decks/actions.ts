@@ -74,9 +74,7 @@ export async function listMyDecksAction(): Promise<DeckResult<DeckListPage>> {
  * anonymous view when signed out, which is the same answer the public API
  * gives — a signed-out visitor is not an error here.
  */
-export async function listDecksByHandleAction(
-  handle: string,
-): Promise<DeckResult<DeckListPage>> {
+export async function listDecksByHandleAction(handle: string): Promise<DeckResult<DeckListPage>> {
   const session = await getSession();
   const token = session?.accessToken;
   if (!token) {
@@ -88,9 +86,7 @@ export async function listDecksByHandleAction(
   return decksServerApi.listByHandle(token, handle);
 }
 
-export async function getDeckAction(
-  deckId: string,
-): Promise<DeckResult<DeckDetail>> {
+export async function getDeckAction(deckId: string): Promise<DeckResult<DeckDetail>> {
   return withToken((token) => decksServerApi.getDeck(token, deckId));
 }
 
@@ -101,9 +97,7 @@ export async function listDeckRevisionsAction(
   return withToken((token) => decksServerApi.listRevisions(token, deckId, limit));
 }
 
-export async function exportDeckAction(
-  deckId: string,
-): Promise<DeckResult<DeckExport>> {
+export async function exportDeckAction(deckId: string): Promise<DeckResult<DeckExport>> {
   return withToken((token) => decksServerApi.exportDeck(token, deckId));
 }
 
@@ -112,9 +106,7 @@ export async function exportDeckAction(
 export async function createDeckAction(
   input: DeckCreateInput,
 ): Promise<DeckResult<DeckCreateResult>> {
-  const result = await withToken((token) =>
-    decksServerApi.createDeck(token, input),
-  );
+  const result = await withToken((token) => decksServerApi.createDeck(token, input));
   if (result.ok) revalidatePath("/decks");
   return result;
 }
@@ -123,19 +115,13 @@ export async function patchDeckAction(
   deckId: string,
   patch: DeckPatch,
 ): Promise<DeckResult<DeckDetail>> {
-  const result = await withToken((token) =>
-    decksServerApi.patchDeck(token, deckId, patch),
-  );
+  const result = await withToken((token) => decksServerApi.patchDeck(token, deckId, patch));
   if (result.ok) revalidateDeck(deckId, result.data.name);
   return result;
 }
 
-export async function deleteDeckAction(
-  deckId: string,
-): Promise<DeckResult<{ message: string }>> {
-  const result = await withToken((token) =>
-    decksServerApi.deleteDeck(token, deckId),
-  );
+export async function deleteDeckAction(deckId: string): Promise<DeckResult<{ message: string }>> {
+  const result = await withToken((token) => decksServerApi.deleteDeck(token, deckId));
   if (result.ok) revalidateDeck(deckId);
   return result;
 }
@@ -149,9 +135,7 @@ export async function setDeckFavoriteAction(
   deckId: string,
   favorited: boolean,
 ): Promise<DeckResult<{ favorited: boolean; favorite_count: number }>> {
-  const result = await withToken((token) =>
-    decksServerApi.favorite(token, deckId, favorited),
-  );
+  const result = await withToken((token) => decksServerApi.favorite(token, deckId, favorited));
   if (result.ok) revalidateDeck(deckId);
   return result;
 }
@@ -203,9 +187,7 @@ export async function getDeckFolderAction(
   return withToken((token) => decksServerApi.getFolder(token, folderId));
 }
 
-export async function createDeckFolderAction(
-  name: string,
-): Promise<DeckResult<DeckFolder>> {
+export async function createDeckFolderAction(name: string): Promise<DeckResult<DeckFolder>> {
   const result = await withToken((token) => decksServerApi.createFolder(token, name));
   if (result.ok) revalidatePath("/decks");
   return result;
@@ -215,9 +197,7 @@ export async function renameDeckFolderAction(
   folderId: string,
   name: string,
 ): Promise<DeckResult<DeckFolder>> {
-  const result = await withToken((token) =>
-    decksServerApi.renameFolder(token, folderId, name),
-  );
+  const result = await withToken((token) => decksServerApi.renameFolder(token, folderId, name));
   if (result.ok) revalidatePath("/decks");
   return result;
 }
@@ -235,9 +215,7 @@ export async function setDeckFolderMembershipAction(
   deckId: string,
   filed: boolean,
 ): Promise<DeckResult<{ message: string }>> {
-  return withToken((token) =>
-    decksServerApi.setFolderMembership(token, folderId, deckId, filed),
-  );
+  return withToken((token) => decksServerApi.setFolderMembership(token, folderId, deckId, filed));
 }
 
 export async function setDeckCardTagsAction(
@@ -266,9 +244,7 @@ export async function applyDeckCardChangesAction(
 export async function importDeckAction(
   input: DeckImportInput,
 ): Promise<DeckResult<DeckImportResult>> {
-  const result = await withToken((token) =>
-    decksServerApi.importDeck(token, input),
-  );
+  const result = await withToken((token) => decksServerApi.importDeck(token, input));
   if (result.ok) revalidatePath("/decks");
   return result;
 }
@@ -279,9 +255,7 @@ export async function setDeckInviteAction(
   deckId: string,
   role?: DeckCollaboratorRole,
 ): Promise<DeckResult<DeckInviteResult>> {
-  const result = await withToken((token) =>
-    decksServerApi.setInvite(token, deckId, role),
-  );
+  const result = await withToken((token) => decksServerApi.setInvite(token, deckId, role));
   if (result.ok) revalidateDeck(deckId);
   return result;
 }
@@ -289,20 +263,14 @@ export async function setDeckInviteAction(
 export async function clearDeckInviteAction(
   deckId: string,
 ): Promise<DeckResult<{ message: string }>> {
-  const result = await withToken((token) =>
-    decksServerApi.clearInvite(token, deckId),
-  );
+  const result = await withToken((token) => decksServerApi.clearInvite(token, deckId));
   if (result.ok) revalidateDeck(deckId);
   return result;
 }
 
 /** Redeeming writes a collaborator row, so revoking the link later is separate. */
-export async function joinDeckAction(
-  inviteCode: string,
-): Promise<DeckResult<DeckJoinResult>> {
-  const result = await withToken((token) =>
-    decksServerApi.joinDeck(token, inviteCode),
-  );
+export async function joinDeckAction(inviteCode: string): Promise<DeckResult<DeckJoinResult>> {
+  const result = await withToken((token) => decksServerApi.joinDeck(token, inviteCode));
   if (result.ok) {
     revalidatePath("/decks");
     revalidateDeck(result.data.deck_id);

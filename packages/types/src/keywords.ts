@@ -69,7 +69,7 @@ export const KEYWORD_STYLES: Record<string, KeywordStyle> = {
  * Does not match nested brackets.
  * Capture group 1 = inner label; group 2 = arrow marker when present.
  */
-export const KEYWORD_TAG_REGEX = /\[([^\[\]]+)\](?:\[(&gt;|>)\])?/g;
+export const KEYWORD_TAG_REGEX = /\[([^[\]]+)\](?:\[(&gt;|>)\])?/g;
 
 /** "Deflect 3" → "deflect"; "ADD" → "add"; "Weaponmaster" → "weaponmaster". */
 export function keywordBaseKey(label: string): string {
@@ -111,13 +111,9 @@ export function keywordAbsorbsTrailingCosts(label: string): boolean {
  * cost run with an extra `:` (`:rb_energy_2::rb_rune_fury:: Double…`) and must
  * not match.
  */
-export const KEYWORD_BADGE_COST_RUN =
-  /^(?:\s*)((?::rb_(?:energy_\d+|rune_\w+):)+)(?!:)/;
+export const KEYWORD_BADGE_COST_RUN = /^(?:\s*)((?::rb_(?:energy_\d+|rune_\w+):)+)(?!:)/;
 
-export function takeKeywordBadgeCosts(
-  text: string,
-  from: number,
-): { keys: string[]; end: number } {
+export function takeKeywordBadgeCosts(text: string, from: number): { keys: string[]; end: number } {
   const match = KEYWORD_BADGE_COST_RUN.exec(text.slice(from));
   if (!match) return { keys: [], end: from };
   const keys = [...match[1]!.matchAll(/:rb_(\w+):/g)].map((m) => m[1]!);
@@ -144,9 +140,7 @@ export function styleForKeyword(label: string): KeywordStyle {
  * SQL trigger uses `card_keywords_from_text()`; shared conformance cases execute
  * both implementations against the same awkward inputs.
  */
-export function extractCardKeywords(
-  text: string | null | undefined,
-): string[] {
+export function extractCardKeywords(text: string | null | undefined): string[] {
   if (!text) return [];
   const found = new Set<string>();
   // `matchAll` needs its own regex instance — KEYWORD_TAG_REGEX is a shared

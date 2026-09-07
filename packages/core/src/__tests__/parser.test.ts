@@ -23,7 +23,9 @@ describe("parseCardRequests", () => {
   });
 
   test("caps a message at twenty requests", () => {
-    const requests = parseCardRequests(Array.from({ length: 25 }, (_, index) => `[[Card ${index}]]`).join(" "));
+    const requests = parseCardRequests(
+      Array.from({ length: 25 }, (_, index) => `[[Card ${index}]]`).join(" "),
+    );
     expect(requests).toHaveLength(20);
     expect(requests.at(-1)?.name).toBe("Card 19");
   });

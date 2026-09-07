@@ -45,7 +45,7 @@ import type {
   AdminViolationSeverityInput,
 } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
-import { CheckboxField, SelectField } from "./admin-form-field";
+import { SelectField } from "./admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** Mirrors the API's accepted input shape; the stored code is always lowercase. */
@@ -65,9 +65,7 @@ export function AdminFormatsView() {
     AdminFormat,
     FormatDraft
   >(draftFrom, (format) => format.code);
-  const [pendingDelete, setPendingDelete] = React.useState<AdminFormat | null>(
-    null,
-  );
+  const [pendingDelete, setPendingDelete] = React.useState<AdminFormat | null>(null);
   const [expanded, setExpanded] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [newCode, setNewCode] = React.useState("");
@@ -119,9 +117,7 @@ export function AdminFormatsView() {
     const code = newCode.trim().toLowerCase();
     const name = newName.trim();
     if (!CODE_PATTERN.test(code)) {
-      toast.error(
-        "Code must start with a letter or number and use only letters, numbers, - or _",
-      );
+      toast.error("Code must start with a letter or number and use only letters, numbers, - or _");
       return;
     }
     if (!name) {
@@ -203,24 +199,19 @@ export function AdminFormatsView() {
                 maxLength={120}
               />
             </div>
-            <Button
-              onClick={() => void createFormat()}
-              disabled={create.isPending}
-            >
+            <Button onClick={() => void createFormat()} disabled={create.isPending}>
               {create.isPending ? "Creating…" : "Create format"}
             </Button>
           </div>
           <p className="text-muted-foreground mt-3 text-xs">
-            The code is the public handle used by API clients and cannot be
-            changed later. New formats are appended to the end of the order.
+            The code is the public handle used by API clients and cannot be changed later. New
+            formats are appended to the end of the order.
           </p>
         </div>
       )}
 
       {formats.isError ? (
-        <p className="text-destructive text-sm">
-          Couldn&apos;t load formats. Please try again.
-        </p>
+        <p className="text-destructive text-sm">Couldn&apos;t load formats. Please try again.</p>
       ) : formats.isPending ? (
         <p className="text-muted-foreground flex items-center gap-2 text-sm">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -248,150 +239,128 @@ export function AdminFormatsView() {
               const isExpanded = expanded === format.code;
               return (
                 <React.Fragment key={format.code}>
-                <TableRow>
-                  <TableCell>
-                    <div className="flex gap-0.5">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={index === 0 || reorder.isPending}
-                        onClick={() => move(index, -1)}
-                      >
-                        <ArrowUp aria-hidden="true" />
-                        <span className="sr-only">
-                          Move {format.name} earlier
-                        </span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={
-                          index === rows.length - 1 || reorder.isPending
-                        }
-                        onClick={() => move(index, 1)}
-                      >
-                        <ArrowDown aria-hidden="true" />
-                        <span className="sr-only">Move {format.name} later</span>
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {format.code}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <Input
-                        aria-label="Format name"
-                        value={draft.name}
-                        onChange={(e) =>
-                          setDraft((d) =>
-                            d ? { ...d, name: e.target.value } : d,
-                          )
-                        }
-                        maxLength={120}
-                      />
-                    ) : (
-                      format.name
-                    )}
-                  </TableCell>
-                  <TableCell className="tabular-nums">
-                    {format.legality_count + format.override_count === 0
-                      ? "—"
-                      : `${format.legality_count} card${
-                          format.legality_count === 1 ? "" : "s"
-                        }, ${format.override_count} printing${
-                          format.override_count === 1 ? "" : "s"
-                        }`}
-                  </TableCell>
-                  <TableCell>
-                    {isEditing ? (
-                      <input
-                        type="checkbox"
-                        aria-label="Active"
-                        className="accent-primary size-4"
-                        checked={draft.active}
-                        onChange={(e) =>
-                          setDraft((d) =>
-                            d ? { ...d, active: e.target.checked } : d,
-                          )
-                        }
-                      />
-                    ) : format.active ? (
-                      "Yes"
-                    ) : (
-                      "Retired"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      {isEditing ? (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={patch.isPending}
-                            onClick={() => void saveEdit(format)}
-                          >
-                            <Save aria-hidden="true" />
-                            Save
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={cancelEdit}
-                          >
-                            Cancel
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-expanded={isExpanded}
-                            onClick={() =>
-                              setExpanded((open) =>
-                                open === format.code ? null : format.code,
-                              )
-                            }
-                          >
-                            {isExpanded ? (
-                              <ChevronDown aria-hidden="true" />
-                            ) : (
-                              <ChevronRight aria-hidden="true" />
-                            )}
-                            Rules
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => startEdit(format)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            title="Delete this format"
-                            onClick={() => setPendingDelete(format)}
-                          >
-                            <Trash2 aria-hidden="true" />
-                            <span className="sr-only">
-                              Delete {format.name}
-                            </span>
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-                {isExpanded && (
                   <TableRow>
-                    <TableCell colSpan={6} className="bg-muted/30 p-0">
-                      <FormatRulesPanel format={format} />
+                    <TableCell>
+                      <div className="flex gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={index === 0 || reorder.isPending}
+                          onClick={() => move(index, -1)}
+                        >
+                          <ArrowUp aria-hidden="true" />
+                          <span className="sr-only">Move {format.name} earlier</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={index === rows.length - 1 || reorder.isPending}
+                          onClick={() => move(index, 1)}
+                        >
+                          <ArrowDown aria-hidden="true" />
+                          <span className="sr-only">Move {format.name} later</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{format.code}</TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <Input
+                          aria-label="Format name"
+                          value={draft.name}
+                          onChange={(e) =>
+                            setDraft((d) => (d ? { ...d, name: e.target.value } : d))
+                          }
+                          maxLength={120}
+                        />
+                      ) : (
+                        format.name
+                      )}
+                    </TableCell>
+                    <TableCell className="tabular-nums">
+                      {format.legality_count + format.override_count === 0
+                        ? "—"
+                        : `${format.legality_count} card${
+                            format.legality_count === 1 ? "" : "s"
+                          }, ${format.override_count} printing${
+                            format.override_count === 1 ? "" : "s"
+                          }`}
+                    </TableCell>
+                    <TableCell>
+                      {isEditing ? (
+                        <input
+                          type="checkbox"
+                          aria-label="Active"
+                          className="accent-primary size-4"
+                          checked={draft.active}
+                          onChange={(e) =>
+                            setDraft((d) => (d ? { ...d, active: e.target.checked } : d))
+                          }
+                        />
+                      ) : format.active ? (
+                        "Yes"
+                      ) : (
+                        "Retired"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-1">
+                        {isEditing ? (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={patch.isPending}
+                              onClick={() => void saveEdit(format)}
+                            >
+                              <Save aria-hidden="true" />
+                              Save
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={cancelEdit}>
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              aria-expanded={isExpanded}
+                              onClick={() =>
+                                setExpanded((open) => (open === format.code ? null : format.code))
+                              }
+                            >
+                              {isExpanded ? (
+                                <ChevronDown aria-hidden="true" />
+                              ) : (
+                                <ChevronRight aria-hidden="true" />
+                              )}
+                              Rules
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => startEdit(format)}>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Delete this format"
+                              onClick={() => setPendingDelete(format)}
+                            >
+                              <Trash2 aria-hidden="true" />
+                              <span className="sr-only">Delete {format.name}</span>
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
-                )}
+                  {isExpanded && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="bg-muted/30 p-0">
+                        <FormatRulesPanel format={format} />
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </React.Fragment>
               );
             })}
@@ -401,16 +370,15 @@ export function AdminFormatsView() {
 
       {rows.length > 0 && (
         <p className="text-muted-foreground mt-4 text-xs">
-          Open a format&apos;s <strong>Rules</strong> to set what it demands of
-          each deck zone. A format with no rules at all — like Sandbox —
-          enforces nothing.
+          Open a format&apos;s <strong>Rules</strong> to set what it demands of each deck zone. A
+          format with no rules at all — like Sandbox — enforces nothing.
         </p>
       )}
 
       {rows.some((format) => !format.active) && (
         <p className="text-muted-foreground mt-4 text-xs">
-          Retired formats keep their stored statuses but are hidden from card
-          pages. Reactivate one to bring its legalities back.
+          Retired formats keep their stored statuses but are hidden from card pages. Reactivate one
+          to bring its legalities back.
         </p>
       )}
 
@@ -505,17 +473,14 @@ function FormatRulesPanel({ format }: { format: AdminFormat }) {
   // Seeded once on open. A save writes exactly what is on screen, so the server
   // and the draft already agree afterwards; re-seeding on every refetch would
   // yank the field the admin is still typing in.
-  const [drafts, setDrafts] = React.useState<Record<AdminDeckZone, ZoneDraft>>(
-    () => zoneDraftsFor(format),
+  const [drafts, setDrafts] = React.useState<Record<AdminDeckZone, ZoneDraft>>(() =>
+    zoneDraftsFor(format),
   );
-  const [pendingClear, setPendingClear] = React.useState<AdminDeckZone | null>(
-    null,
-  );
+  const [pendingClear, setPendingClear] = React.useState<AdminDeckZone | null>(null);
 
   const storedZones = new Set(format.zone_rules.map((rule) => rule.zone));
   const severityFor = (status: AdminLegalityStatus): AdminViolationSeverityInput =>
-    format.severity_overrides.find((row) => row.status === status)?.severity ??
-    "default";
+    format.severity_overrides.find((row) => row.status === status)?.severity ?? "default";
 
   function edit(zone: AdminDeckZone, field: keyof ZoneDraft, value: string) {
     setDrafts((current) => ({
@@ -539,11 +504,7 @@ function FormatRulesPanel({ format }: { format: AdminFormat }) {
       toast.error("A zone's minimum cannot be larger than its maximum");
       return;
     }
-    setZoneRule.mutate([
-      format.code,
-      zone,
-      { min_count: min, max_count: max, copy_limit: copies },
-    ]);
+    setZoneRule.mutate([format.code, zone, { min_count: min, max_count: max, copy_limit: copies }]);
   }
 
   async function clear(zone: AdminDeckZone) {
@@ -562,9 +523,8 @@ function FormatRulesPanel({ format }: { format: AdminFormat }) {
       <div>
         <h3 className="text-sm font-semibold">Zone rules</h3>
         <p className="text-muted-foreground mt-1 text-xs">
-          An empty box means <strong>unconstrained</strong> — not zero. Copies
-          is the limit per card across the zone&apos;s counting group, so main
-          and sideboard share one limit.
+          An empty box means <strong>unconstrained</strong> — not zero. Copies is the limit per card
+          across the zone&apos;s counting group, so main and sideboard share one limit.
         </p>
         <Table className="mt-3">
           <TableHeader>
@@ -583,13 +543,9 @@ function FormatRulesPanel({ format }: { format: AdminFormat }) {
               return (
                 <TableRow key={zone}>
                   <TableCell>
-                    <span className="text-sm font-medium">
-                      {DECK_ZONE_LABELS[zone]}
-                    </span>
+                    <span className="text-sm font-medium">{DECK_ZONE_LABELS[zone]}</span>
                     {!stored && (
-                      <span className="text-muted-foreground ml-2 text-xs">
-                        unconstrained
-                      </span>
+                      <span className="text-muted-foreground ml-2 text-xs">unconstrained</span>
                     )}
                   </TableCell>
                   {(["min", "max", "copies"] as const).map((field) => (
@@ -635,9 +591,9 @@ function FormatRulesPanel({ format }: { format: AdminFormat }) {
       <div>
         <h3 className="text-sm font-semibold">Legality severity</h3>
         <p className="text-muted-foreground mt-1 text-xs">
-          How loudly the deck builder complains about each status in this
-          format. <strong>Default</strong> stores nothing and follows the shared
-          mapping, so a status added later needs no backfill here.
+          How loudly the deck builder complains about each status in this format.{" "}
+          <strong>Default</strong> stores nothing and follows the shared mapping, so a status added
+          later needs no backfill here.
         </p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {LEGALITY_STATUSES.map((legalityStatus) => (
@@ -666,9 +622,7 @@ function FormatRulesPanel({ format }: { format: AdminFormat }) {
         onOpenChange={(open) => {
           if (!open) setPendingClear(null);
         }}
-        title={`Clear the ${
-          pendingClear ? DECK_ZONE_LABELS[pendingClear] : "zone"
-        } rule?`}
+        title={`Clear the ${pendingClear ? DECK_ZONE_LABELS[pendingClear] : "zone"} rule?`}
         description="The zone becomes unconstrained in this format: no minimum, no maximum and no copy limit. Existing decks are never invalidated retroactively — validation is advisory and recomputed on read."
         confirmLabel="Clear rule"
         destructive

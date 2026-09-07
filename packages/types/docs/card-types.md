@@ -15,14 +15,14 @@ The main card object returned by all API endpoints.
 ```typescript
 interface Card {
   object: "card";
-  id: string;                      // Stable UUID (matches Postgres cards.id)
+  id: string; // Stable UUID (matches Postgres cards.id)
   name: string;
-  name_normalized: string;         // Lowercased, punctuation-stripped — used for search
+  name_normalized: string; // Lowercased, punctuation-stripped — used for search
   released_at?: string;
-  collector_number?: string;       // e.g. "OGN-001"
+  collector_number?: string; // e.g. "OGN-001"
   external_ids?: CardExternalIds;
   set?: CardSet;
-  oracle_key?: string;             // Name-derived group shared by every printing
+  oracle_key?: string; // Name-derived group shared by every printing
   attributes?: CardAttributes;
   classification?: CardClassification;
   text?: CardText;
@@ -33,11 +33,11 @@ interface Card {
   purchase_uris?: CardPurchaseUris;
   prices?: CardPrices;
   is_token: boolean;
-  source?: "riftcodex" | "manual";  // Row provenance used by ingest/admin tooling
-  all_parts: RelatedCard[];         // Tokens or meld parts produced by this card
-  used_by: RelatedCard[];           // Cards that create or reference this card (populated on tokens)
+  source?: "riftcodex" | "manual"; // Row provenance used by ingest/admin tooling
+  all_parts: RelatedCard[]; // Tokens or meld parts produced by this card
+  used_by: RelatedCard[]; // Cards that create or reference this card (populated on tokens)
   related_champions: RelatedCard[]; // Champions linked to this legend
-  related_legends: RelatedCard[];   // Legends linked to this champion
+  related_legends: RelatedCard[]; // Legends linked to this champion
   related_signatures: RelatedCard[];
   related_printings: RelatedCard[];
   public_slug?: string;
@@ -55,9 +55,9 @@ interface Card {
 
 ```typescript
 interface CardAttributes {
-  energy?: number | null;  // Energy cost to play the card
-  might?: number | null;   // Defense-side stat
-  power?: number | null;   // Attack-side stat
+  energy?: number | null; // Energy cost to play the card
+  might?: number | null; // Defense-side stat
+  power?: number | null; // Attack-side stat
 }
 ```
 
@@ -65,11 +65,11 @@ interface CardAttributes {
 
 ```typescript
 interface CardClassification {
-  type?: string;            // e.g. "Unit", "Gear", "Spell"
-  supertype?: string | null;// e.g. "Champion", "Signature", "Token"
-  rarity?: string;          // e.g. "Common", "Rare", "Legendary"
-  tags?: string[];          // e.g. ["Poro"]
-  domains?: string[];       // e.g. ["Fury"]
+  type?: string; // e.g. "Unit", "Gear", "Spell"
+  supertype?: string | null; // e.g. "Champion", "Signature", "Token"
+  rarity?: string; // e.g. "Common", "Rare", "Legendary"
+  tags?: string[]; // e.g. ["Poro"]
+  domains?: string[]; // e.g. ["Fury"]
 }
 ```
 
@@ -77,8 +77,8 @@ interface CardClassification {
 
 ```typescript
 interface CardText {
-  rich?: string;    // Rules text with inline symbol tokens (e.g. :rb_exhaust:)
-  plain?: string;   // Rules text with symbols replaced by readable tokens
+  rich?: string; // Rules text with inline symbol tokens (e.g. :rb_exhaust:)
+  plain?: string; // Rules text with symbols replaced by readable tokens
   flavour?: string; // Flavour / lore text if available
 }
 ```
@@ -87,7 +87,7 @@ interface CardText {
 
 ```typescript
 interface CardSet {
-  set_code: string;    // Short code, e.g. "OGN"
+  set_code: string; // Short code, e.g. "OGN"
   set_id?: string;
   set_name: string;
   set_uri?: string;
@@ -99,11 +99,11 @@ interface CardSet {
 
 ```typescript
 interface CardMedia {
-  orientation?: string;       // "portrait" or "landscape"
+  orientation?: string; // "portrait" or "landscape"
   accessibility_text?: string;
   media_urls?: CardMediaUrls; // { small, normal, large, original, png }
-  source_url?: string;        // Best upstream image selected for this printing
-  source_hash?: string;       // SHA-256(source_url), used for idempotent hosting
+  source_url?: string; // Best upstream image selected for this printing
+  source_hash?: string; // SHA-256(source_url), used for idempotent hosting
   source_provider?: "riftcodex" | "tcgplayer" | "admin";
 }
 ```
@@ -117,7 +117,7 @@ corrections bypass immutable browser and CDN caches.
 
 ```typescript
 interface CardMetadata {
-  finishes?: string[];    // e.g. ["Normal", "Foil"]
+  finishes?: string[]; // e.g. ["Normal", "Foil"]
   signature?: boolean;
   overnumbered?: boolean;
   alternate_art?: boolean;
@@ -164,7 +164,7 @@ interface RelatedCard {
   id: string;
   name: string;
   component: string; // e.g. "token", "meld_part"
-  uri?: string;      // API URI for the referenced card
+  uri?: string; // API URI for the referenced card
 }
 ```
 
@@ -180,7 +180,7 @@ first face, strip trailing parentheticals, then normalize:
 ```typescript
 import { oracleKeyForName } from "@riftseer/types/oracle";
 
-oracleKeyForName("Recruit (271) // Buff");               // "recruit"
+oracleKeyForName("Recruit (271) // Buff"); // "recruit"
 oracleKeyForName("Ambessa, Matriarch of War (Signature)"); // "ambessa matriarch of war"
 ```
 
@@ -196,10 +196,10 @@ with this function.
 interface Format {
   object: "format";
   id: string;
-  code: string;      // Stable lowercase handle, e.g. "standard"
+  code: string; // Stable lowercase handle, e.g. "standard"
   name: string;
   sort_order: number; // Display order, ascending
-  active: boolean;    // False for retired formats — hidden from public payloads
+  active: boolean; // False for retired formats — hidden from public payloads
 }
 ```
 
@@ -234,8 +234,8 @@ interface CardRuling {
   id: string;
   type: "ruling" | "note";
   text: string;
-  dated?: string;   // ISO date the ruling was issued
-  source?: string;  // Free-text provenance
+  dated?: string; // ISO date the ruling was issued
+  source?: string; // Free-text provenance
   card_id?: string;
   created_at?: string;
   updated_at?: string;
@@ -255,9 +255,9 @@ A parsed `[[Name|SET-123]]` token:
 
 ```typescript
 interface CardRequest {
-  raw: string;        // Original text inside [[ ]]
-  name: string;       // Parsed card name
-  set?: string;       // Optional set code
+  raw: string; // Original text inside [[ ]]
+  name: string; // Parsed card name
+  set?: string; // Optional set code
   collector?: string; // Optional collector number
 }
 ```
@@ -284,7 +284,7 @@ interface CardSearchOptions {
   set?: string;
   collector?: string | number;
   fuzzy?: boolean; // Default true — set false for exact-only
-  limit?: number;  // Default 10
+  limit?: number; // Default 10
 }
 ```
 

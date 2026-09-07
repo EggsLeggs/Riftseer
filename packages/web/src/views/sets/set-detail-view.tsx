@@ -37,8 +37,15 @@ function parseViewParam(raw: string | null): CardResultsView | null {
 }
 
 const VALID_ORDERS: OrderField[] = [
-  "collector", "artist", "energy", "power", "might",
-  "rarity", "usd", "eur", "domain",
+  "collector",
+  "artist",
+  "energy",
+  "power",
+  "might",
+  "rarity",
+  "usd",
+  "eur",
+  "domain",
 ];
 
 function parseOrder(raw: string | null): OrderField | undefined {
@@ -52,8 +59,7 @@ export function SetDetailView({ code }: { code: string }) {
   const { accessibility, patchAccessibility } = useSitePreferences();
   const showCardNamesBelowSearch = accessibility.showCardNamesBelowSearch;
 
-  const resultsView =
-    parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
+  const resultsView = parseViewParam(searchParams.get("view")) ?? accessibility.cardResultsView;
   const order = parseOrder(searchParams.get("order"));
   const direction = searchParams.get("direction") === "desc" ? "desc" : "asc";
 
@@ -130,10 +136,16 @@ export function SetDetailView({ code }: { code: string }) {
                 <>
                   <span>{rawCards.length} cards (incl. printings)</span>
                   {totalUsd > 0 && (
-                    <span>Total USD: <span className="tabular-nums text-foreground">{formatUsd(totalUsd)}</span></span>
+                    <span>
+                      Total USD:{" "}
+                      <span className="tabular-nums text-foreground">{formatUsd(totalUsd)}</span>
+                    </span>
                   )}
                   {totalEur > 0 && (
-                    <span>Total EUR: <span className="tabular-nums text-foreground">{formatEur(totalEur)}</span></span>
+                    <span>
+                      Total EUR:{" "}
+                      <span className="tabular-nums text-foreground">{formatEur(totalEur)}</span>
+                    </span>
                   )}
                 </>
               )}
@@ -156,7 +168,9 @@ export function SetDetailView({ code }: { code: string }) {
             <CardResultsViewToggle value={resultsView} onValueChange={setResultsView} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="set-order" className="text-muted-foreground">Sort by</Label>
+            <Label htmlFor="set-order" className="text-muted-foreground">
+              Sort by
+            </Label>
             <select
               id="set-order"
               value={order ?? "collector"}
@@ -179,7 +193,9 @@ export function SetDetailView({ code }: { code: string }) {
           </div>
           {order && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="set-direction" className="text-muted-foreground">Direction</Label>
+              <Label htmlFor="set-direction" className="text-muted-foreground">
+                Direction
+              </Label>
               <select
                 id="set-direction"
                 value={direction}

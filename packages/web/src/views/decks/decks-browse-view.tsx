@@ -47,6 +47,8 @@ import { cn } from "@/lib/utils";
  */
 
 const PER_PAGE = 24;
+// A fresh `[]` per render defeats every memo below it.
+const NO_ITEMS: never[] = [];
 
 function parseOwnership(raw: string | null): DeckListOwnership {
   return (DECK_LIST_OWNERSHIP as readonly string[]).includes(raw ?? "")
@@ -116,7 +118,7 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
       : ownership === "favorites"
         ? favorites
         : decks;
-  const items = source.data?.items ?? [];
+  const items = source.data?.items ?? NO_ITEMS;
   const formats = React.useMemo(() => deckListFormats(items), [items]);
   const filtered = React.useMemo(
     () => filterDeckSummaries(items, { query, format: format || undefined, ownership }),
@@ -190,9 +192,9 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
         <div className="flex flex-col items-center gap-4 py-20 text-center">
           <p className="text-base font-semibold">Sign in to see your decks</p>
           <p className="text-muted-foreground text-sm">
-            Decks are private by default. Sign in to see yours, or open a deck
-            somebody shared with you by its link. You do not need an account to
-            start building — sign in when you want to keep it.
+            Decks are private by default. Sign in to see yours, or open a deck somebody shared with
+            you by its link. You do not need an account to start building — sign in when you want to
+            keep it.
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             <Button asChild>
@@ -277,9 +279,7 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
           ) : source.isError ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-base font-semibold">Couldn't load your decks</p>
-              <p className="text-muted-foreground text-sm">
-                {(source.error as Error).message}
-              </p>
+              <p className="text-muted-foreground text-sm">{(source.error as Error).message}</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
@@ -336,9 +336,7 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
                   <PaginationNext
                     href={pageHref(Math.min(page.totalPages, page.page + 1))}
                     size="default"
-                    className={cn(
-                      page.page >= page.totalPages && "pointer-events-none opacity-40",
-                    )}
+                    className={cn(page.page >= page.totalPages && "pointer-events-none opacity-40")}
                     aria-disabled={page.page >= page.totalPages}
                   />
                 </PaginationItem>

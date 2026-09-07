@@ -2,9 +2,7 @@ import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 import { getMetafyBadges } from "@/features/metafy/badges";
 
-export default async function SiteLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default async function SiteLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const { isSupporter, isMember } = await getMetafyBadges();
 
   return (

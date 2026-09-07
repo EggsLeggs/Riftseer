@@ -8,10 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cardsApi } from "@/features/cards/api";
-import {
-  listRulingsAction,
-  previewRuleAction,
-} from "@/features/admin/actions";
+import { listRulingsAction, previewRuleAction } from "@/features/admin/actions";
 import {
   adminRulingsQueryKey,
   useRulingMutations,
@@ -41,9 +38,10 @@ const RULING_TYPE_LABELS: Record<AdminRulingType, string> = {
   note: "Note",
 };
 
-const RULING_TYPE_OPTIONS = Object.entries(RULING_TYPE_LABELS).map(
-  ([value, label]) => ({ value, label }),
-);
+const RULING_TYPE_OPTIONS = Object.entries(RULING_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 const KIND_FILTERS = [
   { value: "", label: "All targets" },
@@ -116,12 +114,7 @@ function targetKey(target: AdminRulingTargetInput): string {
  */
 function describeTarget(target: AdminRulingTarget): string {
   if (target.kind === "query") return target.query ?? "";
-  return (
-    target.label ??
-    target.printing_id ??
-    target.oracle_id ??
-    "Unknown card"
-  );
+  return target.label ?? target.printing_id ?? target.oracle_id ?? "Unknown card";
 }
 
 export function AdminRulingsView() {
@@ -131,9 +124,7 @@ export function AdminRulingsView() {
   const [page, setPage] = React.useState(0);
   const [editing, setEditing] = React.useState<AdminRuling | null>(null);
   const [draft, setDraft] = React.useState<RulingDraft | null>(null);
-  const [pendingDelete, setPendingDelete] = React.useState<AdminRuling | null>(
-    null,
-  );
+  const [pendingDelete, setPendingDelete] = React.useState<AdminRuling | null>(null);
 
   const { create, patch, remove } = useRulingMutations();
   const offset = page * PAGE_SIZE;
@@ -206,10 +197,7 @@ export function AdminRulingsView() {
           rulingPatch.source = draft.source.trim() || null;
         }
         if (draft.active !== original.active) rulingPatch.active = draft.active;
-        if (
-          draft.targets.map(targetKey).join("|") !==
-          original.targets.map(targetKey).join("|")
-        ) {
+        if (draft.targets.map(targetKey).join("|") !== original.targets.map(targetKey).join("|")) {
           rulingPatch.targets = draft.targets;
         }
 
@@ -292,9 +280,7 @@ export function AdminRulingsView() {
           id="ruling-kind"
           label="Target kind"
           value={kind}
-          onChange={(event) =>
-            setKind(event.target.value as AdminRulingTargetKind | "")
-          }
+          onChange={(event) => setKind(event.target.value as AdminRulingTargetKind | "")}
           options={KIND_FILTERS.map((option) => ({
             value: option.value,
             label: option.label,
@@ -322,10 +308,7 @@ export function AdminRulingsView() {
           {rows.map((ruling) => (
             <li
               key={ruling.id}
-              className={cn(
-                "rounded-lg border p-4",
-                !ruling.active && "opacity-60",
-              )}
+              className={cn("rounded-lg border p-4", !ruling.active && "opacity-60")}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
@@ -334,21 +317,15 @@ export function AdminRulingsView() {
                       {ruling.type === "note" ? "Note" : "Ruling"}
                     </span>
                     {ruling.dated && (
-                      <span className="text-muted-foreground text-xs">
-                        {ruling.dated}
-                      </span>
+                      <span className="text-muted-foreground text-xs">{ruling.dated}</span>
                     )}
                     {!ruling.active && (
-                      <span className="text-muted-foreground text-xs">
-                        Disabled
-                      </span>
+                      <span className="text-muted-foreground text-xs">Disabled</span>
                     )}
                   </div>
                   <p className="text-sm">{ruling.text}</p>
                   {ruling.source && (
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      Source: {ruling.source}
-                    </p>
+                    <p className="text-muted-foreground mt-1 text-xs">Source: {ruling.source}</p>
                   )}
                   {/* `admin__replace_ruling_targets` refuses to save a ruling
                       with no targets, but ON DELETE CASCADE can empty one
@@ -370,11 +347,7 @@ export function AdminRulingsView() {
                   )}
                 </div>
                 <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => startEdit(ruling)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => startEdit(ruling)}>
                     Edit
                   </Button>
                   <Button
@@ -461,21 +434,13 @@ function TargetChipShell({
 
 function TargetChip({ target }: { target: AdminRulingTarget }) {
   return (
-    <TargetChipShell
-      kind={target.kind}
-      text={describeTarget(target)}
-      destructive={target.deleted}
-    >
+    <TargetChipShell kind={target.kind} text={describeTarget(target)} destructive={target.deleted}>
       {target.kind === "query" && target.match_count !== null && (
-        <span className="text-muted-foreground tabular-nums">
-          · {target.match_count}
-        </span>
+        <span className="text-muted-foreground tabular-nums">· {target.match_count}</span>
       )}
       {/* The target row survives a soft delete, so the ruling looks fine while
           silently reaching no card page at all. */}
-      {target.deleted && (
-        <span className="text-destructive font-medium">· deleted</span>
-      )}
+      {target.deleted && <span className="text-destructive font-medium">· deleted</span>}
     </TargetChipShell>
   );
 }
@@ -530,9 +495,7 @@ function RulingEditor({
           id="ruling-type"
           label="Type"
           value={draft.type}
-          onChange={(event) =>
-            update({ type: event.target.value as AdminRulingType })
-          }
+          onChange={(event) => update({ type: event.target.value as AdminRulingType })}
           options={RULING_TYPE_OPTIONS}
           hint="Notes are editorial; rulings are official."
         />
@@ -578,11 +541,7 @@ function RulingEditor({
         />
       </div>
 
-      <TargetEditor
-        targets={draft.targets}
-        onAdd={addTarget}
-        onRemove={removeTarget}
-      />
+      <TargetEditor targets={draft.targets} onAdd={addTarget} onRemove={removeTarget} />
 
       <div className="mt-5 flex gap-2">
         <Button onClick={onSave} disabled={pending}>
@@ -613,8 +572,8 @@ function TargetEditor({
         Applies to
       </h3>
       <p className="text-muted-foreground mb-3 text-xs">
-        A ruling can carry any number of targets. Rules are re-evaluated after
-        every ingest, so cards released later are picked up automatically.
+        A ruling can carry any number of targets. Rules are re-evaluated after every ingest, so
+        cards released later are picked up automatically.
       </p>
 
       {targets.length > 0 && (
@@ -661,11 +620,7 @@ function TargetEditor({
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
-            {value === "query"
-              ? "Rule"
-              : value === "printing"
-                ? "Single printing"
-                : "Oracle"}
+            {value === "query" ? "Rule" : value === "printing" ? "Single printing" : "Oracle"}
           </button>
         ))}
       </div>
@@ -686,11 +641,7 @@ function TargetEditor({
  * it reports is exactly what the rule will attach to — including a syntax error,
  * which is shown before the rule can be added rather than on save.
  */
-function RuleTargetInput({
-  onAdd,
-}: {
-  onAdd: (target: AdminRulingTargetInput) => void;
-}) {
+function RuleTargetInput({ onAdd }: { onAdd: (target: AdminRulingTargetInput) => void }) {
   const [query, setQuery] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
 
@@ -769,8 +720,8 @@ function RuleTargetInput({
           <span className="text-destructive">{preview.error.message}</span>
         ) : preview.data.total === 0 ? (
           <span className="text-destructive">
-            Matches no cards right now. It can still be saved — a rule may be
-            written ahead of the set it targets.
+            Matches no cards right now. It can still be saved — a rule may be written ahead of the
+            set it targets.
           </span>
         ) : (
           <span className="text-muted-foreground">
@@ -808,8 +759,7 @@ function CardTargetInput({
 
   const results = useQuery({
     queryKey: ["admin", "rulings", "card-search", submitted],
-    queryFn: () =>
-      cardsApi.searchByName(submitted, { limit: 10, unique: mode === "printing" }),
+    queryFn: () => cardsApi.searchByName(submitted, { limit: 10, unique: mode === "printing" }),
     enabled: submitted.length > 0,
     placeholderData: keepPreviousData,
     retry: false,
@@ -854,9 +804,7 @@ function CardTargetInput({
         ) : results.isPending ? (
           <span className="text-muted-foreground">Searching…</span>
         ) : results.isError ? (
-          <span className="text-destructive">
-            Couldn&apos;t search cards. Please try again.
-          </span>
+          <span className="text-destructive">Couldn&apos;t search cards. Please try again.</span>
         ) : cards.length === 0 ? (
           <span className="text-muted-foreground">No cards match.</span>
         ) : (

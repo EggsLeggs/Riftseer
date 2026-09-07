@@ -10,10 +10,7 @@ export const CARD_IMAGE_CATALOG_JOB_VERSION = 2 as const;
 /** Lowercase hex SHA-256 — the only shape `hashImageSourceUrl` produces. */
 export const SOURCE_HASH_PATTERN = /^[a-f0-9]{64}$/;
 
-export type CardImageSourceProvider =
-  | "riftcodex"
-  | "tcgplayer"
-  | "admin";
+export type CardImageSourceProvider = "riftcodex" | "tcgplayer" | "admin";
 
 export interface CardImageJob {
   version: typeof CARD_IMAGE_JOB_VERSION;
@@ -39,20 +36,12 @@ export interface CardImageVariantJob {
   orientation: "portrait" | "landscape";
 }
 
-export type CardImageQueueJob =
-  | CardImageJob
-  | CardImageCatalogJob
-  | CardImageVariantJob;
+export type CardImageQueueJob = CardImageJob | CardImageCatalogJob | CardImageVariantJob;
 
-export function isCardImageCatalogJob(
-  value: unknown,
-): value is CardImageCatalogJob {
+export function isCardImageCatalogJob(value: unknown): value is CardImageCatalogJob {
   if (!value || typeof value !== "object") return false;
   const job = value as Partial<CardImageCatalogJob>;
-  return (
-    job.version === CARD_IMAGE_CATALOG_JOB_VERSION &&
-    job.type === "catalog"
-  );
+  return job.version === CARD_IMAGE_CATALOG_JOB_VERSION && job.type === "catalog";
 }
 
 export function isCardImageJob(value: unknown): value is CardImageJob {
@@ -72,9 +61,7 @@ export function isCardImageJob(value: unknown): value is CardImageJob {
   );
 }
 
-export function isCardImageVariantJob(
-  value: unknown,
-): value is CardImageVariantJob {
+export function isCardImageVariantJob(value: unknown): value is CardImageVariantJob {
   if (!value || typeof value !== "object") return false;
   const job = value as Partial<CardImageVariantJob>;
   return (
@@ -84,9 +71,7 @@ export function isCardImageVariantJob(
     job.printingId.length > 0 &&
     typeof job.sourceHash === "string" &&
     SOURCE_HASH_PATTERN.test(job.sourceHash) &&
-    (job.variant === "small" ||
-      job.variant === "normal" ||
-      job.variant === "large") &&
+    (job.variant === "small" || job.variant === "normal" || job.variant === "large") &&
     (job.orientation === "portrait" || job.orientation === "landscape")
   );
 }

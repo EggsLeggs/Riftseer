@@ -21,14 +21,14 @@ cp .env.local.example .env.local
 
 ## Scripts
 
-| Script | Purpose |
-|--------|---------|
-| `bun dev` | Next.js dev server (Node.js) |
-| `bun run preview` | OpenNext build + local workerd preview — **use before shipping** |
-| `bun run deploy` | OpenNext build + deploy via Wrangler |
-| `bun run upload` | Build + upload artifacts (CI-friendly) |
-| `bun run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc` |
-| `bun run typecheck` | `tsc --noEmit` |
+| Script               | Purpose                                                          |
+| -------------------- | ---------------------------------------------------------------- |
+| `bun dev`            | Next.js dev server (Node.js)                                     |
+| `bun run preview`    | OpenNext build + local workerd preview — **use before shipping** |
+| `bun run deploy`     | OpenNext build + deploy via Wrangler                             |
+| `bun run upload`     | Build + upload artifacts (CI-friendly)                           |
+| `bun run cf-typegen` | Regenerate `cloudflare-env.d.ts` from `wrangler.jsonc`           |
+| `bun run typecheck`  | `tsc --noEmit`                                                   |
 
 Configure the Worker in `wrangler.jsonc`. Public env vars for the Next.js build must also be set in [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) (or your CI) — `.env.local` alone does not affect remote builds.
 

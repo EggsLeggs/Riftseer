@@ -32,7 +32,10 @@ const problems = [];
 // One compatibility date. The newest in use is the target; anything older is
 // a Worker that missed the bump.
 const dates = configs.map(([file, config]) => [file, config.compatibility_date]);
-const newest = dates.map(([, date]) => date).sort().at(-1);
+const newest = dates
+  .map(([, date]) => date)
+  .sort()
+  .at(-1);
 for (const [file, date] of dates) {
   if (date !== newest) {
     problems.push(`${file}: compatibility_date is ${date}, others use ${newest}`);
@@ -41,8 +44,7 @@ for (const [file, date] of dates) {
 
 // The API and the ingest worker share the image bucket and the image queue.
 // Each binding name that appears in both must point at the same resource.
-const byBinding = (list = [], key) =>
-  new Map(list.map((entry) => [entry.binding, entry[key]]));
+const byBinding = (list = [], key) => new Map(list.map((entry) => [entry.binding, entry[key]]));
 
 const apiBuckets = byBinding(api.r2_buckets, "bucket_name");
 const ingestBuckets = byBinding(ingest.r2_buckets, "bucket_name");

@@ -8,17 +8,17 @@ Zero-dependency deck vocabulary, validator and text interchange format, shared b
 
 Three modules:
 
-| File | Owns |
-| --- | --- |
-| `src/deck.ts` | Zone vocabulary, counting groups, `zoneForCard()`, legality resolution, the shapes below |
-| `src/deck-validate.ts` | `validateDeck()` |
-| `src/deck-text.ts` | `formatDeckText()` / `parseDeckText()` |
+| File                   | Owns                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| `src/deck.ts`          | Zone vocabulary, counting groups, `zoneForCard()`, legality resolution, the shapes below |
+| `src/deck-validate.ts` | `validateDeck()`                                                                         |
+| `src/deck-text.ts`     | `formatDeckText()` / `parseDeckText()`                                                   |
 
 ---
 
 ## Counting is by oracle, display is by printing
 
-A deck entry is a *physical card*, so it stores a printing id — that is what art, price and the printing rung of legality read from. But every construction rule (type, domain matching, copy limits) reads *oracle* fields, because those are properties of the card rather than the cardboard.
+A deck entry is a _physical card_, so it stores a printing id — that is what art, price and the printing rung of legality read from. But every construction rule (type, domain matching, copy limits) reads _oracle_ fields, because those are properties of the card rather than the cardboard.
 
 Three copies of Vayne split across two arts are **three** copies against the copy limit and **two** rows in the list.
 

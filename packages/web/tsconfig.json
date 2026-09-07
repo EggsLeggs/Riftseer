@@ -37,5 +37,13 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "../core", "../types", "../api", "../frontend", "../discord-bot", "../ingest-worker"]
+  "exclude": [
+    "node_modules",
+    "../core",
+    "../types",
+    "../api",
+    "../frontend",
+    "../discord-bot",
+    "../ingest-worker"
+  ]
 }

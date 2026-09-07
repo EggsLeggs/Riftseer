@@ -40,9 +40,21 @@ export async function setSessionCookies(session: {
   const jar = await cookies();
   const expiresAt = Math.floor(Date.now() / 1000) + session.expires_in;
 
-  jar.set("rs_access_token", session.access_token, { ...COOKIE_OPTS, httpOnly: true, maxAge: ACCESS_MAX_AGE });
-  jar.set("rs_refresh_token", session.refresh_token, { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE });
-  jar.set("rs_expires_at", String(expiresAt), { ...COOKIE_OPTS, httpOnly: false, maxAge: REFRESH_MAX_AGE });
+  jar.set("rs_access_token", session.access_token, {
+    ...COOKIE_OPTS,
+    httpOnly: true,
+    maxAge: ACCESS_MAX_AGE,
+  });
+  jar.set("rs_refresh_token", session.refresh_token, {
+    ...COOKIE_OPTS,
+    httpOnly: true,
+    maxAge: REFRESH_MAX_AGE,
+  });
+  jar.set("rs_expires_at", String(expiresAt), {
+    ...COOKIE_OPTS,
+    httpOnly: false,
+    maxAge: REFRESH_MAX_AGE,
+  });
   jar.set(
     "rs_user",
     JSON.stringify({
@@ -95,11 +107,11 @@ export async function updateSessionUser(updates: Partial<SessionUser>) {
   if (!userRaw) return;
   try {
     const current = JSON.parse(userRaw) as SessionUser;
-    jar.set(
-      "rs_user",
-      JSON.stringify({ ...current, ...updates }),
-      { ...COOKIE_OPTS, httpOnly: true, maxAge: REFRESH_MAX_AGE },
-    );
+    jar.set("rs_user", JSON.stringify({ ...current, ...updates }), {
+      ...COOKIE_OPTS,
+      httpOnly: true,
+      maxAge: REFRESH_MAX_AGE,
+    });
   } catch {
     // ignore — session will refresh naturally
   }

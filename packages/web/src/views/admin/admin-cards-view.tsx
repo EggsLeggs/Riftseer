@@ -19,10 +19,7 @@ import { cardHref } from "@riftseer/types/render";
 import { setsApi, setsQueryKeys, type SetInfo } from "@/features/sets/api";
 import { listPrintingsAction } from "@/features/admin/actions";
 import { usePrintingMutations } from "@/features/admin/hooks/use-admin-mutations";
-import type {
-  AdminPrintingListEntry,
-  AdminPrintingState,
-} from "@/features/admin/types";
+import type { AdminPrintingListEntry, AdminPrintingState } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
 import { AdminListState, AdminPager } from "./admin-list";
 import { SelectField, TextField } from "./admin-form-field";
@@ -52,8 +49,7 @@ export function AdminCardsView() {
   const [setCode, setSetCode] = React.useState("");
   const [state, setState] = React.useState<AdminPrintingState>("live");
   const [page, setPage] = React.useState(0);
-  const [pendingDelete, setPendingDelete] =
-    React.useState<AdminPrintingListEntry | null>(null);
+  const [pendingDelete, setPendingDelete] = React.useState<AdminPrintingListEntry | null>(null);
 
   const { remove, restore, regenerateSlug } = usePrintingMutations();
 
@@ -193,10 +189,7 @@ export function AdminCardsView() {
                       multi-segment (`unl/150/vex-apathetic`) and has to be
                       encoded per segment, or the whole thing collapses into one
                       escaped segment and the card route 404s. */}
-                  <Link
-                    href={cardHref(printing)}
-                    className="underline-offset-4 hover:underline"
-                  >
+                  <Link href={cardHref(printing)} className="underline-offset-4 hover:underline">
                     {printing.name}
                   </Link>
                   {printing.is_token && (
@@ -204,9 +197,7 @@ export function AdminCardsView() {
                   )}
                 </TableCell>
                 <TableCell className="uppercase">{printing.set_code ?? "—"}</TableCell>
-                <TableCell className="tabular-nums">
-                  {printing.collector_number ?? "—"}
-                </TableCell>
+                <TableCell className="tabular-nums">{printing.collector_number ?? "—"}</TableCell>
                 <TableCell
                   className="text-muted-foreground max-w-56 truncate text-xs"
                   title={printing.public_slug}
@@ -223,9 +214,7 @@ export function AdminCardsView() {
                         variant="ghost"
                         size="sm"
                         disabled={restore.isPending}
-                        onClick={() =>
-                          restore.mutate([printing.id, printing.public_slug])
-                        }
+                        onClick={() => restore.mutate([printing.id, printing.public_slug])}
                       >
                         <RotateCcw aria-hidden="true" />
                         Restore
@@ -242,9 +231,7 @@ export function AdminCardsView() {
                           variant="ghost"
                           size="sm"
                           disabled={regenerateSlug.isPending}
-                          onClick={() =>
-                            regenerateSlug.mutate([printing.id, printing.public_slug])
-                          }
+                          onClick={() => regenerateSlug.mutate([printing.id, printing.public_slug])}
                           title="Regenerate the public slug"
                         >
                           <RefreshCw aria-hidden="true" />
@@ -298,10 +285,18 @@ export function AdminCardsView() {
 function PrintingFlags({ printing }: { printing: AdminPrintingListEntry }) {
   const flags: React.ReactNode[] = [];
   if (printing.deleted_at) {
-    flags.push(<Badge key="deleted" variant="destructive">deleted</Badge>);
+    flags.push(
+      <Badge key="deleted" variant="destructive">
+        deleted
+      </Badge>,
+    );
   }
   if (printing.source === "manual") {
-    flags.push(<Badge key="manual" variant="secondary">manual</Badge>);
+    flags.push(
+      <Badge key="manual" variant="secondary">
+        manual
+      </Badge>,
+    );
   }
   if (printing.locked_fields.length > 0) {
     flags.push(
@@ -312,11 +307,17 @@ function PrintingFlags({ printing }: { printing: AdminPrintingListEntry }) {
   }
   if (printing.delta_source) {
     flags.push(
-      <Badge key="delta" variant="outline">{printing.delta_source} delta</Badge>,
+      <Badge key="delta" variant="outline">
+        {printing.delta_source} delta
+      </Badge>,
     );
   }
   if (!printing.has_hosted_image) {
-    flags.push(<Badge key="image" variant="outline">no image</Badge>);
+    flags.push(
+      <Badge key="image" variant="outline">
+        no image
+      </Badge>,
+    );
   }
 
   if (flags.length === 0) return <span className="text-muted-foreground">—</span>;

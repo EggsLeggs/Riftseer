@@ -1,10 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  deckBuyLines,
-  formatBuyList,
-  groupBuyLines,
-  tcgplayerMassEntryUrl,
-} from "./deck-buy";
+import { deckBuyLines, formatBuyList, groupBuyLines, tcgplayerMassEntryUrl } from "./deck-buy";
 
 const cards = [
   { name: "Yasuo", quantity: 1, zone: "legend", set_code: "ogn" },
@@ -16,9 +11,10 @@ describe("deckBuyLines", () => {
   test("skips considering unless asked, and can fold in tokens", () => {
     expect(deckBuyLines(cards).map((line) => line.name)).toEqual(["Yasuo", "Ahri"]);
     expect(
-      deckBuyLines(cards, [{ name: "Spirit" }], { includeTokens: true, includeConsidering: true }).map(
-        (line) => line.name,
-      ),
+      deckBuyLines(cards, [{ name: "Spirit" }], {
+        includeTokens: true,
+        includeConsidering: true,
+      }).map((line) => line.name),
     ).toEqual(["Yasuo", "Ahri", "Spare", "Spirit"]);
   });
 });

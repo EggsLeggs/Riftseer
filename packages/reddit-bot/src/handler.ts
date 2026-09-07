@@ -77,11 +77,7 @@ export async function buildReply(
  * Found:      [Card Name](image) *(fuzzy: Actual Name)* — [(RS)](...), [(txt)](...)
  * Not found:  Card Name — not found.
  */
-function formatCard(
-  result: ApiResolvedCard,
-  siteBase: string,
-  apiBase: string,
-): string {
+function formatCard(result: ApiResolvedCard, siteBase: string, apiBase: string): string {
   const displayName = result.request.name;
 
   if (!result.oracle) {
@@ -96,12 +92,9 @@ function formatCard(
     `${siteBase}/card/${result.printing?.id ?? id}`;
   const txtUrl = `${apiBase}/api/v1/cards/${id}/text`;
 
-  const fuzzyNote =
-    result.matchType === "fuzzy" ? ` *(fuzzy: ${esc(cardName)})*` : "";
+  const fuzzyNote = result.matchType === "fuzzy" ? ` *(fuzzy: ${esc(cardName)})*` : "";
 
-  const namePart = imageUrl
-    ? `[${esc(displayName)}](${imageUrl})`
-    : esc(displayName);
+  const namePart = imageUrl ? `[${esc(displayName)}](${imageUrl})` : esc(displayName);
 
   return `${namePart}${fuzzyNote} — [(RS)](${siteUrl}), [(txt)](${txtUrl})`;
 }

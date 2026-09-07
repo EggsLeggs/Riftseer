@@ -50,10 +50,7 @@ export function eligibleZones(card: AddableCard): DeckZone[] {
  * the card's natural zone otherwise. A legend dropped on the main deck is a
  * legend, not a main-deck card.
  */
-export function resolveAddZone(
-  card: AddableCard,
-  requested?: DeckZone | null,
-): DeckZone {
+export function resolveAddZone(card: AddableCard, requested?: DeckZone | null): DeckZone {
   const eligible = eligibleZones(card);
   return requested && eligible.includes(requested) ? requested : eligible[0]!;
 }
@@ -73,9 +70,7 @@ export function deckAddChange(
 ): DeckCardChange {
   const zone = resolveAddZone(card, options.zone);
   const copies = Math.max(1, Math.round(options.copies ?? 1));
-  const existing = cards.find(
-    (row) => row.zone === zone && row.printing_id === card.printing_id,
-  );
+  const existing = cards.find((row) => row.zone === zone && row.printing_id === card.printing_id);
   return {
     zone,
     printing_id: card.printing_id,

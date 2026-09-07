@@ -22,9 +22,7 @@ import path from "node:path";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
 function git(...args) {
-  return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" })
-    .split("\n")
-    .filter(Boolean);
+  return execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).split("\n").filter(Boolean);
 }
 
 const guidanceFiles = git("ls-files", "*CLAUDE.md", "*AGENTS.md");

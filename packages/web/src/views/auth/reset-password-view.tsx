@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { resetPasswordAction } from "@/features/auth/actions";
 
 const schema = z
@@ -29,7 +36,10 @@ export function ResetPasswordView() {
   const [tokenChecked, setTokenChecked] = useState(false);
   const [state, action, pending] = useActionState(resetPasswordAction, null);
 
-  const { register, formState: { errors } } = useForm<Fields>({
+  const {
+    register,
+    formState: { errors },
+  } = useForm<Fields>({
     resolver: zodResolver(schema),
   });
 
@@ -85,7 +95,9 @@ export function ResetPasswordView() {
               aria-invalid={!!errors.password}
               {...register("password")}
             />
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
           </div>
           <div className="space-y-1">
             <Label htmlFor="confirm">Confirm password</Label>

@@ -22,9 +22,7 @@ const PROFILE_TABS = ["overview", "decks"] as const;
 type ProfileTab = (typeof PROFILE_TABS)[number];
 
 function parseTab(raw: string | null): ProfileTab {
-  return (PROFILE_TABS as readonly string[]).includes(raw ?? "")
-    ? (raw as ProfileTab)
-    : "overview";
+  return (PROFILE_TABS as readonly string[]).includes(raw ?? "") ? (raw as ProfileTab) : "overview";
 }
 
 export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewProps) {
@@ -51,9 +49,7 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
     [profile.handle, router, searchParams],
   );
 
-  const activeSocials = SOCIAL_PLATFORMS.filter(
-    (p) => profile.social_links[p.id]?.trim(),
-  );
+  const activeSocials = SOCIAL_PLATFORMS.filter((p) => profile.social_links[p.id]?.trim());
 
   return (
     <div className="container py-8">
@@ -84,9 +80,7 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
                 {profile.pronouns.length > 0 && (
                   <>
                     <span className="text-muted-foreground/40">·</span>
-                    <p className="text-sm text-muted-foreground">
-                      {profile.pronouns.join(", ")}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{profile.pronouns.join(", ")}</p>
                   </>
                 )}
               </div>
@@ -105,9 +99,7 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
           </div>
 
           {profile.bio && (
-            <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">
-              {profile.bio}
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground whitespace-pre-line">{profile.bio}</p>
           )}
 
           <div className="mt-3 flex gap-4 text-sm">
@@ -137,7 +129,11 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
                 // Some platforms (Discord) accept a bare username, which is not linkable.
                 if (!value.startsWith("http")) {
                   return (
-                    <span key={platform.id} title={`${platform.label}: ${value}`} className={chipClass}>
+                    <span
+                      key={platform.id}
+                      title={`${platform.label}: ${value}`}
+                      className={chipClass}
+                    >
                       {content}
                     </span>
                   );
@@ -170,9 +166,7 @@ export function ProfileView({ profile, isOwnProfile, isLoggedIn }: ProfileViewPr
           <TabsTrigger value="decks">Decks</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
-          <p className="text-sm text-muted-foreground text-center py-8">
-            No content yet.
-          </p>
+          <p className="text-sm text-muted-foreground text-center py-8">No content yet.</p>
         </TabsContent>
         <TabsContent value="decks">
           <UserDecksList handle={profile.handle} isOwnProfile={isOwnProfile} />

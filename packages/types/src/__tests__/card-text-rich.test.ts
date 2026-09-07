@@ -10,9 +10,9 @@ const FLURRY_RICH =
 
 describe("richFragmentToPlain", () => {
   it("converts br tags to newlines and decodes entities", () => {
-    expect(
-      richFragmentToPlain('[Reaction]<br />Choose one &quot;option&quot; —'),
-    ).toBe('[Reaction]\nChoose one "option" —');
+    expect(richFragmentToPlain("[Reaction]<br />Choose one &quot;option&quot; —")).toBe(
+      '[Reaction]\nChoose one "option" —',
+    );
   });
 });
 
@@ -55,15 +55,13 @@ describe("normalizeCardTextLayout", () => {
       normalizeCardTextLayout(
         "[Empower] :rb_energy_3::rb_rune_body:[Empowered][&gt;] I have +3 :rb_might: in combat.",
       ),
-    ).toBe(
-      "[Empower] :rb_energy_3::rb_rune_body:\n[Empowered][>] I have +3 :rb_might: in combat.",
-    );
+    ).toBe("[Empower] :rb_energy_3::rb_rune_body:\n[Empowered][>] I have +3 :rb_might: in combat.");
   });
 
   it("keeps the arrow attached to the keyword it follows", () => {
-    expect(
-      normalizeCardTextLayout("[Empower] :rb_energy_8:[Empowered][>] When I connect."),
-    ).toBe("[Empower] :rb_energy_8:\n[Empowered][>] When I connect.");
+    expect(normalizeCardTextLayout("[Empower] :rb_energy_8:[Empowered][>] When I connect.")).toBe(
+      "[Empower] :rb_energy_8:\n[Empowered][>] When I connect.",
+    );
   });
 
   it("leaves a cost that already ends its line alone", () => {

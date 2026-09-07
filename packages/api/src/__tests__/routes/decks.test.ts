@@ -167,9 +167,7 @@ class StubDeckRepository implements DeckDataRepository {
       const zone = String(raw.zone) as DeckZone;
       const printingId = String(raw.printing_id);
       const quantity = Math.max(Number(raw.quantity ?? 0), 0);
-      const index = rows.findIndex(
-        (row) => row.zone === zone && row.printing_id === printingId,
-      );
+      const index = rows.findIndex((row) => row.zone === zone && row.printing_id === printingId);
       const before = index >= 0 ? rows[index]!.quantity : 0;
       const oracleId = String(raw.oracle_id ?? rows[index]?.oracle_id ?? "");
       if (!oracleId) return { ok: false, reason: "missing_oracle_id" };
@@ -306,9 +304,7 @@ class StubDeckRepository implements DeckDataRepository {
     this.prunedOracleIds.push(...oracleIds);
     this.tokenChoices.set(
       deckId,
-      (this.tokenChoices.get(deckId) ?? []).filter(
-        (row) => !oracleIds.includes(row.oracle_id),
-      ),
+      (this.tokenChoices.get(deckId) ?? []).filter((row) => !oracleIds.includes(row.oracle_id)),
     );
   }
 
@@ -332,16 +328,19 @@ class StubDeckRepository implements DeckDataRepository {
   }
 
   favorites = new Map<string, Set<string>>(); // deck_id -> user ids
-  comments = new Map<string, {
-    id: string;
-    deck_id: string;
-    author_id: string | null;
-    parent_id: string | null;
-    depth: number;
-    body: string | null;
-    created_at: string;
-    deleted_at: string | null;
-  }>();
+  comments = new Map<
+    string,
+    {
+      id: string;
+      deck_id: string;
+      author_id: string | null;
+      parent_id: string | null;
+      depth: number;
+      body: string | null;
+      created_at: string;
+      deleted_at: string | null;
+    }
+  >();
 
   async listComments(deckId: string, limit: number) {
     return [...this.comments.values()]
@@ -373,7 +372,8 @@ class StubDeckRepository implements DeckDataRepository {
 
   async softDeleteComment(commentId: string) {
     const row = this.comments.get(commentId);
-    if (row) this.comments.set(commentId, { ...row, body: null, deleted_at: "2026-08-02T00:00:00Z" });
+    if (row)
+      this.comments.set(commentId, { ...row, body: null, deleted_at: "2026-08-02T00:00:00Z" });
   }
 
   commentLikes = new Map<string, Set<string>>(); // comment_id -> user ids
@@ -400,7 +400,10 @@ class StubDeckRepository implements DeckDataRepository {
   async removeCommentLike(commentId: string, userId: string) {
     this.commentLikes.get(commentId)?.delete(userId);
   }
-  folders = new Map<string, { id: string; owner_id: string; name: string; created_at: string; updated_at: string }>();
+  folders = new Map<
+    string,
+    { id: string; owner_id: string; name: string; created_at: string; updated_at: string }
+  >();
   folderItems = new Map<string, string[]>(); // folder_id -> deck ids, newest first
 
   async listFolders(ownerId: string) {
@@ -488,25 +491,16 @@ class StubDeckRepository implements DeckDataRepository {
   }
 
   async listFavoriteDecks(userId: string) {
-    return [...this.decks.values()].filter((deck) =>
-      this.favorites.get(deck.id)?.has(userId),
-    );
+    return [...this.decks.values()].filter((deck) => this.favorites.get(deck.id)?.has(userId));
   }
 
   async getDeckCardTags(deckId: string) {
-    return [...(this.cardTags.get(deckId) ?? [])].sort((a, b) =>
-      a.tag.localeCompare(b.tag),
-    );
+    return [...(this.cardTags.get(deckId) ?? [])].sort((a, b) => a.tag.localeCompare(b.tag));
   }
 
   async setDeckCardTags(deckId: string, oracleId: string, tags: string[]) {
-    const kept = (this.cardTags.get(deckId) ?? []).filter(
-      (row) => row.oracle_id !== oracleId,
-    );
-    this.cardTags.set(deckId, [
-      ...kept,
-      ...tags.map((tag) => ({ oracle_id: oracleId, tag })),
-    ]);
+    const kept = (this.cardTags.get(deckId) ?? []).filter((row) => row.oracle_id !== oracleId);
+    this.cardTags.set(deckId, [...kept, ...tags.map((tag) => ({ oracle_id: oracleId, tag }))]);
   }
 
   async getCollaborators(deckId: string) {
@@ -515,8 +509,7 @@ class StubDeckRepository implements DeckDataRepository {
 
   async getCollaboratorRole(deckId: string, userId: string) {
     return (
-      (this.collaborators.get(deckId) ?? []).find((row) => row.user_id === userId)?.role ??
-      null
+      (this.collaborators.get(deckId) ?? []).find((row) => row.user_id === userId)?.role ?? null
     );
   }
 
@@ -526,9 +519,7 @@ class StubDeckRepository implements DeckDataRepository {
     role: CollaboratorRole,
     addedVia: "invite" | "link",
   ) {
-    const rows = (this.collaborators.get(deckId) ?? []).filter(
-      (row) => row.user_id !== userId,
-    );
+    const rows = (this.collaborators.get(deckId) ?? []).filter((row) => row.user_id !== userId);
     rows.push({
       user_id: userId,
       role,
@@ -763,8 +754,20 @@ describe("card art on the payload", () => {
   test("a card's derived image rides the deck read; a card without art omits it", async () => {
     const deck = repository.seedDeck({ visibility: "public" });
     repository.cards.set(deck.id, [
-      { zone: "legend", printing_id: LEGEND.printing_id, oracle_id: LEGEND.oracle_id, quantity: 1, is_champion: false },
-      { zone: "main", printing_id: UNIT.printing_id, oracle_id: UNIT.oracle_id, quantity: 3, is_champion: false },
+      {
+        zone: "legend",
+        printing_id: LEGEND.printing_id,
+        oracle_id: LEGEND.oracle_id,
+        quantity: 1,
+        is_champion: false,
+      },
+      {
+        zone: "main",
+        printing_id: UNIT.printing_id,
+        oracle_id: UNIT.oracle_id,
+        quantity: 3,
+        is_champion: false,
+      },
     ]);
 
     const response = await request("GET", `/decks/${deck.id}`);
@@ -786,9 +789,12 @@ describe("comments", () => {
   test("comment, reply, tombstone: the moderation model end to end", async () => {
     const deck = repository.seedDeck({ visibility: "public" });
 
-    expect((await request("POST", `/decks/${deck.id}/comments`, undefined, { body: "hi" })).status).toBe(401);
     expect(
-      (await request("POST", `/decks/${deck.id}/comments`, "stranger-token", { body: "   " })).status,
+      (await request("POST", `/decks/${deck.id}/comments`, undefined, { body: "hi" })).status,
+    ).toBe(401);
+    expect(
+      (await request("POST", `/decks/${deck.id}/comments`, "stranger-token", { body: "   " }))
+        .status,
     ).toBe(400);
 
     const posted = await request("POST", `/decks/${deck.id}/comments`, "stranger-token", {
@@ -882,7 +888,8 @@ describe("comments", () => {
     const deck = repository.seedDeck();
     expect((await request("GET", `/decks/${deck.id}/comments`, "stranger-token")).status).toBe(404);
     expect(
-      (await request("POST", `/decks/${deck.id}/comments`, "stranger-token", { body: "hi" })).status,
+      (await request("POST", `/decks/${deck.id}/comments`, "stranger-token", { body: "hi" }))
+        .status,
     ).toBe(404);
   });
 
@@ -895,7 +902,9 @@ describe("comments", () => {
     expect(comment.like_count).toBe(0);
     expect(comment.is_liked).toBe(false);
 
-    expect((await request("POST", `/decks/${deck.id}/comments/${comment.id}/like`)).status).toBe(401);
+    expect((await request("POST", `/decks/${deck.id}/comments/${comment.id}/like`)).status).toBe(
+      401,
+    );
 
     const first = await request(
       "POST",
@@ -959,9 +968,12 @@ describe("deck folders", () => {
     // Another user neither sees nor touches it — always 404, never 403.
     expect((await request("GET", `/deck-folders/${folder.id}`, "stranger-token")).status).toBe(404);
     expect(
-      (await request("PATCH", `/deck-folders/${folder.id}`, "stranger-token", { name: "X" })).status,
+      (await request("PATCH", `/deck-folders/${folder.id}`, "stranger-token", { name: "X" }))
+        .status,
     ).toBe(404);
-    expect((await request("DELETE", `/deck-folders/${folder.id}`, "stranger-token")).status).toBe(404);
+    expect((await request("DELETE", `/deck-folders/${folder.id}`, "stranger-token")).status).toBe(
+      404,
+    );
 
     const renamed = await request("PATCH", `/deck-folders/${folder.id}`, "owner-token", {
       name: "Aggro brews",
@@ -989,13 +1001,17 @@ describe("deck folders", () => {
     ).toBe(200);
     // An unreadable deck cannot even be filed.
     expect(
-      (await request("PUT", `/deck-folders/${folder.id}/decks/${hidden.id}`, "stranger-token")).status,
+      (await request("PUT", `/deck-folders/${folder.id}/decks/${hidden.id}`, "stranger-token"))
+        .status,
     ).toBe(404);
 
     // The public deck goes private after filing: the bookmark stops rendering.
     repository.decks.set(publicDeck.id, { ...publicDeck, visibility: "private" });
     const contents = await request("GET", `/deck-folders/${folder.id}`, "stranger-token");
-    const body = (await contents.json()) as { items: Array<{ id: string }>; folder: { deck_count: number } };
+    const body = (await contents.json()) as {
+      items: Array<{ id: string }>;
+      folder: { deck_count: number };
+    };
     expect(body.items.map((item) => item.id)).toEqual([own.id]);
     expect(body.folder.deck_count).toBe(1);
 
@@ -1005,7 +1021,8 @@ describe("deck folders", () => {
     expect(listing.items[0]?.contains_deck).toBe(true);
 
     expect(
-      (await request("DELETE", `/deck-folders/${folder.id}/decks/${own.id}`, "stranger-token")).status,
+      (await request("DELETE", `/deck-folders/${folder.id}/decks/${own.id}`, "stranger-token"))
+        .status,
     ).toBe(200);
   });
 });
@@ -1117,7 +1134,13 @@ describe("card tags", () => {
   function seedWithUnit(visibility: "private" | "public" = "private") {
     const deck = repository.seedDeck({ visibility });
     repository.cards.set(deck.id, [
-      { zone: "main", printing_id: UNIT.printing_id, oracle_id: UNIT.oracle_id, quantity: 3, is_champion: false },
+      {
+        zone: "main",
+        printing_id: UNIT.printing_id,
+        oracle_id: UNIT.oracle_id,
+        quantity: 3,
+        is_champion: false,
+      },
     ]);
     return deck;
   }
@@ -1157,14 +1180,20 @@ describe("card tags", () => {
     const body = { oracle_id: UNIT.oracle_id, tags: ["ramp"] };
 
     expect((await request("PUT", `/decks/${deck.id}/card-tags`, undefined, body)).status).toBe(401);
-    expect((await request("PUT", `/decks/${deck.id}/card-tags`, "stranger-token", body)).status).toBe(404);
+    expect(
+      (await request("PUT", `/decks/${deck.id}/card-tags`, "stranger-token", body)).status,
+    ).toBe(404);
 
     await repository.addCollaborator(deck.id, EDITOR_ID, "viewer", "invite");
-    expect((await request("PUT", `/decks/${deck.id}/card-tags`, "editor-token", body)).status).toBe(403);
+    expect((await request("PUT", `/decks/${deck.id}/card-tags`, "editor-token", body)).status).toBe(
+      403,
+    );
 
     await repository.removeCollaborator(deck.id, EDITOR_ID);
     await repository.addCollaborator(deck.id, EDITOR_ID, "editor", "invite");
-    expect((await request("PUT", `/decks/${deck.id}/card-tags`, "editor-token", body)).status).toBe(200);
+    expect((await request("PUT", `/decks/${deck.id}/card-tags`, "editor-token", body)).status).toBe(
+      200,
+    );
   });
 });
 
@@ -1212,7 +1241,9 @@ describe("revision history", () => {
 describe("invite links", () => {
   test("redeeming writes a collaborator row that survives regeneration", async () => {
     const deck = repository.seedDeck();
-    const created = await jsonOf(await request("POST", `/decks/${deck.id}/invite`, "owner-token", { role: "editor" }));
+    const created = await jsonOf(
+      await request("POST", `/decks/${deck.id}/invite`, "owner-token", { role: "editor" }),
+    );
     expect(created.invite_code).toBeTruthy();
 
     const joined = await request("POST", `/decks/join/${created.invite_code}`, "editor-token");
@@ -1220,7 +1251,9 @@ describe("invite links", () => {
     expect(await repository.getCollaboratorRole(deck.id, EDITOR_ID)).toBe("editor");
 
     // Regenerating replaces the link only; the collaborator keeps access.
-    const regenerated = await jsonOf(await request("POST", `/decks/${deck.id}/invite`, "owner-token", { role: "viewer" }));
+    const regenerated = await jsonOf(
+      await request("POST", `/decks/${deck.id}/invite`, "owner-token", { role: "viewer" }),
+    );
     expect(regenerated.invite_code).not.toBe(created.invite_code);
     expect(await repository.getCollaboratorRole(deck.id, EDITOR_ID)).toBe("editor");
 
@@ -1267,7 +1300,9 @@ describe("card mutation", () => {
     expect(removed.status).toBe(200);
     expect((await jsonOf(removed)).cards).toHaveLength(1);
 
-    const history = await jsonOf(await request("GET", `/decks/${deck.id}/revisions`, "owner-token"));
+    const history = await jsonOf(
+      await request("GET", `/decks/${deck.id}/revisions`, "owner-token"),
+    );
     expect(history.total).toBe(2);
     expect(history.items[0].changes[0].name).toBe(UNIT.name);
   });

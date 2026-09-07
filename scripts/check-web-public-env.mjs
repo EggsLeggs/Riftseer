@@ -2,9 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-const wranglerPath = fileURLToPath(
-  new URL("../packages/web/wrangler.jsonc", import.meta.url),
-);
+const wranglerPath = fileURLToPath(new URL("../packages/web/wrangler.jsonc", import.meta.url));
 const source = readFileSync(wranglerPath, "utf8");
 const { config, error } = ts.parseConfigFileTextToJson(wranglerPath, source);
 
@@ -34,9 +32,7 @@ const mismatches = publicNames.flatMap((name) => {
 });
 
 if (mismatches.length > 0) {
-  throw new Error(
-    `Web public environment mismatch:\n- ${mismatches.join("\n- ")}`,
-  );
+  throw new Error(`Web public environment mismatch:\n- ${mismatches.join("\n- ")}`);
 }
 
 console.log("Web build-time and production runtime public environment values match.");

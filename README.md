@@ -9,17 +9,17 @@ shows, it got from there; no client talks to the database.
 
 ## What lives where
 
-| Package | What it is |
-|---------|------------|
-| `packages/types` | Shared types, card-text parser, deck model and validation. Zero runtime dependencies so Workers, Devvit and browsers can all import it. |
-| `packages/core` | `CardDataProvider`, the Supabase provider, the search grammar and its SQL renderer. Consumed by the API only. |
-| `packages/api` | Elysia REST API on Cloudflare Workers. Owns `/api/v1` and the authorisation boundary. |
-| `packages/web` | riftseer.com. Next.js App Router, deployed to Workers via OpenNext. |
-| `packages/ingest-worker` | Scheduled ingest from RiftCodex, TCGPlayer enrichment, image hosting. |
-| `packages/discord-bot` | Slash commands on a Worker. |
-| `packages/reddit-bot` | Devvit app answering `[[Card Name]]` on Reddit. Standalone npm project. |
-| `packages/raycast-extension` | Card search in Raycast. Standalone npm project. |
-| `supabase/migrations` | The schema, append-only after the squashed baseline. |
+| Package                      | What it is                                                                                                                              |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/types`             | Shared types, card-text parser, deck model and validation. Zero runtime dependencies so Workers, Devvit and browsers can all import it. |
+| `packages/core`              | `CardDataProvider`, the Supabase provider, the search grammar and its SQL renderer. Consumed by the API only.                           |
+| `packages/api`               | Elysia REST API on Cloudflare Workers. Owns `/api/v1` and the authorisation boundary.                                                   |
+| `packages/web`               | riftseer.com. Next.js App Router, deployed to Workers via OpenNext.                                                                     |
+| `packages/ingest-worker`     | Scheduled ingest from RiftCodex, TCGPlayer enrichment, image hosting.                                                                   |
+| `packages/discord-bot`       | Slash commands on a Worker.                                                                                                             |
+| `packages/reddit-bot`        | Devvit app answering `[[Card Name]]` on Reddit. Standalone npm project.                                                                 |
+| `packages/raycast-extension` | Card search in Raycast. Standalone npm project.                                                                                         |
+| `supabase/migrations`        | The schema, append-only after the squashed baseline.                                                                                    |
 
 ## Running it
 

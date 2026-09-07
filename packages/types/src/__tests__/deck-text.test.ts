@@ -3,11 +3,24 @@ import { formatDeckText, parseDeckText, type DeckTextCard } from "../deck-text.t
 
 const DECK: DeckTextCard[] = [
   { zone: "legend", quantity: 1, name: "Volibear", set_code: "OGN", collector_number: "001" },
-  { zone: "main", quantity: 3, name: "Vayne", set_code: "OGN", collector_number: "100", is_champion: true },
+  {
+    zone: "main",
+    quantity: 3,
+    name: "Vayne",
+    set_code: "OGN",
+    collector_number: "100",
+    is_champion: true,
+  },
   { zone: "main", quantity: 2, name: "Yordle Scout" },
   { zone: "sideboard", quantity: 1, name: "Brush", set_code: "UNL", collector_number: "T03" },
   { zone: "runes", quantity: 12, name: "Fury Rune" },
-  { zone: "battlefields", quantity: 1, name: "Baron Pit", set_code: "OGN", collector_number: "SP3" },
+  {
+    zone: "battlefields",
+    quantity: 1,
+    name: "Baron Pit",
+    set_code: "OGN",
+    collector_number: "SP3",
+  },
   { zone: "considering", quantity: 1, name: "Poro" },
 ];
 
@@ -69,7 +82,9 @@ describe("parseDeckText", () => {
 
   test("accepts Moxfield and legacy zone headers", () => {
     const parsed = parseDeckText(
-      ["Deck", "1 A", "Maybeboard:", "1 B", "Battlegrounds (3)", "1 C", "Main Deck", "1 D"].join("\n"),
+      ["Deck", "1 A", "Maybeboard:", "1 B", "Battlegrounds (3)", "1 C", "Main Deck", "1 D"].join(
+        "\n",
+      ),
     );
     expect(parsed.errors).toEqual([]);
     expect(parsed.cards.map((card) => card.zone)).toEqual([

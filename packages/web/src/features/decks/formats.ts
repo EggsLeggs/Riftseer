@@ -30,14 +30,10 @@ export interface DeckFormatOption {
  * empty list, a stale cache) validates against no zone rules, which reports the
  * game-level problems — no legend, no champion, wrong zone — and nothing else.
  */
-export function formatRulesFor(
-  format: DeckFormatOption | undefined | null,
-): FormatRules {
+export function formatRulesFor(format: DeckFormatOption | undefined | null): FormatRules {
   return {
     zones: format?.zone_rules ?? [],
-    ...(format?.severity_overrides
-      ? { severity_overrides: format.severity_overrides }
-      : {}),
+    ...(format?.severity_overrides ? { severity_overrides: format.severity_overrides } : {}),
   };
 }
 

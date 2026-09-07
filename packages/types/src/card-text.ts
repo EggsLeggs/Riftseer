@@ -45,10 +45,7 @@ export function repairFlavourText(flavour: string): string {
     // a hanging indent. Collapsing is not the same as inventing a break — the
     // newline upstream sent is kept, only the padding around it goes.
     .replace(/[^\S\n]*\n\s*/g, "\n");
-  text = text
-    .replace(HTML_TAG, "")
-    .replace(HTML_DEBRIS_HEAD, "")
-    .replace(HTML_DEBRIS_TAIL, "");
+  text = text.replace(HTML_TAG, "").replace(HTML_DEBRIS_HEAD, "").replace(HTML_DEBRIS_TAIL, "");
 
   const leadMatch = text.match(/^\s*/);
   const lead = leadMatch?.[0] ?? "";
@@ -97,8 +94,7 @@ function firstQuoteIsCloser(text: string): boolean {
   const previous = text[index - 1]!;
   const next = text[index + 1];
   const followsWord = !/\s/.test(previous);
-  const introducesWord =
-    next !== undefined && !/[\s.,;:!?)\]\-\u2013\u2014]/.test(next);
+  const introducesWord = next !== undefined && !/[\s.,;:!?)\]\-\u2013\u2014]/.test(next);
   return followsWord && !introducesWord;
 }
 
@@ -115,4 +111,3 @@ const HTML_TAG = /<\/?[a-zA-Z][a-zA-Z0-9]*(?:\s[^>]*)?>/g;
  */
 const HTML_DEBRIS_HEAD = /^<\/?[a-zA-Z][a-zA-Z0-9]*[?!]?/;
 const HTML_DEBRIS_TAIL = /<\/?[a-zA-Z][a-zA-Z0-9]*$/;
-

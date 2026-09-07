@@ -18,8 +18,7 @@ import type { IngestPrinting } from "./types.ts";
 import { logger } from "../utils.ts";
 
 function printedCollectorKey(printing: IngestPrinting): string {
-  const [, fromRiftboundId] =
-    printing.riftbound_id?.match(/^[^-]+-([^-]+)-/i) ?? [];
+  const [, fromRiftboundId] = printing.riftbound_id?.match(/^[^-]+-([^-]+)-/i) ?? [];
   if (fromRiftboundId) return fromRiftboundId.toLowerCase();
 
   const base = printing.collector_number ?? "";
@@ -52,10 +51,7 @@ function variantSignalScore(printing: IngestPrinting): number {
   ) {
     score += 2;
   }
-  if (
-    collector.endsWith("*") &&
-    (printing.is_signature || /\bsignature\b/i.test(printing.name))
-  ) {
+  if (collector.endsWith("*") && (printing.is_signature || /\bsignature\b/i.test(printing.name))) {
     score += 2;
   }
   if (printing.is_overnumbered || /\bovernumbered\b/i.test(printing.name)) {

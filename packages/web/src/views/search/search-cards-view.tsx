@@ -34,14 +34,15 @@ import { cn } from "@/lib/utils";
 
 function searchErrorInfo(err: unknown): { title: string; detail: string } {
   if (err instanceof CardApiError) {
-    if (err.code === "timeout")
-      return { title: "Search timed out", detail: "Please try again." };
+    if (err.code === "timeout") return { title: "Search timed out", detail: "Please try again." };
     if (err.code === "network")
       return { title: "Couldn't connect", detail: "Check your connection and try again." };
-    if (err.status === 400 && err.detail)
-      return { title: "Invalid query", detail: err.detail };
+    if (err.status === 400 && err.detail) return { title: "Invalid query", detail: err.detail };
     if (err.status != null && err.status >= 500)
-      return { title: "Search unavailable", detail: "The search service is having issues. Try again shortly." };
+      return {
+        title: "Search unavailable",
+        detail: "The search service is having issues. Try again shortly.",
+      };
   }
   return { title: "Something went wrong", detail: "Please try again." };
 }
@@ -53,10 +54,7 @@ const DEFAULT_PAGE_SIZE: PageSize = 60;
 const PAGE_SIZE_STORAGE_KEY = "riftseer.search.cardsPerPage";
 
 function parseSearchResultsView(raw: string | null): CardResultsView | null {
-  if (
-    raw &&
-    (CARD_RESULTS_VIEWS as readonly string[]).includes(raw)
-  ) {
+  if (raw && (CARD_RESULTS_VIEWS as readonly string[]).includes(raw)) {
     return raw as CardResultsView;
   }
   return null;
@@ -64,9 +62,7 @@ function parseSearchResultsView(raw: string | null): CardResultsView | null {
 
 function parseStoredPageSize(raw: string | null): PageSize | null {
   const n = Number.parseInt(raw ?? "", 10);
-  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n)
-    ? (n as PageSize)
-    : null;
+  return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n) ? (n as PageSize) : null;
 }
 
 function readStoredPageSize(): PageSize | null {
@@ -109,12 +105,10 @@ export function SearchCardsView() {
   const perPage = perPageParam ?? DEFAULT_PAGE_SIZE;
   const canRememberPerPage = hasFetchedBanner && has("functionality");
   const pageParam = Number.parseInt(searchParams.get("page") ?? "1", 10);
-  const requestedPage =
-    Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+  const requestedPage = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
   const offset = (requestedPage - 1) * perPage;
   const resultsView =
-    parseSearchResultsView(searchParams.get("view")) ??
-    accessibility.cardResultsView;
+    parseSearchResultsView(searchParams.get("view")) ?? accessibility.cardResultsView;
 
   const search = useQuery({
     queryKey: cardsQueryKeys.search(trimmed, perPage, offset, true, {
@@ -140,8 +134,7 @@ export function SearchCardsView() {
   const rawCards = trimmed ? (search.data?.cards ?? []) : [];
   const cards = meta.order ? sortCards(rawCards, meta.order, meta.direction) : rawCards;
   const errorInfo = search.isError ? searchErrorInfo(search.error) : null;
-  const totalPages =
-    total === 0 ? 0 : Math.max(1, Math.ceil(total / perPage));
+  const totalPages = total === 0 ? 0 : Math.max(1, Math.ceil(total / perPage));
   const page = Math.min(requestedPage, Math.max(totalPages, 1));
 
   const updateSearchParams = React.useCallback(
@@ -169,14 +162,7 @@ export function SearchCardsView() {
       p.set("perPage", String(storedPerPage));
       p.delete("page");
     });
-  }, [
-    canRememberPerPage,
-    hasFetchedBanner,
-    hasPerPageParam,
-    perPage,
-    trimmed,
-    updateSearchParams,
-  ]);
+  }, [canRememberPerPage, hasFetchedBanner, hasPerPageParam, perPage, trimmed, updateSearchParams]);
 
   React.useEffect(() => {
     if (!hasFetchedBanner) return;
@@ -196,14 +182,7 @@ export function SearchCardsView() {
         else p.set("page", String(totalPages));
       });
     }
-  }, [
-    trimmed,
-    search.isFetching,
-    total,
-    totalPages,
-    requestedPage,
-    updateSearchParams,
-  ]);
+  }, [trimmed, search.isFetching, total, totalPages, requestedPage, updateSearchParams]);
 
   React.useEffect(() => {
     if (!trimmed || search.isFetching) return;
@@ -268,8 +247,7 @@ export function SearchCardsView() {
           <h1 className="text-xl font-semibold tracking-tight">
             {trimmed ? (
               <>
-                Search results for{" "}
-                <span className="text-muted-foreground">“{trimmed}”</span>
+                Search results for <span className="text-muted-foreground">“{trimmed}”</span>
               </>
             ) : (
               "Search cards"
@@ -286,12 +264,8 @@ export function SearchCardsView() {
           )}
           {!trimmed && (
             <p className="mt-1 text-sm text-muted-foreground">
-              Use the search bar in the header (or press Cmd/Ctrl + K) to find
-              cards.{" "}
-              <Link
-                href="/syntax"
-                className="text-foreground underline-offset-4 hover:underline"
-              >
+              Use the search bar in the header (or press Cmd/Ctrl + K) to find cards.{" "}
+              <Link href="/syntax" className="text-foreground underline-offset-4 hover:underline">
                 Search syntax
               </Link>
             </p>
@@ -301,9 +275,7 @@ export function SearchCardsView() {
         {trimmed ? (
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-8">
             <div className="flex flex-col gap-1.5">
-              <span className="text-muted-foreground text-sm font-medium">
-                View
-              </span>
+              <span className="text-muted-foreground text-sm font-medium">View</span>
               <CardResultsViewToggle
                 value={resultsView}
                 onValueChange={setResultsView}
@@ -317,9 +289,7 @@ export function SearchCardsView() {
               <select
                 id="search-per-page"
                 value={perPage}
-                onChange={(e) =>
-                  setPerPage(Number.parseInt(e.target.value, 10) as PageSize)
-                }
+                onChange={(e) => setPerPage(Number.parseInt(e.target.value, 10) as PageSize)}
                 className={cn(CARD_BROWSE_SELECT_CLASS, "w-22")}
               >
                 {PAGE_SIZE_OPTIONS.map((n) => (
@@ -335,12 +305,7 @@ export function SearchCardsView() {
 
       {errorInfo ? (
         <div className="flex flex-col items-center gap-4 py-20 text-center">
-          <img
-            src="/lambsheep.png"
-            alt=""
-            aria-hidden="true"
-            className="h-28 w-auto opacity-70"
-          />
+          <img src="/lambsheep.png" alt="" aria-hidden="true" className="h-28 w-auto opacity-70" />
           <div className="flex flex-col gap-1.5">
             <p className="text-base font-semibold">{errorInfo.title}</p>
             <p className="text-sm text-muted-foreground">{errorInfo.detail}</p>
@@ -352,9 +317,7 @@ export function SearchCardsView() {
         resultsView === "images" ? (
           <CardGrid
             cards={cards}
-            cardNamePlacement={
-              showCardNamesBelowSearch ? "below" : "overlay"
-            }
+            cardNamePlacement={showCardNamesBelowSearch ? "below" : "overlay"}
           />
         ) : resultsView === "details" ? (
           <CardDetailsResults cards={cards} />
@@ -370,9 +333,7 @@ export function SearchCardsView() {
               <PaginationPrevious
                 href={searchPageHref(Math.max(1, page - 1))}
                 size="default"
-                className={cn(
-                  page <= 1 && "pointer-events-none opacity-40",
-                )}
+                className={cn(page <= 1 && "pointer-events-none opacity-40")}
                 aria-disabled={page <= 1}
                 tabIndex={page <= 1 ? -1 : undefined}
                 onClick={(e) => {
@@ -394,8 +355,7 @@ export function SearchCardsView() {
                     size="default"
                     isActive={entry === page}
                     onClick={(e) => {
-                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
-                        return;
+                      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                       e.preventDefault();
                       setPage(entry);
                     }}
@@ -409,9 +369,7 @@ export function SearchCardsView() {
               <PaginationNext
                 href={searchPageHref(Math.min(totalPages, page + 1))}
                 size="default"
-                className={cn(
-                  page >= totalPages && "pointer-events-none opacity-40",
-                )}
+                className={cn(page >= totalPages && "pointer-events-none opacity-40")}
                 aria-disabled={page >= totalPages}
                 tabIndex={page >= totalPages ? -1 : undefined}
                 onClick={(e) => {

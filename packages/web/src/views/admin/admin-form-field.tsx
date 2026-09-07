@@ -22,20 +22,14 @@ export function AdminSection({
       <h2 className="text-muted-foreground mb-1 text-xs font-medium tracking-wider uppercase">
         {heading}
       </h2>
-      {description && (
-        <p className="text-muted-foreground mb-3 text-xs">{description}</p>
-      )}
+      {description && <p className="text-muted-foreground mb-3 text-xs">{description}</p>}
       <div className={description ? "" : "mt-3"}>{children}</div>
     </section>
   );
 }
 
 export function FieldGrid({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {children}
-    </div>
-  );
+  return <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>;
 }
 
 /**
@@ -98,10 +92,16 @@ export function TextField({
   className,
   labelHidden,
   ...inputProps
-}: FieldChromeProps &
-  Omit<React.ComponentProps<typeof Input>, "id" | "className" | "children">) {
+}: FieldChromeProps & Omit<React.ComponentProps<typeof Input>, "id" | "className" | "children">) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
+    <FieldShell
+      id={id}
+      label={label}
+      hint={hint}
+      error={error}
+      className={className}
+      labelHidden={labelHidden}
+    >
       <Input
         id={id}
         aria-invalid={!!error}
@@ -123,7 +123,14 @@ export function TextAreaField({
 }: FieldChromeProps &
   Omit<React.ComponentProps<typeof Textarea>, "id" | "className" | "children">) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
+    <FieldShell
+      id={id}
+      label={label}
+      hint={hint}
+      error={error}
+      className={className}
+      labelHidden={labelHidden}
+    >
       <Textarea
         id={id}
         aria-invalid={!!error}
@@ -148,7 +155,14 @@ export function SelectField({
     options: Array<{ value: string; label: string }>;
   }) {
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error} className={className} labelHidden={labelHidden}>
+    <FieldShell
+      id={id}
+      label={label}
+      hint={hint}
+      error={error}
+      className={className}
+      labelHidden={labelHidden}
+    >
       <select
         id={id}
         aria-invalid={!!error}
@@ -192,10 +206,7 @@ export function CheckboxField({
       <span className="min-w-0">
         <span className="block text-sm font-medium">{label}</span>
         {hint && (
-          <span
-            id={fieldMessageId(id)}
-            className="text-muted-foreground block text-xs"
-          >
+          <span id={fieldMessageId(id)} className="text-muted-foreground block text-xs">
             {hint}
           </span>
         )}

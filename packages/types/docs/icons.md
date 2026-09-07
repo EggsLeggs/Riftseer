@@ -28,13 +28,13 @@ Splits one compressed string into lines: one per ability or sentence, never insi
 
 Turns one line into a `CardTextToken[]`:
 
-| `kind` | Fields | Meaning |
-| --- | --- | --- |
-| `text` | `text` | Prose |
-| `icon` | `keys` | A run of adjacent `:rb_…:` tokens, so `3 Energy and Power` can be one phrase |
+| `kind`    | Fields                                 | Meaning                                                                                                                            |
+| --------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `text`    | `text`                                 | Prose                                                                                                                              |
+| `icon`    | `keys`                                 | A run of adjacent `:rb_…:` tokens, so `3 Energy and Power` can be one phrase                                                       |
 | `keyword` | `label`, `arrow`, `stackLeft`, `costs` | A `[Keyword]` badge; `[>]` sets `arrow`, a preceding `[>>]` sets `stackLeft`, trailing energy/rune costs are absorbed into `costs` |
-| `bracket` | `label` | A bracketed span that is not a keyword (`[NO TEXT]`) |
-| `italic` | `tokens` | Reminder text, with its own inline tokens |
+| `bracket` | `label`                                | A bracketed span that is not a keyword (`[NO TEXT]`)                                                                               |
+| `italic`  | `tokens`                               | Reminder text, with its own inline tokens                                                                                          |
 
 A surface maps each token to what it draws with. The web site maps them to elements and CSS classes; the clipboard formatter in this package maps them to `{3}` / `[Deflect]` text.
 

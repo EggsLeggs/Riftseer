@@ -1,6 +1,6 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 /**
  * A keyboard-shortcut badge. One place for the chrome so every hint in the app
@@ -13,11 +13,11 @@ function Kbd({ className, ...props }: React.ComponentProps<"kbd">) {
       data-slot="kbd"
       className={cn(
         "inline-flex items-center gap-0.5 rounded border border-border bg-background/60 px-1.5 py-0.5 font-mono text-[10px] font-medium",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Kbd }
+export { Kbd };

@@ -31,7 +31,9 @@ const token = makeOracle("token", {
 
 function provider(overrides: Record<string, unknown> = {}) {
   return {
-    async getPrintingsForOracle() { return [base, alt]; },
+    async getPrintingsForOracle() {
+      return [base, alt];
+    },
     async getOracleRelationships() {
       return { makes_tokens: [token], used_by: [], characters: [], signatures: [] };
     },
@@ -41,21 +43,36 @@ function provider(overrides: Record<string, unknown> = {}) {
 
 describe("marketplace links", () => {
   it("trusts only HTTPS marketplace hosts", () => {
-    expect(tcgplayerUrlForPrinting({
-      ...base,
-      purchase_uris: { tcgplayer: "https://partner.tcgplayer.com/c/1" },
-    }, oracle.name)).toContain("partner.tcgplayer.com");
-    expect(cardmarketUrlForPrinting({
-      ...base,
-      purchase_uris: { cardmarket: "http://www.cardmarket.com/unsafe" },
-    }, oracle.name)).toContain("Products/Search");
+    expect(
+      tcgplayerUrlForPrinting(
+        {
+          ...base,
+          purchase_uris: { tcgplayer: "https://partner.tcgplayer.com/c/1" },
+        },
+        oracle.name,
+      ),
+    ).toContain("partner.tcgplayer.com");
+    expect(
+      cardmarketUrlForPrinting(
+        {
+          ...base,
+          purchase_uris: { cardmarket: "http://www.cardmarket.com/unsafe" },
+        },
+        oracle.name,
+      ),
+    ).toContain("Products/Search");
   });
 
   it("falls back from product id to an exact name search", () => {
-    expect(tcgplayerUrlForPrinting({
-      ...base,
-      external_ids: { tcgplayer_id: "555" },
-    }, oracle.name)).toBe("https://www.tcgplayer.com/product/555");
+    expect(
+      tcgplayerUrlForPrinting(
+        {
+          ...base,
+          external_ids: { tcgplayer_id: "555" },
+        },
+        oracle.name,
+      ),
+    ).toBe("https://www.tcgplayer.com/product/555");
     expect(tcgplayerUrlForPrinting(base, oracle.name)).toContain("q=Sun+Disc");
   });
 });
@@ -65,15 +82,17 @@ describe("buildOracleDetail", () => {
     const detail = await buildOracleDetail(oracle, alt, provider());
     expect(detail.printings.map((printing) => printing.id)).toEqual(["base", "alt"]);
     expect(detail.printing.id).toBe("alt");
-    expect(detail.tokens).toEqual([{
-      object: "oracle_ref",
-      id: "token",
-      name: "Sprite",
-      slug: "sprite",
-      uri: "/api/v1/cards/token",
-      riftseer_uri: undefined,
-      image_small: "https://img.example/sprite.webp",
-    }]);
+    expect(detail.tokens).toEqual([
+      {
+        object: "oracle_ref",
+        id: "token",
+        name: "Sprite",
+        slug: "sprite",
+        uri: "/api/v1/cards/token",
+        riftseer_uri: undefined,
+        image_small: "https://img.example/sprite.webp",
+      },
+    ]);
   });
 
   it("preserves a real might_bonus of zero", async () => {
@@ -101,9 +120,16 @@ describe("buildOracleDetail", () => {
   it("uses embedded printings without another provider read", async () => {
     let calls = 0;
     const embedded: Oracle = { ...oracle, printings: [base] };
-    const detail = await buildOracleDetail(embedded, base, provider({
-      async getPrintingsForOracle() { calls += 1; return []; },
-    }));
+    const detail = await buildOracleDetail(
+      embedded,
+      base,
+      provider({
+        async getPrintingsForOracle() {
+          calls += 1;
+          return [];
+        },
+      }),
+    );
     expect(calls).toBe(0);
     expect(detail.printings).toEqual([base]);
   });
@@ -119,20 +145,38 @@ describe("buildOracleDetail", () => {
       status: "banned",
       scope: "oracle",
     };
-    const detail = await buildOracleDetail(oracle, alt, provider({
-      async getRulings(id: string) { seen.push(`r:${id}`); return [ruling]; },
-      async getLegalities(id: string) { seen.push(`l:${id}`); return [legality]; },
-    }));
+    const detail = await buildOracleDetail(
+      oracle,
+      alt,
+      provider({
+        async getRulings(id: string) {
+          seen.push(`r:${id}`);
+          return [ruling];
+        },
+        async getLegalities(id: string) {
+          seen.push(`l:${id}`);
+          return [legality];
+        },
+      }),
+    );
     expect(seen).toEqual(["r:alt", "l:alt"]);
     expect(detail.rulings).toEqual([ruling]);
     expect(detail.legalities).toEqual([legality]);
   });
 
   it("degrades supplementary ruling and legality failures to empty arrays", async () => {
-    const detail = await buildOracleDetail(oracle, base, provider({
-      async getRulings() { throw new Error("missing table"); },
-      async getLegalities() { throw new Error("missing table"); },
-    }));
+    const detail = await buildOracleDetail(
+      oracle,
+      base,
+      provider({
+        async getRulings() {
+          throw new Error("missing table");
+        },
+        async getLegalities() {
+          throw new Error("missing table");
+        },
+      }),
+    );
     expect(detail.rulings).toEqual([]);
     expect(detail.legalities).toEqual([]);
     expect(detail.printing.id).toBe("base");

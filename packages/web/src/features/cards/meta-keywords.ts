@@ -57,8 +57,14 @@ export function parseMetaKeywords(raw: string): MetaKeywords {
   let allPrintings = false;
 
   // unique:prints or ++ — must check ++ before generic word scan
-  s = s.replace(/\+\+/g, () => { allPrintings = true; return ""; });
-  s = s.replace(/\bunique:prints\b/gi, () => { allPrintings = true; return ""; });
+  s = s.replace(/\+\+/g, () => {
+    allPrintings = true;
+    return "";
+  });
+  s = s.replace(/\bunique:prints\b/gi, () => {
+    allPrintings = true;
+    return "";
+  });
 
   // set:VALUE
   s = s.replace(/\bset:(\S+)/gi, (_m, val: string) => {
@@ -87,15 +93,24 @@ type CardValue = string | number | null | undefined;
 function cardValue(card: CardResult, field: OrderField): CardValue {
   const { oracle, printing } = card;
   switch (field) {
-    case "energy":    return oracle.energy ?? null;
-    case "power":     return oracle.power ?? null;
-    case "might":     return oracle.might ?? null;
-    case "rarity":    return rarityRank(printing.rarity);
-    case "artist":    return printing.artist ?? null;
-    case "usd":       return tcgplayerUsdPrice(printing.prices?.tcgplayer);
-    case "eur":       return printing.prices?.cardmarket?.normal ?? null;
-    case "domain":    return oracle.domains[0] ?? null;
-    case "set":       return printing.set?.set_code ?? null;
+    case "energy":
+      return oracle.energy ?? null;
+    case "power":
+      return oracle.power ?? null;
+    case "might":
+      return oracle.might ?? null;
+    case "rarity":
+      return rarityRank(printing.rarity);
+    case "artist":
+      return printing.artist ?? null;
+    case "usd":
+      return tcgplayerUsdPrice(printing.prices?.tcgplayer);
+    case "eur":
+      return printing.prices?.cardmarket?.normal ?? null;
+    case "domain":
+      return oracle.domains[0] ?? null;
+    case "set":
+      return printing.set?.set_code ?? null;
     case "collector": {
       const m = /^(\d+)/.exec(printing.collector_number ?? "");
       return m ? parseInt(m[1], 10) : null;

@@ -100,44 +100,28 @@ function collapseNewlinesInsideParentheses(text: string): string {
  * - inserts paragraph breaks between sentences in compressed text
  * - never inserts breaks inside parenthetical reminder text
  */
-export function normalizeCardTextLayout(
-  text: string,
-  paragraphBreak = "\n",
-): string {
-  let normalized = decodeCardTextEntities(text)
-    .trim()
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n");
+export function normalizeCardTextLayout(text: string, paragraphBreak = "\n"): string {
+  let normalized = decodeCardTextEntities(text).trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
   normalized = collapseNewlinesInsideParentheses(normalized)
     .replace(/_ \(/g, "_(")
     .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
     // Standalone keyword chains (e.g. [Accelerate][Assault 2][Deflect]).
-    .replace(
-      /(\[[A-Za-z][^\]]*\])(?=\[(?!&gt;|>|&gt;&gt;|>>)[A-Za-z])/g,
-      `$1${paragraphBreak}`,
-    )
+    .replace(/(\[[A-Za-z][^\]]*\])(?=\[(?!&gt;|>|&gt;&gt;|>>)[A-Za-z])/g, `$1${paragraphBreak}`)
     // Activated ability costs glued to a keyword (e.g. [Deflect]:rb_energy_2::…).
-    .replace(
-      /\](?=:rb_(?:energy_\d+|rune_\w+|exhaust|might|power):)/g,
-      `]${paragraphBreak}`,
-    )
+    .replace(/\](?=:rb_(?:energy_\d+|rune_\w+|exhaust|might|power):)/g, `]${paragraphBreak}`)
     // The mirror image: a keyword line that *ends* in its cost, with the next
     // ability's keyword glued straight on — `[Empower] :rb_rune_body:[Empowered]`.
     // `[>]` is excluded because it continues the keyword it follows rather than
     // starting a line ("[Empowered][>] I have +3 …").
-    .replace(
-      /(:rb_\w+:)(?=\[(?!&gt;|>)[A-Za-z])/g,
-      `$1${paragraphBreak}`,
-    )
+    .replace(/(:rb_\w+:)(?=\[(?!&gt;|>)[A-Za-z])/g, `$1${paragraphBreak}`)
     .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
 
   const depthMap = buildParenDepthMap(normalized);
   normalized = normalized.replace(
     /([.)—])(\s*)(?=(?:[A-Z[]|:rb_))/g,
     (match: string, punct: string, spacing: string, index: number) => {
-      const depthAfterPunct =
-        punct === ")" ? depthMap[index + 1] ?? 0 : depthMap[index] ?? 0;
+      const depthAfterPunct = punct === ")" ? (depthMap[index + 1] ?? 0) : (depthMap[index] ?? 0);
       if (depthAfterPunct > 0) return match;
       if (spacing.length > 0) return match;
       return `${punct}${paragraphBreak}`;
@@ -198,8 +182,7 @@ export function parseCardTextRich(rich: string): CardTextBlock[] | null {
       const html = itemMatch[1]!;
       const plain = richFragmentToPlain(html);
       // Keep break-only items (`<li><br /></li>`) as an explicit `\n` for renderers.
-      const isBreakOnly =
-        /<br\b/i.test(html) && plain.replace(/\n/g, "").length === 0;
+      const isBreakOnly = /<br\b/i.test(html) && plain.replace(/\n/g, "").length === 0;
       if (isBreakOnly) {
         items.push("\n");
         continue;

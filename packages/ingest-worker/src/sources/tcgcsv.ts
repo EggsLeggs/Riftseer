@@ -109,7 +109,7 @@ export async function fetchAllGroupResults(
   const timeout = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
-    const results: TCGGroupResult[] = new Array(groups.length);
+    const results: TCGGroupResult[] = [];
     let nextIndex = 0;
     const workers = Array.from(
       { length: Math.min(GROUP_FETCH_CONCURRENCY, groups.length) },

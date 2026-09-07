@@ -12,13 +12,22 @@ export function Footer() {
           assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Link href="/privacy" className="transition-colors hover:text-foreground hover:underline underline-offset-4">
+          <Link
+            href="/privacy"
+            className="transition-colors hover:text-foreground hover:underline underline-offset-4"
+          >
             Privacy Policy
           </Link>
-          <Link href="/terms" className="transition-colors hover:text-foreground hover:underline underline-offset-4">
+          <Link
+            href="/terms"
+            className="transition-colors hover:text-foreground hover:underline underline-offset-4"
+          >
             Terms of Service
           </Link>
-          <Link href="/syntax" className="transition-colors hover:text-foreground hover:underline underline-offset-4">
+          <Link
+            href="/syntax"
+            className="transition-colors hover:text-foreground hover:underline underline-offset-4"
+          >
             Search syntax
           </Link>
           <FooterCookiePreferencesLink />

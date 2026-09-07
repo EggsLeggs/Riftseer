@@ -11,13 +11,7 @@ import {
   deckPrintingSwapChanges,
   mergeDeckCardChanges,
 } from "../deck-changes";
-import type {
-  DeckCard,
-  DeckCardChange,
-  DeckToken,
-  DeckViolation,
-  DeckZone,
-} from "../types";
+import type { DeckCard, DeckCardChange, DeckToken, DeckViolation, DeckZone } from "../types";
 
 /**
  * The builder's write path: a queue, a debounce and one request.
@@ -168,9 +162,7 @@ export function useDeckEditor(
         // The action resolves `{ ok: false }` for an API error but still
         // *rejects* on a transport failure, and there is no component left to
         // report it to — unhandled, it surfaces as a page-level error.
-        void applyDeckCardChangesAction(deckId, queueRef.current).catch(
-          () => undefined,
-        );
+        void applyDeckCardChangesAction(deckId, queueRef.current).catch(() => undefined);
         queueRef.current = [];
       }
     };

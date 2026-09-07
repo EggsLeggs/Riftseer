@@ -67,12 +67,8 @@ export function DeckMoreMenu({
           </div>
           {showRight && (
             <div className="flex flex-col p-1">
-              {canEdit && (
-                <DropdownMenuItem onSelect={onDetails}>Details</DropdownMenuItem>
-              )}
-              {isOwner && (
-                <DropdownMenuItem onSelect={onShare}>Collaborators</DropdownMenuItem>
-              )}
+              {canEdit && <DropdownMenuItem onSelect={onDetails}>Details</DropdownMenuItem>}
+              {isOwner && <DropdownMenuItem onSelect={onShare}>Collaborators</DropdownMenuItem>}
               {isOwner && (
                 <>
                   <DropdownMenuSeparator />

@@ -10,10 +10,10 @@ The API describes itself with Elysia schema annotations (`detail`, `query`, `bod
 
 ## Where to find it
 
-| URL | What |
-| --- | --- |
-| `https://api.riftseer.com/docs` | Interactive reference, powered by [Scalar](https://scalar.com) |
-| `https://api.riftseer.com/api/v1/openapi.json` | The spec the reference reads |
+| URL                                            | What                                                           |
+| ---------------------------------------------- | -------------------------------------------------------------- |
+| `https://api.riftseer.com/docs`                | Interactive reference, powered by [Scalar](https://scalar.com) |
+| `https://api.riftseer.com/api/v1/openapi.json` | The spec the reference reads                                   |
 
 Both work against `wrangler dev` too (`http://localhost:8789/docs`), and Scalar's "try it" requests go to whichever origin served the page.
 
@@ -52,21 +52,21 @@ Edit the `detail` object and schemas in the relevant route file:
 })
 ```
 
-| Annotation | What it controls |
-| --- | --- |
-| `detail.summary` | One-line label shown in the endpoint list |
-| `detail.description` | Longer description shown when the endpoint is expanded |
-| `detail.tags` | Which group the endpoint appears under |
-| `detail.hide` | Leaves the route out of the spec entirely |
-| `query` / `body` | Request parameter and body schemas (types + descriptions) |
-| `response` | Response schemas per status code |
+| Annotation           | What it controls                                          |
+| -------------------- | --------------------------------------------------------- |
+| `detail.summary`     | One-line label shown in the endpoint list                 |
+| `detail.description` | Longer description shown when the endpoint is expanded    |
+| `detail.tags`        | Which group the endpoint appears under                    |
+| `detail.hide`        | Leaves the route out of the spec entirely                 |
+| `query` / `body`     | Request parameter and body schemas (types + descriptions) |
+| `response`           | Response schemas per status code                          |
 
 To describe an individual parameter, pass it in the schema:
 
 ```typescript
 query: t.Object({
   name: t.Optional(t.String({ description: "Card name to search for" })),
-})
+});
 ```
 
 Tags are declared in the `documentation.tags` array in `scripts/generate-spec.ts`. Add a tag there first, then reference it by name from `detail.tags`.

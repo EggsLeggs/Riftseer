@@ -13,11 +13,7 @@ import { authAdminClient } from "../lib/supabase";
 import { oracleKeyForName } from "@riftseer/types/oracle";
 import { ADMIN_PRINTING_STATES } from "@riftseer/types/admin-printing";
 import { isConfirmableReconciliationField } from "@riftseer/types/reconciliation";
-import {
-  DECK_ZONES,
-  LEGALITY_STATUSES,
-  VIOLATION_SEVERITIES,
-} from "@riftseer/types/deck";
+import { DECK_ZONES, LEGALITY_STATUSES, VIOLATION_SEVERITIES } from "@riftseer/types/deck";
 import {
   AdminRepositoryError,
   createAdminDataRepository,
@@ -25,15 +21,8 @@ import {
   type AdminReconciliationEntry,
   type AdminRpcResult,
 } from "../lib/admin-data";
-import {
-  adminPlugin,
-  createAdminPlugin,
-} from "../plugins/admin-auth";
-import {
-  BadCardSearchQueryError,
-  CARD_SEARCH_LIMITS,
-  parseCardSearchQuery,
-} from "@riftseer/core";
+import { adminPlugin, createAdminPlugin } from "../plugins/admin-auth";
+import { BadCardSearchQueryError, CARD_SEARCH_LIMITS, parseCardSearchQuery } from "@riftseer/core";
 import { ErrorSchema, LegalityStatusSchema } from "../schemas";
 
 const DATE_PATTERN = "^\\d{4}-\\d{2}-\\d{2}$";
@@ -87,11 +76,7 @@ const AdminOracleDefinitionSchema = t.Object({
   ...AdminOracleFields,
 });
 
-const RelationshipKindSchema = t.UnionEnum([
-  "makes_token",
-  "character",
-  "signature",
-]);
+const RelationshipKindSchema = t.UnionEnum(["makes_token", "character", "signature"]);
 
 const AdminRelationshipEntrySchema = t.Object({
   kind: RelationshipKindSchema,
@@ -505,9 +490,7 @@ type RulingTargetInput =
  */
 function buildRulingTargets(
   inputs: readonly RulingTargetInput[],
-):
-  | { targets: Array<Record<string, unknown>> }
-  | { error: FailureResponse } {
+): { targets: Array<Record<string, unknown>> } | { error: FailureResponse } {
   if (inputs.length === 0) {
     return {
       error: {
@@ -578,11 +561,7 @@ const ReconciliationKindSchema = t.UnionEnum([
 
 const ReconciliationSourceSchema = t.UnionEnum(["tcgplayer", "gallery"]);
 
-const ReconciliationStatusSchema = t.UnionEnum([
-  "pending",
-  "confirmed",
-  "dismissed",
-]);
+const ReconciliationStatusSchema = t.UnionEnum(["pending", "confirmed", "dismissed"]);
 
 const ReconciliationFieldSchema = t.UnionEnum([
   "collector_number",
@@ -614,10 +593,7 @@ const ReconciliationKindQuerySchema = t.Union([
   t.Literal("unmatched_oracle"),
 ]);
 
-const ReconciliationSourceQuerySchema = t.Union([
-  t.Literal("tcgplayer"),
-  t.Literal("gallery"),
-]);
+const ReconciliationSourceQuerySchema = t.Union([t.Literal("tcgplayer"), t.Literal("gallery")]);
 
 const ReconciliationProductSchema = t.Object({
   product_id: t.Number(),
@@ -678,9 +654,7 @@ const ReconciliationEntrySchema = t.Object({
 
 // A union of literals, not t.UnionEnum: Elysia fills a UnionEnum's first member
 // in when the key is absent, which would silently filter an unfiltered request.
-const PrintingStateQuerySchema = t.Union(
-  ADMIN_PRINTING_STATES.map((state) => t.Literal(state)),
-);
+const PrintingStateQuerySchema = t.Union(ADMIN_PRINTING_STATES.map((state) => t.Literal(state)));
 
 const PrintingListEntrySchema = t.Object({
   id: t.String(),
@@ -950,19 +924,12 @@ function mutationFailure(result: AdminRpcResult): FailureResponse | null {
   }
 }
 
-async function safely<T>(
-  action: string,
-  operation: () => Promise<T>,
-): Promise<SafeResult<T>> {
+async function safely<T>(action: string, operation: () => Promise<T>): Promise<SafeResult<T>> {
   try {
     return { data: await operation() };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown admin operation error";
-    const databaseCode =
-      error instanceof AdminRepositoryError
-        ? error.databaseCode
-        : undefined;
+    const message = error instanceof Error ? error.message : "Unknown admin operation error";
+    const databaseCode = error instanceof AdminRepositoryError ? error.databaseCode : undefined;
     console.error(
       JSON.stringify({
         message: "admin operation failed",
@@ -1076,9 +1043,7 @@ async function sha256Hex(value: ArrayBuffer | Uint8Array): Promise<string> {
   // Every runtime we target takes the view as-is, and copying would clone whole
   // uploads, so assert a concrete type rather than reallocating.
   const digest = await crypto.subtle.digest("SHA-256", value as ArrayBuffer);
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 async function sourceHash(sourceUrl: string): Promise<string> {
@@ -1100,28 +1065,15 @@ function detectAdminImageType(bytes: ArrayBuffer): string | null {
   ) {
     return "image/png";
   }
-  if (
-    value.length >= 3 &&
-    value[0] === 0xff &&
-    value[1] === 0xd8 &&
-    value[2] === 0xff
-  ) {
+  if (value.length >= 3 && value[0] === 0xff && value[1] === 0xd8 && value[2] === 0xff) {
     return "image/jpeg";
   }
 
-  const ascii = (start: number, end: number) =>
-    String.fromCharCode(...value.slice(start, end));
-  if (
-    value.length >= 6 &&
-    (ascii(0, 6) === "GIF87a" || ascii(0, 6) === "GIF89a")
-  ) {
+  const ascii = (start: number, end: number) => String.fromCharCode(...value.slice(start, end));
+  if (value.length >= 6 && (ascii(0, 6) === "GIF87a" || ascii(0, 6) === "GIF89a")) {
     return "image/gif";
   }
-  if (
-    value.length >= 12 &&
-    ascii(0, 4) === "RIFF" &&
-    ascii(8, 12) === "WEBP"
-  ) {
+  if (value.length >= 12 && ascii(0, 4) === "RIFF" && ascii(8, 12) === "WEBP") {
     return "image/webp";
   }
   if (
@@ -1134,10 +1086,7 @@ function detectAdminImageType(bytes: ArrayBuffer): string | null {
   return null;
 }
 
-async function cleanupUpload(
-  bindings: AdminImageBindings,
-  key: string,
-): Promise<void> {
+async function cleanupUpload(bindings: AdminImageBindings, key: string): Promise<void> {
   try {
     await bindings.bucket.delete(key);
   } catch (error) {
@@ -1153,10 +1102,7 @@ async function cleanupUpload(
 
 export function adminRoutes(options: AdminRoutesOptions = {}) {
   const repository =
-    options.repository ??
-    (authAdminClient
-      ? createAdminDataRepository(authAdminClient)
-      : null);
+    options.repository ?? (authAdminClient ? createAdminDataRepository(authAdminClient) : null);
   const imageBindings = options.imageBindings ?? null;
   const routeAdminPlugin = options.adminAuthPlugin ?? adminPlugin;
 
@@ -1166,2198 +1112,2149 @@ export function adminRoutes(options: AdminRoutesOptions = {}) {
   // admin_restore_printing — calls refresh_ruling_matches_for_printing itself
   // before returning, inside the same transaction as the write.
 
-  return new Elysia({ prefix: "/admin" })
-    .use(routeAdminPlugin)
-    .onError(({ code, error, status }) => {
-      if (
-        code === "VALIDATION" ||
-        code === "PARSE" ||
-        String(code).startsWith("INVALID_")
-      ) {
-        return status(400, {
-          error: "Invalid admin request",
-          code: "INVALID_REQUEST",
-        });
-      }
-      if (code === "NOT_FOUND") {
-        return status(404, {
-          error: "Admin endpoint not found",
-          code: "NOT_FOUND",
-        });
-      }
-      console.error(
-        JSON.stringify({
-          message: "unhandled admin route error",
-          code,
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      );
-      return status(500, {
-        error: "Admin operation failed",
-        code: "ADMIN_OPERATION_FAILED",
-      });
-    })
-    .get(
-      "/audit-log",
-      async ({ query, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
+  return (
+    new Elysia({ prefix: "/admin" })
+      .use(routeAdminPlugin)
+      .onError(({ code, error, status }) => {
+        if (code === "VALIDATION" || code === "PARSE" || String(code).startsWith("INVALID_")) {
+          return status(400, {
+            error: "Invalid admin request",
+            code: "INVALID_REQUEST",
           });
         }
-
-        const limit = Math.min(
-          Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
-          AUDIT_LOG_MAX_LIMIT,
-        );
-        const offset = Math.max(
-          Number.parseInt(query.offset ?? "0", 10) || 0,
-          0,
-        );
-
-        const result = await safely("audit_log.list", () =>
-          repository.listAuditLog({
-            limit,
-            offset,
-            action: query.action?.trim() || undefined,
-            targetType: query.target_type?.trim() || undefined,
-            targetId: query.target_id?.trim() || undefined,
-            actorId: query.actor_id?.trim() || undefined,
-          }),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-
-        return {
-          entries: result.data.entries,
-          total: result.data.total,
-          limit,
-          offset,
-        };
-      },
-      {
-        query: t.Object({
-          limit: t.Optional(t.String()),
-          offset: t.Optional(t.String()),
-          action: t.Optional(t.String({ maxLength: 100 })),
-          target_type: t.Optional(t.String({ maxLength: 50 })),
-          target_id: t.Optional(t.String({ maxLength: 128 })),
-          actor_id: t.Optional(t.String({ maxLength: 64 })),
-        }),
-        response: {
-          200: AuditLogResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Read the admin audit log",
-          description:
-            "Returns admin mutations newest first, optionally filtered by action, target, or actor.",
-        },
-      },
-    )
-
-    // ── Review queue ──────────────────────────────────────────────────────────
-    .get(
-      "/reconciliation",
-      async ({ query, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const limit = Math.min(
-          Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
-          RECONCILIATION_MAX_LIMIT,
-        );
-        const offset = Math.max(
-          Number.parseInt(query.offset ?? "0", 10) || 0,
-          0,
-        );
-
-        const result = await safely("reconciliation.list", () =>
-          repository.listReconciliation({
-            limit,
-            offset,
-            // Default to the only actionable status — the review page opens on
-            // work to do, not on a history of everything ever dismissed.
-            status: query.status ?? "pending",
-            kind: query.kind,
-            source: query.source,
-          }),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-
-        return {
-          entries: result.data.entries,
-          total: result.data.total,
-          counts: result.data.counts,
-          limit,
-          offset,
-        };
-      },
-      {
-        query: t.Object({
-          limit: t.Optional(t.String()),
-          offset: t.Optional(t.String()),
-          status: t.Optional(ReconciliationStatusQuerySchema),
-          kind: t.Optional(ReconciliationKindQuerySchema),
-          source: t.Optional(ReconciliationSourceQuerySchema),
-        }),
-        response: {
-          200: ReconciliationListResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "List review-queue entries",
-          description:
-            "What ingest could not reconcile: TCGPlayer products that match no printing, printings and cards the official gallery lists that we do not hold, and field disagreements from either source. Defaults to pending entries, newest first.",
-        },
-      },
-    )
-    .post(
-      "/reconciliation/:id/confirm",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const entryResult = await safely("reconciliation.confirm.load", () =>
-          repository.getReconciliationEntry(params.id),
-        );
-        if ("error" in entryResult) {
-          return status(entryResult.error.status, entryResult.error.body);
-        }
-        if (!entryResult.data) {
+        if (code === "NOT_FOUND") {
           return status(404, {
-            error: "Review entry not found",
-            code: "REVIEW_ENTRY_NOT_FOUND",
+            error: "Admin endpoint not found",
+            code: "NOT_FOUND",
           });
         }
-        const entry = entryResult.data;
-
-        const patch = buildConfirmPatch(entry);
-        if (!patch) {
-          return status(400, {
-            error: "This entry proposes a field the API cannot apply",
-            code: "REVIEW_FIELD_UNSUPPORTED",
-          });
-        }
-
-        const printingId =
-          body?.printing_id?.trim() || entry.proposed_printing_id || null;
-        let oracleId = body?.oracle_id?.trim() || entry.proposed_oracle_id || null;
-
-        const hasOraclePatch = Object.keys(patch.oracle).length > 0;
-        const hasPrintingPatch = Object.keys(patch.printing).length > 0;
-        if (hasPrintingPatch && !printingId) {
-          return status(400, {
-            error: "Choose a printing to apply this to",
-            code: "REVIEW_TARGET_REQUIRED",
-          });
-        }
-
-        // A field_diff names one printing and never carries proposed_oracle_id,
-        // so an oracle-level field (type, energy, might, power) would otherwise
-        // be unconfirmable no matter what the admin chose. The printing knows
-        // its oracle; ask it rather than making the queue carry the id.
-        if (hasOraclePatch && !oracleId && printingId) {
-          const derived = await safely("reconciliation.confirm.oracle-lookup", () =>
-            repository.getPrintingOracleId(printingId),
-          );
-          if ("error" in derived) {
-            return status(derived.error.status, derived.error.body);
+        console.error(
+          JSON.stringify({
+            message: "unhandled admin route error",
+            code,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
+        return status(500, {
+          error: "Admin operation failed",
+          code: "ADMIN_OPERATION_FAILED",
+        });
+      })
+      .get(
+        "/audit-log",
+        async ({ query, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
           }
-          oracleId = derived.data;
-        }
 
-        if (hasOraclePatch && !oracleId) {
-          return status(400, {
-            error: "Choose a card to apply this to",
-            code: "REVIEW_TARGET_REQUIRED",
-          });
-        }
+          const limit = Math.min(
+            Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
+            AUDIT_LOG_MAX_LIMIT,
+          );
+          const offset = Math.max(Number.parseInt(query.offset ?? "0", 10) || 0, 0);
 
-        // An oracle field cannot ride along on admin_resolve_reconciliation_entry,
-        // which only knows how to patch a printing. It is applied first so a
-        // failure leaves the entry pending rather than closing it over a write
-        // that never landed.
-        if (hasOraclePatch) {
-          const oracleResult = await safely("reconciliation.confirm.oracle", () =>
-            repository.callRpc("admin_patch_oracle", {
-              p_oracle_id: oracleId,
-              p_patch: patch.oracle,
+          const result = await safely("audit_log.list", () =>
+            repository.listAuditLog({
+              limit,
+              offset,
+              action: query.action?.trim() || undefined,
+              targetType: query.target_type?.trim() || undefined,
+              targetId: query.target_id?.trim() || undefined,
+              actorId: query.actor_id?.trim() || undefined,
+            }),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+
+          return {
+            entries: result.data.entries,
+            total: result.data.total,
+            limit,
+            offset,
+          };
+        },
+        {
+          query: t.Object({
+            limit: t.Optional(t.String()),
+            offset: t.Optional(t.String()),
+            action: t.Optional(t.String({ maxLength: 100 })),
+            target_type: t.Optional(t.String({ maxLength: 50 })),
+            target_id: t.Optional(t.String({ maxLength: 128 })),
+            actor_id: t.Optional(t.String({ maxLength: 64 })),
+          }),
+          response: {
+            200: AuditLogResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Read the admin audit log",
+            description:
+              "Returns admin mutations newest first, optionally filtered by action, target, or actor.",
+          },
+        },
+      )
+
+      // ── Review queue ──────────────────────────────────────────────────────────
+      .get(
+        "/reconciliation",
+        async ({ query, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          const limit = Math.min(
+            Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
+            RECONCILIATION_MAX_LIMIT,
+          );
+          const offset = Math.max(Number.parseInt(query.offset ?? "0", 10) || 0, 0);
+
+          const result = await safely("reconciliation.list", () =>
+            repository.listReconciliation({
+              limit,
+              offset,
+              // Default to the only actionable status — the review page opens on
+              // work to do, not on a history of everything ever dismissed.
+              status: query.status ?? "pending",
+              kind: query.kind,
+              source: query.source,
+            }),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+
+          return {
+            entries: result.data.entries,
+            total: result.data.total,
+            counts: result.data.counts,
+            limit,
+            offset,
+          };
+        },
+        {
+          query: t.Object({
+            limit: t.Optional(t.String()),
+            offset: t.Optional(t.String()),
+            status: t.Optional(ReconciliationStatusQuerySchema),
+            kind: t.Optional(ReconciliationKindQuerySchema),
+            source: t.Optional(ReconciliationSourceQuerySchema),
+          }),
+          response: {
+            200: ReconciliationListResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "List review-queue entries",
+            description:
+              "What ingest could not reconcile: TCGPlayer products that match no printing, printings and cards the official gallery lists that we do not hold, and field disagreements from either source. Defaults to pending entries, newest first.",
+          },
+        },
+      )
+      .post(
+        "/reconciliation/:id/confirm",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          const entryResult = await safely("reconciliation.confirm.load", () =>
+            repository.getReconciliationEntry(params.id),
+          );
+          if ("error" in entryResult) {
+            return status(entryResult.error.status, entryResult.error.body);
+          }
+          if (!entryResult.data) {
+            return status(404, {
+              error: "Review entry not found",
+              code: "REVIEW_ENTRY_NOT_FOUND",
+            });
+          }
+          const entry = entryResult.data;
+
+          const patch = buildConfirmPatch(entry);
+          if (!patch) {
+            return status(400, {
+              error: "This entry proposes a field the API cannot apply",
+              code: "REVIEW_FIELD_UNSUPPORTED",
+            });
+          }
+
+          const printingId = body?.printing_id?.trim() || entry.proposed_printing_id || null;
+          let oracleId = body?.oracle_id?.trim() || entry.proposed_oracle_id || null;
+
+          const hasOraclePatch = Object.keys(patch.oracle).length > 0;
+          const hasPrintingPatch = Object.keys(patch.printing).length > 0;
+          if (hasPrintingPatch && !printingId) {
+            return status(400, {
+              error: "Choose a printing to apply this to",
+              code: "REVIEW_TARGET_REQUIRED",
+            });
+          }
+
+          // A field_diff names one printing and never carries proposed_oracle_id,
+          // so an oracle-level field (type, energy, might, power) would otherwise
+          // be unconfirmable no matter what the admin chose. The printing knows
+          // its oracle; ask it rather than making the queue carry the id.
+          if (hasOraclePatch && !oracleId && printingId) {
+            const derived = await safely("reconciliation.confirm.oracle-lookup", () =>
+              repository.getPrintingOracleId(printingId),
+            );
+            if ("error" in derived) {
+              return status(derived.error.status, derived.error.body);
+            }
+            oracleId = derived.data;
+          }
+
+          if (hasOraclePatch && !oracleId) {
+            return status(400, {
+              error: "Choose a card to apply this to",
+              code: "REVIEW_TARGET_REQUIRED",
+            });
+          }
+
+          // An oracle field cannot ride along on admin_resolve_reconciliation_entry,
+          // which only knows how to patch a printing. It is applied first so a
+          // failure leaves the entry pending rather than closing it over a write
+          // that never landed.
+          if (hasOraclePatch) {
+            const oracleResult = await safely("reconciliation.confirm.oracle", () =>
+              repository.callRpc("admin_patch_oracle", {
+                p_oracle_id: oracleId,
+                p_patch: patch.oracle,
+                p_actor: adminUser.id,
+              }),
+            );
+            if ("error" in oracleResult) {
+              return status(oracleResult.error.status, oracleResult.error.body);
+            }
+            const oracleFailure = mutationFailure(oracleResult.data);
+            if (oracleFailure) {
+              return status(oracleFailure.status, oracleFailure.body);
+            }
+          }
+
+          const rpcResult = await safely("reconciliation.confirm", () =>
+            repository.callRpc("admin_resolve_reconciliation_entry", {
+              p_entry_id: params.id,
+              p_action: "confirm",
+              p_printing_id: hasPrintingPatch ? printingId : null,
+              p_patch: patch.printing,
+              p_note: body?.note ?? null,
               p_actor: adminUser.id,
             }),
           );
-          if ("error" in oracleResult) {
-            return status(oracleResult.error.status, oracleResult.error.body);
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
           }
-          const oracleFailure = mutationFailure(oracleResult.data);
-          if (oracleFailure) {
-            return status(oracleFailure.status, oracleFailure.body);
-          }
-        }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
 
-        const rpcResult = await safely("reconciliation.confirm", () =>
-          repository.callRpc("admin_resolve_reconciliation_entry", {
-            p_entry_id: params.id,
-            p_action: "confirm",
-            p_printing_id: hasPrintingPatch ? printingId : null,
-            p_patch: patch.printing,
-            p_note: body?.note ?? null,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-
-        return {
-          ok: true as const,
-          entry_id: params.id,
-          status: "confirmed" as const,
-          printing_id: hasPrintingPatch ? printingId : null,
-          oracle_id: hasOraclePatch ? oracleId : null,
-        };
-      },
-      {
-        params: t.Object({ id: t.String({ format: "uuid" }) }),
-        body: t.Optional(
-          t.Object({
-            /** Overrides ingest's suggestion; required when it made none. */
-            printing_id: t.Optional(
-              t.String({
-                minLength: 1,
-                maxLength: 128,
-                pattern: NON_BLANK_PATTERN,
-              }),
-            ),
-            oracle_id: t.Optional(t.String({ format: "uuid" })),
-            note: t.Optional(t.String({ maxLength: 2000 })),
-          }),
-        ),
-        response: {
-          200: ReconciliationMutationResponseSchema,
-          ...AdminErrorResponses,
+          return {
+            ok: true as const,
+            entry_id: params.id,
+            status: "confirmed" as const,
+            printing_id: hasPrintingPatch ? printingId : null,
+            oracle_id: hasOraclePatch ? oracleId : null,
+          };
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Confirm a review entry",
-          description:
-            "Applies the proposal through the normal admin path — so it lands in locked_fields and survives the next ingest — and closes the entry. Printed fields go to the printing; rules-object fields go to the oracle.",
+        {
+          params: t.Object({ id: t.String({ format: "uuid" }) }),
+          body: t.Optional(
+            t.Object({
+              /** Overrides ingest's suggestion; required when it made none. */
+              printing_id: t.Optional(
+                t.String({
+                  minLength: 1,
+                  maxLength: 128,
+                  pattern: NON_BLANK_PATTERN,
+                }),
+              ),
+              oracle_id: t.Optional(t.String({ format: "uuid" })),
+              note: t.Optional(t.String({ maxLength: 2000 })),
+            }),
+          ),
+          response: {
+            200: ReconciliationMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Confirm a review entry",
+            description:
+              "Applies the proposal through the normal admin path — so it lands in locked_fields and survives the next ingest — and closes the entry. Printed fields go to the printing; rules-object fields go to the oracle.",
+          },
         },
-      },
-    )
-    .post(
-      "/reconciliation/:id/dismiss",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const rpcResult = await safely("reconciliation.dismiss", () =>
-          repository.callRpc("admin_resolve_reconciliation_entry", {
-            p_entry_id: params.id,
-            p_action: "dismiss",
-            p_printing_id: null,
-            p_patch: {},
-            p_note: body?.note ?? null,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-
-        return {
-          ok: true as const,
-          entry_id: params.id,
-          status: "dismissed" as const,
-          printing_id: null,
-          oracle_id: null,
-        };
-      },
-      {
-        params: t.Object({ id: t.String({ format: "uuid" }) }),
-        body: t.Optional(
-          t.Object({
-            note: t.Optional(t.String({ maxLength: 2000 })),
-          }),
-        ),
-        response: {
-          200: ReconciliationMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Dismiss a review entry",
-          description:
-            "Closes the entry without touching any card. The dismissal is durable, so later ingests do not resurface it.",
-        },
-      },
-    )
-
-    // ── Oracles ───────────────────────────────────────────────────────────────
-    .post(
-      "/oracles",
-      async ({ body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const name = body.definition.name.trim();
-        const takenResult = await safely("oracle.create.load_slugs", () =>
-          repository.getTakenOracleSlugs(slugifyCardName(name) || "card"),
-        );
-        if ("error" in takenResult) {
-          return status(takenResult.error.status, takenResult.error.body);
-        }
-
-        const rpcResult = await safely("oracle.create", () =>
-          repository.callRpc("admin_create_oracle", {
-            p_oracle_key: oracleKeyForName(name),
-            p_slug: generateOracleSlug(name, (slug) =>
-              takenResult.data.has(slug),
-            ),
-            p_definition: {
-              ...body.definition,
-              name,
-              name_normalized: normalizeCardName(name),
-            },
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-
-        return {
-          ok: true as const,
-          oracle_id: String(rpcResult.data.oracle_id ?? ""),
-        };
-      },
-      {
-        body: t.Object({ definition: AdminOracleDefinitionSchema }),
-        response: {
-          200: OracleMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Create a card",
-          description:
-            "Creates a manual oracle — the rules object. Printings are added separately with POST /admin/printings.",
-        },
-      },
-    )
-    .patch(
-      "/oracles/:id",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        if (Object.keys(body.patch).length === 0) {
-          return status(400, {
-            error: "Patch must contain at least one field",
-            code: "EMPTY_PATCH",
-          });
-        }
-
-        const patch: Record<string, unknown> = { ...body.patch };
-        if (typeof body.patch.name === "string") {
-          const name = body.patch.name.trim();
-          patch.name = name;
-          // Both derived values are computed here, never in SQL, so the
-          // normalization rules live in exactly one place. The slug is
-          // deliberately not regenerated: a public URL does not move because a
-          // typo was fixed.
-          patch.name_normalized = normalizeCardName(name);
-          patch.oracle_key = oracleKeyForName(name);
-        }
-
-        const rpcResult = await safely("oracle.patch", () =>
-          repository.callRpc("admin_patch_oracle", {
-            p_oracle_id: params.id,
-            p_patch: patch,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, oracle_id: params.id };
-      },
-      {
-        params: t.Object({ id: t.String({ format: "uuid" }) }),
-        body: t.Object({ patch: AdminOraclePatchSchema }),
-        response: {
-          200: OracleMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Patch a card",
-          description:
-            "Updates the rules object. Every patched key is added to locked_fields, which is what makes the edit survive the next ingest.",
-        },
-      },
-    )
-    .delete(
-      "/oracles/:id",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const rpcResult = await safely("oracle.delete", () =>
-          repository.callRpc("admin_delete_oracle", {
-            p_oracle_id: params.id,
-            p_reason: body?.reason ?? null,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, oracle_id: params.id };
-      },
-      {
-        params: t.Object({ id: t.String({ format: "uuid" }) }),
-        body: t.Optional(
-          t.Object({ reason: t.Optional(t.String({ maxLength: 2000 })) }),
-        ),
-        response: {
-          200: OracleMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Delete a card",
-          description:
-            "Soft-deletes the oracle and every printing of it. `deleted_at` both hides the row from readers and stops ingest resurrecting it.",
-        },
-      },
-    )
-    .post(
-      "/oracles/:id/restore",
-      async ({ params, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const rpcResult = await safely("oracle.restore", () =>
-          repository.callRpc("admin_restore_oracle", {
-            p_oracle_id: params.id,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, oracle_id: params.id };
-      },
-      {
-        params: t.Object({ id: t.String({ format: "uuid" }) }),
-        response: {
-          200: OracleMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Restore a deleted card",
-          description:
-            "Clears `deleted_at` on the oracle and its printings and rebuilds the projection.",
-        },
-      },
-    )
-    .get(
-      "/oracles/:id/relationships",
-      async ({ params, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const result = await safely("oracle.relationships.list", () =>
-          repository.listOracleRelationships(params.id),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        if (!result.data) {
-          return status(404, {
-            error: "Card not found",
-            code: "ORACLE_NOT_FOUND",
-          });
-        }
-        return result.data;
-      },
-      {
-        params: t.Object({ id: t.String({ format: "uuid" }) }),
-        response: {
-          200: AdminOracleRelationshipsResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Read a card's relationship edges",
-          description:
-            "Outgoing edges are the stored rows; incoming ones are the reverse view — `used_by` is not separately stored.",
-        },
-      },
-    )
-    .put(
-      "/oracles/:id/relationships",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const identities = new Set<string>();
-        for (const entry of body.entries) {
-          if (entry.to_oracle_id === params.id) {
-            return status(400, {
-              error: "A card cannot be related to itself",
-              code: "SELF_RELATIONSHIP",
+      )
+      .post(
+        "/reconciliation/:id/dismiss",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
             });
           }
-          const identity = `${entry.kind}\0${entry.to_oracle_id}`;
-          if (identities.has(identity)) {
-            return status(400, {
-              error: "Relationship entries must be unique by kind and target",
-              code: "DUPLICATE_RELATIONSHIP",
-            });
-          }
-          identities.add(identity);
-        }
 
-        const rpcResult = await safely("oracle.relationships", () =>
-          repository.callRpc("admin_set_oracle_relationships", {
-            p_oracle_id: params.id,
-            p_entries: body.entries,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, oracle_id: params.id };
-      },
-      {
-        params: t.Object({ id: t.String({ format: "uuid" }) }),
-        body: t.Object({
-          entries: t.Array(AdminRelationshipEntrySchema, { maxItems: 500 }),
-        }),
-        response: {
-          200: OracleMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Replace a card's relationship edges",
-          description:
-            "Full replacement of this oracle's outgoing edges, which also locks them against ingest. Oracle scope only — a relationship is a property of the rules object, so there is no per-printing exception to express.",
-        },
-      },
-    )
-
-    .get(
-      "/stats",
-      async ({ status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const result = await safely("stats.read", () => repository.getStats());
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        return {
-          sets: result.data.sets,
-          oracles: result.data.oracles,
-          printings: result.data.printings,
-          pending_review: result.data.pendingReview,
-        };
-      },
-      {
-        response: { 200: StatsResponseSchema, ...AdminErrorResponses },
-        detail: {
-          tags: ["Admin"],
-          summary: "Dashboard totals",
-          description:
-            "Live counts of sets, oracles and printings, plus the pending review backlog. Oracles and printings are counted separately because one card carries many printings — a single catalogue number would answer neither question.",
-        },
-      },
-    )
-
-    // ── Printings ─────────────────────────────────────────────────────────────
-    .get(
-      "/printings",
-      async ({ query, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const limit = Math.min(
-          Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
-          PRINTING_LIST_MAX_LIMIT,
-        );
-        const offset = Math.max(Number.parseInt(query.offset ?? "0", 10) || 0, 0);
-
-        const result = await safely("printing.list", () =>
-          repository.listPrintings({
-            limit,
-            offset,
-            state: query.state ?? "live",
-            q: query.q?.trim() || undefined,
-            setCode: query.set?.trim().toUpperCase() || undefined,
-            id: query.id?.trim() || undefined,
-          }),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-
-        return {
-          printings: result.data.printings,
-          total: result.data.total,
-          limit,
-          offset,
-        };
-      },
-      {
-        query: t.Object({
-          limit: t.Optional(t.String()),
-          offset: t.Optional(t.String()),
-          state: t.Optional(PrintingStateQuerySchema),
-          q: t.Optional(t.String()),
-          set: t.Optional(t.String()),
-          id: t.Optional(t.String()),
-        }),
-        response: {
-          200: PrintingListResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "List printings for the admin catalogue",
-          description:
-            "The admin card list. Unlike public search this can see the catalogue's bookkeeping — soft-deleted rows, manually created rows, admin-locked columns, printings carrying a delta, and printings with no hosted image — none of which the search grammar expresses, because that grammar is a language about cards rather than about the catalogue. Defaults to live printings.",
-        },
-      },
-    )
-    .post(
-      "/printings",
-      async ({ body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const printingId = body.id.trim();
-        const setCode = body.set_code.trim().toUpperCase();
-
-        const nameResult = await safely("printing.create.load_oracle", () =>
-          repository.getOracleName(body.oracle_id),
-        );
-        if ("error" in nameResult) {
-          return status(nameResult.error.status, nameResult.error.body);
-        }
-        if (!nameResult.data) {
-          return status(404, {
-            error: "Card not found",
-            code: "ORACLE_NOT_FOUND",
-          });
-        }
-
-        const slugPrinting: SlugPrinting = {
-          id: printingId,
-          name: nameResult.data,
-          setCode,
-          collectorNumber: body.definition.collector_number ?? undefined,
-          alternateArt: body.definition.is_alternate_art ?? false,
-          signature: body.definition.is_signature ?? false,
-        };
-        const takenResult = await safely("printing.create.load_slugs", () =>
-          repository.getTakenPrintingSlugs(
-            joinPublicSlug(buildPublicSlugSegments(slugPrinting)),
-          ),
-        );
-        if ("error" in takenResult) {
-          return status(takenResult.error.status, takenResult.error.body);
-        }
-
-        const rpcResult = await safely("printing.create", () =>
-          repository.callRpc("admin_create_printing", {
-            p_printing_id: printingId,
-            p_oracle_id: body.oracle_id,
-            p_set_code: setCode,
-            p_public_slug: generatePublicSlug(slugPrinting, (slug) =>
-              takenResult.data.has(slug),
-            ),
-            p_definition: body.definition,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, printing_id: printingId };
-      },
-      {
-        body: t.Object({
-          id: t.String({
-            minLength: 1,
-            maxLength: 128,
-            pattern: NON_BLANK_PATTERN,
-          }),
-          oracle_id: t.String({ format: "uuid" }),
-          set_code: SetCodeSchema,
-          definition: AdminPrintingDefinitionSchema,
-        }),
-        response: {
-          200: PrintingMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Create a printing",
-          description:
-            "Adds a physical printing to an existing card. The public slug is generated from the shared slug rules and pinned.",
-        },
-      },
-    )
-    .patch(
-      "/printings/:id",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        if (Object.keys(body.patch).length === 0) {
-          return status(400, {
-            error: "Patch must contain at least one field",
-            code: "EMPTY_PATCH",
-          });
-        }
-
-        const patch: Record<string, unknown> = { ...body.patch };
-        if (typeof body.patch.set_code === "string") {
-          patch.set_code = body.patch.set_code.trim().toUpperCase();
-        }
-
-        const rpcResult = await safely("printing.patch", () =>
-          repository.callRpc("admin_patch_printing", {
-            p_printing_id: params.id,
-            p_patch: patch,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, printing_id: params.id };
-      },
-      {
-        body: t.Object({ patch: AdminPrintingPatchSchema }),
-        response: {
-          200: PrintingMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Patch a printing",
-          description:
-            "Updates printed fields. `set_code` moves the printing to another set — there is no separate move endpoint.",
-        },
-      },
-    )
-    .delete(
-      "/printings/:id",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const rpcResult = await safely("printing.delete", () =>
-          repository.callRpc("admin_delete_printing", {
-            p_printing_id: params.id,
-            p_reason: body?.reason ?? null,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, printing_id: params.id };
-      },
-      {
-        body: t.Optional(
-          t.Object({ reason: t.Optional(t.String({ maxLength: 2000 })) }),
-        ),
-        response: {
-          200: PrintingMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Delete a printing",
-          description:
-            "Soft-deletes one printing. The card and its other printings are untouched.",
-        },
-      },
-    )
-    .post(
-      "/printings/:id/restore",
-      async ({ params, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const rpcResult = await safely("printing.restore", () =>
-          repository.callRpc("admin_restore_printing", {
-            p_printing_id: params.id,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, printing_id: params.id };
-      },
-      {
-        response: {
-          200: PrintingMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Restore a deleted printing",
-          description: "Clears `deleted_at` and re-evaluates rule-scoped rulings.",
-        },
-      },
-    )
-    .post(
-      "/printings/:id/regenerate-slug",
-      async ({ params, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const printingResult = await safely(
-          "printing.regenerate_slug.load",
-          () => repository.getSlugPrinting(params.id),
-        );
-        if ("error" in printingResult) {
-          return status(printingResult.error.status, printingResult.error.body);
-        }
-        const slugPrinting = printingResult.data;
-        if (!slugPrinting) {
-          return status(404, {
-            error: "Printing not found",
-            code: "PRINTING_NOT_FOUND",
-          });
-        }
-
-        const takenResult = await safely(
-          "printing.regenerate_slug.load_slugs",
-          () =>
-            repository.getTakenPrintingSlugs(
-              joinPublicSlug(buildPublicSlugSegments(slugPrinting)),
-              params.id,
-            ),
-        );
-        if ("error" in takenResult) {
-          return status(takenResult.error.status, takenResult.error.body);
-        }
-        const publicSlug = generatePublicSlug(slugPrinting, (slug) =>
-          takenResult.data.has(slug),
-        );
-
-        const rpcResult = await safely("printing.regenerate_slug", () =>
-          repository.callRpc("admin_set_printing_slug", {
-            p_printing_id: params.id,
-            p_slug: publicSlug,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return {
-          ok: true as const,
-          printing_id: params.id,
-          public_slug: publicSlug,
-        };
-      },
-      {
-        response: {
-          200: SlugMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Regenerate a printing's public slug",
-          description:
-            "Recomputes the slug with the shared rules and repins it. Slugs are otherwise never overwritten, so this breaks existing links deliberately.",
-        },
-      },
-    )
-    // Read before write: the panel authors a delta against what is already
-    // stored, so without this it could only ever clear-and-replace.
-    .get(
-      "/printings/:id/deltas",
-      async ({ params, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const result = await safely("printing.delta.read", () =>
-          repository.getPrintingDelta(params.id),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        if (!result.data) {
-          return status(404, { error: "Printing not found", code: "NOT_FOUND" });
-        }
-        return result.data;
-      },
-      {
-        params: t.Object({ id: t.String() }),
-        detail: {
-          tags: ["Admin"],
-          summary: "Read a printing's admin-authored delta",
-          description:
-            "Returns `delta: null` when the printing inherits its oracle wholesale. Ingest-authored deltas are deliberately not returned — they record genuine upstream divergence, not an admin decision.",
-        },
-      },
-    )
-    .put(
-      "/printings/:id/deltas",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        // An empty or absent delta clears the admin row entirely and the
-        // printing goes back to inheriting its oracle.
-        const delta =
-          body?.delta && Object.keys(body.delta).length > 0 ? body.delta : null;
-
-        const rpcResult = await safely("printing.delta", () =>
-          repository.callRpc("admin_set_printing_delta", {
-            p_printing_id: params.id,
-            p_delta: delta,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, printing_id: params.id };
-      },
-      {
-        body: t.Optional(
-          t.Object({ delta: t.Optional(t.Nullable(AdminPrintingDeltaSchema)) }),
-        ),
-        response: {
-          200: PrintingMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Set or clear a printing's delta",
-          description:
-            "Records how this printing genuinely differs from its oracle. Arrays add and remove; scalars override, and `cleared_fields` is how a scalar is blanked (NULL already means inherit). An empty or null body clears the delta.",
-        },
-      },
-    )
-    .post(
-      "/printings/:id/image",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository || !imageBindings) {
-          return status(503, {
-            error: "Admin image service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-
-        const bytes = await body.file.arrayBuffer();
-        const detectedContentType = detectAdminImageType(bytes);
-        if (
-          !detectedContentType ||
-          body.file.type !== detectedContentType
-        ) {
-          return status(400, {
-            error: "Unsupported image type or mismatched content",
-            code: "INVALID_IMAGE_TYPE",
-          });
-        }
-        if (bytes.byteLength === 0 || bytes.byteLength > MAX_IMAGE_BYTES) {
-          return status(400, {
-            error: "Image must be between 1 byte and 20 MB",
-            code: "INVALID_IMAGE_SIZE",
-          });
-        }
-
-        const contentHash = await sha256Hex(bytes);
-        const key = adminUploadObjectKey(params.id, contentHash);
-        const baseUrl = normalizeBaseUrl(imageBindings.baseUrl);
-        const uploadedSourceUrl = `${baseUrl}/${key}`;
-        const uploadedSourceHash = await sourceHash(uploadedSourceUrl);
-
-        const putResult = await safely("printing.image.store", () =>
-          imageBindings.bucket.put(key, bytes, {
-            httpMetadata: {
-              contentType: detectedContentType,
-              cacheControl: ADMIN_IMAGE_CACHE_CONTROL,
-            },
-            customMetadata: {
-              printingId: params.id,
-              contentHash,
-              sourceProvider: "admin",
-            },
-          }),
-        );
-        if ("error" in putResult) {
-          return status(503, {
-            error: "Admin image storage unavailable",
-            code: "IMAGE_STORAGE_UNAVAILABLE",
-          });
-        }
-
-        const persisted = await safely("printing.image.persist", () =>
-          repository.setPrintingImageSource(
-            params.id,
-            {
-              source_url: uploadedSourceUrl,
-              source_hash: uploadedSourceHash,
-              alt_text: body.accessibility_text,
-            },
-            adminUser.id,
-          ),
-        );
-        if ("error" in persisted) {
-          await cleanupUpload(imageBindings, key);
-          return status(persisted.error.status, persisted.error.body);
-        }
-        if (!persisted.data) {
-          await cleanupUpload(imageBindings, key);
-          return status(404, {
-            error: "Printing not found",
-            code: "PRINTING_NOT_FOUND",
-          });
-        }
-
-        // A failed enqueue is reported, not rolled back. The printing already
-        // carries the admin source_url, a valid source_hash and a null
-        // image_hosted_at, which is exactly the state the ingest catalogue scan
-        // looks for, so the next run re-queues it. Rolling back would instead
-        // discard an upload the admin made.
-        let queued = true;
-        try {
-          await imageBindings.queue.send({
-            version: 1,
-            printingId: params.id,
-            sourceUrl: uploadedSourceUrl,
-            sourceHash: uploadedSourceHash,
-            sourceProvider: "admin",
-          });
-        } catch (error) {
-          queued = false;
-          console.error(
-            JSON.stringify({
-              message: "admin image queue send failed",
-              printingId: params.id,
-              sourceHash: uploadedSourceHash,
-              error: error instanceof Error ? error.message : String(error),
+          const rpcResult = await safely("reconciliation.dismiss", () =>
+            repository.callRpc("admin_resolve_reconciliation_entry", {
+              p_entry_id: params.id,
+              p_action: "dismiss",
+              p_printing_id: null,
+              p_patch: {},
+              p_note: body?.note ?? null,
+              p_actor: adminUser.id,
             }),
           );
-        }
-
-        return status(202, {
-          ok: true as const,
-          printing_id: params.id,
-          source_url: uploadedSourceUrl,
-          source_hash: uploadedSourceHash,
-          queued,
-        });
-      },
-      {
-        body: t.Object({
-          file: t.File({
-            minSize: 1,
-            maxSize: "20m",
-          }),
-          accessibility_text: t.Optional(
-            t.String({ maxLength: 2000 }),
-          ),
-        }),
-        response: {
-          202: ImageMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Upload a printing's image",
-          description:
-            "Stores a content-addressed admin source in R2, points the printing at it, locks the image against ingest, and queues WebP variants.",
-        },
-      },
-    )
-
-    // ── Printing legalities and rulings ───────────────────────────────────────
-    .get(
-      "/printings/:id/legalities",
-      async ({ params, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const result = await safely("printing.legalities.list", () =>
-          repository.listPrintingLegalities(params.id),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        if (!result.data) {
-          return status(404, {
-            error: "Printing not found",
-            code: "PRINTING_NOT_FOUND",
-          });
-        }
-        return result.data;
-      },
-      {
-        response: {
-          200: AdminPrintingLegalitiesResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Read a printing's legalities",
-          description:
-            "One entry per active format with the resolved status and the layer that decided it, so the editor can show whether the status came from the card or from this printing.",
-        },
-      },
-    )
-    .put(
-      "/printings/:id/legalities",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const formatCode = body.format_code.trim().toLowerCase();
-        const applyToAll = body.apply_to_all_printings ?? false;
-
-        // Which id is passed is the whole scope mechanism: an oracle id sets the
-        // card-wide status (and clears every printing exception in that format),
-        // a printing id writes an exception to it.
-        let oracleId: string | null = null;
-        if (applyToAll) {
-          const owner = await safely("printing.legality.load_oracle", () =>
-            repository.getPrintingOracleId(params.id),
-          );
-          if ("error" in owner) {
-            return status(owner.error.status, owner.error.body);
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
           }
-          if (!owner.data) {
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+
+          return {
+            ok: true as const,
+            entry_id: params.id,
+            status: "dismissed" as const,
+            printing_id: null,
+            oracle_id: null,
+          };
+        },
+        {
+          params: t.Object({ id: t.String({ format: "uuid" }) }),
+          body: t.Optional(
+            t.Object({
+              note: t.Optional(t.String({ maxLength: 2000 })),
+            }),
+          ),
+          response: {
+            200: ReconciliationMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Dismiss a review entry",
+            description:
+              "Closes the entry without touching any card. The dismissal is durable, so later ingests do not resurface it.",
+          },
+        },
+      )
+
+      // ── Oracles ───────────────────────────────────────────────────────────────
+      .post(
+        "/oracles",
+        async ({ body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          const name = body.definition.name.trim();
+          const takenResult = await safely("oracle.create.load_slugs", () =>
+            repository.getTakenOracleSlugs(slugifyCardName(name) || "card"),
+          );
+          if ("error" in takenResult) {
+            return status(takenResult.error.status, takenResult.error.body);
+          }
+
+          const rpcResult = await safely("oracle.create", () =>
+            repository.callRpc("admin_create_oracle", {
+              p_oracle_key: oracleKeyForName(name),
+              p_slug: generateOracleSlug(name, (slug) => takenResult.data.has(slug)),
+              p_definition: {
+                ...body.definition,
+                name,
+                name_normalized: normalizeCardName(name),
+              },
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+
+          return {
+            ok: true as const,
+            oracle_id: String(rpcResult.data.oracle_id ?? ""),
+          };
+        },
+        {
+          body: t.Object({ definition: AdminOracleDefinitionSchema }),
+          response: {
+            200: OracleMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Create a card",
+            description:
+              "Creates a manual oracle — the rules object. Printings are added separately with POST /admin/printings.",
+          },
+        },
+      )
+      .patch(
+        "/oracles/:id",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          if (Object.keys(body.patch).length === 0) {
+            return status(400, {
+              error: "Patch must contain at least one field",
+              code: "EMPTY_PATCH",
+            });
+          }
+
+          const patch: Record<string, unknown> = { ...body.patch };
+          if (typeof body.patch.name === "string") {
+            const name = body.patch.name.trim();
+            patch.name = name;
+            // Both derived values are computed here, never in SQL, so the
+            // normalization rules live in exactly one place. The slug is
+            // deliberately not regenerated: a public URL does not move because a
+            // typo was fixed.
+            patch.name_normalized = normalizeCardName(name);
+            patch.oracle_key = oracleKeyForName(name);
+          }
+
+          const rpcResult = await safely("oracle.patch", () =>
+            repository.callRpc("admin_patch_oracle", {
+              p_oracle_id: params.id,
+              p_patch: patch,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, oracle_id: params.id };
+        },
+        {
+          params: t.Object({ id: t.String({ format: "uuid" }) }),
+          body: t.Object({ patch: AdminOraclePatchSchema }),
+          response: {
+            200: OracleMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Patch a card",
+            description:
+              "Updates the rules object. Every patched key is added to locked_fields, which is what makes the edit survive the next ingest.",
+          },
+        },
+      )
+      .delete(
+        "/oracles/:id",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const rpcResult = await safely("oracle.delete", () =>
+            repository.callRpc("admin_delete_oracle", {
+              p_oracle_id: params.id,
+              p_reason: body?.reason ?? null,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, oracle_id: params.id };
+        },
+        {
+          params: t.Object({ id: t.String({ format: "uuid" }) }),
+          body: t.Optional(t.Object({ reason: t.Optional(t.String({ maxLength: 2000 })) })),
+          response: {
+            200: OracleMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Delete a card",
+            description:
+              "Soft-deletes the oracle and every printing of it. `deleted_at` both hides the row from readers and stops ingest resurrecting it.",
+          },
+        },
+      )
+      .post(
+        "/oracles/:id/restore",
+        async ({ params, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const rpcResult = await safely("oracle.restore", () =>
+            repository.callRpc("admin_restore_oracle", {
+              p_oracle_id: params.id,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, oracle_id: params.id };
+        },
+        {
+          params: t.Object({ id: t.String({ format: "uuid" }) }),
+          response: {
+            200: OracleMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Restore a deleted card",
+            description:
+              "Clears `deleted_at` on the oracle and its printings and rebuilds the projection.",
+          },
+        },
+      )
+      .get(
+        "/oracles/:id/relationships",
+        async ({ params, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const result = await safely("oracle.relationships.list", () =>
+            repository.listOracleRelationships(params.id),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          if (!result.data) {
+            return status(404, {
+              error: "Card not found",
+              code: "ORACLE_NOT_FOUND",
+            });
+          }
+          return result.data;
+        },
+        {
+          params: t.Object({ id: t.String({ format: "uuid" }) }),
+          response: {
+            200: AdminOracleRelationshipsResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Read a card's relationship edges",
+            description:
+              "Outgoing edges are the stored rows; incoming ones are the reverse view — `used_by` is not separately stored.",
+          },
+        },
+      )
+      .put(
+        "/oracles/:id/relationships",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const identities = new Set<string>();
+          for (const entry of body.entries) {
+            if (entry.to_oracle_id === params.id) {
+              return status(400, {
+                error: "A card cannot be related to itself",
+                code: "SELF_RELATIONSHIP",
+              });
+            }
+            const identity = `${entry.kind}\0${entry.to_oracle_id}`;
+            if (identities.has(identity)) {
+              return status(400, {
+                error: "Relationship entries must be unique by kind and target",
+                code: "DUPLICATE_RELATIONSHIP",
+              });
+            }
+            identities.add(identity);
+          }
+
+          const rpcResult = await safely("oracle.relationships", () =>
+            repository.callRpc("admin_set_oracle_relationships", {
+              p_oracle_id: params.id,
+              p_entries: body.entries,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, oracle_id: params.id };
+        },
+        {
+          params: t.Object({ id: t.String({ format: "uuid" }) }),
+          body: t.Object({
+            entries: t.Array(AdminRelationshipEntrySchema, { maxItems: 500 }),
+          }),
+          response: {
+            200: OracleMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Replace a card's relationship edges",
+            description:
+              "Full replacement of this oracle's outgoing edges, which also locks them against ingest. Oracle scope only — a relationship is a property of the rules object, so there is no per-printing exception to express.",
+          },
+        },
+      )
+
+      .get(
+        "/stats",
+        async ({ status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const result = await safely("stats.read", () => repository.getStats());
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          return {
+            sets: result.data.sets,
+            oracles: result.data.oracles,
+            printings: result.data.printings,
+            pending_review: result.data.pendingReview,
+          };
+        },
+        {
+          response: { 200: StatsResponseSchema, ...AdminErrorResponses },
+          detail: {
+            tags: ["Admin"],
+            summary: "Dashboard totals",
+            description:
+              "Live counts of sets, oracles and printings, plus the pending review backlog. Oracles and printings are counted separately because one card carries many printings — a single catalogue number would answer neither question.",
+          },
+        },
+      )
+
+      // ── Printings ─────────────────────────────────────────────────────────────
+      .get(
+        "/printings",
+        async ({ query, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          const limit = Math.min(
+            Math.max(Number.parseInt(query.limit ?? "50", 10) || 50, 1),
+            PRINTING_LIST_MAX_LIMIT,
+          );
+          const offset = Math.max(Number.parseInt(query.offset ?? "0", 10) || 0, 0);
+
+          const result = await safely("printing.list", () =>
+            repository.listPrintings({
+              limit,
+              offset,
+              state: query.state ?? "live",
+              q: query.q?.trim() || undefined,
+              setCode: query.set?.trim().toUpperCase() || undefined,
+              id: query.id?.trim() || undefined,
+            }),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+
+          return {
+            printings: result.data.printings,
+            total: result.data.total,
+            limit,
+            offset,
+          };
+        },
+        {
+          query: t.Object({
+            limit: t.Optional(t.String()),
+            offset: t.Optional(t.String()),
+            state: t.Optional(PrintingStateQuerySchema),
+            q: t.Optional(t.String()),
+            set: t.Optional(t.String()),
+            id: t.Optional(t.String()),
+          }),
+          response: {
+            200: PrintingListResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "List printings for the admin catalogue",
+            description:
+              "The admin card list. Unlike public search this can see the catalogue's bookkeeping — soft-deleted rows, manually created rows, admin-locked columns, printings carrying a delta, and printings with no hosted image — none of which the search grammar expresses, because that grammar is a language about cards rather than about the catalogue. Defaults to live printings.",
+          },
+        },
+      )
+      .post(
+        "/printings",
+        async ({ body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          const printingId = body.id.trim();
+          const setCode = body.set_code.trim().toUpperCase();
+
+          const nameResult = await safely("printing.create.load_oracle", () =>
+            repository.getOracleName(body.oracle_id),
+          );
+          if ("error" in nameResult) {
+            return status(nameResult.error.status, nameResult.error.body);
+          }
+          if (!nameResult.data) {
+            return status(404, {
+              error: "Card not found",
+              code: "ORACLE_NOT_FOUND",
+            });
+          }
+
+          const slugPrinting: SlugPrinting = {
+            id: printingId,
+            name: nameResult.data,
+            setCode,
+            collectorNumber: body.definition.collector_number ?? undefined,
+            alternateArt: body.definition.is_alternate_art ?? false,
+            signature: body.definition.is_signature ?? false,
+          };
+          const takenResult = await safely("printing.create.load_slugs", () =>
+            repository.getTakenPrintingSlugs(joinPublicSlug(buildPublicSlugSegments(slugPrinting))),
+          );
+          if ("error" in takenResult) {
+            return status(takenResult.error.status, takenResult.error.body);
+          }
+
+          const rpcResult = await safely("printing.create", () =>
+            repository.callRpc("admin_create_printing", {
+              p_printing_id: printingId,
+              p_oracle_id: body.oracle_id,
+              p_set_code: setCode,
+              p_public_slug: generatePublicSlug(slugPrinting, (slug) => takenResult.data.has(slug)),
+              p_definition: body.definition,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, printing_id: printingId };
+        },
+        {
+          body: t.Object({
+            id: t.String({
+              minLength: 1,
+              maxLength: 128,
+              pattern: NON_BLANK_PATTERN,
+            }),
+            oracle_id: t.String({ format: "uuid" }),
+            set_code: SetCodeSchema,
+            definition: AdminPrintingDefinitionSchema,
+          }),
+          response: {
+            200: PrintingMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Create a printing",
+            description:
+              "Adds a physical printing to an existing card. The public slug is generated from the shared slug rules and pinned.",
+          },
+        },
+      )
+      .patch(
+        "/printings/:id",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          if (Object.keys(body.patch).length === 0) {
+            return status(400, {
+              error: "Patch must contain at least one field",
+              code: "EMPTY_PATCH",
+            });
+          }
+
+          const patch: Record<string, unknown> = { ...body.patch };
+          if (typeof body.patch.set_code === "string") {
+            patch.set_code = body.patch.set_code.trim().toUpperCase();
+          }
+
+          const rpcResult = await safely("printing.patch", () =>
+            repository.callRpc("admin_patch_printing", {
+              p_printing_id: params.id,
+              p_patch: patch,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, printing_id: params.id };
+        },
+        {
+          body: t.Object({ patch: AdminPrintingPatchSchema }),
+          response: {
+            200: PrintingMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Patch a printing",
+            description:
+              "Updates printed fields. `set_code` moves the printing to another set — there is no separate move endpoint.",
+          },
+        },
+      )
+      .delete(
+        "/printings/:id",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const rpcResult = await safely("printing.delete", () =>
+            repository.callRpc("admin_delete_printing", {
+              p_printing_id: params.id,
+              p_reason: body?.reason ?? null,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, printing_id: params.id };
+        },
+        {
+          body: t.Optional(t.Object({ reason: t.Optional(t.String({ maxLength: 2000 })) })),
+          response: {
+            200: PrintingMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Delete a printing",
+            description:
+              "Soft-deletes one printing. The card and its other printings are untouched.",
+          },
+        },
+      )
+      .post(
+        "/printings/:id/restore",
+        async ({ params, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const rpcResult = await safely("printing.restore", () =>
+            repository.callRpc("admin_restore_printing", {
+              p_printing_id: params.id,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, printing_id: params.id };
+        },
+        {
+          response: {
+            200: PrintingMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Restore a deleted printing",
+            description: "Clears `deleted_at` and re-evaluates rule-scoped rulings.",
+          },
+        },
+      )
+      .post(
+        "/printings/:id/regenerate-slug",
+        async ({ params, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          const printingResult = await safely("printing.regenerate_slug.load", () =>
+            repository.getSlugPrinting(params.id),
+          );
+          if ("error" in printingResult) {
+            return status(printingResult.error.status, printingResult.error.body);
+          }
+          const slugPrinting = printingResult.data;
+          if (!slugPrinting) {
             return status(404, {
               error: "Printing not found",
               code: "PRINTING_NOT_FOUND",
             });
           }
-          oracleId = owner.data;
-        }
 
-        // The note lives on the stored row, so clearing the status discards it
-        // with the row rather than orphaning an explanation of nothing.
-        const note = body.note?.trim() || null;
-        const rpcResult = await safely("printing.legality", () =>
-          repository.callRpc("admin_set_legality", {
-            p_oracle_id: oracleId,
-            p_printing_id: applyToAll ? null : params.id,
-            p_format_code: formatCode,
-            // `default` clears the row; every other value is stored as-is.
-            p_status: body.status === "default" ? null : body.status,
-            p_note: note,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return {
-          ok: true as const,
-          printing_id: params.id,
-          format_code: formatCode,
-          scope: applyToAll ? ("oracle" as const) : ("printing" as const),
-          status: body.status === "default" ? null : body.status,
-          note: body.status === "default" ? null : note,
-        };
-      },
-      {
-        body: t.Object({
-          format_code: t.String({
-            minLength: 1,
-            maxLength: 64,
-            pattern: FORMAT_CODE_PATTERN,
-          }),
-          status: LegalityStatusInputSchema,
-          note: t.Optional(
-            t.Nullable(
-              t.String({
-                maxLength: 500,
-                description:
-                  "Admin-facing explanation shown wherever this status is reported — e.g. “restricted to 1 copy as of the 2026-07 update”.",
-              }),
+          const takenResult = await safely("printing.regenerate_slug.load_slugs", () =>
+            repository.getTakenPrintingSlugs(
+              joinPublicSlug(buildPublicSlugSegments(slugPrinting)),
+              params.id,
             ),
-          ),
-          apply_to_all_printings: t.Optional(t.Boolean()),
-        }),
-        response: {
-          200: LegalityMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Set a legality in one format",
-          description:
-            "With apply_to_all_printings the status is stored on the card and every per-printing exception for that format is cleared; without it, only this printing is affected. `default` removes the stored status (absence means legal), and takes any note with it.",
-        },
-      },
-    )
-    .get(
-      "/printings/:id/rulings",
-      async ({ params, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const result = await safely("printing.rulings.list", () =>
-          repository.listPrintingRulings(params.id),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        if (!result.data) {
-          return status(404, {
-            error: "Printing not found",
-            code: "PRINTING_NOT_FOUND",
-          });
-        }
-        return result.data;
-      },
-      {
-        response: {
-          200: AdminPrintingRulingsResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Read the rulings reaching a printing",
-          description:
-            "Every ruling that lands on this printing and how it got there. Read-only: rulings are created and retargeted from /admin/rulings, because one ruling can cover many cards.",
-        },
-      },
-    )
+          );
+          if ("error" in takenResult) {
+            return status(takenResult.error.status, takenResult.error.body);
+          }
+          const publicSlug = generatePublicSlug(slugPrinting, (slug) => takenResult.data.has(slug));
 
-    // ── Formats ───────────────────────────────────────────────────────────────
-    .get(
-      "/formats",
-      async ({ status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const result = await safely("format.list", () =>
-          repository.listFormats(),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        return { formats: result.data };
-      },
-      {
-        response: {
-          200: AdminFormatListResponseSchema,
-          ...AdminErrorResponses,
+          const rpcResult = await safely("printing.regenerate_slug", () =>
+            repository.callRpc("admin_set_printing_slug", {
+              p_printing_id: params.id,
+              p_slug: publicSlug,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return {
+            ok: true as const,
+            printing_id: params.id,
+            public_slug: publicSlug,
+          };
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "List formats",
-          description:
-            "Returns every format including retired ones, each with the legality row counts a delete would cascade away.",
+        {
+          response: {
+            200: SlugMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Regenerate a printing's public slug",
+            description:
+              "Recomputes the slug with the shared rules and repins it. Slugs are otherwise never overwritten, so this breaks existing links deliberately.",
+          },
         },
-      },
-    )
-    .post(
-      "/formats",
-      async ({ body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const code = body.code.trim().toLowerCase();
-        const rpcResult = await safely("format.create", () =>
-          repository.callRpc("admin_create_format", {
-            p_code: code,
-            p_name: body.name.trim(),
-            p_sort_order: body.sort_order ?? null,
-            p_active: body.active ?? true,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, code };
-      },
-      {
-        body: t.Object({
-          code: t.String({
-            minLength: 1,
-            maxLength: 64,
-            pattern: FORMAT_CODE_PATTERN,
-          }),
-          name: t.String({
-            minLength: 1,
-            maxLength: 120,
-            pattern: NON_BLANK_PATTERN,
-          }),
-          sort_order: t.Optional(t.Integer({ minimum: 0, maximum: 10_000 })),
-          active: t.Optional(t.Boolean()),
-        }),
-        response: {
-          200: FormatMutationResponseSchema,
-          ...AdminErrorResponses,
+      )
+      // Read before write: the panel authors a delta against what is already
+      // stored, so without this it could only ever clear-and-replace.
+      .get(
+        "/printings/:id/deltas",
+        async ({ params, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const result = await safely("printing.delta.read", () =>
+            repository.getPrintingDelta(params.id),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          if (!result.data) {
+            return status(404, { error: "Printing not found", code: "NOT_FOUND" });
+          }
+          return result.data;
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Create a format",
-          description:
-            "Creates a play format. Omitting sort_order appends it to the end of the list.",
+        {
+          params: t.Object({ id: t.String() }),
+          detail: {
+            tags: ["Admin"],
+            summary: "Read a printing's admin-authored delta",
+            description:
+              "Returns `delta: null` when the printing inherits its oracle wholesale. Ingest-authored deltas are deliberately not returned — they record genuine upstream divergence, not an admin decision.",
+          },
         },
-      },
-    )
-    // Registered before /formats/:code so "order" is never read as a format code.
-    .put(
-      "/formats/order",
-      async ({ body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
+      )
+      .put(
+        "/printings/:id/deltas",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          // An empty or absent delta clears the admin row entirely and the
+          // printing goes back to inheriting its oracle.
+          const delta = body?.delta && Object.keys(body.delta).length > 0 ? body.delta : null;
+
+          const rpcResult = await safely("printing.delta", () =>
+            repository.callRpc("admin_set_printing_delta", {
+              p_printing_id: params.id,
+              p_delta: delta,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, printing_id: params.id };
+        },
+        {
+          body: t.Optional(t.Object({ delta: t.Optional(t.Nullable(AdminPrintingDeltaSchema)) })),
+          response: {
+            200: PrintingMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Set or clear a printing's delta",
+            description:
+              "Records how this printing genuinely differs from its oracle. Arrays add and remove; scalars override, and `cleared_fields` is how a scalar is blanked (NULL already means inherit). An empty or null body clears the delta.",
+          },
+        },
+      )
+      .post(
+        "/printings/:id/image",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository || !imageBindings) {
+            return status(503, {
+              error: "Admin image service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+
+          const bytes = await body.file.arrayBuffer();
+          const detectedContentType = detectAdminImageType(bytes);
+          if (!detectedContentType || body.file.type !== detectedContentType) {
+            return status(400, {
+              error: "Unsupported image type or mismatched content",
+              code: "INVALID_IMAGE_TYPE",
+            });
+          }
+          if (bytes.byteLength === 0 || bytes.byteLength > MAX_IMAGE_BYTES) {
+            return status(400, {
+              error: "Image must be between 1 byte and 20 MB",
+              code: "INVALID_IMAGE_SIZE",
+            });
+          }
+
+          const contentHash = await sha256Hex(bytes);
+          const key = adminUploadObjectKey(params.id, contentHash);
+          const baseUrl = normalizeBaseUrl(imageBindings.baseUrl);
+          const uploadedSourceUrl = `${baseUrl}/${key}`;
+          const uploadedSourceHash = await sourceHash(uploadedSourceUrl);
+
+          const putResult = await safely("printing.image.store", () =>
+            imageBindings.bucket.put(key, bytes, {
+              httpMetadata: {
+                contentType: detectedContentType,
+                cacheControl: ADMIN_IMAGE_CACHE_CONTROL,
+              },
+              customMetadata: {
+                printingId: params.id,
+                contentHash,
+                sourceProvider: "admin",
+              },
+            }),
+          );
+          if ("error" in putResult) {
+            return status(503, {
+              error: "Admin image storage unavailable",
+              code: "IMAGE_STORAGE_UNAVAILABLE",
+            });
+          }
+
+          const persisted = await safely("printing.image.persist", () =>
+            repository.setPrintingImageSource(
+              params.id,
+              {
+                source_url: uploadedSourceUrl,
+                source_hash: uploadedSourceHash,
+                alt_text: body.accessibility_text,
+              },
+              adminUser.id,
+            ),
+          );
+          if ("error" in persisted) {
+            await cleanupUpload(imageBindings, key);
+            return status(persisted.error.status, persisted.error.body);
+          }
+          if (!persisted.data) {
+            await cleanupUpload(imageBindings, key);
+            return status(404, {
+              error: "Printing not found",
+              code: "PRINTING_NOT_FOUND",
+            });
+          }
+
+          // A failed enqueue is reported, not rolled back. The printing already
+          // carries the admin source_url, a valid source_hash and a null
+          // image_hosted_at, which is exactly the state the ingest catalogue scan
+          // looks for, so the next run re-queues it. Rolling back would instead
+          // discard an upload the admin made.
+          let queued = true;
+          try {
+            await imageBindings.queue.send({
+              version: 1,
+              printingId: params.id,
+              sourceUrl: uploadedSourceUrl,
+              sourceHash: uploadedSourceHash,
+              sourceProvider: "admin",
+            });
+          } catch (error) {
+            queued = false;
+            console.error(
+              JSON.stringify({
+                message: "admin image queue send failed",
+                printingId: params.id,
+                sourceHash: uploadedSourceHash,
+                error: error instanceof Error ? error.message : String(error),
+              }),
+            );
+          }
+
+          return status(202, {
+            ok: true as const,
+            printing_id: params.id,
+            source_url: uploadedSourceUrl,
+            source_hash: uploadedSourceHash,
+            queued,
           });
-        }
-        const codes = body.codes.map((code) => code.trim().toLowerCase());
-        if (new Set(codes).size !== codes.length) {
-          return status(400, {
-            error: "Format codes must be unique",
-            code: "DUPLICATE_FORMAT",
-          });
-        }
-        const rpcResult = await safely("format.reorder", () =>
-          repository.callRpc("admin_reorder_formats", {
-            p_codes: codes,
-            p_actor: adminUser.id,
+        },
+        {
+          body: t.Object({
+            file: t.File({
+              minSize: 1,
+              maxSize: "20m",
+            }),
+            accessibility_text: t.Optional(t.String({ maxLength: 2000 })),
           }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const };
-      },
-      {
-        body: t.Object({
-          codes: t.Array(
-            t.String({
+          response: {
+            202: ImageMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Upload a printing's image",
+            description:
+              "Stores a content-addressed admin source in R2, points the printing at it, locks the image against ingest, and queues WebP variants.",
+          },
+        },
+      )
+
+      // ── Printing legalities and rulings ───────────────────────────────────────
+      .get(
+        "/printings/:id/legalities",
+        async ({ params, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const result = await safely("printing.legalities.list", () =>
+            repository.listPrintingLegalities(params.id),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          if (!result.data) {
+            return status(404, {
+              error: "Printing not found",
+              code: "PRINTING_NOT_FOUND",
+            });
+          }
+          return result.data;
+        },
+        {
+          response: {
+            200: AdminPrintingLegalitiesResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Read a printing's legalities",
+            description:
+              "One entry per active format with the resolved status and the layer that decided it, so the editor can show whether the status came from the card or from this printing.",
+          },
+        },
+      )
+      .put(
+        "/printings/:id/legalities",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const formatCode = body.format_code.trim().toLowerCase();
+          const applyToAll = body.apply_to_all_printings ?? false;
+
+          // Which id is passed is the whole scope mechanism: an oracle id sets the
+          // card-wide status (and clears every printing exception in that format),
+          // a printing id writes an exception to it.
+          let oracleId: string | null = null;
+          if (applyToAll) {
+            const owner = await safely("printing.legality.load_oracle", () =>
+              repository.getPrintingOracleId(params.id),
+            );
+            if ("error" in owner) {
+              return status(owner.error.status, owner.error.body);
+            }
+            if (!owner.data) {
+              return status(404, {
+                error: "Printing not found",
+                code: "PRINTING_NOT_FOUND",
+              });
+            }
+            oracleId = owner.data;
+          }
+
+          // The note lives on the stored row, so clearing the status discards it
+          // with the row rather than orphaning an explanation of nothing.
+          const note = body.note?.trim() || null;
+          const rpcResult = await safely("printing.legality", () =>
+            repository.callRpc("admin_set_legality", {
+              p_oracle_id: oracleId,
+              p_printing_id: applyToAll ? null : params.id,
+              p_format_code: formatCode,
+              // `default` clears the row; every other value is stored as-is.
+              p_status: body.status === "default" ? null : body.status,
+              p_note: note,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return {
+            ok: true as const,
+            printing_id: params.id,
+            format_code: formatCode,
+            scope: applyToAll ? ("oracle" as const) : ("printing" as const),
+            status: body.status === "default" ? null : body.status,
+            note: body.status === "default" ? null : note,
+          };
+        },
+        {
+          body: t.Object({
+            format_code: t.String({
               minLength: 1,
               maxLength: 64,
               pattern: FORMAT_CODE_PATTERN,
             }),
-            { maxItems: 200 },
-          ),
-        }),
-        response: {
-          200: t.Object({ ok: t.Literal(true) }),
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Reorder formats",
-          description:
-            "Rewrites sort_order from the position of each code. Send the complete list — an unknown code is rejected rather than skipped.",
-        },
-      },
-    )
-    .patch(
-      "/formats/:code",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        if (Object.keys(body.patch).length === 0) {
-          return status(400, {
-            error: "Patch must contain at least one field",
-            code: "EMPTY_PATCH",
-          });
-        }
-        const code = params.code.trim().toLowerCase();
-        const patch: Record<string, unknown> = { ...body.patch };
-        if (typeof body.patch.name === "string") {
-          patch.name = body.patch.name.trim();
-        }
-        const rpcResult = await safely("format.patch", () =>
-          repository.callRpc("admin_patch_format", {
-            p_code: code,
-            p_patch: patch,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, code };
-      },
-      {
-        body: t.Object({
-          patch: t.Object({
-            name: t.Optional(
-              t.String({
-                minLength: 1,
-                maxLength: 120,
-                pattern: NON_BLANK_PATTERN,
-              }),
+            status: LegalityStatusInputSchema,
+            note: t.Optional(
+              t.Nullable(
+                t.String({
+                  maxLength: 500,
+                  description:
+                    "Admin-facing explanation shown wherever this status is reported — e.g. “restricted to 1 copy as of the 2026-07 update”.",
+                }),
+              ),
             ),
+            apply_to_all_printings: t.Optional(t.Boolean()),
+          }),
+          response: {
+            200: LegalityMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Set a legality in one format",
+            description:
+              "With apply_to_all_printings the status is stored on the card and every per-printing exception for that format is cleared; without it, only this printing is affected. `default` removes the stored status (absence means legal), and takes any note with it.",
+          },
+        },
+      )
+      .get(
+        "/printings/:id/rulings",
+        async ({ params, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const result = await safely("printing.rulings.list", () =>
+            repository.listPrintingRulings(params.id),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          if (!result.data) {
+            return status(404, {
+              error: "Printing not found",
+              code: "PRINTING_NOT_FOUND",
+            });
+          }
+          return result.data;
+        },
+        {
+          response: {
+            200: AdminPrintingRulingsResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Read the rulings reaching a printing",
+            description:
+              "Every ruling that lands on this printing and how it got there. Read-only: rulings are created and retargeted from /admin/rulings, because one ruling can cover many cards.",
+          },
+        },
+      )
+
+      // ── Formats ───────────────────────────────────────────────────────────────
+      .get(
+        "/formats",
+        async ({ status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const result = await safely("format.list", () => repository.listFormats());
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          return { formats: result.data };
+        },
+        {
+          response: {
+            200: AdminFormatListResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "List formats",
+            description:
+              "Returns every format including retired ones, each with the legality row counts a delete would cascade away.",
+          },
+        },
+      )
+      .post(
+        "/formats",
+        async ({ body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const code = body.code.trim().toLowerCase();
+          const rpcResult = await safely("format.create", () =>
+            repository.callRpc("admin_create_format", {
+              p_code: code,
+              p_name: body.name.trim(),
+              p_sort_order: body.sort_order ?? null,
+              p_active: body.active ?? true,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, code };
+        },
+        {
+          body: t.Object({
+            code: t.String({
+              minLength: 1,
+              maxLength: 64,
+              pattern: FORMAT_CODE_PATTERN,
+            }),
+            name: t.String({
+              minLength: 1,
+              maxLength: 120,
+              pattern: NON_BLANK_PATTERN,
+            }),
             sort_order: t.Optional(t.Integer({ minimum: 0, maximum: 10_000 })),
             active: t.Optional(t.Boolean()),
           }),
-        }),
-        response: {
-          200: FormatMutationResponseSchema,
-          ...AdminErrorResponses,
+          response: {
+            200: FormatMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Create a format",
+            description:
+              "Creates a play format. Omitting sort_order appends it to the end of the list.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Patch a format",
-          description:
-            "Updates a format's name, order or active flag. `code` is immutable — it is the public handle used by API clients.",
+      )
+      // Registered before /formats/:code so "order" is never read as a format code.
+      .put(
+        "/formats/order",
+        async ({ body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const codes = body.codes.map((code) => code.trim().toLowerCase());
+          if (new Set(codes).size !== codes.length) {
+            return status(400, {
+              error: "Format codes must be unique",
+              code: "DUPLICATE_FORMAT",
+            });
+          }
+          const rpcResult = await safely("format.reorder", () =>
+            repository.callRpc("admin_reorder_formats", {
+              p_codes: codes,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const };
         },
-      },
-    )
-    .delete(
-      "/formats/:code",
-      async ({ params, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const code = params.code.trim().toLowerCase();
-        const rpcResult = await safely("format.delete", () =>
-          repository.callRpc("admin_delete_format", {
-            p_code: code,
-            p_actor: adminUser.id,
+        {
+          body: t.Object({
+            codes: t.Array(
+              t.String({
+                minLength: 1,
+                maxLength: 64,
+                pattern: FORMAT_CODE_PATTERN,
+              }),
+              { maxItems: 200 },
+            ),
           }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return {
-          ok: true as const,
-          code,
-          legalities_removed: Number(rpcResult.data.legalities_removed ?? 0),
-          overrides_removed: Number(rpcResult.data.overrides_removed ?? 0),
-        };
-      },
-      {
-        response: {
-          200: FormatDeleteResponseSchema,
-          ...AdminErrorResponses,
+          response: {
+            200: t.Object({ ok: t.Literal(true) }),
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Reorder formats",
+            description:
+              "Rewrites sort_order from the position of each code. Send the complete list — an unknown code is rejected rather than skipped.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Delete a format",
-          description:
-            "Deletes a format and cascades away its legality rows. The response reports how many were removed.",
+      )
+      .patch(
+        "/formats/:code",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          if (Object.keys(body.patch).length === 0) {
+            return status(400, {
+              error: "Patch must contain at least one field",
+              code: "EMPTY_PATCH",
+            });
+          }
+          const code = params.code.trim().toLowerCase();
+          const patch: Record<string, unknown> = { ...body.patch };
+          if (typeof body.patch.name === "string") {
+            patch.name = body.patch.name.trim();
+          }
+          const rpcResult = await safely("format.patch", () =>
+            repository.callRpc("admin_patch_format", {
+              p_code: code,
+              p_patch: patch,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, code };
         },
-      },
-    )
+        {
+          body: t.Object({
+            patch: t.Object({
+              name: t.Optional(
+                t.String({
+                  minLength: 1,
+                  maxLength: 120,
+                  pattern: NON_BLANK_PATTERN,
+                }),
+              ),
+              sort_order: t.Optional(t.Integer({ minimum: 0, maximum: 10_000 })),
+              active: t.Optional(t.Boolean()),
+            }),
+          }),
+          response: {
+            200: FormatMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Patch a format",
+            description:
+              "Updates a format's name, order or active flag. `code` is immutable — it is the public handle used by API clients.",
+          },
+        },
+      )
+      .delete(
+        "/formats/:code",
+        async ({ params, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const code = params.code.trim().toLowerCase();
+          const rpcResult = await safely("format.delete", () =>
+            repository.callRpc("admin_delete_format", {
+              p_code: code,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return {
+            ok: true as const,
+            code,
+            legalities_removed: Number(rpcResult.data.legalities_removed ?? 0),
+            overrides_removed: Number(rpcResult.data.overrides_removed ?? 0),
+          };
+        },
+        {
+          response: {
+            200: FormatDeleteResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Delete a format",
+            description:
+              "Deletes a format and cascades away its legality rows. The response reports how many were removed.",
+          },
+        },
+      )
 
-    // ── Format construction rules ─────────────────────────────────────────────
-    //
-    // A rule per zone, and a format with no rules constrains nothing. Every
-    // bound is nullable, and an omitted or null bound is *unconstrained* — the
-    // reason these are three nullable numbers rather than three numbers with a
-    // sentinel is that `0` is a legitimate limit and must not read as "any".
-    .put(
-      "/formats/:code/zone-rules/:zone",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const code = params.code.trim().toLowerCase();
-        const rpcResult = await safely("format.zone_rule", () =>
-          repository.callRpc("admin_set_format_zone_rule", {
-            p_code: code,
-            p_zone: params.zone,
-            p_min_count: body.min_count ?? null,
-            p_max_count: body.max_count ?? null,
-            p_copy_limit: body.copy_limit ?? null,
-            p_actor: adminUser.id,
+      // ── Format construction rules ─────────────────────────────────────────────
+      //
+      // A rule per zone, and a format with no rules constrains nothing. Every
+      // bound is nullable, and an omitted or null bound is *unconstrained* — the
+      // reason these are three nullable numbers rather than three numbers with a
+      // sentinel is that `0` is a legitimate limit and must not read as "any".
+      .put(
+        "/formats/:code/zone-rules/:zone",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const code = params.code.trim().toLowerCase();
+          const rpcResult = await safely("format.zone_rule", () =>
+            repository.callRpc("admin_set_format_zone_rule", {
+              p_code: code,
+              p_zone: params.zone,
+              p_min_count: body.min_count ?? null,
+              p_max_count: body.max_count ?? null,
+              p_copy_limit: body.copy_limit ?? null,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return {
+            ok: true as const,
+            code,
+            zone: params.zone,
+            min_count: body.min_count ?? null,
+            max_count: body.max_count ?? null,
+            copy_limit: body.copy_limit ?? null,
+          };
+        },
+        {
+          params: t.Object({
+            code: t.String({ minLength: 1, maxLength: 64 }),
+            zone: DeckZoneSchema,
           }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return {
-          ok: true as const,
-          code,
-          zone: params.zone,
-          min_count: body.min_count ?? null,
-          max_count: body.max_count ?? null,
-          copy_limit: body.copy_limit ?? null,
-        };
-      },
-      {
-        params: t.Object({
-          code: t.String({ minLength: 1, maxLength: 64 }),
-          zone: DeckZoneSchema,
-        }),
-        body: t.Object({
-          min_count: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
-          max_count: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
-          copy_limit: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
-        }),
-        response: {
-          200: FormatZoneRuleMutationResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Set a format's rule for one zone",
-          description:
-            "Upserts the zone's minimum, maximum and per-oracle copy limit. Send null (or omit) a bound to leave that aspect unconstrained — null is not zero.",
-        },
-      },
-    )
-    .delete(
-      "/formats/:code/zone-rules/:zone",
-      async ({ params, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const code = params.code.trim().toLowerCase();
-        const rpcResult = await safely("format.zone_rule.delete", () =>
-          repository.callRpc("admin_delete_format_zone_rule", {
-            p_code: code,
-            p_zone: params.zone,
-            p_actor: adminUser.id,
+          body: t.Object({
+            min_count: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
+            max_count: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
+            copy_limit: t.Optional(t.Nullable(t.Integer({ minimum: 0, maximum: 1000 }))),
           }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return {
-          ok: true as const,
-          code,
-          zone: params.zone,
-          deleted: rpcResult.data.deleted === true,
-        };
-      },
-      {
-        params: t.Object({
-          code: t.String({ minLength: 1, maxLength: 64 }),
-          zone: DeckZoneSchema,
-        }),
-        response: {
-          200: FormatZoneRuleDeleteResponseSchema,
-          ...AdminErrorResponses,
+          response: {
+            200: FormatZoneRuleMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Set a format's rule for one zone",
+            description:
+              "Upserts the zone's minimum, maximum and per-oracle copy limit. Send null (or omit) a bound to leave that aspect unconstrained — null is not zero.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Remove a format's rule for one zone",
-          description:
-            "Leaves the zone unconstrained. Idempotent: removing a rule that is not there succeeds with deleted=false.",
+      )
+      .delete(
+        "/formats/:code/zone-rules/:zone",
+        async ({ params, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const code = params.code.trim().toLowerCase();
+          const rpcResult = await safely("format.zone_rule.delete", () =>
+            repository.callRpc("admin_delete_format_zone_rule", {
+              p_code: code,
+              p_zone: params.zone,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return {
+            ok: true as const,
+            code,
+            zone: params.zone,
+            deleted: rpcResult.data.deleted === true,
+          };
         },
-      },
-    )
-    .put(
-      "/formats/:code/severities/:legality_status",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const code = params.code.trim().toLowerCase();
-        // `default` is not a severity: it removes the override so the status
-        // falls back to DEFAULT_LEGALITY_SEVERITY, rather than storing a row
-        // that duplicates the shared mapping and then drifts from it.
-        const severity = body.severity === "default" ? null : body.severity;
-        const rpcResult = await safely("format.legality_severity", () =>
-          repository.callRpc("admin_set_format_legality_severity", {
-            p_code: code,
-            p_status: params.legality_status,
-            p_severity: severity,
-            p_actor: adminUser.id,
+        {
+          params: t.Object({
+            code: t.String({ minLength: 1, maxLength: 64 }),
+            zone: DeckZoneSchema,
           }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return {
-          ok: true as const,
-          code,
-          status: params.legality_status,
-          severity,
-        };
-      },
-      {
-        params: t.Object({
-          code: t.String({ minLength: 1, maxLength: 64 }),
-          legality_status: LegalityStatusSchema,
-        }),
-        body: t.Object({ severity: ViolationSeverityInputSchema }),
-        response: {
-          200: FormatSeverityMutationResponseSchema,
-          ...AdminErrorResponses,
+          response: {
+            200: FormatZoneRuleDeleteResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Remove a format's rule for one zone",
+            description:
+              "Leaves the zone unconstrained. Idempotent: removing a rule that is not there succeeds with deleted=false.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Override how loudly a status reads in one format",
-          description:
-            "Stores this format's departure from the shared default severity mapping. `default` deletes the override and falls back; `none` is a stored decision that the status should say nothing.",
+      )
+      .put(
+        "/formats/:code/severities/:legality_status",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const code = params.code.trim().toLowerCase();
+          // `default` is not a severity: it removes the override so the status
+          // falls back to DEFAULT_LEGALITY_SEVERITY, rather than storing a row
+          // that duplicates the shared mapping and then drifts from it.
+          const severity = body.severity === "default" ? null : body.severity;
+          const rpcResult = await safely("format.legality_severity", () =>
+            repository.callRpc("admin_set_format_legality_severity", {
+              p_code: code,
+              p_status: params.legality_status,
+              p_severity: severity,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return {
+            ok: true as const,
+            code,
+            status: params.legality_status,
+            severity,
+          };
         },
-      },
-    )
+        {
+          params: t.Object({
+            code: t.String({ minLength: 1, maxLength: 64 }),
+            legality_status: LegalityStatusSchema,
+          }),
+          body: t.Object({ severity: ViolationSeverityInputSchema }),
+          response: {
+            200: FormatSeverityMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Override how loudly a status reads in one format",
+            description:
+              "Stores this format's departure from the shared default severity mapping. `default` deletes the override and falls back; `none` is a stored decision that the status should say nothing.",
+          },
+        },
+      )
 
-    // ── Rulings ───────────────────────────────────────────────────────────────
-    // A ruling is separate from what it applies to, so it is edited here rather
-    // than per card: one ruling can point at an oracle, a printing, or a saved
-    // query that keeps matching cards as they are released.
-    .get(
-      "/rulings",
-      async ({ query, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const result = await safely("ruling.list", () =>
-          repository.listRulings({
-            limit: query.limit ?? 50,
-            offset: query.offset ?? 0,
-            query: query.q?.trim() || undefined,
-            kind: query.kind,
+      // ── Rulings ───────────────────────────────────────────────────────────────
+      // A ruling is separate from what it applies to, so it is edited here rather
+      // than per card: one ruling can point at an oracle, a printing, or a saved
+      // query that keeps matching cards as they are released.
+      .get(
+        "/rulings",
+        async ({ query, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const result = await safely("ruling.list", () =>
+            repository.listRulings({
+              limit: query.limit ?? 50,
+              offset: query.offset ?? 0,
+              query: query.q?.trim() || undefined,
+              kind: query.kind,
+            }),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          return result.data;
+        },
+        {
+          query: t.Object({
+            q: t.Optional(t.String({ maxLength: 200 })),
+            // A t.Union of literals, not t.UnionEnum: UnionEnum fills in its first
+            // member when the key is absent, which would silently filter every
+            // unfiltered list to `oracle`.
+            kind: t.Optional(
+              t.Union([t.Literal("oracle"), t.Literal("printing"), t.Literal("query")]),
+            ),
+            limit: t.Optional(t.Number({ minimum: 1, maximum: 200 })),
+            offset: t.Optional(t.Number({ minimum: 0 })),
           }),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        return result.data;
-      },
-      {
-        query: t.Object({
-          q: t.Optional(t.String({ maxLength: 200 })),
-          // A t.Union of literals, not t.UnionEnum: UnionEnum fills in its first
-          // member when the key is absent, which would silently filter every
-          // unfiltered list to `oracle`.
-          kind: t.Optional(
-            t.Union([
-              t.Literal("oracle"),
-              t.Literal("printing"),
-              t.Literal("query"),
-            ]),
-          ),
-          limit: t.Optional(t.Number({ minimum: 1, maximum: 200 })),
-          offset: t.Optional(t.Number({ minimum: 0 })),
-        }),
-        response: {
-          200: RulingsPageSchema,
-          ...AdminErrorResponses,
+          response: {
+            200: RulingsPageSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "List rulings",
+            description:
+              "Every ruling with its targets, newest first. `q` matches ruling text; `kind` narrows to rulings carrying a target of that kind.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "List rulings",
-          description:
-            "Every ruling with its targets, newest first. `q` matches ruling text; `kind` narrows to rulings carrying a target of that kind.",
-        },
-      },
-    )
-    .post(
-      "/rulings/preview",
-      async ({ body, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const built = buildRulingTargets([
-          { kind: "query", query: body.query },
-        ]);
-        if ("error" in built) {
-          return status(built.error.status, built.error.body);
-        }
-        const ast = built.targets[0]?.ast;
-        const result = await safely("ruling.preview", () =>
-          repository.previewRule(ast, body.limit ?? 20),
-        );
-        if ("error" in result) {
-          return status(result.error.status, result.error.body);
-        }
-        return { query: body.query.trim(), ...result.data };
-      },
-      {
-        body: t.Object({
-          query: t.String({
-            minLength: 1,
-            maxLength: CARD_SEARCH_LIMITS.maxInputLength,
-            pattern: NON_BLANK_PATTERN,
-          }),
-          limit: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
-        }),
-        response: {
-          200: RulePreviewResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Preview what a rule matches",
-          description:
-            "Evaluates a rule query without storing anything, returning the match count plus a bounded sample of printings. Backs the rule editor's live readout.",
-        },
-      },
-    )
-    .post(
-      "/rulings",
-      async ({ body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const built = buildRulingTargets(body.targets);
-        if ("error" in built) {
-          return status(built.error.status, built.error.body);
-        }
-        const rpcResult = await safely("ruling.create", () =>
-          repository.callRpc("admin_create_ruling", {
-            p_type: body.type,
-            p_text: body.text.trim(),
-            p_dated: body.dated ?? null,
-            p_source: body.source?.trim() || null,
-            p_targets: built.targets,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, ruling: rpcResult.data.ruling };
-      },
-      {
-        body: t.Object({
-          type: RulingTypeSchema,
-          text: t.String({
-            minLength: 1,
-            maxLength: 4000,
-            pattern: NON_BLANK_PATTERN,
-          }),
-          dated: t.Optional(t.String({ pattern: DATE_PATTERN })),
-          source: t.Optional(t.String({ maxLength: 500 })),
-          targets: t.Array(RulingTargetInputSchema, {
-            minItems: 1,
-            maxItems: 100,
-          }),
-        }),
-        response: {
-          200: RulingRecordResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Create a ruling",
-          description:
-            "Creates a ruling and its targets. Rule targets are materialised immediately, so the response already reports what each one matched.",
-        },
-      },
-    )
-    .patch(
-      "/rulings/:rulingId",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        if (Object.keys(body.patch).length === 0) {
-          return status(400, {
-            error: "Patch must contain at least one field",
-            code: "EMPTY_PATCH",
-          });
-        }
-
-        // `targets` replaces the whole list, so it is parsed and validated
-        // before anything is written; omitting the key leaves targeting alone.
-        const { targets, ...rest } = body.patch;
-        const patch: Record<string, unknown> = { ...rest };
-        if (targets !== undefined) {
-          const built = buildRulingTargets(targets);
+      )
+      .post(
+        "/rulings/preview",
+        async ({ body, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const built = buildRulingTargets([{ kind: "query", query: body.query }]);
           if ("error" in built) {
             return status(built.error.status, built.error.body);
           }
-          patch.targets = built.targets;
-        }
+          const ast = built.targets[0]?.ast;
+          const result = await safely("ruling.preview", () =>
+            repository.previewRule(ast, body.limit ?? 20),
+          );
+          if ("error" in result) {
+            return status(result.error.status, result.error.body);
+          }
+          return { query: body.query.trim(), ...result.data };
+        },
+        {
+          body: t.Object({
+            query: t.String({
+              minLength: 1,
+              maxLength: CARD_SEARCH_LIMITS.maxInputLength,
+              pattern: NON_BLANK_PATTERN,
+            }),
+            limit: t.Optional(t.Number({ minimum: 1, maximum: 100 })),
+          }),
+          response: {
+            200: RulePreviewResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Preview what a rule matches",
+            description:
+              "Evaluates a rule query without storing anything, returning the match count plus a bounded sample of printings. Backs the rule editor's live readout.",
+          },
+        },
+      )
+      .post(
+        "/rulings",
+        async ({ body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const built = buildRulingTargets(body.targets);
+          if ("error" in built) {
+            return status(built.error.status, built.error.body);
+          }
+          const rpcResult = await safely("ruling.create", () =>
+            repository.callRpc("admin_create_ruling", {
+              p_type: body.type,
+              p_text: body.text.trim(),
+              p_dated: body.dated ?? null,
+              p_source: body.source?.trim() || null,
+              p_targets: built.targets,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, ruling: rpcResult.data.ruling };
+        },
+        {
+          body: t.Object({
+            type: RulingTypeSchema,
+            text: t.String({
+              minLength: 1,
+              maxLength: 4000,
+              pattern: NON_BLANK_PATTERN,
+            }),
+            dated: t.Optional(t.String({ pattern: DATE_PATTERN })),
+            source: t.Optional(t.String({ maxLength: 500 })),
+            targets: t.Array(RulingTargetInputSchema, {
+              minItems: 1,
+              maxItems: 100,
+            }),
+          }),
+          response: {
+            200: RulingRecordResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Create a ruling",
+            description:
+              "Creates a ruling and its targets. Rule targets are materialised immediately, so the response already reports what each one matched.",
+          },
+        },
+      )
+      .patch(
+        "/rulings/:rulingId",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          if (Object.keys(body.patch).length === 0) {
+            return status(400, {
+              error: "Patch must contain at least one field",
+              code: "EMPTY_PATCH",
+            });
+          }
 
-        const rpcResult = await safely("ruling.patch", () =>
-          repository.callRpc("admin_patch_ruling", {
-            p_ruling_id: params.rulingId,
-            p_patch: patch,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, ruling: rpcResult.data.ruling };
-      },
-      {
-        params: t.Object({ rulingId: t.String({ format: "uuid" }) }),
-        body: t.Object({
-          patch: t.Object({
-            type: t.Optional(RulingTypeSchema),
-            text: t.Optional(
-              t.String({
-                minLength: 1,
-                maxLength: 4000,
-                pattern: NON_BLANK_PATTERN,
-              }),
-            ),
-            dated: t.Optional(t.Nullable(t.String({ pattern: DATE_PATTERN }))),
-            source: t.Optional(t.Nullable(t.String({ maxLength: 500 }))),
-            active: t.Optional(t.Boolean()),
-            targets: t.Optional(
-              t.Array(RulingTargetInputSchema, { minItems: 1, maxItems: 100 }),
-            ),
-          }),
-        }),
-        response: {
-          200: RulingRecordResponseSchema,
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Edit a ruling",
-          description:
-            "Patches a ruling. `targets` replaces the entire target list; omit it to leave targeting unchanged. Rule targets are re-materialised on every patch.",
-        },
-      },
-    )
-    .delete(
-      "/rulings/:rulingId",
-      async ({ params, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const rpcResult = await safely("ruling.delete", () =>
-          repository.callRpc("admin_delete_ruling", {
-            p_ruling_id: params.rulingId,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, ruling_id: params.rulingId };
-      },
-      {
-        params: t.Object({ rulingId: t.String({ format: "uuid" }) }),
-        response: {
-          200: t.Object({ ok: t.Literal(true), ruling_id: t.String() }),
-          ...AdminErrorResponses,
-        },
-        detail: {
-          tags: ["Admin"],
-          summary: "Delete a ruling",
-          description:
-            "Deletes a ruling and every target it carries, wherever it appeared.",
-        },
-      },
-    )
+          // `targets` replaces the whole list, so it is parsed and validated
+          // before anything is written; omitting the key leaves targeting alone.
+          const { targets, ...rest } = body.patch;
+          const patch: Record<string, unknown> = { ...rest };
+          if (targets !== undefined) {
+            const built = buildRulingTargets(targets);
+            if ("error" in built) {
+              return status(built.error.status, built.error.body);
+            }
+            patch.targets = built.targets;
+          }
 
-    // ── Sets ──────────────────────────────────────────────────────────────────
-    .post(
-      "/sets",
-      async ({ body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const setCode = body.set_code.trim().toUpperCase();
-        const definition = {
-          ...body.definition,
-          set_name: body.definition.set_name.trim(),
-          ...(typeof body.definition.parent_set_code === "string"
-            ? {
-                parent_set_code:
-                  body.definition.parent_set_code.trim().toUpperCase(),
-              }
-            : {}),
-        };
-        const rpcResult = await safely("set.create", () =>
-          repository.callRpc("admin_create_set", {
-            p_set_code: setCode,
-            p_definition: definition,
-            p_actor: adminUser.id,
+          const rpcResult = await safely("ruling.patch", () =>
+            repository.callRpc("admin_patch_ruling", {
+              p_ruling_id: params.rulingId,
+              p_patch: patch,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, ruling: rpcResult.data.ruling };
+        },
+        {
+          params: t.Object({ rulingId: t.String({ format: "uuid" }) }),
+          body: t.Object({
+            patch: t.Object({
+              type: t.Optional(RulingTypeSchema),
+              text: t.Optional(
+                t.String({
+                  minLength: 1,
+                  maxLength: 4000,
+                  pattern: NON_BLANK_PATTERN,
+                }),
+              ),
+              dated: t.Optional(t.Nullable(t.String({ pattern: DATE_PATTERN }))),
+              source: t.Optional(t.Nullable(t.String({ maxLength: 500 }))),
+              active: t.Optional(t.Boolean()),
+              targets: t.Optional(t.Array(RulingTargetInputSchema, { minItems: 1, maxItems: 100 })),
+            }),
           }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, set_code: setCode };
-      },
-      {
-        body: t.Object({
-          set_code: SetCodeSchema,
-          definition: AdminSetDefinitionSchema,
-        }),
-        response: {
-          200: SetMutationResponseSchema,
-          ...AdminErrorResponses,
+          response: {
+            200: RulingRecordResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Edit a ruling",
+            description:
+              "Patches a ruling. `targets` replaces the entire target list; omit it to leave targeting unchanged. Rule targets are re-materialised on every patch.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Create a manual set",
-          description: "Creates a set that ingest will not prune.",
+      )
+      .delete(
+        "/rulings/:rulingId",
+        async ({ params, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const rpcResult = await safely("ruling.delete", () =>
+            repository.callRpc("admin_delete_ruling", {
+              p_ruling_id: params.rulingId,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, ruling_id: params.rulingId };
         },
-      },
-    )
-    .patch(
-      "/sets/:setCode",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        if (Object.keys(body.patch).length === 0) {
-          return status(400, {
-            error: "Patch must contain at least one field",
-            code: "EMPTY_PATCH",
-          });
-        }
-        const setCode = params.setCode.trim().toUpperCase();
-        const patch = {
-          ...body.patch,
-          ...(typeof body.patch.set_name === "string"
-            ? { set_name: body.patch.set_name.trim() }
-            : {}),
-          ...(typeof body.patch.parent_set_code === "string"
-            ? {
-                parent_set_code:
-                  body.patch.parent_set_code.trim().toUpperCase(),
-              }
-            : {}),
-        };
-        const rpcResult = await safely("set.patch", () =>
-          repository.callRpc("admin_patch_set", {
-            p_set_code: setCode,
-            p_patch: patch,
-            p_actor: adminUser.id,
+        {
+          params: t.Object({ rulingId: t.String({ format: "uuid" }) }),
+          response: {
+            200: t.Object({ ok: t.Literal(true), ruling_id: t.String() }),
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Delete a ruling",
+            description: "Deletes a ruling and every target it carries, wherever it appeared.",
+          },
+        },
+      )
+
+      // ── Sets ──────────────────────────────────────────────────────────────────
+      .post(
+        "/sets",
+        async ({ body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const setCode = body.set_code.trim().toUpperCase();
+          const definition = {
+            ...body.definition,
+            set_name: body.definition.set_name.trim(),
+            ...(typeof body.definition.parent_set_code === "string"
+              ? {
+                  parent_set_code: body.definition.parent_set_code.trim().toUpperCase(),
+                }
+              : {}),
+          };
+          const rpcResult = await safely("set.create", () =>
+            repository.callRpc("admin_create_set", {
+              p_set_code: setCode,
+              p_definition: definition,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, set_code: setCode };
+        },
+        {
+          body: t.Object({
+            set_code: SetCodeSchema,
+            definition: AdminSetDefinitionSchema,
           }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, set_code: setCode };
-      },
-      {
-        body: t.Object({ patch: AdminSetPatchSchema }),
-        response: {
-          200: SetMutationResponseSchema,
-          ...AdminErrorResponses,
+          response: {
+            200: SetMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Create a manual set",
+            description: "Creates a set that ingest will not prune.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Patch a set",
-          description:
-            "Updates a set. Patched keys are locked against the next ingest.",
+      )
+      .patch(
+        "/sets/:setCode",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          if (Object.keys(body.patch).length === 0) {
+            return status(400, {
+              error: "Patch must contain at least one field",
+              code: "EMPTY_PATCH",
+            });
+          }
+          const setCode = params.setCode.trim().toUpperCase();
+          const patch = {
+            ...body.patch,
+            ...(typeof body.patch.set_name === "string"
+              ? { set_name: body.patch.set_name.trim() }
+              : {}),
+            ...(typeof body.patch.parent_set_code === "string"
+              ? {
+                  parent_set_code: body.patch.parent_set_code.trim().toUpperCase(),
+                }
+              : {}),
+          };
+          const rpcResult = await safely("set.patch", () =>
+            repository.callRpc("admin_patch_set", {
+              p_set_code: setCode,
+              p_patch: patch,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, set_code: setCode };
         },
-      },
-    )
-    .delete(
-      "/sets/:setCode",
-      async ({ params, body, adminUser, status }) => {
-        if (!repository) {
-          return status(503, {
-            error: "Admin data service unavailable",
-            code: "SERVICE_UNAVAILABLE",
-          });
-        }
-        const setCode = params.setCode.trim().toUpperCase();
-        const rpcResult = await safely("set.delete", () =>
-          repository.callRpc("admin_delete_set", {
-            p_set_code: setCode,
-            p_reason: body?.reason ?? null,
-            p_actor: adminUser.id,
-          }),
-        );
-        if ("error" in rpcResult) {
-          return status(rpcResult.error.status, rpcResult.error.body);
-        }
-        const failure = mutationFailure(rpcResult.data);
-        if (failure) return status(failure.status, failure.body);
-        return { ok: true as const, set_code: setCode };
-      },
-      {
-        body: t.Optional(
-          t.Object({ reason: t.Optional(t.String({ maxLength: 2000 })) }),
-        ),
-        response: {
-          200: SetMutationResponseSchema,
-          ...AdminErrorResponses,
+        {
+          body: t.Object({ patch: AdminSetPatchSchema }),
+          response: {
+            200: SetMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Patch a set",
+            description: "Updates a set. Patched keys are locked against the next ingest.",
+          },
         },
-        detail: {
-          tags: ["Admin"],
-          summary: "Delete a set",
-          description:
-            "Soft-deletes an empty set. A set that still holds printings is refused.",
+      )
+      .delete(
+        "/sets/:setCode",
+        async ({ params, body, adminUser, status }) => {
+          if (!repository) {
+            return status(503, {
+              error: "Admin data service unavailable",
+              code: "SERVICE_UNAVAILABLE",
+            });
+          }
+          const setCode = params.setCode.trim().toUpperCase();
+          const rpcResult = await safely("set.delete", () =>
+            repository.callRpc("admin_delete_set", {
+              p_set_code: setCode,
+              p_reason: body?.reason ?? null,
+              p_actor: adminUser.id,
+            }),
+          );
+          if ("error" in rpcResult) {
+            return status(rpcResult.error.status, rpcResult.error.body);
+          }
+          const failure = mutationFailure(rpcResult.data);
+          if (failure) return status(failure.status, failure.body);
+          return { ok: true as const, set_code: setCode };
         },
-      },
-    );
+        {
+          body: t.Optional(t.Object({ reason: t.Optional(t.String({ maxLength: 2000 })) })),
+          response: {
+            200: SetMutationResponseSchema,
+            ...AdminErrorResponses,
+          },
+          detail: {
+            tags: ["Admin"],
+            summary: "Delete a set",
+            description: "Soft-deletes an empty set. A set that still holds printings is refused.",
+          },
+        },
+      )
+  );
 }

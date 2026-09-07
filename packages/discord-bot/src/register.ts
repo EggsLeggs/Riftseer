@@ -17,17 +17,14 @@ if (!token || !appId) {
   process.exit(1);
 }
 
-const res = await fetch(
-  `https://discord.com/api/v10/applications/${appId}/commands`,
-  {
-    method: "PUT",
-    headers: {
-      Authorization: `Bot ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(COMMANDS),
+const res = await fetch(`https://discord.com/api/v10/applications/${appId}/commands`, {
+  method: "PUT",
+  headers: {
+    Authorization: `Bot ${token}`,
+    "Content-Type": "application/json",
   },
-);
+  body: JSON.stringify(COMMANDS),
+});
 
 if (!res.ok) {
   const text = await res.text();

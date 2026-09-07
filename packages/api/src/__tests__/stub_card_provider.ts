@@ -45,11 +45,7 @@ export const STUB_TOKEN_ID = "cccccccc-0000-0000-0000-000000000001";
 export const STUB_CHAMPION_ID = "aaaaaaaa-0000-0000-0000-000000000001";
 export const STUB_SIGNATURE_ID = "dddddddd-0000-0000-0000-000000000001";
 
-function printing(
-  id: string,
-  oracleId: string,
-  overrides: Partial<Printing> = {},
-): Printing {
+function printing(id: string, oracleId: string, overrides: Partial<Printing> = {}): Printing {
   return {
     object: "printing",
     id,
@@ -89,18 +85,23 @@ export const STUB_ALT_PRINTING = printing(STUB_ALT_PRINTING_ID, STUB_ORACLE_ID, 
   prices: { tcgplayer: { normal: 9.99 } },
 });
 
-function oracle(
-  id: string,
-  name: string,
-  overrides: Partial<Oracle> = {},
-): Oracle {
+function oracle(id: string, name: string, overrides: Partial<Oracle> = {}): Oracle {
   return {
     object: "oracle",
     id,
-    oracle_key: name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
-    slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+    oracle_key: name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim(),
+    slug: name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, ""),
     name,
-    name_normalized: name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(),
+    name_normalized: name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim(),
     card_type: "Unit",
     supertype: null,
     is_token: false,
@@ -233,15 +234,19 @@ export class StubProvider implements CardDataProvider {
     return parsed ? this.searchOraclesByAst(parsed, opts) : { oracles: [], total: 0 };
   }
 
-  async searchOraclesByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<OracleSearchResult> {
-    const matches = ORACLES.filter((value) =>
-      matchAst(value, value.preferred_printing, ast),
-    );
+  async searchOraclesByAst(
+    ast: CardSearchAst,
+    opts?: CardSearchOptions,
+  ): Promise<OracleSearchResult> {
+    const matches = ORACLES.filter((value) => matchAst(value, value.preferred_printing, ast));
     const { offset, limit } = page(opts);
     return { oracles: matches.slice(offset, offset + limit), total: matches.length };
   }
 
-  async searchPrintingsByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<PrintingSearchResult> {
+  async searchPrintingsByAst(
+    ast: CardSearchAst,
+    opts?: CardSearchOptions,
+  ): Promise<PrintingSearchResult> {
     const matches = PRINTINGS.filter((value) => {
       const owner = ORACLES_BY_ID.get(value.oracle_id);
       return owner ? matchAst(owner, value, ast) : false;
@@ -257,16 +262,17 @@ export class StubProvider implements CardDataProvider {
   }
 
   async resolveRequest(request: CardRequest): Promise<ResolvedCard> {
-    const oracle = ORACLES.find(
-      (value) => value.name_normalized === request.name.toLowerCase(),
-    );
+    const oracle = ORACLES.find((value) => value.name_normalized === request.name.toLowerCase());
     if (!oracle) {
       return { request, oracle: null, printing: null, matchType: "not-found" };
     }
     const candidates = PRINTINGS.filter((value) => value.oracle_id === oracle.id);
     const scoped = candidates.find((value) => {
-      const setMatches = !request.set || value.set?.set_code.toLowerCase() === request.set.toLowerCase();
-      const collectorMatches = !request.collector || value.collector_number?.toLowerCase() === request.collector.toLowerCase();
+      const setMatches =
+        !request.set || value.set?.set_code.toLowerCase() === request.set.toLowerCase();
+      const collectorMatches =
+        !request.collector ||
+        value.collector_number?.toLowerCase() === request.collector.toLowerCase();
       return setMatches && collectorMatches;
     });
     return {
@@ -289,13 +295,15 @@ export class StubProvider implements CardDataProvider {
   }
 
   async getSets() {
-    return [{
-      setCode: "OGN",
-      setName: "Origins",
-      cardCount: PRINTINGS.length,
-      isPromo: false,
-      publishedOn: "2025-01-01",
-    }];
+    return [
+      {
+        setCode: "OGN",
+        setName: "Origins",
+        cardCount: PRINTINGS.length,
+        isPromo: false,
+        publishedOn: "2025-01-01",
+      },
+    ];
   }
 
   async getFormats(opts?: { includeInactive?: boolean }): Promise<Format[]> {
@@ -312,14 +320,16 @@ export class StubProvider implements CardDataProvider {
 
   async getLegalities(printingId: string): Promise<CardLegality[]> {
     const base = printingId === STUB_PRINTING_ID;
-    return [{
-      object: "card_legality",
-      format_id: STUB_FORMAT.id,
-      format_code: STUB_FORMAT.code,
-      format_name: STUB_FORMAT.name,
-      status: base ? "banned" : "legal",
-      scope: base ? "oracle" : "printing",
-    }];
+    return [
+      {
+        object: "card_legality",
+        format_id: STUB_FORMAT.id,
+        format_code: STUB_FORMAT.code,
+        format_name: STUB_FORMAT.name,
+        status: base ? "banned" : "legal",
+        scope: base ? "oracle" : "printing",
+      },
+    ];
   }
 
   async getRulings(printingId: string): Promise<CardRuling[]> {
@@ -345,24 +355,41 @@ function matchAst(oracle: Oracle, printing: Printing | undefined, ast: CardSearc
     values.some((value) => value.toLowerCase() === needle);
 
   switch (ast.op) {
-    case "and": return ast.children.every((child) => matchAst(oracle, printing, child));
-    case "or": return ast.children.some((child) => matchAst(oracle, printing, child));
-    case "not": return !matchAst(oracle, printing, ast.child);
-    case "text": return includes(oracle.name, ast.value.toLowerCase());
-    case "exact_name": return oracle.name_normalized === ast.value;
+    case "and":
+      return ast.children.every((child) => matchAst(oracle, printing, child));
+    case "or":
+      return ast.children.some((child) => matchAst(oracle, printing, child));
+    case "not":
+      return !matchAst(oracle, printing, ast.child);
+    case "text":
+      return includes(oracle.name, ast.value.toLowerCase());
+    case "exact_name":
+      return oracle.name_normalized === ast.value;
     case "filter": {
       const needle = ast.value.toLowerCase();
       switch (ast.field) {
-        case "type": return [oracle.card_type, oracle.supertype, ...oracle.tags].some((v) => includes(v, needle));
-        case "supertype": return includes(oracle.supertype, needle);
-        case "rarity": return includes(printing?.rarity, needle);
-        case "artist": return includes(printing?.artist, needle);
-        case "keyword": return equalsAny(oracle.keywords, needle);
-        case "domain": return equalsAny(oracle.domains, needle);
-        case "tag": return oracle.tags.some((value) => includes(value, needle));
-        case "set": return printing?.set?.set_code.toLowerCase() === needle;
-        case "produces": return oracle.id === STUB_ORACLE_ID && includes(STUB_TOKEN.name, needle);
-        case "name": return includes(oracle.name, needle);
+        case "type":
+          return [oracle.card_type, oracle.supertype, ...oracle.tags].some((v) =>
+            includes(v, needle),
+          );
+        case "supertype":
+          return includes(oracle.supertype, needle);
+        case "rarity":
+          return includes(printing?.rarity, needle);
+        case "artist":
+          return includes(printing?.artist, needle);
+        case "keyword":
+          return equalsAny(oracle.keywords, needle);
+        case "domain":
+          return equalsAny(oracle.domains, needle);
+        case "tag":
+          return oracle.tags.some((value) => includes(value, needle));
+        case "set":
+          return printing?.set?.set_code.toLowerCase() === needle;
+        case "produces":
+          return oracle.id === STUB_ORACLE_ID && includes(STUB_TOKEN.name, needle);
+        case "name":
+          return includes(oracle.name, needle);
       }
     }
     case "numeric": {
@@ -376,9 +403,8 @@ function matchAst(oracle: Oracle, printing: Printing | undefined, ast: CardSearc
       return actual <= ast.value;
     }
     case "legality": {
-      const status = printing?.id === STUB_PRINTING_ID && ast.format === STUB_FORMAT.code
-        ? "banned"
-        : "legal";
+      const status =
+        printing?.id === STUB_PRINTING_ID && ast.format === STUB_FORMAT.code ? "banned" : "legal";
       return status === ast.status;
     }
     case "flag": {
@@ -387,7 +413,8 @@ function matchAst(oracle: Oracle, printing: Printing | undefined, ast: CardSearc
       if (ast.value === "alternate") return printing?.alternate_art === true;
       if (ast.value === "overnumbered") return printing?.overnumbered === true;
       if (ast.value === "special") return printing?.special_collection === true;
-      if (ast.value === "manual") return oracle.source === "manual" || printing?.source === "manual";
+      if (ast.value === "manual")
+        return oracle.source === "manual" || printing?.source === "manual";
       return printing?.finishes.some((value) => value.toLowerCase() === "foil") === true;
     }
   }

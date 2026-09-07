@@ -44,7 +44,9 @@ export function ProfileSettingsView({ session, profile }: Props) {
     profile?.social_links ?? {},
   );
   const [socialErrors, setSocialErrors] = useState<Record<string, string>>({});
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
+    null,
+  );
   const [isPending, startTransition] = useTransition();
 
   const handle = profile?.handle ?? session.user.handle ?? "";
@@ -231,9 +233,7 @@ export function ProfileSettingsView({ session, profile }: Props) {
             <div className="space-y-2">
               <Label>
                 Pronouns{" "}
-                <span className="font-normal text-muted-foreground">
-                  (up to {MAX_PRONOUNS})
-                </span>
+                <span className="font-normal text-muted-foreground">(up to {MAX_PRONOUNS})</span>
               </Label>
 
               {/* Preset chips */}
@@ -345,9 +345,7 @@ export function ProfileSettingsView({ session, profile }: Props) {
                   />
                 </div>
                 {socialErrors[platform.id] && (
-                  <p className="pl-31 text-xs text-destructive">
-                    {socialErrors[platform.id]}
-                  </p>
+                  <p className="pl-31 text-xs text-destructive">{socialErrors[platform.id]}</p>
                 )}
               </div>
             ))}

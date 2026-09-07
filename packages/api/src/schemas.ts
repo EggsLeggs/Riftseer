@@ -51,8 +51,7 @@ const OracleTextSchema = t.Partial(
     rich: t.String(),
     plain: t.String(),
     equipment: t.String({
-      description:
-        "The effect an `[Equip]` gear grants the unit it is attached to.",
+      description: "The effect an `[Equip]` gear grants the unit it is attached to.",
     }),
   }),
 );
@@ -116,9 +115,7 @@ export const PrintingSchema = t.Object({
 
   set: t.Optional(CardSetSchema),
   collector_number: t.Optional(t.String()),
-  collector_label: t.Optional(
-    t.String({ description: "Display form, e.g. `21★` or `12a`" }),
-  ),
+  collector_label: t.Optional(t.String({ description: "Display form, e.g. `21★` or `12a`" })),
   rarity: t.Optional(
     t.String({
       description:
@@ -155,8 +152,7 @@ export const PrintingSchema = t.Object({
   ),
 
   public_slug: t.String({
-    description:
-      "Stable public URL path, no leading slash — e.g. `ogn/12a/signature/sun-disc`.",
+    description: "Stable public URL path, no leading slash — e.g. `ogn/12a/signature/sun-disc`.",
   }),
   riftseer_uri: t.Optional(t.String()),
   differs_from_oracle: t.Optional(
@@ -220,12 +216,7 @@ export const OracleSchema = t.Object({
 
 // ─── Rulings, legalities, formats ─────────────────────────────────────────────
 
-export const LegalityStatusSchema = t.UnionEnum([
-  "legal",
-  "restricted",
-  "not_legal",
-  "banned",
-]);
+export const LegalityStatusSchema = t.UnionEnum(["legal", "restricted", "not_legal", "banned"]);
 
 const ViolationSeveritySchema = t.UnionEnum(["none", "warning", "error"]);
 
@@ -233,9 +224,11 @@ const FormatZoneRuleSchema = t.Object({
   zone: t.UnionEnum([...DECK_ZONES]),
   min_count: t.Nullable(t.Number()),
   max_count: t.Nullable(t.Number()),
-  copy_limit: t.Nullable(t.Number({
-    description: "Copies of one oracle across this zone's whole counting group.",
-  })),
+  copy_limit: t.Nullable(
+    t.Number({
+      description: "Copies of one oracle across this zone's whole counting group.",
+    }),
+  ),
 });
 
 export const FormatSchema = t.Object({
@@ -280,8 +273,7 @@ export const CardLegalitySchema = t.Object({
   note: t.Optional(
     t.Nullable(
       t.String({
-        description:
-          "The admin's explanation, from whichever row decided the status.",
+        description: "The admin's explanation, from whichever row decided the status.",
       }),
     ),
   ),
@@ -348,27 +340,14 @@ export const ErrorSchema = t.Object({
 
 // ─── Drift assertions ─────────────────────────────────────────────────────────
 
-type _MirrorsOracleRef = Assert<
-  Mirrors<Static<typeof OracleRefSchema>, OracleRef>
->;
+type _MirrorsOracleRef = Assert<Mirrors<Static<typeof OracleRefSchema>, OracleRef>>;
 type _MirrorsPrinting = Assert<Mirrors<Static<typeof PrintingSchema>, Printing>>;
 type _MirrorsOracle = Assert<Mirrors<Static<typeof OracleSchema>, Oracle>>;
 type _MirrorsPrices = Assert<Mirrors<Static<typeof CardPricesSchema>, CardPrices>>;
-type _MirrorsPurchase = Assert<
-  Mirrors<Static<typeof CardPurchaseUrisSchema>, CardPurchaseUris>
->;
+type _MirrorsPurchase = Assert<Mirrors<Static<typeof CardPurchaseUrisSchema>, CardPurchaseUris>>;
 type _MirrorsFormat = Assert<Mirrors<Static<typeof FormatSchema>, Format>>;
-type _MirrorsLegality = Assert<
-  Mirrors<Static<typeof CardLegalitySchema>, CardLegality>
->;
+type _MirrorsLegality = Assert<Mirrors<Static<typeof CardLegalitySchema>, CardLegality>>;
 type _MirrorsRuling = Assert<Mirrors<Static<typeof CardRulingSchema>, CardRuling>>;
-type _MirrorsDetail = Assert<
-  Mirrors<Static<typeof OracleDetailSchema>, OracleDetail>
->;
-type _MirrorsRequest = Assert<
-  Mirrors<Static<typeof CardRequestSchema>, CardRequest>
->;
-type _MirrorsResolved = Assert<
-  Mirrors<Static<typeof ResolvedCardSchema>, ResolvedCard>
->;
-
+type _MirrorsDetail = Assert<Mirrors<Static<typeof OracleDetailSchema>, OracleDetail>>;
+type _MirrorsRequest = Assert<Mirrors<Static<typeof CardRequestSchema>, CardRequest>>;
+type _MirrorsResolved = Assert<Mirrors<Static<typeof ResolvedCardSchema>, ResolvedCard>>;

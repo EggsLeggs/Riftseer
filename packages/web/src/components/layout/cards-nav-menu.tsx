@@ -75,11 +75,7 @@ export function CardsNavMenu() {
       </Button>
 
       {/* pt bridge keeps hover continuous from trigger → panel */}
-      <div
-        id="cards-nav-menu"
-        hidden={!open}
-        className="absolute top-full left-0 z-50 w-44 pt-1.5"
-      >
+      <div id="cards-nav-menu" hidden={!open} className="absolute top-full left-0 z-50 w-44 pt-1.5">
         <ul className="overflow-hidden rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10">
           {links.map(({ href, label, Icon }) => (
             <li key={href}>

@@ -3,6 +3,7 @@
 Next.js App Router site deployed to Cloudflare Workers through OpenNext.
 
 <!-- BEGIN:nextjs-agent-rules -->
+
 ## Next.js version
 
 This version has breaking APIs, conventions and file structure that may differ from training data. Read the relevant guide in `node_modules/next/dist/docs/` before changing Next.js code, and heed its deprecation notices.
@@ -77,8 +78,8 @@ bun run cf-typegen
 - A row's copy count is a quiet number that becomes an input when clicked; there are no − / + buttons, and long card names wrap rather than truncate. The top toolbar is Guide, Bulk edit, Buy, More, and `DeckAddCardSearch` on the right. Tags, view and group sit above the legend, in the list column. Sideboard still has a zone Add; legend, main, runes and battlefields do not.
 - `DeckBanner` puts the deck's identity over its legend's art, faded into a domain-tinted wash. The tint is decoration only — every domain the deck plays is named in the statistics panel.
 - Every framing number lives in one `FRAMING` const, chosen by looking rather than derived. `fadeStops` must ascend; CSS clamps an out-of-order stop into a hard step rather than erroring.
-- Riftbound art is delivered as the whole card, frame included, so scenery is a crop. `FRAMING.focus` is the one focal point — a fraction of the *card*, not an `object-position`, because those percentages are relative to the overflow and drift as the banner changes height. Do not add per-printing focal points or saliency detection before a specific card demonstrably needs it.
-- A stored dominant colour is worth adding only when a *non-image* surface needs one — a Discord embed stripe, an OG image. It cannot help the banner: no single colour matches a card that is gold in the corner and green in the middle.
+- Riftbound art is delivered as the whole card, frame included, so scenery is a crop. `FRAMING.focus` is the one focal point — a fraction of the _card_, not an `object-position`, because those percentages are relative to the overflow and drift as the banner changes height. Do not add per-printing focal points or saliency detection before a specific card demonstrably needs it.
+- A stored dominant colour is worth adding only when a _non-image_ surface needs one — a Discord embed stripe, an OG image. It cannot help the banner: no single colour matches a card that is gold in the corner and green in the middle.
 - `DeckStatsPanel` renders `deckStats()` and computes nothing itself. It sits full-width below the list and its rail, because it describes the deck rather than the column the list occupies. Stats cover the `main` zone only, count copies rather than rows, and state every figure in text. Domain bars use the kernel's `DOMAIN_WASH_RGB` as decoration; the rune glyph and name still identify the domain.
 - Card edits go through `use-deck-editor`, which batches them into one `PUT /decks/:id/cards`. The RPC coalesces revisions within five minutes, so a request per click writes a revision row per click.
 - Violations arrive precomputed. Render `severity` distinctly and read the structured fields, never `message`.

@@ -39,11 +39,16 @@ describe("card search grammar", () => {
 
   it("parses every text-filter family", () => {
     const cases = [
-      ["t:unit", "type"], ["st:champion", "supertype"],
-      ["r:showcase", "rarity"], ["a:artist", "artist"],
-      ["kw:deflect", "keyword"], ["d:fury", "domain"],
-      ["tag:sentinel", "tag"], ["set:ogn", "set"],
-      ["produces:sprite", "produces"], ["name:vayne", "name"],
+      ["t:unit", "type"],
+      ["st:champion", "supertype"],
+      ["r:showcase", "rarity"],
+      ["a:artist", "artist"],
+      ["kw:deflect", "keyword"],
+      ["d:fury", "domain"],
+      ["tag:sentinel", "tag"],
+      ["set:ogn", "set"],
+      ["produces:sprite", "produces"],
+      ["name:vayne", "name"],
     ] as const;
     for (const [query, field] of cases) expect(ast(query)).toMatchObject({ op: "filter", field });
   });
@@ -88,10 +93,13 @@ describe("card search grammar", () => {
     expect(ast("t:unit d:fury or t:gear")).toEqual({
       op: "or",
       children: [
-        { op: "and", children: [
-          { op: "filter", field: "type", value: "unit" },
-          { op: "filter", field: "domain", value: "fury" },
-        ] },
+        {
+          op: "and",
+          children: [
+            { op: "filter", field: "type", value: "unit" },
+            { op: "filter", field: "domain", value: "fury" },
+          ],
+        },
         { op: "filter", field: "type", value: "gear" },
       ],
     });
@@ -117,7 +125,15 @@ describe("card search grammar", () => {
   });
 
   it("maps every numeric comparator", () => {
-    const cases = [[":", "eq"], ["=", "eq"], ["!=", "ne"], [">", "gt"], [">=", "gte"], ["<", "lt"], ["<=", "lte"]] as const;
+    const cases = [
+      [":", "eq"],
+      ["=", "eq"],
+      ["!=", "ne"],
+      [">", "gt"],
+      [">=", "gte"],
+      ["<", "lt"],
+      ["<=", "lte"],
+    ] as const;
     for (const [operator, cmp] of cases) {
       expect(ast(`energy${operator}2`)).toEqual({ op: "numeric", field: "energy", cmp, value: 2 });
     }
@@ -135,12 +151,28 @@ describe("card search grammar", () => {
 
   it("parses default-legal and explicit non-legal statuses", () => {
     expect(ast("f:standard")).toEqual({ op: "legality", format: "standard", status: "legal" });
-    expect(ast("banned:standard")).toEqual({ op: "legality", format: "standard", status: "banned" });
-    expect(ast("notlegal:standard")).toEqual({ op: "legality", format: "standard", status: "not_legal" });
+    expect(ast("banned:standard")).toEqual({
+      op: "legality",
+      format: "standard",
+      status: "banned",
+    });
+    expect(ast("notlegal:standard")).toEqual({
+      op: "legality",
+      format: "standard",
+      status: "not_legal",
+    });
   });
 
   it("maps documented is: aliases", () => {
-    const cases = [["token", "token"], ["sig", "signature"], ["alt", "alternate"], ["overnumbered", "overnumbered"], ["showcase", "special"], ["manual", "manual"], ["foil", "foil"]] as const;
+    const cases = [
+      ["token", "token"],
+      ["sig", "signature"],
+      ["alt", "alternate"],
+      ["overnumbered", "overnumbered"],
+      ["showcase", "special"],
+      ["manual", "manual"],
+      ["foil", "foil"],
+    ] as const;
     for (const [input, value] of cases) expect(ast(`is:${input}`)).toEqual({ op: "flag", value });
   });
 
@@ -161,11 +193,19 @@ describe("card search grammar", () => {
 
   it("bounds raw input and leaf lengths", () => {
     expect(() => ast("x".repeat(CARD_SEARCH_LIMITS.maxInputLength + 1))).toThrow("maximum length");
-    expect(() => validateCardSearchAst({ op: "text", value: "x".repeat(CARD_SEARCH_LIMITS.maxLeafValueLength + 1) })).toThrow("too long");
+    expect(() =>
+      validateCardSearchAst({
+        op: "text",
+        value: "x".repeat(CARD_SEARCH_LIMITS.maxLeafValueLength + 1),
+      }),
+    ).toThrow("too long");
   });
 
   it("bounds AST node count and nesting depth", () => {
-    const children = Array.from({ length: CARD_SEARCH_LIMITS.maxAstNodes }, () => ({ op: "text", value: "x" }) as const);
+    const children = Array.from(
+      { length: CARD_SEARCH_LIMITS.maxAstNodes },
+      () => ({ op: "text", value: "x" }) as const,
+    );
     expect(() => validateCardSearchAst({ op: "and", children })).toThrow("maximum complexity");
     let nested: CardSearchAst = { op: "text", value: "x" };
     for (let i = 0; i < CARD_SEARCH_LIMITS.maxAstDepth; i++) nested = { op: "not", child: nested };
@@ -179,11 +219,15 @@ describe("card search grammar", () => {
       { op: "flag", value: "future" },
       { op: "legality", format: "standard", status: "future" },
     ];
-    for (const value of invalid) expect(() => validateCardSearchAst(value as CardSearchAst)).toThrow(BadCardSearchQueryError);
+    for (const value of invalid)
+      expect(() => validateCardSearchAst(value as CardSearchAst)).toThrow(BadCardSearchQueryError);
   });
 
   it("keeps AST builders flat and exposes only positive free text", () => {
-    const tree = andAst(textLeaf("vayne"), andAst(filterLeaf("type", "unit"), exactNameLeaf("Vayne")))!;
+    const tree = andAst(
+      textLeaf("vayne"),
+      andAst(filterLeaf("type", "unit"), exactNameLeaf("Vayne")),
+    )!;
     expect(tree.op).toBe("and");
     expect(tree.op === "and" ? tree.children : []).toHaveLength(3);
     expect(findTextLeafValue(tree)).toBe("vayne");

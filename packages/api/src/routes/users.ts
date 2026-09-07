@@ -60,12 +60,8 @@ async function fetchProfileStubs(ids: string[]): Promise<ProfileStub[]> {
     .from("profiles")
     .select("id, handle, username, created_at")
     .in("id", ids);
-  const byId = new Map<string, ProfileStub>(
-    ((data ?? []) as ProfileStub[]).map((p) => [p.id, p]),
-  );
-  return ids
-    .map((id) => byId.get(id))
-    .filter((p): p is ProfileStub => p !== undefined);
+  const byId = new Map<string, ProfileStub>(((data ?? []) as ProfileStub[]).map((p) => [p.id, p]));
+  return ids.map((id) => byId.get(id)).filter((p): p is ProfileStub => p !== undefined);
 }
 
 export function usersRoutes() {
@@ -95,7 +91,11 @@ export function usersRoutes() {
               return { error: "Profile not found", code: "NOT_FOUND" };
             }
             // Any other DB error (e.g. unknown column) → schema mismatch or transient failure
-            console.error("[users/:handle] profile query error:", profileError.code, profileError.message);
+            console.error(
+              "[users/:handle] profile query error:",
+              profileError.code,
+              profileError.message,
+            );
             set.status = 503;
             return { error: "Service unavailable", code: "SERVICE_UNAVAILABLE" };
           }
@@ -120,7 +120,9 @@ export function usersRoutes() {
           if (authClient && headers.authorization?.startsWith("Bearer ")) {
             const token = headers.authorization.slice(7);
             try {
-              const { data: { user: requester } } = await authClient.auth.getUser(token);
+              const {
+                data: { user: requester },
+              } = await authClient.auth.getUser(token);
               if (requester && requester.id !== profile.id) {
                 const { count } = await authAdminClient
                   .from("follows")
@@ -297,7 +299,10 @@ export function usersRoutes() {
                 const username = body.username.trim();
                 if (username.length < 1 || username.length > 50) {
                   set.status = 400;
-                  return { error: "Display name must be 1–50 characters.", code: "INVALID_USERNAME" };
+                  return {
+                    error: "Display name must be 1–50 characters.",
+                    code: "INVALID_USERNAME",
+                  };
                 }
                 updates.username = username;
               }
@@ -307,7 +312,8 @@ export function usersRoutes() {
                 if (!HANDLE_RE.test(handle)) {
                   set.status = 400;
                   return {
-                    error: "Handle must be 3–30 characters: lowercase letters, numbers, underscores only.",
+                    error:
+                      "Handle must be 3–30 characters: lowercase letters, numbers, underscores only.",
                     code: "INVALID_HANDLE",
                   };
                 }
@@ -444,7 +450,10 @@ export function usersRoutes() {
                 .delete()
                 .eq("id", user.id);
               if (profileError) {
-                console.error(`[users/me] profile cleanup failed for ${user.id}:`, profileError.message);
+                console.error(
+                  `[users/me] profile cleanup failed for ${user.id}:`,
+                  profileError.message,
+                );
               }
 
               return { message: "Account deleted." };

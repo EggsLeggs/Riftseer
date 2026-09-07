@@ -107,9 +107,7 @@ export function DeckCardRow({
   };
 
   const printing = { id: card.printing_id, public_slug: card.public_slug };
-  const setLine = [card.set_code?.toUpperCase(), card.collector_number]
-    .filter(Boolean)
-    .join(" ");
+  const setLine = [card.set_code?.toUpperCase(), card.collector_number].filter(Boolean).join(" ");
 
   return (
     <ContextMenu>
@@ -148,9 +146,7 @@ export function DeckCardRow({
             {card.name}
           </Link>
 
-          {card.is_champion && (
-            <ChampionIcon className="size-3.5 self-start py-0.5" />
-          )}
+          {card.is_champion && <ChampionIcon className="size-3.5 self-start py-0.5" />}
 
           <DeckViolationMarker violations={violations} className="shrink-0" />
 

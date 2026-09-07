@@ -26,12 +26,7 @@ export {
   comparePrintings,
   pickRequestedPrinting,
 } from "./providers/supabase.ts";
-export {
-  finalizeOracle,
-  finalizeOracles,
-  finalizePrinting,
-  finalizePrintings,
-} from "./hydrate.ts";
+export { finalizeOracle, finalizeOracles, finalizePrinting, finalizePrintings } from "./hydrate.ts";
 
 // Oracle detail aggregation
 export {
@@ -58,11 +53,7 @@ export {
   textLeaf,
   validateCardSearchAst,
 } from "./card-search-query.ts";
-export type {
-  CardSearchAst,
-  CardSearchField,
-  ParsedCardSearch,
-} from "./card-search-query.ts";
+export type { CardSearchAst, CardSearchField, ParsedCardSearch } from "./card-search-query.ts";
 
 // Logger
 export { logger } from "./logger.ts";
@@ -79,4 +70,3 @@ export {
   renderTextForDiscord,
 } from "./icons.ts";
 export type { EmojiFile } from "./icons.ts";
-

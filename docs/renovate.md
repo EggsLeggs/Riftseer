@@ -9,7 +9,7 @@ portal are the whole interface.
 
 - Branches are created on Mondays between 00:00 and 03:59 UTC.
 - Every non-major bump lands in one PR titled `fix(deps): update all non-major
-  dependencies`. Majors get a PR each, with two exceptions: GitHub Actions
+dependencies`. Majors get a PR each, with two exceptions: GitHub Actions
   share one, and the `postgres` docker major is disabled outright because it
   has to follow the hosted Supabase Postgres major, which Renovate cannot see.
   Bump that one by hand in `docker-compose.yml` and `test.yml` together.

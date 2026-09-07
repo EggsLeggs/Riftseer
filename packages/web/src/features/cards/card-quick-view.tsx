@@ -17,13 +17,7 @@ import {
 import { cardsApi, cardsQueryKeys } from "./api";
 import { CardArt } from "./card-art";
 import { CardBuyLinks } from "./card-buy-links";
-import {
-  CardTypeLine,
-  DomainRunes,
-  EnergyCost,
-  MightStat,
-  PowerStat,
-} from "./card-icons";
+import { CardTypeLine, DomainRunes, EnergyCost, MightStat, PowerStat } from "./card-icons";
 import { CardLegalityGrid } from "./card-legalities";
 import { CardPrintingsTable } from "./card-printings-table";
 import { CardRulings } from "./card-rulings";
@@ -77,9 +71,7 @@ export function CardQuickView<T extends CardQuickViewTarget>({
     staleTime: Infinity,
   });
 
-  const index = target
-    ? siblings.findIndex((card) => card.printing_id === target.printing_id)
-    : -1;
+  const index = target ? siblings.findIndex((card) => card.printing_id === target.printing_id) : -1;
   const canNavigate = onSelect != null && index >= 0 && siblings.length > 1;
   const previous = canNavigate ? siblings[index - 1] : undefined;
   const next = canNavigate ? siblings[index + 1] : undefined;

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { repairFlavourText } from "../card-text.ts";
-import {
-  decodeCardTextEntities,
-  formatCardTextForClipboard,
-} from "../render/index.ts";
+import { decodeCardTextEntities, formatCardTextForClipboard } from "../render/index.ts";
 
 describe("repairFlavourText", () => {
   it("restores a missing opening dialogue quote before attribution", () => {
@@ -26,13 +23,9 @@ describe("repairFlavourText", () => {
     expect(repairFlavourText('Night approaches!"\r\n \r\n- Diana')).toBe(
       '"Night approaches!"\n- Diana',
     );
-    expect(repairFlavourText('"Already fine."\n\n\n- Someone')).toBe(
-      '"Already fine."\n- Someone',
-    );
+    expect(repairFlavourText('"Already fine."\n\n\n- Someone')).toBe('"Already fine."\n- Someone');
     // Padding on either side of a single break goes too.
-    expect(repairFlavourText('"Trailing space." \n- Vi')).toBe(
-      '"Trailing space."\n- Vi',
-    );
+    expect(repairFlavourText('"Trailing space." \n- Vi')).toBe('"Trailing space."\n- Vi');
     expect(repairFlavourText('"Indented attribution."\n   - Vi')).toBe(
       '"Indented attribution."\n- Vi',
     );
@@ -50,28 +43,24 @@ describe("repairFlavourText", () => {
   });
 
   it("strips stray HTML debris from upstream flavour", () => {
-    expect(
-      repairFlavourText('Hey, where is everyone?" \r\n- Common last words</em'),
-    ).toBe('"Hey, where is everyone?"\n- Common last words');
+    expect(repairFlavourText('Hey, where is everyone?" \r\n- Common last words</em')).toBe(
+      '"Hey, where is everyone?"\n- Common last words',
+    );
   });
 
   // The printed cards disagree about whether the attribution starts a line —
   // Glasc Mixologist runs it on, Lacerate breaks before it — and upstream
   // flattens both to the same shape, so the break is never invented.
   it("restores the quote but leaves a run-on attribution inline", () => {
-    expect(
-      repairFlavourText('Those who follow me follow destiny!" - Azir'),
-    ).toBe('"Those who follow me follow destiny!" - Azir');
+    expect(repairFlavourText('Those who follow me follow destiny!" - Azir')).toBe(
+      '"Those who follow me follow destiny!" - Azir',
+    );
     expect(repairFlavourText(`We're gonna be rich!" -Common Last Words`)).toBe(
       `"We're gonna be rich!" -Common Last Words`,
     );
     expect(
-      repairFlavourText(
-        'The difference between medicine and poison is the dosage."- Renata Glasc',
-      ),
-    ).toBe(
-      '"The difference between medicine and poison is the dosage."- Renata Glasc',
-    );
+      repairFlavourText('The difference between medicine and poison is the dosage."- Renata Glasc'),
+    ).toBe('"The difference between medicine and poison is the dosage."- Renata Glasc');
   });
 
   it("leaves an attribution that already has its own line where it is", () => {
@@ -85,26 +74,22 @@ describe("repairFlavourText", () => {
   });
 
   it("strips a closing tag that upstream leaves after the quote", () => {
-    expect(
-      repairFlavourText('One of us finds peace. One of us walks away."</e>'),
-    ).toBe('"One of us finds peace. One of us walks away."');
+    expect(repairFlavourText('One of us finds peace. One of us walks away."</e>')).toBe(
+      '"One of us finds peace. One of us walks away."',
+    );
   });
 
   it("strips leading tag debris without eating the rest of the text", () => {
     // A greedy `[^>]*` on this unterminated tag consumed the whole flavour.
-    expect(repairFlavourText('<em?"I will light our path.')).toBe(
-      '"I will light our path."',
-    );
+    expect(repairFlavourText('<em?"I will light our path.')).toBe('"I will light our path."');
   });
 
   // Upstream drops quotes at either edge, and only about half the affected
   // cards carry a "— Vi" attribution to key off. These six do not.
   it("restores an opening quote with no attribution to key off", () => {
-    expect(
-      repairFlavourText(
-        `Ready" and "fire" are easy. Aiming, now that's the hard part.`,
-      ),
-    ).toBe(`"Ready" and "fire" are easy. Aiming, now that's the hard part.`);
+    expect(repairFlavourText(`Ready" and "fire" are easy. Aiming, now that's the hard part.`)).toBe(
+      `"Ready" and "fire" are easy. Aiming, now that's the hard part.`,
+    );
     expect(repairFlavourText('Last one standing" is a bit subjective.')).toBe(
       '"Last one standing" is a bit subjective.',
     );
@@ -156,20 +141,14 @@ describe("repairFlavourText", () => {
   });
 
   it("still repairs when the attribution uses an em dash", () => {
-    expect(repairFlavourText('Only the worthy."\n— Leona')).toBe(
-      '"Only the worthy."\n— Leona',
-    );
+    expect(repairFlavourText('Only the worthy."\n— Leona')).toBe('"Only the worthy."\n— Leona');
   });
 });
 
 describe("decodeCardTextEntities", () => {
   it("decodes common HTML entities from upstream rules text", () => {
-    expect(decodeCardTextEntities("&quot;Kill this.&quot;")).toBe(
-      '"Kill this."',
-    );
-    expect(decodeCardTextEntities("[Action][&gt;] move")).toBe(
-      "[Action][>] move",
-    );
+    expect(decodeCardTextEntities("&quot;Kill this.&quot;")).toBe('"Kill this."');
+    expect(decodeCardTextEntities("[Action][&gt;] move")).toBe("[Action][>] move");
     expect(decodeCardTextEntities("&amp;quot;")).toBe('"');
   });
 
@@ -237,7 +216,7 @@ describe("formatCardTextForClipboard", () => {
 
   it("decodes quoted reminder text with a trailing period", () => {
     const conquer =
-      'When I conquer, if you assigned 3 or more excess damage, play two Gold gear tokens exhausted. (They have &quot;[Reaction][&gt;] :rb_exhaust:: [Add] :rb_rune_rainbow:.&quot;)';
+      "When I conquer, if you assigned 3 or more excess damage, play two Gold gear tokens exhausted. (They have &quot;[Reaction][&gt;] :rb_exhaust:: [Add] :rb_rune_rainbow:.&quot;)";
     expect(formatCardTextForClipboard(conquer)).toBe(
       'When I conquer, if you assigned 3 or more excess damage, play two Gold gear tokens exhausted. (They have "[Reaction]> {Exhaust}: [Add] {Power}.")',
     );
@@ -251,8 +230,7 @@ describe("formatCardTextForClipboard", () => {
   });
 
   it("keeps activated ability costs off the keyword badge", () => {
-    const vi =
-      "[Deflect]:rb_energy_2::rb_rune_fury:: Double my Might this turn.";
+    const vi = "[Deflect]:rb_energy_2::rb_rune_fury:: Double my Might this turn.";
     expect(formatCardTextForClipboard(vi)).toBe(
       ["[Deflect]", "{2}{Fury}: Double my Might this turn."].join("\n"),
     );

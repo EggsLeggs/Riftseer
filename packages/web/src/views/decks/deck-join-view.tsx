@@ -36,8 +36,8 @@ export function DeckJoinView({ code }: { code: string }) {
     <div className="container max-w-md py-16 text-center">
       <h1 className="text-xl font-semibold tracking-tight">Join this deck</h1>
       <p className="text-muted-foreground mt-2 text-sm">
-        You were invited to collaborate. Accepting adds you to the deck, and the
-        owner can remove you at any time.
+        You were invited to collaborate. Accepting adds you to the deck, and the owner can remove
+        you at any time.
       </p>
       <p className="text-muted-foreground mt-4 font-mono text-xs">{code}</p>
 

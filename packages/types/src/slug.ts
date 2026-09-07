@@ -86,10 +86,7 @@ export function joinPublicSlug(segments: string[]): string {
 }
 
 /** Apply a collision suffix (`-2`, `-3`, …) to the final (name) segment. */
-export function withNameCollisionSuffix(
-  segments: string[],
-  attempt: number,
-): string[] {
+export function withNameCollisionSuffix(segments: string[], attempt: number): string[] {
   if (attempt <= 1 || segments.length === 0) return segments;
   const next = segments.slice();
   next[next.length - 1] = `${next[next.length - 1]}-${attempt}`;
@@ -121,10 +118,7 @@ export function generatePublicSlug(
  * hang off the set/collector form. Collisions are real — two genuinely
  * different cards can slugify identically — so the same `-2` suffix applies.
  */
-export function generateOracleSlug(
-  name: string,
-  isTaken: (slug: string) => boolean,
-): string {
+export function generateOracleSlug(name: string, isTaken: (slug: string) => boolean): string {
   const base = slugifyCardName(name) || "card";
   for (let attempt = 1; attempt < 1000; attempt++) {
     const candidate = attempt <= 1 ? base : `${base}-${attempt}`;

@@ -59,9 +59,7 @@ describe("hostedObjectKeyFromUrl", () => {
   });
 
   it("returns null for upstream hosts", () => {
-    expect(
-      hostedObjectKeyFromUrl("https://cdn.riftcodex.com/cards/abc.jpg", BASE),
-    ).toBeNull();
+    expect(hostedObjectKeyFromUrl("https://cdn.riftcodex.com/cards/abc.jpg", BASE)).toBeNull();
   });
 
   // The prefix is checked on the encoded path and again after decoding, so a
@@ -80,9 +78,7 @@ describe("hostedObjectKeyFromUrl", () => {
 
   it("accepts hosted URLs without a base when using the production host", () => {
     expect(isHostedCardImageUrl(`${BASE}/cards/abc/normal.webp`)).toBe(true);
-    expect(isHostedCardImageUrl("https://cdn.riftcodex.com/cards/abc.jpg")).toBe(
-      false,
-    );
+    expect(isHostedCardImageUrl("https://cdn.riftcodex.com/cards/abc.jpg")).toBe(false);
   });
 });
 
@@ -98,12 +94,8 @@ describe("printingImageUrl", () => {
   // still resolve to something rather than leaving a blank card.
   it("falls back along the ladder for unhosted art", () => {
     const upstream = printing({ original: "https://cdn.riftcodex.com/abc.jpg" });
-    expect(printingImageUrl(upstream, "small")).toBe(
-      "https://cdn.riftcodex.com/abc.jpg",
-    );
-    expect(printingImageDownloadUrl(upstream)).toBe(
-      "https://cdn.riftcodex.com/abc.jpg",
-    );
+    expect(printingImageUrl(upstream, "small")).toBe("https://cdn.riftcodex.com/abc.jpg");
+    expect(printingImageDownloadUrl(upstream)).toBe("https://cdn.riftcodex.com/abc.jpg");
   });
 
   it("prefers original bytes for downloads", () => {

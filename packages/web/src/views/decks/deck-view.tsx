@@ -103,11 +103,7 @@ export function DeckView({ deck, showRevisions, showGuide, isSignedIn }: DeckVie
           canEdit={canEdit}
           onEdit={() => setPrimerOpen(true)}
         />
-        <DeckPrimerEditor
-          deck={deck}
-          open={primerOpen}
-          onOpenChange={setPrimerOpen}
-        />
+        <DeckPrimerEditor deck={deck} open={primerOpen} onOpenChange={setPrimerOpen} />
       </>
     );
   }
@@ -124,11 +120,7 @@ export function DeckView({ deck, showRevisions, showGuide, isSignedIn }: DeckVie
                 href={userDecksHref(deck.owner.handle)}
                 className="text-foreground hover:underline flex items-center gap-2 text-base font-semibold"
               >
-                <ProfileIcon
-                  username={deck.owner.username}
-                  handle={deck.owner.handle}
-                  size="md"
-                />
+                <ProfileIcon username={deck.owner.username} handle={deck.owner.handle} size="md" />
                 {deck.owner.username}
               </Link>
             )}
@@ -170,9 +162,7 @@ export function DeckView({ deck, showRevisions, showGuide, isSignedIn }: DeckVie
           onEditTags={setTaggingCard}
           tokens={editor.tokens}
           toolbarStart={
-            canEdit || deck.primer ? (
-              <DeckGuideButton href={deckGuideHref(deck)} />
-            ) : null
+            canEdit || deck.primer ? <DeckGuideButton href={deckGuideHref(deck)} /> : null
           }
           toolbarEnd={
             <DeckMoreMenu
@@ -223,11 +213,7 @@ export function DeckView({ deck, showRevisions, showGuide, isSignedIn }: DeckVie
         onOpenChange={setMetadataOpen}
       />
 
-      <DeckPrimerEditor
-        deck={deck}
-        open={primerOpen}
-        onOpenChange={setPrimerOpen}
-      />
+      <DeckPrimerEditor deck={deck} open={primerOpen} onOpenChange={setPrimerOpen} />
 
       <DeckExportDialog
         deckId={deck.id}
@@ -240,9 +226,7 @@ export function DeckView({ deck, showRevisions, showGuide, isSignedIn }: DeckVie
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Share “{deck.name}”</DialogTitle>
-            <DialogDescription>
-              Invite people to view or help build this deck.
-            </DialogDescription>
+            <DialogDescription>Invite people to view or help build this deck.</DialogDescription>
           </DialogHeader>
           <DeckSharingPanel deck={deck} />
         </DialogContent>

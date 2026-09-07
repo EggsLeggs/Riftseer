@@ -69,12 +69,10 @@ export function DeckImportView() {
   if (created && problems && problems.length > 0) {
     return (
       <div className="container max-w-2xl py-8">
-        <h1 className="text-xl font-semibold tracking-tight">
-          Imported “{created.name}”
-        </h1>
+        <h1 className="text-xl font-semibold tracking-tight">Imported “{created.name}”</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          {problems.length} line{problems.length === 1 ? "" : "s"} could not be
-          matched to a card. Everything else is in the deck.
+          {problems.length} line{problems.length === 1 ? "" : "s"} could not be matched to a card.
+          Everything else is in the deck.
         </p>
         <ul className="mt-4 rounded-md border">
           {problems.map((problem, index) => (
@@ -86,9 +84,7 @@ export function DeckImportView() {
                 {problem.line}
               </span>
               <span className="min-w-0 flex-1 font-mono text-xs">{problem.text}</span>
-              <span className="text-muted-foreground shrink-0 text-xs">
-                {problem.message}
-              </span>
+              <span className="text-muted-foreground shrink-0 text-xs">{problem.message}</span>
             </li>
           ))}
         </ul>
@@ -151,10 +147,7 @@ export function DeckImportView() {
         />
 
         <div className="flex gap-2">
-          <Button
-            type="submit"
-            disabled={importDeck.isPending || !text.trim() || !format}
-          >
+          <Button type="submit" disabled={importDeck.isPending || !text.trim() || !format}>
             {importDeck.isPending ? "Importing…" : "Import"}
           </Button>
           {!format && (

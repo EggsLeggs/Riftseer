@@ -1,22 +1,22 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "riftseer-discord-bot",
-	"main": "src/index.ts",
-	"compatibility_date": "2026-07-29",
-	"workers_dev": true,
-	"preview_urls": false,
-	"services": [
-		{
-			"binding": "RIFTSEER_API",
-			"service": "riftseer-api"
-		}
-	],
-	"vars": {
-		"API_BASE_URL": "https://api.riftseer.com",
-		"SITE_BASE_URL": "https://riftseer.com"
-	},
-	// https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
-	"secrets": {
-		"required": ["DISCORD_PUBLIC_KEY", "DISCORD_BOT_TOKEN", "DISCORD_APPLICATION_ID"]
-	}
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "riftseer-discord-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-29",
+  "workers_dev": true,
+  "preview_urls": false,
+  "services": [
+    {
+      "binding": "RIFTSEER_API",
+      "service": "riftseer-api",
+    },
+  ],
+  "vars": {
+    "API_BASE_URL": "https://api.riftseer.com",
+    "SITE_BASE_URL": "https://riftseer.com",
+  },
+  // https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
+  "secrets": {
+    "required": ["DISCORD_PUBLIC_KEY", "DISCORD_BOT_TOKEN", "DISCORD_APPLICATION_ID"],
+  },
 }

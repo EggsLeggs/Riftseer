@@ -1,11 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Oracle } from "@riftseer/types";
 
-import {
-  tcgplayerUsdPrice,
-  typeBadgeRarityColor,
-  typeBadgeStyle,
-} from "./format";
+import { tcgplayerUsdPrice, typeBadgeRarityColor, typeBadgeStyle } from "./format";
 
 describe("tcgplayerUsdPrice", () => {
   test("prefers a normal price when both finishes are available", () => {

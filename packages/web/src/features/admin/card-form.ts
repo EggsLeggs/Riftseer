@@ -83,20 +83,30 @@ const nullableNumber = (value: string): number | null => {
   const trimmed = value.trim();
   return trimmed === "" ? null : Number(trimmed);
 };
-const list = (value: string) => value.split(",").map((item) => item.trim()).filter(Boolean);
+const list = (value: string) =>
+  value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 export function buildOraclePatch(
   values: OracleEditorValues,
   initial: OracleEditorValues,
 ): AdminOraclePatch {
   const patch: AdminOraclePatch = {};
-  const setText = (key: "name" | "card_type" | "supertype" | "text_rich" | "text_plain" | "equipment_text") => {
+  const setText = (
+    key: "name" | "card_type" | "supertype" | "text_rich" | "text_plain" | "equipment_text",
+  ) => {
     if (values[key] === initial[key]) return;
     if (key === "name") patch.name = values.name.trim();
     else patch[key] = nullableText(values[key]);
   };
-  setText("name"); setText("card_type"); setText("supertype");
-  setText("text_rich"); setText("text_plain"); setText("equipment_text");
+  setText("name");
+  setText("card_type");
+  setText("supertype");
+  setText("text_rich");
+  setText("text_plain");
+  setText("equipment_text");
   if (values.is_token !== initial.is_token) patch.is_token = values.is_token;
   for (const key of ["energy", "might", "power", "might_bonus"] as const) {
     if (values[key] !== initial[key]) patch[key] = nullableNumber(values[key]);
@@ -113,11 +123,25 @@ export function buildPrintingPatch(
 ): AdminPrintingPatch {
   const patch: AdminPrintingPatch = {};
   if (values.set_code !== initial.set_code) patch.set_code = values.set_code.trim();
-  for (const key of ["collector_number", "released_at", "rarity", "flavour_text", "artist", "tcgplayer_id", "tcgplayer_url", "cardmarket_url"] as const) {
+  for (const key of [
+    "collector_number",
+    "released_at",
+    "rarity",
+    "flavour_text",
+    "artist",
+    "tcgplayer_id",
+    "tcgplayer_url",
+    "cardmarket_url",
+  ] as const) {
     if (values[key] !== initial[key]) patch[key] = nullableText(values[key]);
   }
   if (values.finishes !== initial.finishes) patch.finishes = list(values.finishes);
-  for (const key of ["is_signature", "is_alternate_art", "is_overnumbered", "is_special_collection"] as const) {
+  for (const key of [
+    "is_signature",
+    "is_alternate_art",
+    "is_overnumbered",
+    "is_special_collection",
+  ] as const) {
     if (values[key] !== initial[key]) patch[key] = values[key];
   }
   return patch;

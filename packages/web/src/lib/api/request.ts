@@ -23,15 +23,9 @@ export function handleRequestFailure(err: unknown): never {
   if (err instanceof CardApiError) throw err;
   const name = err instanceof Error ? err.name : "";
   if (name === "TimeoutError" || name === "AbortError") {
-    throw new CardApiError(
-      `Request timed out after ${API_TIMEOUT_MS}ms`,
-      "timeout",
-    );
+    throw new CardApiError(`Request timed out after ${API_TIMEOUT_MS}ms`, "timeout");
   }
-  throw new CardApiError(
-    err instanceof Error ? err.message : String(err),
-    "network",
-  );
+  throw new CardApiError(err instanceof Error ? err.message : String(err), "network");
 }
 
 /**

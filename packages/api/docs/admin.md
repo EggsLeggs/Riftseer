@@ -44,68 +44,67 @@ Paths in the tables below are relative to `/api/v1/admin`.
 
 ### Audit and review
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/stats` | Dashboard totals: sets, oracles, printings, pending review |
-| `GET` | `/audit-log` | List mutations, newest first |
-| `GET` | `/reconciliation` | List ingest review entries |
-| `POST` | `/reconciliation/:id/confirm` | Apply a supported proposal and close it |
-| `POST` | `/reconciliation/:id/dismiss` | Close an entry without changing card data |
+| Method | Path                          | Purpose                                                    |
+| ------ | ----------------------------- | ---------------------------------------------------------- |
+| `GET`  | `/stats`                      | Dashboard totals: sets, oracles, printings, pending review |
+| `GET`  | `/audit-log`                  | List mutations, newest first                               |
+| `GET`  | `/reconciliation`             | List ingest review entries                                 |
+| `POST` | `/reconciliation/:id/confirm` | Apply a supported proposal and close it                    |
+| `POST` | `/reconciliation/:id/dismiss` | Close an entry without changing card data                  |
 
 ### Oracles
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `POST` | `/oracles` | Create a manual rules object |
-| `PATCH` | `/oracles/:id` | Patch rules fields and lock the submitted keys |
-| `DELETE` | `/oracles/:id` | Soft-delete an oracle and all its printings |
-| `POST` | `/oracles/:id/restore` | Restore an oracle and its printings |
-| `GET` | `/oracles/:id/relationships` | Read outgoing and incoming oracle edges |
-| `PUT` | `/oracles/:id/relationships` | Replace all outgoing oracle edges |
+| Method   | Path                         | Purpose                                        |
+| -------- | ---------------------------- | ---------------------------------------------- |
+| `POST`   | `/oracles`                   | Create a manual rules object                   |
+| `PATCH`  | `/oracles/:id`               | Patch rules fields and lock the submitted keys |
+| `DELETE` | `/oracles/:id`               | Soft-delete an oracle and all its printings    |
+| `POST`   | `/oracles/:id/restore`       | Restore an oracle and its printings            |
+| `GET`    | `/oracles/:id/relationships` | Read outgoing and incoming oracle edges        |
+| `PUT`    | `/oracles/:id/relationships` | Replace all outgoing oracle edges              |
 
 ### Printings
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/printings` | List the catalogue, including rows public search cannot see |
-| `POST` | `/printings` | Add a physical printing to an oracle |
-| `PATCH` | `/printings/:id` | Patch printed fields; `set_code` moves sets |
-| `DELETE` | `/printings/:id` | Soft-delete one printing |
-| `POST` | `/printings/:id/restore` | Restore one printing |
-| `POST` | `/printings/:id/regenerate-slug` | Deliberately repin its public slug |
-| `GET` | `/printings/:id/deltas` | Read its admin-authored rules delta |
-| `PUT` | `/printings/:id/deltas` | Set, replace, or clear that delta |
-| `POST` | `/printings/:id/image` | Store an image source and queue variants |
-| `GET` | `/printings/:id/legalities` | Read resolved format statuses and scopes |
-| `PUT` | `/printings/:id/legalities` | Set or clear a printing- or oracle-level status |
-| `GET` | `/printings/:id/rulings` | Read every ruling that reaches the printing |
+| Method   | Path                             | Purpose                                                     |
+| -------- | -------------------------------- | ----------------------------------------------------------- |
+| `GET`    | `/printings`                     | List the catalogue, including rows public search cannot see |
+| `POST`   | `/printings`                     | Add a physical printing to an oracle                        |
+| `PATCH`  | `/printings/:id`                 | Patch printed fields; `set_code` moves sets                 |
+| `DELETE` | `/printings/:id`                 | Soft-delete one printing                                    |
+| `POST`   | `/printings/:id/restore`         | Restore one printing                                        |
+| `POST`   | `/printings/:id/regenerate-slug` | Deliberately repin its public slug                          |
+| `GET`    | `/printings/:id/deltas`          | Read its admin-authored rules delta                         |
+| `PUT`    | `/printings/:id/deltas`          | Set, replace, or clear that delta                           |
+| `POST`   | `/printings/:id/image`           | Store an image source and queue variants                    |
+| `GET`    | `/printings/:id/legalities`      | Read resolved format statuses and scopes                    |
+| `PUT`    | `/printings/:id/legalities`      | Set or clear a printing- or oracle-level status             |
+| `GET`    | `/printings/:id/rulings`         | Read every ruling that reaches the printing                 |
 
 ### Catalogue administration
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/formats` | List active and retired formats |
-| `POST` | `/formats` | Create a format |
-| `PUT` | `/formats/order` | Replace format order |
-| `PATCH` | `/formats/:code` | Patch name, order, or active state |
-| `DELETE` | `/formats/:code` | Delete a format and its legality rows |
-| `PUT` | `/formats/:code/zone-rules/:zone` | Set what the format demands of one deck zone |
-| `DELETE` | `/formats/:code/zone-rules/:zone` | Leave that zone unconstrained |
-| `PUT` | `/formats/:code/severities/:legality_status` | Override how loudly a status reads |
-| `GET` | `/rulings` | List rulings and targets |
-| `POST` | `/rulings/preview` | Evaluate a query target without storing it |
-| `POST` | `/rulings` | Create a ruling and its targets |
-| `PATCH` | `/rulings/:rulingId` | Patch a ruling or replace its targets |
-| `DELETE` | `/rulings/:rulingId` | Delete a ruling and all targets |
-| `POST` | `/sets` | Create a manual set |
-| `PATCH` | `/sets/:setCode` | Patch and lock set fields |
-| `DELETE` | `/sets/:setCode` | Soft-delete an empty set |
+| Method   | Path                                         | Purpose                                      |
+| -------- | -------------------------------------------- | -------------------------------------------- |
+| `GET`    | `/formats`                                   | List active and retired formats              |
+| `POST`   | `/formats`                                   | Create a format                              |
+| `PUT`    | `/formats/order`                             | Replace format order                         |
+| `PATCH`  | `/formats/:code`                             | Patch name, order, or active state           |
+| `DELETE` | `/formats/:code`                             | Delete a format and its legality rows        |
+| `PUT`    | `/formats/:code/zone-rules/:zone`            | Set what the format demands of one deck zone |
+| `DELETE` | `/formats/:code/zone-rules/:zone`            | Leave that zone unconstrained                |
+| `PUT`    | `/formats/:code/severities/:legality_status` | Override how loudly a status reads           |
+| `GET`    | `/rulings`                                   | List rulings and targets                     |
+| `POST`   | `/rulings/preview`                           | Evaluate a query target without storing it   |
+| `POST`   | `/rulings`                                   | Create a ruling and its targets              |
+| `PATCH`  | `/rulings/:rulingId`                         | Patch a ruling or replace its targets        |
+| `DELETE` | `/rulings/:rulingId`                         | Delete a ruling and all targets              |
+| `POST`   | `/sets`                                      | Create a manual set                          |
+| `PATCH`  | `/sets/:setCode`                             | Patch and lock set fields                    |
+| `DELETE` | `/sets/:setCode`                             | Soft-delete an empty set                     |
 
 ## Audit log
 
 `GET /audit-log` accepts `limit`, `offset`, `action`, `target_type`,
-`target_id`, and `actor_id`. The default page size is 50 and the maximum is
-200. `target_type` values reflect the real row being changed: `oracle`,
+`target_id`, and `actor_id`. The default page size is 50 and the maximum is 200. `target_type` values reflect the real row being changed: `oracle`,
 `printing`, `set`, `format`, `ruling`, or `reconciliation`.
 
 ```json
@@ -162,11 +161,11 @@ soft-delete state and rebuilds the resolved projection.
 Relationships are directed oracle-to-oracle edges stored once. The only kinds
 are:
 
-| Kind | Direction |
-| --- | --- |
-| `makes_token` | Producer oracle → token oracle |
-| `character` | Legend oracle → champion oracle |
-| `signature` | Character oracle → signature-card oracle |
+| Kind          | Direction                                |
+| ------------- | ---------------------------------------- |
+| `makes_token` | Producer oracle → token oracle           |
+| `character`   | Legend oracle → champion oracle          |
+| `signature`   | Character oracle → signature-card oracle |
 
 `used_by` is the reverse view of `makes_token`; it is not a fourth stored kind.
 There are no printing-scoped relationship exceptions.
@@ -193,17 +192,17 @@ Self-edges and duplicate kind/target pairs are rejected.
 
 `GET /printings` is the admin catalogue list, and exists because public search
 cannot answer the questions an admin opens the list to ask. The search grammar
-is deliberately a language about *cards*; every filter here is a fact about the
-*catalogue*:
+is deliberately a language about _cards_; every filter here is a fact about the
+_catalogue_:
 
-| `state` | Selects |
-| --- | --- |
-| `live` (default) | Everything not soft-deleted |
-| `deleted` | Soft-deleted rows — the only way to find one to restore |
-| `manual` | `source = 'manual'`, the rows ingest's prune skips |
-| `locked` | Rows carrying at least one admin-locked column |
-| `delta` | Rows carrying a printing delta, from either layer |
-| `no_image` | Rows with no hosted R2 variant set |
+| `state`          | Selects                                                 |
+| ---------------- | ------------------------------------------------------- |
+| `live` (default) | Everything not soft-deleted                             |
+| `deleted`        | Soft-deleted rows — the only way to find one to restore |
+| `manual`         | `source = 'manual'`, the rows ingest's prune skips      |
+| `locked`         | Rows carrying at least one admin-locked column          |
+| `delta`          | Rows carrying a printing delta, from either layer       |
+| `no_image`       | Rows with no hosted R2 variant set                      |
 
 Also accepts `q` (card-name substring), `set` (set code, upper-cased), `id`
 (exact printing id), `limit` (max 200) and `offset`.
@@ -382,12 +381,12 @@ printing has been moved or deleted.
 `GET /reconciliation` accepts `limit`, `offset`, `status`, `kind`, and `source`.
 It defaults to pending entries. Kinds are:
 
-| Kind | Meaning |
-| --- | --- |
-| `unmatched_product` | A TCGPlayer product is not linked to a printing |
-| `field_diff` | TCGPlayer or the gallery disagrees with a stored field |
-| `missing_printing` | The gallery reports a physical printing not present locally |
-| `unmatched_oracle` | A new printing cannot be assigned safely to a rules object |
+| Kind                | Meaning                                                     |
+| ------------------- | ----------------------------------------------------------- |
+| `unmatched_product` | A TCGPlayer product is not linked to a printing             |
+| `field_diff`        | TCGPlayer or the gallery disagrees with a stored field      |
+| `missing_printing`  | The gallery reports a physical printing not present locally |
+| `unmatched_oracle`  | A new printing cannot be assigned safely to a rules object  |
 
 Prices are never review proposals. Confirmable printing fields are collector
 number, release date, and rarity. Confirmable oracle fields are card type,

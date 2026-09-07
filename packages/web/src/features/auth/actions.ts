@@ -32,7 +32,8 @@ export async function loginAction(_prev: unknown, formData: FormData) {
     user: data.user,
   });
 
-  const safeCallback = callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : "/";
+  const safeCallback =
+    callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : "/";
   redirect(safeCallback);
 }
 

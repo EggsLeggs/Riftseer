@@ -20,20 +20,18 @@ const FETCH_TIMEOUT_MS = 8_000;
  * authorization decision, so it must never be served from a cross-request cache
  * keyed on anything but the exact token.
  */
-export const getCurrentUser = cache(
-  async (accessToken: string): Promise<CurrentUser | null> => {
-    let res: Response;
-    try {
-      res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: "no-store",
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
-    } catch {
-      return null;
-    }
+export const getCurrentUser = cache(async (accessToken: string): Promise<CurrentUser | null> => {
+  let res: Response;
+  try {
+    res = await fetch(`${env.NEXT_PUBLIC_API_URL}/api/v1/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch {
+    return null;
+  }
 
-    if (!res.ok) return null;
-    return (await res.json().catch(() => null)) as CurrentUser | null;
-  },
-);
+  if (!res.ok) return null;
+  return (await res.json().catch(() => null)) as CurrentUser | null;
+});

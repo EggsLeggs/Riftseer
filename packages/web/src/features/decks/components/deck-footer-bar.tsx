@@ -40,10 +40,9 @@ export function DeckFooterBar({
   React.useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setStuck(!entry?.isIntersecting),
-      { threshold: 0 },
-    );
+    const observer = new IntersectionObserver(([entry]) => setStuck(!entry?.isIntersecting), {
+      threshold: 0,
+    });
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, []);
@@ -60,7 +59,9 @@ export function DeckFooterBar({
         )}
       >
         {open && violations.length > 0 && (
-          <div className={cn("max-h-64 overflow-y-auto border-b py-2", stuck ? "container" : "px-1")}>
+          <div
+            className={cn("max-h-64 overflow-y-auto border-b py-2", stuck ? "container" : "px-1")}
+          >
             <DeckViolationList violations={violations} />
           </div>
         )}

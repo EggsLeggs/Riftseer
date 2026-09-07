@@ -39,12 +39,8 @@ export default function CardRouteError({
 
   return (
     <div className="container flex max-w-lg flex-col gap-4 py-16">
-      <h1 className="text-xl font-semibold text-foreground">
-        {title}
-      </h1>
-      <p className="text-sm leading-relaxed text-muted-foreground">
-        {friendlyMessage(error)}
-      </p>
+      <h1 className="text-xl font-semibold text-foreground">{title}</h1>
+      <p className="text-sm leading-relaxed text-muted-foreground">{friendlyMessage(error)}</p>
       <p className="text-sm leading-relaxed text-muted-foreground">
         Try refreshing the page or waiting a moment, then open the card again.
       </p>

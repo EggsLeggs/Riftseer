@@ -68,11 +68,7 @@ export type CardSearchField =
   | "name";
 
 /** Numerically comparable card attributes. `domain_count` is `|domains|`. */
-export type CardSearchNumericField =
-  | "energy"
-  | "might"
-  | "power"
-  | "domain_count";
+export type CardSearchNumericField = "energy" | "might" | "power" | "domain_count";
 
 export type CardSearchComparator = "eq" | "ne" | "gt" | "gte" | "lt" | "lte";
 
@@ -208,11 +204,7 @@ const FLAG_VALUES: Record<string, CardSearchFlag> = {
 };
 
 /** Fields whose unquoted values expand a comma list into an OR of leaves. */
-const COMMA_LIST_FIELDS = new Set<CardSearchField>([
-  "keyword",
-  "domain",
-  "tag",
-]);
+const COMMA_LIST_FIELDS = new Set<CardSearchField>(["keyword", "domain", "tag"]);
 
 const COMPARATORS: Record<string, CardSearchComparator> = {
   "=": "eq",
@@ -240,9 +232,7 @@ function knownFieldList(): string {
 // ─── Builders ───────────────────────────────────────────────────────────────
 
 /** Combine children with AND, flattening nested ANDs and merging sibling text leaves. */
-export function andAst(
-  ...children: Array<CardSearchAst | null | undefined>
-): CardSearchAst | null {
+export function andAst(...children: Array<CardSearchAst | null | undefined>): CardSearchAst | null {
   const real = children.filter((c): c is CardSearchAst => c != null);
   if (real.length === 0) return null;
   const flat: CardSearchAst[] = [];
@@ -255,9 +245,7 @@ export function andAst(
 }
 
 /** Combine children with OR, flattening nested ORs. Returns null on empty input. */
-export function orAst(
-  ...children: Array<CardSearchAst | null | undefined>
-): CardSearchAst | null {
+export function orAst(...children: Array<CardSearchAst | null | undefined>): CardSearchAst | null {
   const real = children.filter((c): c is CardSearchAst => c != null);
   if (real.length === 0) return null;
   const flat: CardSearchAst[] = [];
@@ -270,9 +258,7 @@ export function orAst(
 }
 
 /** Wrap in NOT, collapsing double-negation. */
-export function notAst(
-  child: CardSearchAst | null | undefined,
-): CardSearchAst | null {
+export function notAst(child: CardSearchAst | null | undefined): CardSearchAst | null {
   if (!child) return null;
   if (child.op === "not") return child.child;
   return { op: "not", child };
@@ -288,10 +274,7 @@ export function exactNameLeaf(value: string): CardSearchAst | null {
   return norm.length === 0 ? null : { op: "exact_name", value: norm };
 }
 
-export function filterLeaf(
-  field: CardSearchField,
-  value: string,
-): CardSearchAst | null {
+export function filterLeaf(field: CardSearchField, value: string): CardSearchAst | null {
   const v = value.trim();
   if (v.length === 0) return null;
   // Keywords are stored as base keys, so fold `Deflect 3` → `deflect` at parse
@@ -327,9 +310,7 @@ export function numericLeaf(
   const raw = value.trim();
   if (raw.length === 0) return null;
   if (!/^-?\d+(?:\.\d+)?$/.test(raw)) {
-    throw new BadCardSearchQueryError(
-      `"${field}" needs a number, got "${raw}".`,
-    );
+    throw new BadCardSearchQueryError(`"${field}" needs a number, got "${raw}".`);
   }
   return { op: "numeric", field, cmp, value: Number(raw) };
 }
@@ -531,9 +512,7 @@ function lex(input: string): Token[] {
  * numeric field used with implicit equality (`energy:2` ≡ `energy=2`). Any
  * other operator is numeric-only.
  */
-function fieldTokenToLeaf(
-  t: Extract<Token, { kind: "field" }>,
-): CardSearchAst | null {
+function fieldTokenToLeaf(t: Extract<Token, { kind: "field" }>): CardSearchAst | null {
   const { name, op, value, quoted } = t;
 
   if (op === ":") {
@@ -590,14 +569,10 @@ function parseTokens(tokens: Token[]): CardSearchAst | null {
       // something broader than the admin typed attaches a ruling to cards they
       // never intended. Unbalanced parens already raise; be consistent.
       if (!right) {
-        throw new BadCardSearchQueryError(
-          "`or` needs an expression on both sides.",
-        );
+        throw new BadCardSearchQueryError("`or` needs an expression on both sides.");
       }
       if (!left) {
-        throw new BadCardSearchQueryError(
-          "`or` needs an expression on both sides.",
-        );
+        throw new BadCardSearchQueryError("`or` needs an expression on both sides.");
       }
       left = orAst(left, right);
     }
@@ -667,15 +642,11 @@ function parseTokens(tokens: Token[]): CardSearchAst | null {
 
 // ─── Validation ─────────────────────────────────────────────────────────────
 
-const ALLOWED_FIELDS = new Set<CardSearchField>(
-  Object.values(FIELD_ALIASES),
-);
+const ALLOWED_FIELDS = new Set<CardSearchField>(Object.values(FIELD_ALIASES));
 const ALLOWED_NUMERIC_FIELDS = new Set<CardSearchNumericField>(
   Object.values(NUMERIC_FIELD_ALIASES),
 );
-const ALLOWED_COMPARATORS = new Set<CardSearchComparator>(
-  Object.values(COMPARATORS),
-);
+const ALLOWED_COMPARATORS = new Set<CardSearchComparator>(Object.values(COMPARATORS));
 const ALLOWED_FLAGS = new Set<CardSearchFlag>(Object.values(FLAG_VALUES));
 const ALLOWED_LEGALITY_STATUSES = new Set<CardSearchLegalityStatus>([
   "legal",
@@ -721,9 +692,7 @@ export function validateCardSearchAst(ast: CardSearchAst): void {
         return;
       case "filter":
         if (!ALLOWED_FIELDS.has(n.field)) {
-          throw new BadCardSearchQueryError(
-            `Unsupported filter field: ${n.field}`,
-          );
+          throw new BadCardSearchQueryError(`Unsupported filter field: ${n.field}`);
         }
         if (n.value.length > CARD_SEARCH_LIMITS.maxLeafValueLength) {
           throw new BadCardSearchQueryError("Filter value too long.");
@@ -731,9 +700,7 @@ export function validateCardSearchAst(ast: CardSearchAst): void {
         return;
       case "numeric":
         if (!ALLOWED_NUMERIC_FIELDS.has(n.field)) {
-          throw new BadCardSearchQueryError(
-            `Unsupported numeric field: ${n.field}`,
-          );
+          throw new BadCardSearchQueryError(`Unsupported numeric field: ${n.field}`);
         }
         if (!ALLOWED_COMPARATORS.has(n.cmp)) {
           throw new BadCardSearchQueryError(`Unsupported comparator: ${n.cmp}`);
@@ -747,14 +714,10 @@ export function validateCardSearchAst(ast: CardSearchAst): void {
         return;
       case "legality":
         if (!ALLOWED_LEGALITY_STATUSES.has(n.status)) {
-          throw new BadCardSearchQueryError(
-            `Unsupported legality status: ${n.status}`,
-          );
+          throw new BadCardSearchQueryError(`Unsupported legality status: ${n.status}`);
         }
         if (!FORMAT_CODE_RE.test(n.format)) {
-          throw new BadCardSearchQueryError(
-            `Invalid format code: "${n.format}".`,
-          );
+          throw new BadCardSearchQueryError(`Invalid format code: "${n.format}".`);
         }
         if (n.format.length > CARD_SEARCH_LIMITS.maxLeafValueLength) {
           throw new BadCardSearchQueryError("Format code too long.");

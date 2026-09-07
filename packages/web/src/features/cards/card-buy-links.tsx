@@ -75,7 +75,6 @@ export function CardBuyLinks({
           >
             <a href={market.url} target="_blank" rel="noreferrer nofollow">
               <span className="inline-flex min-w-0 items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={market.logoSrc}
                   alt=""
@@ -94,8 +93,8 @@ export function CardBuyLinks({
         ))}
       </div>
       <p className="text-muted-foreground mt-2 text-xs">
-        Prices are provided for reference and may be out of date. Purchases through these
-        links may earn Riftseer a commission.
+        Prices are provided for reference and may be out of date. Purchases through these links may
+        earn Riftseer a commission.
       </p>
     </section>
   );

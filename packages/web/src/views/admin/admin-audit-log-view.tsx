@@ -135,44 +135,38 @@ export function AdminAuditLogView() {
         isPending={log.isPending}
         isEmpty={entries.length === 0}
         errorMessage={
-          log.error instanceof Error
-            ? log.error.message
-            : "Couldn't load the audit log."
+          log.error instanceof Error ? log.error.message : "Couldn't load the audit log."
         }
         loadingMessage="Loading audit log…"
         emptyMessage="No admin changes recorded yet."
       >
-          <p className="text-muted-foreground mb-3 text-sm">
-            {total.toLocaleString()} {total === 1 ? "entry" : "entries"}
-            {totalPages > 1 ? ` · page ${page + 1} of ${totalPages}` : ""}
-          </p>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-8" />
-                <TableHead>When</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead>Actor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {entries.map((entry) => (
-                <AuditRow
-                  key={entry.id}
-                  entry={entry}
-                  expanded={expanded === entry.id}
-                  onToggle={() =>
-                    setExpanded((current) =>
-                      current === entry.id ? null : entry.id,
-                    )
-                  }
-                />
-              ))}
-            </TableBody>
-          </Table>
+        <p className="text-muted-foreground mb-3 text-sm">
+          {total.toLocaleString()} {total === 1 ? "entry" : "entries"}
+          {totalPages > 1 ? ` · page ${page + 1} of ${totalPages}` : ""}
+        </p>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-8" />
+              <TableHead>When</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Target</TableHead>
+              <TableHead>Actor</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {entries.map((entry) => (
+              <AuditRow
+                key={entry.id}
+                entry={entry}
+                expanded={expanded === entry.id}
+                onToggle={() => setExpanded((current) => (current === entry.id ? null : entry.id))}
+              />
+            ))}
+          </TableBody>
+        </Table>
 
-          <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
+        <AdminPager page={page} totalPages={totalPages} onPageChange={setPage} />
       </AdminListState>
     </>
   );
@@ -202,16 +196,10 @@ function AuditRow({
             aria-expanded={expanded}
             aria-label={expanded ? "Hide payload" : "Show payload"}
           >
-            {expanded ? (
-              <ChevronDown aria-hidden="true" />
-            ) : (
-              <ChevronRight aria-hidden="true" />
-            )}
+            {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
           </Button>
         </TableCell>
-        <TableCell className="whitespace-nowrap">
-          {formatTimestamp(entry.created_at)}
-        </TableCell>
+        <TableCell className="whitespace-nowrap">{formatTimestamp(entry.created_at)}</TableCell>
         <TableCell className="font-medium">{entry.action}</TableCell>
         <TableCell className="max-w-56 truncate font-mono text-xs">
           {linksToEditor ? (
@@ -244,4 +232,3 @@ function AuditRow({
     </>
   );
 }
-

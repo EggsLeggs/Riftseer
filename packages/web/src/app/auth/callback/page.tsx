@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-type State =
-  | { status: "loading" }
-  | { status: "confirmed" }
-  | { status: "error"; message: string };
+type State = { status: "loading" } | { status: "confirmed" } | { status: "error"; message: string };
 
 export default function AuthCallbackPage() {
   const router = useRouter();

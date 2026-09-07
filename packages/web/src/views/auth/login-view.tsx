@@ -9,7 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { loginAction } from "@/features/auth/actions";
 
 const schema = z.object({
@@ -27,7 +34,10 @@ interface LoginViewProps {
 export function LoginView({ callbackUrl, justReset }: LoginViewProps) {
   const [state, action, pending] = useActionState(loginAction, null);
 
-  const { register, formState: { errors } } = useForm<Fields>({
+  const {
+    register,
+    formState: { errors },
+  } = useForm<Fields>({
     resolver: zodResolver(schema),
   });
 
@@ -70,7 +80,9 @@ export function LoginView({ callbackUrl, justReset }: LoginViewProps) {
               aria-invalid={!!errors.password}
               {...register("password")}
             />
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            {errors.password && (
+              <p className="text-xs text-destructive">{errors.password.message}</p>
+            )}
           </div>
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? "Signing in…" : "Sign in"}

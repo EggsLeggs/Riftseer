@@ -6,12 +6,7 @@ import { LayersIcon, LayoutGridIcon, ListIcon, ShoppingBagIcon, TagIcon } from "
 
 import { AppSelectContent } from "@/components/layout/clear-body-pointer-events";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { CardQuickView } from "@/features/cards/card-quick-view";
@@ -22,10 +17,7 @@ import {
   DeckBulkEditDialog,
 } from "@/features/decks/components/deck-bulk-edit-dialog";
 import { DeckBuyDialog } from "@/features/decks/components/deck-buy-dialog";
-import {
-  DeckCardPreview,
-  defaultPreviewCard,
-} from "@/features/decks/components/deck-card-preview";
+import { DeckCardPreview, defaultPreviewCard } from "@/features/decks/components/deck-card-preview";
 import { DeckCollapsible } from "@/features/decks/components/deck-collapsible";
 import { DeckDndContext, DeckZoneDropArea } from "@/features/decks/components/deck-dnd";
 import { DeckPrintingPicker } from "@/features/decks/components/deck-printing-picker";
@@ -338,27 +330,27 @@ export function DeckWorkspace({
               {/* A second drop target for the same zone: the section inside is
                   invisible while the details element is closed. */}
               <DeckZoneDropArea zone="considering" id="considering-strip">
-              <DeckCollapsible title="Considering" count={considering?.count ?? 0}>
-                <DeckZoneSection
-                  zone="considering"
-                  label="Considering"
-                  cards={considering?.cards ?? []}
-                  count={considering?.count ?? 0}
-                  groupMode={groupMode}
-                  view={view}
-                  canEdit={canEdit}
-                  showTags={showTags}
-                  violations={violationIndex}
-                  onQuantityChange={editor.setQuantity}
-                  onMoveZone={editor.moveZone}
-                  onChangePrinting={canEdit ? setReprinting : undefined}
-                  onEditTags={canEdit ? onEditTags : undefined}
-                  onPreview={setPointedAt}
-                  onOpenCard={setOpenedCard}
-                  hideHeader
-                  emptyHint="Cards parked here count toward nothing."
-                />
-              </DeckCollapsible>
+                <DeckCollapsible title="Considering" count={considering?.count ?? 0}>
+                  <DeckZoneSection
+                    zone="considering"
+                    label="Considering"
+                    cards={considering?.cards ?? []}
+                    count={considering?.count ?? 0}
+                    groupMode={groupMode}
+                    view={view}
+                    canEdit={canEdit}
+                    showTags={showTags}
+                    violations={violationIndex}
+                    onQuantityChange={editor.setQuantity}
+                    onMoveZone={editor.moveZone}
+                    onChangePrinting={canEdit ? setReprinting : undefined}
+                    onEditTags={canEdit ? onEditTags : undefined}
+                    onPreview={setPointedAt}
+                    onOpenCard={setOpenedCard}
+                    hideHeader
+                    emptyHint="Cards parked here count toward nothing."
+                  />
+                </DeckCollapsible>
               </DeckZoneDropArea>
 
               {collapsiblesAfter}
@@ -418,11 +410,7 @@ export function DeckWorkspace({
         onOpenChange={setBuyOpen}
       />
 
-      <DeckBulkEditDialog
-        editor={editor}
-        open={bulkOpen}
-        onOpenChange={setBulkOpen}
-      />
+      <DeckBulkEditDialog editor={editor} open={bulkOpen} onOpenChange={setBulkOpen} />
     </DeckDndContext>
   );
 }

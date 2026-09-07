@@ -97,7 +97,10 @@ bun run db:local:psql
 ## Verifying
 
 ```bash
-bun run check                               # the gate: typecheck, tests, docs references, markdown lint, boundaries
+bun run check                               # the gate: lint, format, typecheck, tests, docs references, markdown lint, boundaries, spec, wrangler
+bun run lint                                # oxlint, warnings fail
+bun run format:check                        # oxfmt --check
+bun run lint:fix                            # oxlint --fix, then oxfmt --write
 bun test                                    # types, core, api, ingest-worker, web, discord-bot
 bun run typecheck                           # tsc --noEmit for every package, including web and discord-bot
 bun run lint:boundaries                     # dependency-cruiser rules in .config/dependency-cruiser.cjs
@@ -108,7 +111,8 @@ bun run preview:web                         # builds and runs in workerd
 
 - `bun run check` is the gate. `.github/workflows/test.yml` runs it on every PR, unfiltered; CONTRIBUTING and CI name the same command, so a green local check is a green PR.
 - Boundary rules are structural invariants, not style: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports `@riftseer/core`.
-- **There is no formatter and no general linter.** No biome, eslint or prettier. Match the file you are in, and do not add one without asking.
+- **oxlint and oxfmt are the linter and formatter**, configured in `.oxlintrc.json` and `.oxfmtrc.json` at the root. They live there because ignore patterns resolve inside the config's own directory. No eslint, prettier or biome anywhere else; raycast keeps its own because `ray lint` requires them.
+- `bun run lint:fix` fixes and formats. The React Compiler rules (`set-state-in-effect`, `refs`, `immutability`) are off until the web deck-logic extraction; do not switch them on in passing.
 - `bun dev` does not exercise the Workers runtime. Run `bun run preview:web` before shipping anything that touches web's server runtime or bindings.
 - `ingest-worker` spells it `type-check`. Everything else uses `typecheck`, and root `typecheck` covers every workspace member.
 - reddit-bot and raycast-extension are gated by `.github/workflows/standalone.yml` (`npm ci` + `tsc --noEmit` on their committed lockfiles).

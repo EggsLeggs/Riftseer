@@ -187,9 +187,7 @@ export async function checkMetafyMembership(
       communities?: Array<{ id?: string; community_id?: string }>;
     } | null;
     if (!data?.communities) return null;
-    return data.communities.some(
-      (c) => c.id === communityId || c.community_id === communityId,
-    );
+    return data.communities.some((c) => c.id === communityId || c.community_id === communityId);
   } catch {
     return null;
   }

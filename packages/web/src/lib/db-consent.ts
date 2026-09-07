@@ -3,10 +3,8 @@ import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
 import { env } from "./env";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let _db: Kysely<any> | null = null;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getDb(): Kysely<any> {
   if (!_db) {
     if (!env.C15T_DATABASE_URL) {

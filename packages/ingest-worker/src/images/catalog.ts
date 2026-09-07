@@ -7,11 +7,7 @@ import {
   toImageProvider,
   type DurablePrinting,
 } from "../pipeline/durable.ts";
-import {
-  createImageJob,
-  hashImageSourceUrl,
-  selectBestImageSource,
-} from "./model.ts";
+import { createImageJob, hashImageSourceUrl, selectBestImageSource } from "./model.ts";
 import {
   CARD_IMAGE_CATALOG_JOB_VERSION,
   CARD_IMAGE_JOB_VERSION,
@@ -68,22 +64,15 @@ export async function preparePrintingImageJobs(
       if (previous && hasLockedImage(previous)) {
         printing.image_source_url = previous.image_source_url ?? undefined;
         printing.image_source_hash = previous.image_source_hash ?? undefined;
-        printing.image_source_provider = toImageProvider(
-          previous.image_source_provider,
-        );
+        printing.image_source_provider = toImageProvider(previous.image_source_provider);
         adminPreserved++;
-        if (
-          previous.image_source_url &&
-          previous.image_source_hash &&
-          !isHosted(previous)
-        ) {
+        if (previous.image_source_url && previous.image_source_hash && !isHosted(previous)) {
           jobs.push(
             createImageJob(
               printing.id,
               {
                 url: previous.image_source_url,
-                provider:
-                  toImageProvider(previous.image_source_provider) ?? "admin",
+                provider: toImageProvider(previous.image_source_provider) ?? "admin",
               },
               previous.image_source_hash,
             ),
@@ -115,10 +104,7 @@ export async function preparePrintingImageJobs(
   return { jobs, reused, withoutSource, adminPreserved };
 }
 
-export async function enqueueCardImageJobs(
-  queue: Queue,
-  jobs: CardImageJob[],
-): Promise<void> {
+export async function enqueueCardImageJobs(queue: Queue, jobs: CardImageJob[]): Promise<void> {
   for (const jobChunk of chunk(jobs, QUEUE_BATCH_SIZE)) {
     await queue.sendBatch(
       jobChunk.map((job) => ({
@@ -130,9 +116,7 @@ export async function enqueueCardImageJobs(
   logger.info("Card image jobs enqueued", { jobs: jobs.length });
 }
 
-export async function enqueueCardImageCatalogJob(
-  queue: Queue,
-): Promise<void> {
+export async function enqueueCardImageCatalogJob(queue: Queue): Promise<void> {
   await queue.send({
     version: CARD_IMAGE_CATALOG_JOB_VERSION,
     type: "catalog",
@@ -144,17 +128,13 @@ export async function enqueueCardImageCatalogJob(
  * Every printing that has a source but no hosted variants — the fan-out the
  * queue consumer performs when it receives a catalogue job.
  */
-export async function loadPendingCardImageJobs(
-  supabase: SupabaseClient,
-): Promise<CardImageJob[]> {
+export async function loadPendingCardImageJobs(supabase: SupabaseClient): Promise<CardImageJob[]> {
   const jobs: CardImageJob[] = [];
 
   for (let from = 0; ; from += DATABASE_PAGE_SIZE) {
     const { data, error } = await supabase
       .from("printings")
-      .select(
-        "id, image_source_url, image_source_hash, image_source_provider",
-      )
+      .select("id, image_source_url, image_source_hash, image_source_provider")
       .is("image_hosted_at", null)
       .order("id")
       .range(from, from + DATABASE_PAGE_SIZE - 1);

@@ -23,9 +23,7 @@ export function DeckStatsPanel({ cards }: { cards: readonly StattableCard[] }) {
 
   if (stats.cards === 0) {
     return (
-      <p className="text-muted-foreground text-sm">
-        Add cards to the main deck to see its shape.
-      </p>
+      <p className="text-muted-foreground text-sm">Add cards to the main deck to see its shape.</p>
     );
   }
 
@@ -42,7 +40,13 @@ export function DeckStatsPanel({ cards }: { cards: readonly StattableCard[] }) {
       <div className="grid gap-x-12 gap-y-8 lg:grid-cols-2">
         <Curve title="Energy curve" unit="energy" buckets={stats.energyCurve} />
         <Curve title="Power curve" unit="power" buckets={stats.powerCurve} />
-        <Shares title="Domains" shares={stats.domains} total={stats.cards} domainGlyphs domainColors />
+        <Shares
+          title="Domains"
+          shares={stats.domains}
+          total={stats.cards}
+          domainGlyphs
+          domainColors
+        />
         <Shares title="Card types" shares={stats.cardTypes} total={stats.cards} />
       </div>
     </div>
@@ -166,7 +170,9 @@ function Shares({
                 style={{
                   width: `${(share.count / widest) * 100}%`,
                   ...(domainColors
-                    ? { backgroundColor: `rgb(${domainWashRgb(share.key) ?? NEUTRAL_DOMAIN_RGB} / 0.85)` }
+                    ? {
+                        backgroundColor: `rgb(${domainWashRgb(share.key) ?? NEUTRAL_DOMAIN_RGB} / 0.85)`,
+                      }
                     : {}),
                 }}
               />

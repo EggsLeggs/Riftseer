@@ -104,16 +104,10 @@ export interface CardDataProvider {
    * Structured-AST search returning one row per card, each carrying the
    * matching printing (the preferred one when it matched).
    */
-  searchOraclesByAst(
-    ast: CardSearchAst,
-    opts?: CardSearchOptions,
-  ): Promise<OracleSearchResult>;
+  searchOraclesByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<OracleSearchResult>;
 
   /** Structured-AST search returning one row per matching printing. */
-  searchPrintingsByAst(
-    ast: CardSearchAst,
-    opts?: CardSearchOptions,
-  ): Promise<PrintingSearchResult>;
+  searchPrintingsByAst(ast: CardSearchAst, opts?: CardSearchOptions): Promise<PrintingSearchResult>;
 
   /**
    * Resolve a `[[Name|SET-123]]` request.

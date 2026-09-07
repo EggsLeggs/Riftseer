@@ -13,11 +13,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  generateOracleSlug,
-  generatePublicSlug,
-  type SlugPrinting,
-} from "@riftseer/types/slug";
+import { generateOracleSlug, generatePublicSlug, type SlugPrinting } from "@riftseer/types/slug";
 import type {
   IngestOracle,
   IngestPrinting,
@@ -186,17 +182,13 @@ async function assignSlugs(
 
   const oracleSlugs = new Map<string, string>();
   let newOracleSlugs = 0;
-  for (const oracle of [...oracles].sort((a, b) =>
-    a.oracle_key.localeCompare(b.oracle_key),
-  )) {
+  for (const oracle of [...oracles].sort((a, b) => a.oracle_key.localeCompare(b.oracle_key))) {
     const existing = oracleState.existing.get(oracle.oracle_key);
     if (existing) {
       oracleSlugs.set(oracle.oracle_key, existing);
       continue;
     }
-    const slug = generateOracleSlug(oracle.name, (candidate) =>
-      oracleState.taken.has(candidate),
-    );
+    const slug = generateOracleSlug(oracle.name, (candidate) => oracleState.taken.has(candidate));
     oracleState.taken.add(slug);
     oracleSlugs.set(oracle.oracle_key, slug);
     newOracleSlugs++;
@@ -204,9 +196,7 @@ async function assignSlugs(
 
   const printingSlugs = new Map<string, string>();
   let newPrintingSlugs = 0;
-  for (const printing of [...printings].sort((a, b) =>
-    a.id.localeCompare(b.id),
-  )) {
+  for (const printing of [...printings].sort((a, b) => a.id.localeCompare(b.id))) {
     const existing = printingState.existing.get(printing.id);
     if (existing) {
       printingSlugs.set(printing.id, existing);
@@ -242,9 +232,7 @@ function toRpcSet(set: IngestSet): RpcSet {
     parent_set_code: set.parent_set_code ?? null,
     riftcodex_set_id: set.riftcodex_set_id ?? null,
     tcgplayer_group_id:
-      set.tcgplayer_group_id === undefined
-        ? null
-        : String(set.tcgplayer_group_id),
+      set.tcgplayer_group_id === undefined ? null : String(set.tcgplayer_group_id),
     cardmarket_id: set.cardmarket_id ?? null,
   };
 }
@@ -337,8 +325,11 @@ export async function ingestCatalogue(
   // A plain array of strings, not objects — `jsonb_array_elements_text`.
   const p_artists = [...artistNames];
 
-  const { oracleSlugs, printingSlugs, newOracleSlugs, newPrintingSlugs } =
-    await assignSlugs(supabase, oracles, printings);
+  const { oracleSlugs, printingSlugs, newOracleSlugs, newPrintingSlugs } = await assignSlugs(
+    supabase,
+    oracles,
+    printings,
+  );
   logger.info("Computed slugs", {
     oracles: oracles.length,
     printings: printings.length,
@@ -347,10 +338,7 @@ export async function ingestCatalogue(
   });
 
   const deltasByPrintingId = new Map(deltas.map((d) => [d.printing_id, d]));
-  const batches = chunkOraclesByPrintingCount(
-    oracles,
-    INGEST_RPC_CARD_BATCH_SIZE,
-  );
+  const batches = chunkOraclesByPrintingCount(oracles, INGEST_RPC_CARD_BATCH_SIZE);
 
   logger.info("Starting batched ingest_catalogue RPC", {
     sets: p_sets.length,
@@ -365,11 +353,7 @@ export async function ingestCatalogue(
     const batch = batches[index]!;
     const batchPrintings = batch.flatMap((oracle) =>
       oracle.printings.map((printing) =>
-        toRpcPrinting(
-          printing,
-          oracle.oracle_key,
-          printingSlugs.get(printing.id)!,
-        ),
+        toRpcPrinting(printing, oracle.oracle_key, printingSlugs.get(printing.id)!),
       ),
     );
     const batchDeltas = batchPrintings
@@ -382,9 +366,7 @@ export async function ingestCatalogue(
       {
         p_sets,
         p_artists,
-        p_oracles: batch.map((oracle) =>
-          toRpcOracle(oracle, oracleSlugs.get(oracle.oracle_key)!),
-        ),
+        p_oracles: batch.map((oracle) => toRpcOracle(oracle, oracleSlugs.get(oracle.oracle_key)!)),
         p_printings: batchPrintings,
         p_deltas: batchDeltas,
         // Relationships reference oracles that may not exist until a later

@@ -18,26 +18,20 @@ type SitePreferencesContextValue = {
   canPersistAccessibility: boolean;
   /** Whether consent state has finished loading. */
   consentReady: boolean;
-  patchAccessibility: (
-    patch: Partial<SiteAccessibilityPreferences>,
-  ) => void;
+  patchAccessibility: (patch: Partial<SiteAccessibilityPreferences>) => void;
 };
 
-const SitePreferencesContext = React.createContext<
-  SitePreferencesContextValue | undefined
->(undefined);
+const SitePreferencesContext = React.createContext<SitePreferencesContextValue | undefined>(
+  undefined,
+);
 
-export function SitePreferencesProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function SitePreferencesProvider({ children }: { children: React.ReactNode }) {
   const { has, hasFetchedBanner } = useConsentManager();
-  const canPersistAccessibility =
-    hasFetchedBanner && has("functionality");
+  const canPersistAccessibility = hasFetchedBanner && has("functionality");
 
-  const [accessibility, setAccessibility] =
-    React.useState<SiteAccessibilityPreferences>(DEFAULT_SITE_ACCESSIBILITY_PREFS);
+  const [accessibility, setAccessibility] = React.useState<SiteAccessibilityPreferences>(
+    DEFAULT_SITE_ACCESSIBILITY_PREFS,
+  );
 
   React.useEffect(() => {
     if (!hasFetchedBanner) return;
@@ -72,18 +66,11 @@ export function SitePreferencesProvider({
         consentReady: hasFetchedBanner,
         patchAccessibility,
       }) satisfies SitePreferencesContextValue,
-    [
-      accessibility,
-      canPersistAccessibility,
-      hasFetchedBanner,
-      patchAccessibility,
-    ],
+    [accessibility, canPersistAccessibility, hasFetchedBanner, patchAccessibility],
   );
 
   return (
-    <SitePreferencesContext.Provider value={value}>
-      {children}
-    </SitePreferencesContext.Provider>
+    <SitePreferencesContext.Provider value={value}>{children}</SitePreferencesContext.Provider>
   );
 }
 

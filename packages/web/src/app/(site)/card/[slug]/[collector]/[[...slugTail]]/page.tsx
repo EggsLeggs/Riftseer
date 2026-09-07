@@ -30,11 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const joined = await resolveSlug(params);
   const detail = joined ? await loadDetail(joined) : null;
   if (!detail) return { title: "Card not found — Riftseer" };
-  return cardMetadata(
-    detail.oracle,
-    detail.printing,
-    cardHref(detail.printing),
-  );
+  return cardMetadata(detail.oracle, detail.printing, cardHref(detail.printing));
 }
 
 /**

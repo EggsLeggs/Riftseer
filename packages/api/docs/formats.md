@@ -11,9 +11,9 @@ and system-wide — see [Admin](./admin.md) for the write endpoints.
 
 ## Endpoints at a glance
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/v1/formats` | List the active formats in display order |
+| Method | Path              | Description                              |
+| ------ | ----------------- | ---------------------------------------- |
+| `GET`  | `/api/v1/formats` | List the active formats in display order |
 
 ---
 
@@ -62,7 +62,7 @@ it, and runs the same `validateDeck` a saved deck gets on the server.
 
 A `null` bound is unconstrained, an absent zone constrains nothing, and a format
 with `zone_rules: []` constrains nothing at all. `copy_limit` counts copies of
-one *oracle* across the zone's whole counting group — `legend`/`main`/
+one _oracle_ across the zone's whole counting group — `legend`/`main`/
 `sideboard` share one, `runes` and `battlefields` each have their own, and
 `considering` is a scratch list counted by nothing.
 
@@ -117,11 +117,11 @@ Statuses are keyed on the card's `oracle_key`, so they are shared by every
 printing by default. A single printing can carry an exception — `scope` reports
 which layer decided the value:
 
-| `scope` | Meaning |
-| --- | --- |
+| `scope`    | Meaning                                     |
+| ---------- | ------------------------------------------- |
 | `printing` | This printing overrides the card-wide value |
-| `oracle` | Shared by every printing of the card |
-| `default` | Nothing stored — legal |
+| `oracle`   | Shared by every printing of the card        |
+| `default`  | Nothing stored — legal                      |
 
 See [Cards](./cards.md#get-apiv1cardsdetail) for the rest of the card-detail
 payload, and [Card Types](../types/card-types) for the `Format` and

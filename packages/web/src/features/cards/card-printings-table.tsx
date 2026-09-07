@@ -10,11 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { RarityIcon } from "@/features/cards/card-icons";
-import {
-  formatEur,
-  formatUsd,
-  tcgplayerUsdPrice,
-} from "@/features/cards/format";
+import { formatEur, formatUsd, tcgplayerUsdPrice } from "@/features/cards/format";
 import { cardHref, oracleHref } from "@riftseer/types/render";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +22,9 @@ function printingAccessibleName(printing: Printing, oracleName: string): string 
     printing.collector_label ? `#${printing.collector_label}` : undefined,
     printing.rarity,
     usd != null ? formatUsd(usd) : undefined,
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 export function CardPrintingsTable({
@@ -70,10 +68,7 @@ export function CardPrintingsTable({
           return (
             <TableRow
               key={printing.id}
-              className={cn(
-                "relative",
-                isCurrent ? "bg-muted font-medium" : "hover:bg-muted/40",
-              )}
+              className={cn("relative", isCurrent ? "bg-muted font-medium" : "hover:bg-muted/40")}
             >
               <TableCell className="w-[40%] whitespace-normal">
                 <RowHitTarget
@@ -99,7 +94,9 @@ export function CardPrintingsTable({
                       {printing.rarity}
                     </span>
                   </span>
-                ) : "—"}
+                ) : (
+                  "—"
+                )}
               </TableCell>
               {showPrices ? (
                 <>

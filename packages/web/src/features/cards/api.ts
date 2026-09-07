@@ -2,11 +2,7 @@ import type { Oracle, OracleDetail, Printing } from "@riftseer/types";
 import { env } from "@/lib/env";
 import { createApiClient } from "@/lib/api/client";
 
-import {
-  getJsonFromTreaty,
-  handleRequestFailure,
-  requestFetchInit,
-} from "@/lib/api/request";
+import { getJsonFromTreaty, handleRequestFailure, requestFetchInit } from "@/lib/api/request";
 import { CardApiError } from "./errors";
 
 export { CardApiError } from "./errors";
@@ -38,19 +34,13 @@ async function getJsonFromSlugFetch(url: string): Promise<Oracle | null> {
 
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new CardApiError(
-      `Riftseer API ${res.status} ${res.statusText}`,
-      "http",
-      res.status,
-    );
+    throw new CardApiError(`Riftseer API ${res.status} ${res.statusText}`, "http", res.status);
   }
   return (await res.json()) as Oracle;
 }
 
 function oracleResult(oracle: Oracle): CardResult | null {
-  return oracle.preferred_printing
-    ? { oracle, printing: oracle.preferred_printing }
-    : null;
+  return oracle.preferred_printing ? { oracle, printing: oracle.preferred_printing } : null;
 }
 
 async function hydratePrintings(printings: Printing[]): Promise<CardResult[]> {
@@ -114,10 +104,7 @@ export const cardsApi = {
   },
 
   async getDetail(
-    target:
-      | { oracle: string }
-      | { printing: string }
-      | { slug: string[] },
+    target: { oracle: string } | { printing: string } | { slug: string[] },
   ): Promise<OracleDetail | null> {
     const query =
       "oracle" in target
@@ -140,15 +127,9 @@ export const cardsApi = {
     }
   },
 
-  async searchByName(
-    name: string,
-    opts: SearchByNameOptions = {},
-  ): Promise<SearchByNameResult> {
+  async searchByName(name: string, opts: SearchByNameOptions = {}): Promise<SearchByNameResult> {
     const trimmed = name.trim();
-    const limit = Math.min(
-      Math.max(Math.floor(opts.limit ?? 10), 1),
-      MAX_SEARCH_LIMIT,
-    );
+    const limit = Math.min(Math.max(Math.floor(opts.limit ?? 10), 1), MAX_SEARCH_LIMIT);
     const offset = Math.max(0, Math.floor(opts.offset ?? 0));
     if (!trimmed && !opts.set) {
       return { count: 0, cards: [], total: 0, offset: 0, limit };
@@ -173,7 +154,7 @@ export const cardsApi = {
       if (error != null) {
         const detail =
           typeof (error as Record<string, unknown>)?.error === "string"
-            ? (error as Record<string, unknown>).error as string
+            ? ((error as Record<string, unknown>).error as string)
             : undefined;
         throw new CardApiError(`Riftseer API ${status}`, "http", status, detail);
       }
@@ -184,12 +165,13 @@ export const cardsApi = {
         cards: Oracle[];
         printings: Printing[];
       };
-      const cards = result.printings.length > 0
-        ? await hydratePrintings(result.printings)
-        : result.cards.flatMap((oracle) => {
-            const row = oracleResult(oracle);
-            return row ? [row] : [];
-          });
+      const cards =
+        result.printings.length > 0
+          ? await hydratePrintings(result.printings)
+          : result.cards.flatMap((oracle) => {
+              const row = oracleResult(oracle);
+              return row ? [row] : [];
+            });
       return {
         count: cards.length,
         cards,
@@ -217,10 +199,7 @@ export const cardsApi = {
   async browseAll(
     opts: { limit?: number; offset?: number; includePrices?: boolean } = {},
   ): Promise<SearchByNameResult> {
-    const limit = Math.min(
-      Math.max(Math.floor(opts.limit ?? 60), 1),
-      MAX_SEARCH_LIMIT,
-    );
+    const limit = Math.min(Math.max(Math.floor(opts.limit ?? 60), 1), MAX_SEARCH_LIMIT);
     const offset = Math.max(0, Math.floor(opts.offset ?? 0));
     try {
       const { data, error, status } = await cardsClient.api.v1.cards.get({
@@ -274,10 +253,7 @@ export const cardsApi = {
         getJsonFromTreaty<{
           results: Array<{ oracle: Oracle | null; printing: Printing | null }>;
         }>(() =>
-          cardsClient.api.v1.cards.resolve.post(
-            { requests: chunk },
-            { fetch: requestFetchInit() },
-          ),
+          cardsClient.api.v1.cards.resolve.post({ requests: chunk }, { fetch: requestFetchInit() }),
         ),
       ),
     );
@@ -286,8 +262,7 @@ export const cardsApi = {
 };
 
 export const cardExportUrls = {
-  text: (oracleId: string) =>
-    `${API_BASE}/api/v1/cards/${encodeURIComponent(oracleId)}/text`,
+  text: (oracleId: string) => `${API_BASE}/api/v1/cards/${encodeURIComponent(oracleId)}/text`,
   json: (oracleId: string) =>
     `${API_BASE}/api/v1/cards/${encodeURIComponent(oracleId)}?include=prices`,
 };
@@ -304,43 +279,38 @@ export const cardsQueryKeys = {
   all: ["cards"] as const,
   oracle: (id: string) => ["cards", "oracle", id] as const,
   printing: (id: string) => ["cards", "printing", id] as const,
-  relationshipSearch: (name: string) =>
-    ["cards", "relationship-search", name] as const,
-  resolve: (requests: readonly string[]) =>
-    ["cards", "resolve", ...requests] as const,
-  detail: (
-    target:
-      | { oracle: string }
-      | { printing: string }
-      | { slug: string[] },
-  ) => [
-    "cards",
-    "detail",
-    "oracle" in target
-      ? `oracle:${target.oracle}`
-      : "printing" in target
-        ? `printing:${target.printing}`
-        : `slug:${target.slug.join("/")}`,
-  ] as const,
+  relationshipSearch: (name: string) => ["cards", "relationship-search", name] as const,
+  resolve: (requests: readonly string[]) => ["cards", "resolve", ...requests] as const,
+  detail: (target: { oracle: string } | { printing: string } | { slug: string[] }) =>
+    [
+      "cards",
+      "detail",
+      "oracle" in target
+        ? `oracle:${target.oracle}`
+        : "printing" in target
+          ? `printing:${target.printing}`
+          : `slug:${target.slug.join("/")}`,
+    ] as const,
   search: (
     name: string,
     limit: number,
     offset: number,
     includePrices = false,
     extras: Pick<SearchByNameOptions, "type" | "artist" | "rarity" | "set" | "unique"> = {},
-  ) => [
-    "cards",
-    "search",
-    name,
-    limit,
-    offset,
-    includePrices,
-    extras.type ?? "",
-    extras.artist ?? "",
-    extras.rarity ?? "",
-    extras.set ?? "",
-    extras.unique ?? false,
-  ] as const,
+  ) =>
+    [
+      "cards",
+      "search",
+      name,
+      limit,
+      offset,
+      includePrices,
+      extras.type ?? "",
+      extras.artist ?? "",
+      extras.rarity ?? "",
+      extras.set ?? "",
+      extras.unique ?? false,
+    ] as const,
   setCards: (setCode: string, includePrices = false) =>
     ["cards", "set", setCode, includePrices] as const,
   browse: (limit: number, offset: number, includePrices = false) =>

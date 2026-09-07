@@ -98,7 +98,9 @@ export function matchTcgGroupsToSets(
   return setGroupMap;
 }
 
-function priceSide(p: { marketPrice: number | null; midPrice: number | null; lowPrice: number | null } | undefined): PriceSide {
+function priceSide(
+  p: { marketPrice: number | null; midPrice: number | null; lowPrice: number | null } | undefined,
+): PriceSide {
   return {
     market: p?.marketPrice ?? null,
     mid: p?.midPrice ?? null,
@@ -111,18 +113,13 @@ function bestPrice(side: PriceSide): number | null {
   return side.market ?? side.mid ?? side.low;
 }
 
-export function normalizeCollectorNumber(
-  value: string | number | null | undefined,
-): string | null {
+export function normalizeCollectorNumber(value: string | number | null | undefined): string | null {
   if (value === null || value === undefined) return null;
   const firstPart = String(value).split("/")[0]?.trim().toLowerCase();
   return firstPart || null;
 }
 
-function extendedValue(
-  product: TCGGroupResult["products"][number],
-  field: string,
-): string | null {
+function extendedValue(product: TCGGroupResult["products"][number], field: string): string | null {
   const entry = product.extendedData?.find((candidate) => {
     const key = candidate.name || candidate.displayName;
     return key.toLowerCase() === field;
@@ -130,9 +127,7 @@ function extendedValue(
   return entry?.value?.trim() || null;
 }
 
-function extractProductCollectorNumber(
-  product: TCGGroupResult["products"][number],
-): string | null {
+function extractProductCollectorNumber(product: TCGGroupResult["products"][number]): string | null {
   return normalizeCollectorNumber(extendedValue(product, "number"));
 }
 
@@ -140,9 +135,7 @@ function extractProductCollectorNumber(
  * TCGPlayer writes the literal string `None` on products it has no rarity for;
  * that is an absence, not a rarity, and must never be reported as a diff.
  */
-function extractProductRarity(
-  product: TCGGroupResult["products"][number],
-): string | null {
+function extractProductRarity(product: TCGGroupResult["products"][number]): string | null {
   const value = extendedValue(product, "rarity");
   return !value || value.toLowerCase() === "none" ? null : value;
 }
@@ -164,8 +157,7 @@ export function collectorCandidates(printing: IngestPrinting): string[] {
   // Most specific first. A variant printing and its base share a name in the
   // Vendetta data, so trying the bare number first matched the alternate art
   // against the base printing's product — and it never reached `113a`.
-  const [, printedNumber] =
-    printing.riftbound_id?.match(/^[^-]+-([^-]+)(?:-|$)/i) ?? [];
+  const [, printedNumber] = printing.riftbound_id?.match(/^[^-]+-([^-]+)(?:-|$)/i) ?? [];
   const fromRiftboundId = normalizeCollectorNumber(printedNumber);
   if (fromRiftboundId) out.add(fromRiftboundId);
 
@@ -297,8 +289,7 @@ function applyProduct(
   }
 
   const cardOverride = overrides.cards[printing.id];
-  const needsTcgImage =
-    !printing.image_source_url || cardOverride?.use_tcgplayer_image;
+  const needsTcgImage = !printing.image_source_url || cardOverride?.use_tcgplayer_image;
   if (needsTcgImage && product.imageUrl) {
     const raw = product.imageUrl;
     // Only the largest is kept: the hosted variants are transcoded down from
@@ -374,9 +365,7 @@ function findProduct(
     // Doing all the exact-name lookups first would hand the alternate art its
     // base printing's product, since the two share a name in the Vendetta data.
     for (const collectorNumber of collectorCandidates(printing)) {
-      const exact = collectorMap?.get(
-        collectorNameKey(collectorNumber, printing.name_normalized),
-      );
+      const exact = collectorMap?.get(collectorNameKey(collectorNumber, printing.name_normalized));
       if (exact) return { product: exact, matchSource: "collector-name" };
 
       // Number alone, guarded by the name. TCGPlayer distinguishes printings by
@@ -440,9 +429,7 @@ export function enrichPrintings(
   const claims = new Map<number, Claim[]>();
 
   for (const printing of printings) {
-    const groupId = printing.set_code
-      ? setGroupMap.get(printing.set_code)
-      : undefined;
+    const groupId = printing.set_code ? setGroupMap.get(printing.set_code) : undefined;
     const match = findProduct(printing, maps, groupId);
     if (!match) continue;
     const existing = claims.get(match.product.productId);
@@ -510,8 +497,7 @@ export function enrichPrintings(
     applyProduct(winner.printing, product, winner.matchSource);
   }
 
-  const enriched =
-    byIdCount + byCollectorNameCount + byCollectorCount + byNameCount;
+  const enriched = byIdCount + byCollectorNameCount + byCollectorCount + byNameCount;
   logger.info("TCGPlayer enrichment applied", {
     enriched,
     matchedById: byIdCount,

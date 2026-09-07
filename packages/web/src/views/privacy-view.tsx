@@ -15,8 +15,8 @@ export function PrivacyView() {
           <SubHeading>Introduction</SubHeading>
           <Text>
             This policy describes how Riftseer collects, uses, and protects information when you use
-            our website, API, Reddit bot, and optional Raycast extension. We do not sell your personal
-            information.
+            our website, API, Reddit bot, and optional Raycast extension. We do not sell your
+            personal information.
           </Text>
         </div>
 
@@ -45,8 +45,8 @@ export function PrivacyView() {
               register, we collect your{" "}
               <strong className="font-semibold">email address and password</strong> to create and
               authenticate your account. Passwords are hashed and stored securely by{" "}
-              <InlineLink href="https://supabase.com/privacy">Supabase</InlineLink>{" "}
-              (our authentication provider); we never store plaintext passwords. Upon login, Supabase
+              <InlineLink href="https://supabase.com/privacy">Supabase</InlineLink> (our
+              authentication provider); we never store plaintext passwords. Upon login, Supabase
               issues a short-lived <strong className="font-semibold">access token</strong> and a
               long-lived <strong className="font-semibold">refresh token</strong>; these are stored
               client-side and sent with authenticated requests. You can revoke your session at any
@@ -62,42 +62,38 @@ export function PrivacyView() {
               <strong className="font-semibold">theme choice</strong> (light or dark mode) and, if
               you accept functional cookies, your{" "}
               <strong className="font-semibold">cards-per-page search preference</strong>,{" "}
-              <strong className="font-semibold">
-                optional site accessibility preferences
-              </strong>{" "}
-              (for example how card names appear on search, or whether icons
-              are shown as readable text instead), and{" "}
-              <strong className="font-semibold">
-                optional layout preferences
-              </strong>{" "}
-              (card page detailed/simple view, and gallery/search/set browse
-              layout). These are
-              not personally identifiable and are not sent to our servers. You can clear them by
-              clearing your browser&apos;s local storage for this site.
+              <strong className="font-semibold">optional site accessibility preferences</strong>{" "}
+              (for example how card names appear on search, or whether icons are shown as readable
+              text instead), and{" "}
+              <strong className="font-semibold">optional layout preferences</strong> (card page
+              detailed/simple view, and gallery/search/set browse layout). These are not personally
+              identifiable and are not sent to our servers. You can clear them by clearing your
+              browser&apos;s local storage for this site.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">Deck content and social features (signed in).</strong>{" "}
+              <strong className="font-semibold">
+                Deck content and social features (signed in).
+              </strong>{" "}
               If you use decks, we store what you create so it can be shown as you direct: your{" "}
               <strong className="font-semibold">decks</strong> (names, descriptions, guides, card
               lists and per-card tags, with the visibility you chose),{" "}
               <strong className="font-semibold">comments</strong> you post on decks (visible to
               everyone who can see that deck; deleting one leaves a &ldquo;comment deleted&rdquo;
               placeholder so replies keep their place, and the deck&apos;s owner can also remove
-              comments on their deck),{" "}
-              <strong className="font-semibold">comment likes</strong> (which comments you liked,
-              used to show a like count and to remember your own like), your{" "}
-              <strong className="font-semibold">favorites</strong> (public decks show a favorite
-              count), and your <strong className="font-semibold">deck folders</strong> (private to
-              you). Public content is attributed to your handle. To remove any of it, delete the
-              content or contact us through the project repository.
+              comments on their deck), <strong className="font-semibold">comment likes</strong>{" "}
+              (which comments you liked, used to show a like count and to remember your own like),
+              your <strong className="font-semibold">favorites</strong> (public decks show a
+              favorite count), and your <strong className="font-semibold">deck folders</strong>{" "}
+              (private to you). Public content is attributed to your handle. To remove any of it,
+              delete the content or contact us through the project repository.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Deck view counts.</strong> Deck pages keep an
               aggregate view counter. To count a visitor only once per six hours we briefly keep a{" "}
               <strong className="font-semibold">one-way digest</strong> of your IP address, browser
-              identifier and the current date (or your user ID when signed in) in an expiring
-              cache. The raw IP address is never stored for this purpose and the digest cannot be
-              reversed or linked across days.
+              identifier and the current date (or your user ID when signed in) in an expiring cache.
+              The raw IP address is never stored for this purpose and the digest cannot be reversed
+              or linked across days.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Cookie preferences.</strong> Where applicable, we
@@ -108,8 +104,8 @@ export function PrivacyView() {
               <strong className="font-semibold">API and server requests.</strong> When you visit the
               site or call the API, our servers receive your requests (for example the URL, search
               terms, and card lookups). Our hosting provider (and we) may log request metadata such
-              as IP address, timestamp, and path for operation, security, and abuse prevention. We do
-              not use this data to build profiles of you or to advertise.
+              as IP address, timestamp, and path for operation, security, and abuse prevention. We
+              do not use this data to build profiles of you or to advertise.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Admin edits.</strong> If your account has admin
@@ -121,15 +117,13 @@ export function PrivacyView() {
             </ListItem>
             <ListItem>
               <strong className="font-semibold">PostHog (site analytics).</strong> We use{" "}
-              <InlineLink href="https://posthog.com">PostHog</InlineLink>{" "}
-              to record site activity, for example page views, search usage, and how people navigate
-              the site, so we can understand usage and improve the product. PostHog may collect
-              information such as your
+              <InlineLink href="https://posthog.com">PostHog</InlineLink> to record site activity,
+              for example page views, search usage, and how people navigate the site, so we can
+              understand usage and improve the product. PostHog may collect information such as your
               IP address, device and browser type, and interaction data. PostHog&apos;s own privacy
               policy applies:{" "}
-              <InlineLink href="https://posthog.com/privacy">posthog.com/privacy</InlineLink>
-              .{" "}
-              We do not use this data for advertising.
+              <InlineLink href="https://posthog.com/privacy">posthog.com/privacy</InlineLink>. We do
+              not use this data for advertising.
             </ListItem>
           </UnorderedList>
         </div>
@@ -138,19 +132,18 @@ export function PrivacyView() {
           <SubHeading>Metafy account linking</SubHeading>
           <Text>
             If you choose to link your Metafy account, we store the following in our database
-            server-side: your Metafy username, your Metafy user identifier, your OAuth access
-            token (and refresh token, if issued), and your supporter status. This data is used
-            exclusively to verify your Metafy membership and to enable supporter perks (ad-free
-            experience and supporter badge). Your Metafy OAuth tokens are never exposed to the
-            browser; they remain server-side and are used only to re-check your membership status
-            on login and when you visit your donations settings. Metafy may also notify our server
-            directly when your community membership or subscription changes; we use those
-            notifications only to update the membership and supporter status stored on your linked
-            account, together with the time of the update. We do not keep a separate history of
-            those notifications, and payment details are never sent to us. You can disconnect your
-            Metafy account at any time from the Donations settings page, which deletes all stored
-            Metafy data. Metafy&apos;s own{" "}
-            <InlineLink href="https://metafy.gg/privacy">privacy policy</InlineLink> applies to
+            server-side: your Metafy username, your Metafy user identifier, your OAuth access token
+            (and refresh token, if issued), and your supporter status. This data is used exclusively
+            to verify your Metafy membership and to enable supporter perks (ad-free experience and
+            supporter badge). Your Metafy OAuth tokens are never exposed to the browser; they remain
+            server-side and are used only to re-check your membership status on login and when you
+            visit your donations settings. Metafy may also notify our server directly when your
+            community membership or subscription changes; we use those notifications only to update
+            the membership and supporter status stored on your linked account, together with the
+            time of the update. We do not keep a separate history of those notifications, and
+            payment details are never sent to us. You can disconnect your Metafy account at any time
+            from the Donations settings page, which deletes all stored Metafy data. Metafy&apos;s
+            own <InlineLink href="https://metafy.gg/privacy">privacy policy</InlineLink> applies to
             information held by Metafy.
           </Text>
         </div>
@@ -160,14 +153,13 @@ export function PrivacyView() {
           <Text>
             The Riftseer bot runs on Reddit via Devvit. When it is installed in a subreddit, it
             reacts to new comments and self-posts that contain card references (for example{" "}
-            <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">[[Sun Disc]]</code>) and
-            may post a reply with card information and links.
+            <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">[[Sun Disc]]</code>)
+            and may post a reply with card information and links.
           </Text>
           <UnorderedList>
             <ListItem>
-              <strong className="font-semibold">Data we receive from Reddit.</strong>
-              {" "}
-              For each comment or post it processes, the bot receives from Reddit: the comment or post ID,
+              <strong className="font-semibold">Data we receive from Reddit.</strong> For each
+              comment or post it processes, the bot receives from Reddit: the comment or post ID,
               the author&apos;s Reddit username, and the text (title and body). This is the same
               data Reddit provides to any app that runs in the subreddit.
             </ListItem>
@@ -175,7 +167,9 @@ export function PrivacyView() {
               <strong className="font-semibold">How we use that data.</strong> We use the text to
               find card references and to call the Riftseer API to resolve them. We use the author
               username only to skip replying to accounts whose username ends with{" "}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">&quot;bot&quot;</code>
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+                &quot;bot&quot;
+              </code>
               ; we do not persist Reddit usernames in the bot. Card-name and subreddit analytics on
               our servers are described under{" "}
               <strong className="font-semibold">What we store</strong>.
@@ -183,15 +177,15 @@ export function PrivacyView() {
             <ListItem>
               <strong className="font-semibold">What we store.</strong> The bot stores only{" "}
               <strong className="font-semibold">Reddit comment and post IDs</strong> (in a key-value
-              store) so we do not reply twice to the same item; it does not persist Reddit usernames,
-              subreddit names, or requested card names. Separately, our{" "}
+              store) so we do not reply twice to the same item; it does not persist Reddit
+              usernames, subreddit names, or requested card names. Separately, our{" "}
               <strong className="font-semibold">server-side API</strong> may log{" "}
               <strong className="font-semibold">requested card names and subreddit</strong> when the
               bot calls it to resolve references—for analytics (understanding how the bot is used
-              across communities and improving the service). Those API logs are retained only as long
-              as needed for analytics and product
-              improvement, consistent with how we retain other API and server logs for operation and
-              security. We do not sell this data or use it for advertising.
+              across communities and improving the service). Those API logs are retained only as
+              long as needed for analytics and product improvement, consistent with how we retain
+              other API and server logs for operation and security. We do not sell this data or use
+              it for advertising.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Replies.</strong> When the bot replies, it does so
@@ -210,8 +204,8 @@ export function PrivacyView() {
         <div className="mb-6">
           <SubHeading>Riftseer Raycast extension</SubHeading>
           <Text>
-            The optional Raycast extension calls the public Riftseer API to search and display cards.
-            It does not send us your Raycast account or identity.
+            The optional Raycast extension calls the public Riftseer API to search and display
+            cards. It does not send us your Raycast account or identity.
           </Text>
           <UnorderedList>
             <ListItem>
@@ -225,7 +219,9 @@ export function PrivacyView() {
 
         <div className="mb-6">
           <SubHeading>Data sharing and third parties</SubHeading>
-          <Text>We do not sell or rent your personal data. We may share or expose data only as follows:</Text>
+          <Text>
+            We do not sell or rent your personal data. We may share or expose data only as follows:
+          </Text>
           <UnorderedList>
             <ListItem>
               <strong className="font-semibold">Hosting.</strong> The site and API may be hosted by
@@ -235,10 +231,10 @@ export function PrivacyView() {
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Supabase (authentication).</strong> If you create an
-              account, your email and hashed password are stored and managed by Supabase. Supabase&apos;s
-              own{" "}
-              <InlineLink href="https://supabase.com/privacy">privacy policy</InlineLink>{" "}
-              applies to that data.
+              account, your email and hashed password are stored and managed by Supabase.
+              Supabase&apos;s own{" "}
+              <InlineLink href="https://supabase.com/privacy">privacy policy</InlineLink> applies to
+              that data.
             </ListItem>
             <ListItem>
               <strong className="font-semibold">PostHog.</strong> As described above, we use PostHog
@@ -257,18 +253,18 @@ export function PrivacyView() {
             </ListItem>
             <ListItem>
               <strong className="font-semibold">Card data.</strong> Card and set data are fetched
-              from third-party sources (for example RiftCodex). When you search or resolve cards,
-              we do not send your identity to those sources; we only request card data for the
-              lookups you trigger.
+              from third-party sources (for example RiftCodex). When you search or resolve cards, we
+              do not send your identity to those sources; we only request card data for the lookups
+              you trigger.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">Metafy.</strong> If you link your Metafy account,
-              we call the Metafy API using your OAuth access token to verify supporter status.
+              <strong className="font-semibold">Metafy.</strong> If you link your Metafy account, we
+              call the Metafy API using your OAuth access token to verify supporter status.
               Metafy&apos;s privacy policy applies to data Metafy collects or processes.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">Reddit / Devvit.</strong> As described above, the bot
-              operates within Reddit and Devvit; their policies apply to data they collect or
+              <strong className="font-semibold">Reddit / Devvit.</strong> As described above, the
+              bot operates within Reddit and Devvit; their policies apply to data they collect or
               process.
             </ListItem>
             <ListItem>
@@ -281,16 +277,16 @@ export function PrivacyView() {
         <div className="mb-6">
           <SubHeading>Retention</SubHeading>
           <Text>
-            Site preferences in your browser stay until you clear them or withdraw the related cookie
-            consent. Server logs (if any) are kept only as long as needed for operation and security.
-            PostHog retains analytics data according to their policy and your settings. Stored Reddit
-            comment and post IDs (used to
-            prevent double replies) are kept indefinitely so the bot continues to avoid duplicate
-            replies. API-side logs of requested card names and subreddit from bot traffic are retained
-            on the same basis as other API analytics and server logs described above. Account data
-            (email and hashed password) is retained by Supabase for as long as your account exists.
-            Admin edit attribution records may be retained for as long as the related card data
-            override is active or needed for auditability; contact us to request account deletion.
+            Site preferences in your browser stay until you clear them or withdraw the related
+            cookie consent. Server logs (if any) are kept only as long as needed for operation and
+            security. PostHog retains analytics data according to their policy and your settings.
+            Stored Reddit comment and post IDs (used to prevent double replies) are kept
+            indefinitely so the bot continues to avoid duplicate replies. API-side logs of requested
+            card names and subreddit from bot traffic are retained on the same basis as other API
+            analytics and server logs described above. Account data (email and hashed password) is
+            retained by Supabase for as long as your account exists. Admin edit attribution records
+            may be retained for as long as the related card data override is active or needed for
+            auditability; contact us to request account deletion.
           </Text>
         </div>
 
@@ -302,8 +298,8 @@ export function PrivacyView() {
             request access to or deletion of your account data. You can clear site preferences by
             clearing local storage for this site or changing your cookie preferences. PostHog may
             offer opt-out or privacy controls; see their privacy policy. For Reddit-related data
-            (including API analytics derived from bot traffic, such as card names and subreddit), you
-            can contact us to ask what we hold or to request deletion where applicable.
+            (including API analytics derived from bot traffic, such as card names and subreddit),
+            you can contact us to ask what we hold or to request deletion where applicable.
             Reddit&apos;s own tools and privacy policy also apply to your activity on Reddit.
           </Text>
         </div>

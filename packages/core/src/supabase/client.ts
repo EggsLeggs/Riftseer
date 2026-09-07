@@ -13,7 +13,7 @@ export function getSupabaseClient(): SupabaseClient {
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
       throw new Error(
-        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set to use the Supabase client"
+        "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set to use the Supabase client",
       );
     }
     _client = createClient(url, key, {

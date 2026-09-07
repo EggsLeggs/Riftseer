@@ -6,14 +6,29 @@ import { sortCards } from "./meta-keywords";
 function card(name: string, rarity?: string): CardResult {
   return {
     oracle: {
-      object: "oracle", id: name, oracle_key: name, slug: name, name,
-      name_normalized: name, is_token: false, keywords: [], tags: [],
-      domains: [], meta_flags: [],
+      object: "oracle",
+      id: name,
+      oracle_key: name,
+      slug: name,
+      name,
+      name_normalized: name,
+      is_token: false,
+      keywords: [],
+      tags: [],
+      domains: [],
+      meta_flags: [],
     },
     printing: {
-      object: "printing", id: name, oracle_id: name, public_slug: name,
-      rarity, finishes: [], signature: false, alternate_art: false,
-      overnumbered: false, special_collection: false,
+      object: "printing",
+      id: name,
+      oracle_id: name,
+      public_slug: name,
+      rarity,
+      finishes: [],
+      signature: false,
+      alternate_art: false,
+      overnumbered: false,
+      special_collection: false,
     },
   };
 }
@@ -53,21 +68,12 @@ describe("sortCards by rarity", () => {
 
   test("sorts a rarity outside the ladder after it", () => {
     const cards = [card("promo", "Promo"), card("showcase", "Showcase")];
-    expect(names(sortCards(cards, "rarity", "asc"))).toEqual([
-      "showcase",
-      "promo",
-    ]);
+    expect(names(sortCards(cards, "rarity", "asc"))).toEqual(["showcase", "promo"]);
   });
 
   test("sorts cards with no rarity last in both directions", () => {
     const cards = [card("none"), card("common", "Common")];
-    expect(names(sortCards(cards, "rarity", "asc"))).toEqual([
-      "common",
-      "none",
-    ]);
-    expect(names(sortCards(cards, "rarity", "desc"))).toEqual([
-      "common",
-      "none",
-    ]);
+    expect(names(sortCards(cards, "rarity", "asc"))).toEqual(["common", "none"]);
+    expect(names(sortCards(cards, "rarity", "desc"))).toEqual(["common", "none"]);
   });
 });

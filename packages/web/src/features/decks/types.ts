@@ -113,20 +113,16 @@ export type DeckPatch = Body<DeckById["patch"]>;
  * `never`. `DeckZone` is that same vocabulary, from the same module the route
  * imports it from, so the two cannot drift.
  */
-export type DeckCardChange = Omit<
-  Body<DeckById["cards"]["put"]>["changes"][number],
-  "zone"
-> & { zone: DeckZone };
+export type DeckCardChange = Omit<Body<DeckById["cards"]["put"]>["changes"][number], "zone"> & {
+  zone: DeckZone;
+};
 
 /** What a card mutation returns: the re-rendered list, tokens and violations. */
 export type DeckCardsResult = Ok<DeckById["cards"]["put"]>;
 
 export type DeckImportInput = Body<DeckRoutes["import"]["post"]>;
 
-export type DeckImportResult = Success<
-  Ok<DeckRoutes["import"]["post"]>,
-  "unresolved"
->;
+export type DeckImportResult = Success<Ok<DeckRoutes["import"]["post"]>, "unresolved">;
 
 /** A text line the importer could not resolve; the rest of the list still landed. */
 export type DeckImportProblem = DeckImportResult["unresolved"][number];

@@ -13,10 +13,7 @@ import { absoluteRiftseerUri, normalizeSiteOrigin } from "@riftseer/types/render
 import type { Oracle, Printing } from "./types.ts";
 
 /** Add `riftseer_uri` to an oracle and to every relationship ref it carries. */
-export function finalizeOracle(
-  oracle: Oracle,
-  siteOrigin: string | undefined,
-): Oracle {
+export function finalizeOracle(oracle: Oracle, siteOrigin: string | undefined): Oracle {
   if (!siteOrigin) return oracle;
   const origin = normalizeSiteOrigin(siteOrigin);
 
@@ -49,24 +46,15 @@ export function finalizeOracle(
 }
 
 /** Add `riftseer_uri` to a printing, from its own pinned public slug. */
-export function finalizePrinting(
-  printing: Printing,
-  siteOrigin: string | undefined,
-): Printing {
+export function finalizePrinting(printing: Printing, siteOrigin: string | undefined): Printing {
   if (!siteOrigin) return printing;
   return {
     ...printing,
-    riftseer_uri: absoluteRiftseerUri(
-      normalizeSiteOrigin(siteOrigin),
-      printing.public_slug,
-    ),
+    riftseer_uri: absoluteRiftseerUri(normalizeSiteOrigin(siteOrigin), printing.public_slug),
   };
 }
 
-export function finalizeOracles(
-  oracles: Oracle[],
-  siteOrigin: string | undefined,
-): Oracle[] {
+export function finalizeOracles(oracles: Oracle[], siteOrigin: string | undefined): Oracle[] {
   if (!siteOrigin) return oracles;
   return oracles.map((oracle) => finalizeOracle(oracle, siteOrigin));
 }

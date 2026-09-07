@@ -64,10 +64,10 @@ Schema lives in `supabase/migrations/`. The CLI treats the **local** Docker stac
 
 These commands talk to Postgres on your machine (default API `http://127.0.0.1:54321`). Run them from the **repo root** after `supabase start`.
 
-| Command | What it does |
-| --- | --- |
-| `supabase db push --local` | Applies **pending** migration files (anything not yet recorded in the local `supabase_migrations` table). Use this after you add or change SQL under `supabase/migrations/` and want the local DB updated without wiping data. The CLI will list migrations it is about to apply; confirm when prompted. |
-| `supabase db reset` | **Drops** the local database, reapplies **all** migrations from scratch in filename order, then runs seed files if `[db.seed]` is enabled in `config.toml`. Use when local migration history is confused, you hit duplicate-object errors, or you want a clean slate. **Destructive** — all local data in that DB is removed. |
+| Command                    | What it does                                                                                                                                                                                                                                                                                                                  |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `supabase db push --local` | Applies **pending** migration files (anything not yet recorded in the local `supabase_migrations` table). Use this after you add or change SQL under `supabase/migrations/` and want the local DB updated without wiping data. The CLI will list migrations it is about to apply; confirm when prompted.                      |
+| `supabase db reset`        | **Drops** the local database, reapplies **all** migrations from scratch in filename order, then runs seed files if `[db.seed]` is enabled in `config.toml`. Use when local migration history is confused, you hit duplicate-object errors, or you want a clean slate. **Destructive** — all local data in that DB is removed. |
 
 Examples:
 
@@ -90,8 +90,8 @@ supabase login
 supabase link --project-ref <your-project-ref>
 ```
 
-| Command | What it does |
-| --- | --- |
+| Command            | What it does                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `supabase db push` | Applies pending migrations to the **linked remote** project. **Do not** pass `--local`. The CLI lists pending files; confirm when prompted. |
 
 This does **not** update your local Docker DB — use `db push --local` for that. You can also paste migration SQL in the Dashboard → SQL Editor for one-off fixes (keep `supabase/migrations/` the source of truth in git).

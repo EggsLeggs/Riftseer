@@ -17,7 +17,6 @@
 declare module "cloudflare:workers" {
   // Bindings (R2 buckets, queues) are shaped by the API's own wrangler config;
   // this program only needs the accesses to type-check, not to be sound.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export const env: Record<string, any>;
 }
 

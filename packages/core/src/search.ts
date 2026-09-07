@@ -22,7 +22,6 @@
 
 import { normalizeCardName } from "./normalize.ts";
 
-
 /** Minimal shape required for name-based ranking. */
 export interface Nameable {
   id: string;
@@ -68,7 +67,7 @@ function levenshtein(a: string, b: string, maxDist: number): number {
 
   // Single-row DP to keep allocations small.
   const prev: number[] = Array.from({ length: b.length + 1 }, (_, i) => i);
-  const curr: number[] = new Array(b.length + 1);
+  const curr: number[] = Array.from({ length: b.length + 1 }, () => 0);
 
   for (let i = 1; i <= a.length; i++) {
     curr[0] = i;

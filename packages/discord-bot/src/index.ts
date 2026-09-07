@@ -23,10 +23,7 @@
  *   DISCORD_PUBLIC_KEY, DISCORD_BOT_TOKEN, DISCORD_APPLICATION_ID
  */
 
-import {
-  InteractionResponseType,
-  InteractionType,
-} from "discord-api-types/v10";
+import { InteractionResponseType, InteractionType } from "discord-api-types/v10";
 import type {
   APIInteraction,
   APIChatInputApplicationCommandInteraction,
@@ -41,11 +38,7 @@ import type { Env } from "./env.ts";
 export type { Env } from "./env.ts";
 
 export default {
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext,
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method !== "POST") {
       return new Response("Method Not Allowed", { status: 405 });
     }
@@ -57,12 +50,7 @@ export default {
     if (
       !signature ||
       !timestamp ||
-      !(await verifySignature(
-        env.DISCORD_PUBLIC_KEY,
-        signature,
-        timestamp,
-        body,
-      ))
+      !(await verifySignature(env.DISCORD_PUBLIC_KEY, signature, timestamp, body))
     ) {
       return new Response("Invalid request signature", { status: 401 });
     }

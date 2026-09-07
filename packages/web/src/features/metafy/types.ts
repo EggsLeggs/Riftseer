@@ -7,6 +7,4 @@ export interface LinkedMetafyAccount {
   status_checked_at: string | null;
 }
 
-export type MetafyStatusResult =
-  | { linked: false }
-  | ({ linked: true } & LinkedMetafyAccount);
+export type MetafyStatusResult = { linked: false } | ({ linked: true } & LinkedMetafyAccount);

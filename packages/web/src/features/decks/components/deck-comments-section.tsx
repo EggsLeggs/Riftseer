@@ -9,11 +9,7 @@ import { toast } from "sonner";
 import { ProfileIcon } from "@/components/profile-icon";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { AppDropdownMenuContent } from "@/components/layout/clear-body-pointer-events";
 import { cn } from "@/lib/utils";
@@ -72,17 +68,16 @@ export function DeckCommentsSection({
     <section id="comments" aria-label="Comments" className="scroll-mt-4">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
         <h2 className="text-sm font-semibold">
-          Comments{total > 0 && <span className="text-muted-foreground ml-1.5 tabular-nums">({total})</span>}
+          Comments
+          {total > 0 && (
+            <span className="text-muted-foreground ml-1.5 tabular-nums">({total})</span>
+          )}
         </h2>
         <CommentSortBar value={sort} onChange={setSort} />
       </div>
 
       {isSignedIn ? (
-        <CommentComposer
-          deckId={deck.id}
-          placeholder="Add a comment…"
-          onPosted={refresh}
-        />
+        <CommentComposer deckId={deck.id} placeholder="Add a comment…" onPosted={refresh} />
       ) : (
         <p className="text-muted-foreground mb-4 text-sm">
           <Link
@@ -98,9 +93,7 @@ export function DeckCommentsSection({
       {comments.isPending ? (
         <p className="text-muted-foreground text-sm">Loading comments…</p>
       ) : comments.isError ? (
-        <p className="text-muted-foreground text-sm">
-          {(comments.error as Error).message}
-        </p>
+        <p className="text-muted-foreground text-sm">{(comments.error as Error).message}</p>
       ) : tree.length === 0 ? (
         <p className="text-muted-foreground text-sm">No comments yet.</p>
       ) : (
@@ -132,10 +125,7 @@ function CommentSortBar({
       Sort:{" "}
       <button
         type="button"
-        className={cn(
-          "hover:text-foreground",
-          value === "oldest" && "text-primary font-medium",
-        )}
+        className={cn("hover:text-foreground", value === "oldest" && "text-primary font-medium")}
         onClick={() => onChange("oldest")}
       >
         Oldest first
@@ -143,10 +133,7 @@ function CommentSortBar({
       <span aria-hidden="true"> / </span>
       <button
         type="button"
-        className={cn(
-          "hover:text-foreground",
-          value === "newest" && "text-primary font-medium",
-        )}
+        className={cn("hover:text-foreground", value === "newest" && "text-primary font-medium")}
         onClick={() => onChange("newest")}
       >
         Newest first
@@ -317,11 +304,7 @@ function CommentThread({
                   {replyCount}
                 </span>
               )}
-              <CommentLikeButton
-                deckId={deckId}
-                comment={comment}
-                isSignedIn={isSignedIn}
-              />
+              <CommentLikeButton deckId={deckId} comment={comment} isSignedIn={isSignedIn} />
             </div>
           )}
 
@@ -424,19 +407,17 @@ function CommentLikeButton({
     setPending(false);
     if (result.ok) {
       setState({ liked: result.data.liked, count: result.data.like_count });
-      queryClient.setQueryData<DeckCommentsPage>(
-        deckQueryKeys.comments(deckId),
-        (current) =>
-          current
-            ? {
-                ...current,
-                items: current.items.map((item) =>
-                  item.id === comment.id
-                    ? { ...item, like_count: result.data.like_count, is_liked: result.data.liked }
-                    : item,
-                ),
-              }
-            : current,
+      queryClient.setQueryData<DeckCommentsPage>(deckQueryKeys.comments(deckId), (current) =>
+        current
+          ? {
+              ...current,
+              items: current.items.map((item) =>
+                item.id === comment.id
+                  ? { ...item, like_count: result.data.like_count, is_liked: result.data.liked }
+                  : item,
+              ),
+            }
+          : current,
       );
     } else {
       setState(before);
@@ -456,10 +437,7 @@ function CommentLikeButton({
       aria-label={state.liked ? "Unlike this comment" : "Like this comment"}
       onClick={toggle}
     >
-      <HeartIcon
-        className={cn("size-3.5", state.liked && "fill-current")}
-        aria-hidden="true"
-      />
+      <HeartIcon className={cn("size-3.5", state.liked && "fill-current")} aria-hidden="true" />
       {state.count}
     </button>
   );

@@ -157,9 +157,7 @@ export function DeckZoneSection({
       )}
 
       {cards.length === 0 ? (
-        <p className="text-muted-foreground py-2 text-xs">
-          {emptyHint ?? "Nothing here yet."}
-        </p>
+        <p className="text-muted-foreground py-2 text-xs">{emptyHint ?? "Nothing here yet."}</p>
       ) : view === "list" ? (
         <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2 xl:grid-cols-3">
           {groups.map((group) => (
@@ -248,11 +246,7 @@ export function DeckZoneSection({
   );
 }
 
-function GroupHeading({
-  group,
-}: {
-  group: { label: string; count: number };
-}) {
+function GroupHeading({ group }: { group: { label: string; count: number } }) {
   return (
     <h3 className="text-muted-foreground mb-1 text-xs font-medium tracking-wide uppercase">
       {group.label}

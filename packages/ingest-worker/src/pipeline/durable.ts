@@ -108,7 +108,5 @@ export function applyLockedProductLinks(
 export function toImageProvider(
   value: string | null | undefined,
 ): CardImageSourceProvider | undefined {
-  return value === "riftcodex" || value === "tcgplayer" || value === "admin"
-    ? value
-    : undefined;
+  return value === "riftcodex" || value === "tcgplayer" || value === "admin" ? value : undefined;
 }

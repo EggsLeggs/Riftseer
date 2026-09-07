@@ -27,15 +27,12 @@ export function isAdminUser(
 
 export function createAdminPlugin(
   resolveToken: AuthTokenResolver | null = resolveSupabaseToken,
-  getAdminUserIds: () => string | undefined = () =>
-    process.env.ADMIN_USER_IDS,
+  getAdminUserIds: () => string | undefined = () => process.env.ADMIN_USER_IDS,
 ) {
-  return new Elysia({ name: "admin-auth" })
-    .resolve({ as: "scoped" }, async ({ headers, status }) => {
-      const authResult = await resolveBearerUser(
-        headers.authorization,
-        resolveToken,
-      );
+  return new Elysia({ name: "admin-auth" }).resolve(
+    { as: "scoped" },
+    async ({ headers, status }) => {
+      const authResult = await resolveBearerUser(headers.authorization, resolveToken);
       if (!("user" in authResult)) {
         return status(authResult.status, {
           error: authResult.error,
@@ -49,7 +46,8 @@ export function createAdminPlugin(
         });
       }
       return { adminUser: authResult.user };
-    });
+    },
+  );
 }
 
 export const adminPlugin = createAdminPlugin();

@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { completeMetafyCallbackAction } from "@/features/metafy/actions";
 
-type State =
-  | { status: "loading" }
-  | { status: "success" }
-  | { status: "error"; message: string };
+type State = { status: "loading" } | { status: "success" } | { status: "error"; message: string };
 
 export default function MetafyCallbackPage() {
   const router = useRouter();
@@ -51,7 +48,10 @@ export default function MetafyCallbackPage() {
       })
       .catch((err: unknown) => {
         console.error("[metafy callback] link request failed:", err);
-        setState({ status: "error", message: "Could not link your Metafy account. Please try again." });
+        setState({
+          status: "error",
+          message: "Could not link your Metafy account. Please try again.",
+        });
       });
 
     return () => {

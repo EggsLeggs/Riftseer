@@ -137,10 +137,7 @@ export const decksServerApi = {
    * One user's decks as the caller can see them — their own private decks when
    * it is their handle, only the public ones otherwise.
    */
-  listByHandle(
-    accessToken: string,
-    handle: string,
-  ): Promise<DeckResult<DeckListPage>> {
+  listByHandle(accessToken: string, handle: string): Promise<DeckResult<DeckListPage>> {
     return request({
       method: "GET",
       path: `?handle=${encodeURIComponent(handle)}`,
@@ -178,10 +175,7 @@ export const decksServerApi = {
 
   // ── Deck lifecycle ──────────────────────────────────────────────────────────
 
-  createDeck(
-    accessToken: string,
-    input: DeckCreateInput,
-  ): Promise<DeckResult<DeckCreateResult>> {
+  createDeck(accessToken: string, input: DeckCreateInput): Promise<DeckResult<DeckCreateResult>> {
     return request({ method: "POST", path: "", accessToken, body: input });
   },
 
@@ -199,10 +193,7 @@ export const decksServerApi = {
     });
   },
 
-  deleteDeck(
-    accessToken: string,
-    deckId: string,
-  ): Promise<DeckResult<{ message: string }>> {
+  deleteDeck(accessToken: string, deckId: string): Promise<DeckResult<{ message: string }>> {
     return request({ method: "DELETE", path: deckPath(deckId), accessToken });
   },
 
@@ -224,10 +215,7 @@ export const decksServerApi = {
     });
   },
 
-  listFolders(
-    accessToken: string,
-    deckId?: string,
-  ): Promise<DeckResult<DeckFolderListPage>> {
+  listFolders(accessToken: string, deckId?: string): Promise<DeckResult<DeckFolderListPage>> {
     return request({
       method: "GET",
       path: deckId ? `/deck-folders?deck=${encodeURIComponent(deckId)}` : "/deck-folders",
@@ -236,10 +224,7 @@ export const decksServerApi = {
     });
   },
 
-  getFolder(
-    accessToken: string,
-    folderId: string,
-  ): Promise<DeckResult<DeckFolderContents>> {
+  getFolder(accessToken: string, folderId: string): Promise<DeckResult<DeckFolderContents>> {
     return request({
       method: "GET",
       path: `/deck-folders/${encodeURIComponent(folderId)}`,
@@ -272,10 +257,7 @@ export const decksServerApi = {
     });
   },
 
-  deleteFolder(
-    accessToken: string,
-    folderId: string,
-  ): Promise<DeckResult<{ message: string }>> {
+  deleteFolder(accessToken: string, folderId: string): Promise<DeckResult<{ message: string }>> {
     return request({
       method: "DELETE",
       path: `/deck-folders/${encodeURIComponent(folderId)}`,
@@ -324,10 +306,7 @@ export const decksServerApi = {
     });
   },
 
-  listComments(
-    accessToken: string,
-    deckId: string,
-  ): Promise<DeckResult<DeckCommentsPage>> {
+  listComments(accessToken: string, deckId: string): Promise<DeckResult<DeckCommentsPage>> {
     return request({
       method: "GET",
       path: deckPath(deckId, "/comments"),
@@ -374,10 +353,7 @@ export const decksServerApi = {
     });
   },
 
-  importDeck(
-    accessToken: string,
-    input: DeckImportInput,
-  ): Promise<DeckResult<DeckImportResult>> {
+  importDeck(accessToken: string, input: DeckImportInput): Promise<DeckResult<DeckImportResult>> {
     return request({
       method: "POST",
       path: "/import",
@@ -406,10 +382,7 @@ export const decksServerApi = {
     });
   },
 
-  clearInvite(
-    accessToken: string,
-    deckId: string,
-  ): Promise<DeckResult<{ message: string }>> {
+  clearInvite(accessToken: string, deckId: string): Promise<DeckResult<{ message: string }>> {
     return request({
       method: "DELETE",
       path: deckPath(deckId, "/invite"),
@@ -417,10 +390,7 @@ export const decksServerApi = {
     });
   },
 
-  joinDeck(
-    accessToken: string,
-    inviteCode: string,
-  ): Promise<DeckResult<DeckJoinResult>> {
+  joinDeck(accessToken: string, inviteCode: string): Promise<DeckResult<DeckJoinResult>> {
     return request({
       method: "POST",
       path: `/join/${encodeURIComponent(inviteCode)}`,
@@ -449,10 +419,7 @@ export const decksServerApi = {
   ): Promise<DeckResult<{ message: string }>> {
     return request({
       method: "DELETE",
-      path: deckPath(
-        deckId,
-        `/collaborators?handle=${encodeURIComponent(handle)}`,
-      ),
+      path: deckPath(deckId, `/collaborators?handle=${encodeURIComponent(handle)}`),
       accessToken,
     });
   },

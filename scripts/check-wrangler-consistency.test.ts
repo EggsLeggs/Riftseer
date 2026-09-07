@@ -1,7 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import {
-  productionBindingProblems,
-} from "./check-wrangler-consistency.mjs";
+import { productionBindingProblems } from "./check-wrangler-consistency.mjs";
 
 const top = {
   name: "riftseer-web",

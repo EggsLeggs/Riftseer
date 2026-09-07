@@ -2,9 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { galleryToPrefill } from "./review-draft";
 import type { AdminReviewGalleryCard } from "./types";
 
-function gallery(
-  overrides: Partial<AdminReviewGalleryCard> = {},
-): AdminReviewGalleryCard {
+function gallery(overrides: Partial<AdminReviewGalleryCard> = {}): AdminReviewGalleryCard {
   return {
     riftbound_id: "unl-t01",
     name: "Baron Pit",

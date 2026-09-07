@@ -175,7 +175,12 @@ describe("applyGuestCardChanges", () => {
   });
 
   test("creates a row from a template — the difference from the server projection", () => {
-    const { zone: _zone, quantity: _q, is_champion: _c, ...fields } = card({
+    const {
+      zone: _zone,
+      quantity: _q,
+      is_champion: _c,
+      ...fields
+    } = card({
       printing_id: "p2",
       name: "Yasuo",
     });
@@ -239,7 +244,12 @@ describe("applyGuestCardChanges", () => {
   });
 
   test("a printing swap is a remove plus a create described by the template", () => {
-    const { zone: _zone, quantity: _q, is_champion: _c, ...fields } = card({
+    const {
+      zone: _zone,
+      quantity: _q,
+      is_champion: _c,
+      ...fields
+    } = card({
       printing_id: "p2",
       set_code: "ALT",
       collector_number: "007",
@@ -273,7 +283,11 @@ describe("withGuestLegalities", () => {
   ];
 
   test("keeps stored rows at their own rung, per format", () => {
-    const next = withGuestLegalities(deck([card()]), { oracle_id: "o1", printing_id: "p1" }, entries);
+    const next = withGuestLegalities(
+      deck([card()]),
+      { oracle_id: "o1", printing_id: "p1" },
+      entries,
+    );
     expect(next.legalities).toEqual({
       standard: { oracles: { o1: { status: "banned", note: "Banned 2026-07." } } },
       casual: { printings: { p1: { status: "restricted", note: null } } },
@@ -300,7 +314,13 @@ describe("withGuestLegalities", () => {
 describe("projections", () => {
   test("guestDeckState feeds validateDeck the rules fields it reads", () => {
     const stored = deck([
-      card({ zone: "legend", printing_id: "pL", oracle_id: "oL", card_type: "Legend", name: "Yasuo" }),
+      card({
+        zone: "legend",
+        printing_id: "pL",
+        oracle_id: "oL",
+        card_type: "Legend",
+        name: "Yasuo",
+      }),
       card({ zone: "main", quantity: 5 }),
     ]);
     const violations = validateDeck(
@@ -357,9 +377,9 @@ describe("projections", () => {
 
 describe("guestDeckCreateInput", () => {
   test("is the metadata half of the conversion, always private", () => {
-    expect(guestDeckCreateInput(deck([card()], { name: "Fury aggro", format: "standard" }))).toEqual(
-      { name: "Fury aggro", format: "standard", visibility: "private" },
-    );
+    expect(
+      guestDeckCreateInput(deck([card()], { name: "Fury aggro", format: "standard" })),
+    ).toEqual({ name: "Fury aggro", format: "standard", visibility: "private" });
   });
 
   test("falls back when the stored format code is empty", () => {
@@ -382,9 +402,7 @@ describe("guestDeckSaveName", () => {
   });
 
   test("falls back to the legend, then to a placeholder", () => {
-    expect(
-      guestDeckSaveName(deck([card({ zone: "legend", name: "Yasuo" })])),
-    ).toBe("Yasuo deck");
+    expect(guestDeckSaveName(deck([card({ zone: "legend", name: "Yasuo" })]))).toBe("Yasuo deck");
     expect(guestDeckSaveName(deck([]))).toBe("Untitled deck");
   });
 });

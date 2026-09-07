@@ -10,17 +10,13 @@ describe("primerMarkup", () => {
   test("a mention becomes a link and lands in the table", () => {
     const { markdown, mentions } = primerMarkup("Lead with [[Vayne]] on curve.");
     expect(markdown).toBe("Lead with [Vayne](#card:0) on curve.");
-    expect(mentions).toEqual([
-      { kind: "card", raw: "Vayne", label: "Vayne", embed: false },
-    ]);
+    expect(mentions).toEqual([{ kind: "card", raw: "Vayne", label: "Vayne", embed: false }]);
   });
 
   test("an embed keeps its own marker and drops the bang", () => {
     const { markdown, mentions } = primerMarkup("![[Vayne|VEN-SP3]]");
     expect(markdown).toBe("[Vayne](#card-embed:0)");
-    expect(mentions).toEqual([
-      { kind: "card", raw: "Vayne|VEN-SP3", label: "Vayne", embed: true },
-    ]);
+    expect(mentions).toEqual([{ kind: "card", raw: "Vayne|VEN-SP3", label: "Vayne", embed: true }]);
   });
 
   test("the label is the parsed name, not the whole token", () => {
@@ -37,9 +33,7 @@ describe("primerMarkup", () => {
   test("tokens inside code spans stay literal", () => {
     const text = "Type `[[Vayne]]` in chat.\n\n```\n[[Yasuo]]\n```\n\n[[Garen]]";
     const { markdown, mentions } = primerMarkup(text);
-    expect(mentions.map((m) => (m.kind === "card" ? m.raw : m.handle))).toEqual([
-      "Garen",
-    ]);
+    expect(mentions.map((m) => (m.kind === "card" ? m.raw : m.handle))).toEqual(["Garen"]);
     expect(markdown).toContain("`[[Vayne]]`");
     expect(markdown).toContain("[[Yasuo]]");
     expect(markdown).toContain("[Garen](#card:0)");

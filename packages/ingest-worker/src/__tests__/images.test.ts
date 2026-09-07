@@ -32,8 +32,18 @@ function durable(overrides: Partial<DurablePrinting> = {}): DurablePrinting {
 
 describe("image pipeline contracts", () => {
   test("selects an upstream source but never re-hosts our own CDN", () => {
-    expect(selectBestImageSource(printing("p", { image_source_url: "https://tcgplayer.example/card.png" }), BASE)).toEqual({ url: "https://tcgplayer.example/card.png", provider: "tcgplayer" });
-    expect(selectBestImageSource(printing("p", { image_source_url: `${BASE}/cards/p/normal.webp` }), BASE)).toBeNull();
+    expect(
+      selectBestImageSource(
+        printing("p", { image_source_url: "https://tcgplayer.example/card.png" }),
+        BASE,
+      ),
+    ).toEqual({ url: "https://tcgplayer.example/card.png", provider: "tcgplayer" });
+    expect(
+      selectBestImageSource(
+        printing("p", { image_source_url: `${BASE}/cards/p/normal.webp` }),
+        BASE,
+      ),
+    ).toBeNull();
   });
 
   test("hashes the source URL deterministically", async () => {
@@ -65,7 +75,11 @@ describe("image pipeline contracts", () => {
     });
     const result = await preparePrintingImageJobs([incoming], new Map([["p", durable()]]), BASE);
     expect(result.jobs).toHaveLength(1);
-    expect(result.jobs[0]).toMatchObject({ version: 2, printingId: "p", sourceUrl: "https://upstream.example/new.png" });
+    expect(result.jobs[0]).toMatchObject({
+      version: 2,
+      printingId: "p",
+      sourceUrl: "https://upstream.example/new.png",
+    });
     expect(result.jobs[0]?.sourceHash).not.toBe(HASH);
   });
 
@@ -80,13 +94,22 @@ describe("image pipeline contracts", () => {
     const result = await preparePrintingImageJobs([incoming], new Map([["p", previous]]), BASE);
     expect(result).toMatchObject({ adminPreserved: 1 });
     expect(incoming.image_source_provider).toBe("admin");
-    expect(result.jobs[0]).toMatchObject({ printingId: "p", sourceProvider: "admin", sourceHash: HASH });
+    expect(result.jobs[0]).toMatchObject({
+      printingId: "p",
+      sourceProvider: "admin",
+      sourceHash: HASH,
+    });
   });
 
   test("publishes only when every variant object carries the current source hash", () => {
     const current = { customMetadata: { sourceHash: HASH } };
     expect(hasCompleteCurrentVariantSet([current, current, current], HASH)).toBe(true);
-    expect(hasCompleteCurrentVariantSet([current, { customMetadata: { sourceHash: "b".repeat(64) } }, current], HASH)).toBe(false);
+    expect(
+      hasCompleteCurrentVariantSet(
+        [current, { customMetadata: { sourceHash: "b".repeat(64) } }, current],
+        HASH,
+      ),
+    ).toBe(false);
     expect(hasCompleteCurrentVariantSet([current, current, null], HASH)).toBe(false);
   });
 
@@ -94,8 +117,12 @@ describe("image pipeline contracts", () => {
     const batches: unknown[][] = [];
     const sent: unknown[] = [];
     const queue = {
-      sendBatch: async (batch: unknown[]) => { batches.push(batch); },
-      send: async (job: unknown) => { sent.push(job); },
+      sendBatch: async (batch: unknown[]) => {
+        batches.push(batch);
+      },
+      send: async (job: unknown) => {
+        sent.push(job);
+      },
     } as unknown as Queue;
     const jobs: CardImageJob[] = Array.from({ length: 201 }, (_, index) => ({
       version: CARD_IMAGE_JOB_VERSION,
@@ -111,8 +138,21 @@ describe("image pipeline contracts", () => {
   });
 
   test("rejects stale v1 jobs and validates v2 source and variant jobs", () => {
-    const source = { version: 2, printingId: "p", sourceUrl: "https://example.com/p.png", sourceHash: HASH, sourceProvider: "riftcodex" };
-    const variant = { version: 2, type: "variant", printingId: "p", sourceHash: HASH, variant: "normal", orientation: "portrait" };
+    const source = {
+      version: 2,
+      printingId: "p",
+      sourceUrl: "https://example.com/p.png",
+      sourceHash: HASH,
+      sourceProvider: "riftcodex",
+    };
+    const variant = {
+      version: 2,
+      type: "variant",
+      printingId: "p",
+      sourceHash: HASH,
+      variant: "normal",
+      orientation: "portrait",
+    };
     expect(isCardImageJob(source)).toBe(true);
     expect(isCardImageJob({ ...source, version: 1 })).toBe(false);
     expect(isCardImageVariantJob(variant)).toBe(true);

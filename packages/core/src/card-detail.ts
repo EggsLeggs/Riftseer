@@ -23,11 +23,7 @@ import type {
 
 const TCGPLAYER_PRODUCT_LINE = "Riftbound";
 
-const TCGPLAYER_HOSTS = new Set([
-  "www.tcgplayer.com",
-  "tcgplayer.com",
-  "partner.tcgplayer.com",
-]);
+const TCGPLAYER_HOSTS = new Set(["www.tcgplayer.com", "tcgplayer.com", "partner.tcgplayer.com"]);
 const CARDMARKET_HOSTS = new Set(["www.cardmarket.com", "cardmarket.com"]);
 
 /**
@@ -35,10 +31,7 @@ const CARDMARKET_HOSTS = new Set(["www.cardmarket.com", "cardmarket.com"]);
  * recognise — it comes from an upstream feed, and a card page must not become
  * an open redirect.
  */
-function validateMarketplaceUrl(
-  url: string | undefined,
-  allowedHosts: Set<string>,
-): string | null {
+function validateMarketplaceUrl(url: string | undefined, allowedHosts: Set<string>): string | null {
   if (!url) return null;
   try {
     const parsed = new URL(url);
@@ -78,10 +71,7 @@ function cardmarketSearchUrl(name: string): string {
  * at a host we trust, then the direct product page, then a name search.
  */
 export function tcgplayerUrlForPrinting(printing: Printing, name: string): string {
-  const stored = validateMarketplaceUrl(
-    printing.purchase_uris?.tcgplayer,
-    TCGPLAYER_HOSTS,
-  );
+  const stored = validateMarketplaceUrl(printing.purchase_uris?.tcgplayer, TCGPLAYER_HOSTS);
   if (stored) return stored;
   const productId = printing.external_ids?.tcgplayer_id;
   if (productId) return `https://www.tcgplayer.com/product/${productId}`;
@@ -171,9 +161,7 @@ export async function buildOracleDetail(
       ? Promise.resolve(oracle.printings)
       : provider.getPrintingsForOracle(oracle.id),
     provider.getOracleRelationships(oracle.id),
-    loadOptional<CardRuling>("rulings", printing.id, () =>
-      provider.getRulings?.(printing.id),
-    ),
+    loadOptional<CardRuling>("rulings", printing.id, () => provider.getRulings?.(printing.id)),
     loadOptional<CardLegality>("legalities", printing.id, () =>
       provider.getLegalities?.(printing.id),
     ),

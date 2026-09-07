@@ -21,8 +21,7 @@ export const CONFIRMABLE_RECONCILIATION_FIELDS = [
   "power",
 ] as const;
 
-export type ConfirmableReconciliationField =
-  (typeof CONFIRMABLE_RECONCILIATION_FIELDS)[number];
+export type ConfirmableReconciliationField = (typeof CONFIRMABLE_RECONCILIATION_FIELDS)[number];
 
 const CONFIRMABLE = new Set<string>(CONFIRMABLE_RECONCILIATION_FIELDS);
 
@@ -42,12 +41,7 @@ export function isConfirmableReconciliationField(
  * label the write; deriving both from here stops the two from disagreeing about
  * what a confirm is going to change.
  */
-const ORACLE_SCOPED = new Set<ConfirmableReconciliationField>([
-  "type",
-  "energy",
-  "might",
-  "power",
-]);
+const ORACLE_SCOPED = new Set<ConfirmableReconciliationField>(["type", "energy", "might", "power"]);
 
 export function reconciliationFieldScope(
   field: ConfirmableReconciliationField,

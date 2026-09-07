@@ -22,19 +22,16 @@ export function TermsView() {
         <div className="mb-6">
           <SubHeading>Definitions</SubHeading>
           <Text>
-            We use the following shorthand: When we say <strong className="font-semibold">Riftseer</strong>
-            {" "}
-            we mean the Riftseer website, the Riftseer API, the Reddit bot, and any related services.
-            When we say <strong className="font-semibold">we</strong>,{" "}
+            We use the following shorthand: When we say{" "}
+            <strong className="font-semibold">Riftseer</strong> we mean the Riftseer website, the
+            Riftseer API, the Reddit bot, and any related services. When we say{" "}
+            <strong className="font-semibold">we</strong>,{" "}
             <strong className="font-semibold">us</strong>, or{" "}
-            <strong className="font-semibold">the operators</strong>
-            {" "}
-            we mean the people or entity operating Riftseer. When we say{" "}
-            <strong className="font-semibold">content</strong> or{" "}
-            <strong className="font-semibold">your content</strong>
-            {" "}
-            we mean any information you submit or store through Riftseer (for example if you create an
-            account or post data in the future).
+            <strong className="font-semibold">the operators</strong> we mean the people or entity
+            operating Riftseer. When we say <strong className="font-semibold">content</strong> or{" "}
+            <strong className="font-semibold">your content</strong> we mean any information you
+            submit or store through Riftseer (for example if you create an account or post data in
+            the future).
           </Text>
         </div>
 
@@ -55,61 +52,56 @@ export function TermsView() {
           </Text>
           <UnorderedList>
             <ListItem>
-              <strong className="font-semibold">Age.</strong>
-              {" "}
-              Riftseer is for people ages 13 and up. You may not use Riftseer if you are under 13.
+              <strong className="font-semibold">Age.</strong> Riftseer is for people ages 13 and up.
+              You may not use Riftseer if you are under 13.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">No advertising, trades, or sales.</strong>
-              {" "}
-              Riftseer is about playing and discussing the Riftbound TCG. You may not use it to sell,
-              advertise, or trade products or services (including cards), or to recruit, advertise for
-              businesses, or run political campaigns.
+              <strong className="font-semibold">No advertising, trades, or sales.</strong> Riftseer
+              is about playing and discussing the Riftbound TCG. You may not use it to sell,
+              advertise, or trade products or services (including cards), or to recruit, advertise
+              for businesses, or run political campaigns.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">No harassment or bigotry.</strong>
-              {" "}
-              You may not harass, abuse, threaten, or incite violence. You may not disparage people
-              based on age, disability, ethnicity, gender, nationality, race, religion, sexual
-              orientation, or similar. You may not distribute others&apos; personal information or photos
-              without consent.
+              <strong className="font-semibold">No harassment or bigotry.</strong> You may not
+              harass, abuse, threaten, or incite violence. You may not disparage people based on
+              age, disability, ethnicity, gender, nationality, race, religion, sexual orientation,
+              or similar. You may not distribute others&apos; personal information or photos without
+              consent.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">PG-13.</strong>
-              {" "}
-              Riftseer is not for mature content. You may not post excessively violent content, sexual
-              content, or content focused on real-world weapons or drugs. An exception applies for
-              in-game or card artwork that is part of the game.
+              <strong className="font-semibold">PG-13.</strong> Riftseer is not for mature content.
+              You may not post excessively violent content, sexual content, or content focused on
+              real-world weapons or drugs. An exception applies for in-game or card artwork that is
+              part of the game.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">No crime or deception.</strong>
-              {" "}
-              You may not host pirated or stolen content, offer counterfeit materials, impersonate others,
-              or distribute malware. You may only post content you created, own, or have permission to
+              <strong className="font-semibold">No crime or deception.</strong> You may not host
+              pirated or stolen content, offer counterfeit materials, impersonate others, or
+              distribute malware. You may only post content you created, own, or have permission to
               use.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">No interference.</strong>
-              {" "}
-              You may not attempt to disrupt Riftseer&apos;s servers or services, gain access to another
-              user&apos;s account, or place undue burden on Riftseer through automated means (for example
+              <strong className="font-semibold">No interference.</strong> You may not attempt to
+              disrupt Riftseer&apos;s servers or services, gain access to another user&apos;s
+              account, or place undue burden on Riftseer through automated means (for example
               excessive scraping or abuse of the API).
             </ListItem>
           </UnorderedList>
           <Text>
-            If you fail to follow these guidelines, we may warn you, suspend or delete your account (if
-            applicable), restrict your access, or report illegal activity to authorities. We are the
-            final arbiter of acceptable behavior and may take action outside these guidelines when
-            needed to protect the service or users.
+            If you fail to follow these guidelines, we may warn you, suspend or delete your account
+            (if applicable), restrict your access, or report illegal activity to authorities. We are
+            the final arbiter of acceptable behavior and may take action outside these guidelines
+            when needed to protect the service or users.
           </Text>
         </div>
 
         <div className="mb-6">
           <SubHeading>Content License</SubHeading>
           <Text>
-            You retain ownership of any content you post on Riftseer. By posting content, you grant us a
-            non-exclusive, royalty-free, worldwide license to use, display, and store that content as
-            needed to operate Riftseer. This license ends when you delete the content or your account.
+            You retain ownership of any content you post on Riftseer. By posting content, you grant
+            us a non-exclusive, royalty-free, worldwide license to use, display, and store that
+            content as needed to operate Riftseer. This license ends when you delete the content or
+            your account.
           </Text>
         </div>
 
@@ -117,30 +109,25 @@ export function TermsView() {
           <SubHeading>Limitation of Liability</SubHeading>
           <UnorderedList>
             <ListItem>
-              <strong className="font-semibold">AS-IS.</strong>
-              {" "}
-              Riftseer is provided &quot;as is.&quot; We may change, terminate, or restrict any part of
-              the service at any time, without notice.
+              <strong className="font-semibold">AS-IS.</strong> Riftseer is provided &quot;as
+              is.&quot; We may change, terminate, or restrict any part of the service at any time,
+              without notice.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">AS-AVAILABLE.</strong>
-              {" "}
-              We strive for reliability but cannot guarantee uptime. There may be downtime, outages, or
-              slow periods.
+              <strong className="font-semibold">AS-AVAILABLE.</strong> We strive for reliability but
+              cannot guarantee uptime. There may be downtime, outages, or slow periods.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">Your risk.</strong>
-              {" "}
-              You use Riftseer at your own risk. We do not owe you compensation for outages, bugs, or our
-              failure to meet any statement in these terms. We are not liable for any losses (personal,
-              financial, data, or competitive) arising from your use of Riftseer.
+              <strong className="font-semibold">Your risk.</strong> You use Riftseer at your own
+              risk. We do not owe you compensation for outages, bugs, or our failure to meet any
+              statement in these terms. We are not liable for any losses (personal, financial, data,
+              or competitive) arising from your use of Riftseer.
             </ListItem>
             <ListItem>
-              <strong className="font-semibold">Card and set data.</strong>
-              {" "}
-              Card data, set information, and API responses are provided for informational purposes only.
-              They are sourced from third parties (for example RiftCodex) and we do not guarantee accuracy
-              or completeness. For official rules and card text, refer to Riot Games or the game&apos;s
+              <strong className="font-semibold">Card and set data.</strong> Card data, set
+              information, and API responses are provided for informational purposes only. They are
+              sourced from third parties (for example RiftCodex) and we do not guarantee accuracy or
+              completeness. For official rules and card text, refer to Riot Games or the game&apos;s
               publisher.
             </ListItem>
           </UnorderedList>
@@ -153,10 +140,10 @@ export function TermsView() {
             assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
           </Text>
           <Text>
-            Riftseer is not affiliated with Riot Games. Riftbound and all related marks are trademarks of
-            Riot Games. Card data may be supplied by community or third-party sources; we are not
-            responsible for their content or licensing. Use of Reddit and other platforms is subject to
-            their respective terms.
+            Riftseer is not affiliated with Riot Games. Riftbound and all related marks are
+            trademarks of Riot Games. Card data may be supplied by community or third-party sources;
+            we are not responsible for their content or licensing. Use of Reddit and other platforms
+            is subject to their respective terms.
           </Text>
         </div>
 

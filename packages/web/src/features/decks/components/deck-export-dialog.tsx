@@ -87,8 +87,7 @@ export function DeckExportDialog({
         <DialogHeader className="shrink-0">
           <DialogTitle>Export deck</DialogTitle>
           <DialogDescription>
-            Plain text, grouped by zone. Paste it back into the importer to
-            recreate the deck.
+            Plain text, grouped by zone. Paste it back into the importer to recreate the deck.
           </DialogDescription>
         </DialogHeader>
 

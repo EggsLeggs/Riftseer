@@ -54,9 +54,7 @@ function useToastMutation<TArgs extends unknown[], TData>(
     mutationFn: async (args: TArgs) => unwrap(await run(...args)),
     onSuccess: (data) => {
       invalidate();
-      toast.success(
-        typeof successMessage === "function" ? successMessage(data) : successMessage,
-      );
+      toast.success(typeof successMessage === "function" ? successMessage(data) : successMessage);
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -106,10 +104,11 @@ export function useDeckMutations(deckId: string) {
       "Deck deleted",
       invalidate,
     ),
-    setInvite: useToastMutation<
-      [deckId: string, role?: DeckCollaboratorRole],
-      DeckInviteResult
-    >(setDeckInviteAction, "Invite link ready", invalidate),
+    setInvite: useToastMutation<[deckId: string, role?: DeckCollaboratorRole], DeckInviteResult>(
+      setDeckInviteAction,
+      "Invite link ready",
+      invalidate,
+    ),
     clearInvite: useToastMutation<[deckId: string], { message: string }>(
       clearDeckInviteAction,
       "Invite link revoked",
@@ -119,10 +118,11 @@ export function useDeckMutations(deckId: string) {
       [deckId: string, handle: string, role?: DeckCollaboratorRole],
       DeckCollaboratorResult
     >(addDeckCollaboratorAction, "Collaborator added", invalidate),
-    removeCollaborator: useToastMutation<
-      [deckId: string, handle: string],
-      { message: string }
-    >(removeDeckCollaboratorAction, "Collaborator removed", invalidate),
+    removeCollaborator: useToastMutation<[deckId: string, handle: string], { message: string }>(
+      removeDeckCollaboratorAction,
+      "Collaborator removed",
+      invalidate,
+    ),
     // Returned for convenience only. Every mutation still takes `deckId` as its
     // first tuple argument — nothing here is bound to it.
     deckId,
