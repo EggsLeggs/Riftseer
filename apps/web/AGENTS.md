@@ -42,14 +42,14 @@ bun run cf-typegen  # after a wrangler.jsonc change
 - A deck the caller may not read answers 404, so "missing" and "not yours" render identically. Roles come from the payload's `role`; `canEditDeck()` and `ownsDeck()` are the only place that mapping lives.
 - The deck page is modeless: `canEditDeck(role)` alone turns the edit affordances on. `?edit=1` is retired and the route redirects it away.
 - `DeckWorkspace` is the one body both the deck page and the guest builder render. A second builder is the thing this arrangement exists to avoid.
-- Grouping and display order are `src/features/decks/grouping.ts` and `deckDisplayOrder()`, pure, counting copies rather than rows. All three list views and Prev/Next navigation read them, so switching views never reorders a deck.
+- Grouping, display order and stats are `@riftseer/types/deck/grouping` and `@riftseer/types/deck/stats`, pure, counting copies rather than rows. All three list views and Prev/Next navigation read `deckDisplayOrder()`, so switching views never reorders a deck.
 - Card edits go through `use-deck-editor`, which batches them into one `PUT /decks/:id/cards`. The RPC coalesces revisions within five minutes, so a request per click would write a revision row per click.
 - Violations arrive precomputed. Render `severity` distinctly and read the structured fields, never `message`.
 - Social state is server-decided: favorite, view count, `can_delete` and `is_liked` come from the payload, and the UI never re-derives moderation. Comment threads arrive flat; `deck-comments.ts` builds the tree and promotes orphans rather than dropping them.
-- `/decks/new` renders signed out. `guest-deck.ts` is pure and owns the stored shape; a blob it cannot read is no deck, never a crash. On sign-in the local copy clears only once both `createDeckAction` and `applyDeckCardChangesAction` land.
+- `/decks/new` renders signed out. `@riftseer/types/deck/guest-deck` is pure and owns the stored shape, and `src/features/decks/guest-deck.ts` is only the localStorage calls; a blob it cannot read is no deck, never a crash. On sign-in the local copy clears only once both `createDeckAction` and `applyDeckCardChangesAction` land.
 - Drag between zones is `deck-dnd.tsx`, pointer and touch only, with an 8px activation distance that keeps plain clicks working. The card menu's "Move to" is the keyboard path; there is deliberately no KeyboardSensor.
 - A card name in the list is a real `<Link>` whose click opens `CardQuickView`. The handler bails on modified and non-primary clicks so ⌘-click and "copy link address" keep working.
-- Primer span scanning is `primer-markup.ts`; the card-mention grammar stays in `@riftseer/types/parser`, never a second regex.
+- Primer span scanning is `@riftseer/types/deck/primer-markup`; the card-mention grammar stays in `@riftseer/types/parser`, never a second regex.
 - `DeckBanner` framing lives in one `FRAMING` const. `fadeStops` must ascend; CSS clamps an out-of-order stop into a hard step rather than erroring. `FRAMING.focus` is a fraction of the card, not an `object-position`, because those percentages drift as the banner changes height. No per-printing focal points before a specific card demonstrably needs one.
 - Card tags never enter text export, and the guest builder hides the affordance rather than faking a store.
 

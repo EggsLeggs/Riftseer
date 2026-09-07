@@ -26,14 +26,14 @@ import { DeckStatsPanel } from "@/features/decks/components/deck-stats-panel";
 import { DeckViolationList } from "@/features/decks/components/deck-violation-list";
 import { DeckZoneSection } from "@/features/decks/components/deck-zone";
 import { indexDeckViolations } from "@/features/decks/deck-violations";
-import type { AddableCard } from "@/features/decks/deck-add";
+import type { AddableCard } from "@riftseer/types/deck/add";
 import {
   DECK_GROUP_MODE_LABELS,
   DECK_GROUP_MODES,
   deckDisplayOrder,
   deckZoneSections,
   type DeckGroupMode,
-} from "@/features/decks/grouping";
+} from "@riftseer/types/deck/grouping";
 import {
   DECK_LIST_VIEW_LABELS,
   DECK_LIST_VIEWS,

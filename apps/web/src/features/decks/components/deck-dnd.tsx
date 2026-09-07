@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 
 import { cn } from "@/lib/utils";
-import { eligibleZones } from "../deck-add";
+import { eligibleZones } from "@riftseer/types/deck/add";
 import type { DeckCard, DeckZone } from "../types";
 
 /**

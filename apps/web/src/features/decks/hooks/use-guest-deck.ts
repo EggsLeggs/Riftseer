@@ -6,8 +6,8 @@ import { validateDeck } from "@riftseer/types/deck-validate";
 import type { DeckZone as Zone } from "@riftseer/types/deck";
 
 import { cardsApi } from "@/features/cards/api";
-import { deckAddChange, type AddableCard } from "../deck-add";
-import { deckMoveChanges, deckPrintingSwapChanges } from "../deck-changes";
+import { deckAddChange, type AddableCard } from "@riftseer/types/deck/add";
+import { deckMoveChanges, deckPrintingSwapChanges } from "@riftseer/types/deck/changes";
 import { formatRulesFor, type DeckFormatOption } from "../formats";
 import {
   applyGuestCardChanges,
@@ -15,12 +15,11 @@ import {
   guestCardFields,
   guestDeckLegalities,
   guestDeckState,
-  readGuestDeck,
   withGuestLegalities,
-  writeGuestDeck,
   type GuestDeck,
   type GuestDeckCard,
-} from "../guest-deck";
+} from "@riftseer/types/deck/guest-deck";
+import { readGuestDeck, writeGuestDeck } from "../guest-deck";
 import type { DeckCard, DeckCardChange, DeckViolation } from "../types";
 
 /**

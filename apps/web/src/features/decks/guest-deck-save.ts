@@ -2,11 +2,11 @@
 
 import { applyDeckCardChangesAction, createDeckAction } from "./actions";
 import {
-  clearGuestDeck,
   guestDeckCreateInput,
   guestDeckToChanges,
   type GuestDeck,
-} from "./guest-deck";
+} from "@riftseer/types/deck/guest-deck";
+import { clearGuestDeck } from "./guest-deck";
 
 /**
  * Turning a deck built signed-out into a real, owned one.

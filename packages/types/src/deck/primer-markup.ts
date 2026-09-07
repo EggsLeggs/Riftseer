@@ -1,4 +1,4 @@
-import { parseCardRequests } from "@riftseer/types/parser";
+import { parseCardRequests } from "../parser.ts";
 
 /**
  * The primer's mention markup, turned into plain Markdown links.

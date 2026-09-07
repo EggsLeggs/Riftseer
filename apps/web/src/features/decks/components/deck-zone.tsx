@@ -6,7 +6,7 @@ import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CARD_GRID_COLUMNS } from "@/features/cards/card-display";
 import { cn } from "@/lib/utils";
-import { groupDeckCards, type DeckGroupMode } from "../grouping";
+import { groupDeckCards, type DeckGroupMode } from "@riftseer/types/deck/grouping";
 import { violationsForCard, type DeckViolationIndex } from "../deck-violations";
 import type { DeckListView } from "../deck-views";
 import type { DeckCard, DeckViolation, DeckZone as Zone } from "../types";

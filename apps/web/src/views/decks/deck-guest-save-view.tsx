@@ -8,7 +8,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { saveGuestDeck, type GuestDeckSaveOutcome } from "@/features/decks/guest-deck-save";
-import { isGuestDeckEmpty, readGuestDeck, type GuestDeck } from "@/features/decks/guest-deck";
+import { isGuestDeckEmpty, type GuestDeck } from "@riftseer/types/deck/guest-deck";
+import { readGuestDeck } from "@/features/decks/guest-deck";
 import { deckHref, newDeckHref } from "@/features/decks/paths";
 import { DeckCreateView } from "@/views/decks/deck-create-view";
 

@@ -21,6 +21,8 @@ Zero-dependency canonical types and runtime-neutral helpers shared by Bun, Node,
 - `zoneForCard()` keys off `card_type` (`Legend`, `Rune`, `Battlefield`), never `supertype`. The old model used `supertype` and routed every rune and battlefield into the main deck.
 - Deck text is line-based and human-pasteable, marking champions with `*CH*` and pinning a printing with a `(SET) COLLECTOR` suffix.
 - It replaced an opaque binary short form. Keep it diffable; do not reintroduce a compact encoding.
+- `src/deck/` is the deck logic a client runs, and the boundary lint keeps it inside this package so it never reaches React or an app. `grouping.ts` and `stats.ts` are display, counting copies rather than rows. `changes.ts` is the change queue, its merge rules and the optimistic projection; `add.ts` is zone eligibility and what a second `+` means. `guest-deck.ts` owns the signed-out deck's stored shape and its projections, with the localStorage calls left in web. `primer-markup.ts` scans mention spans over `src/parser.ts`.
+- The change body and the guest row in `src/deck/` restate the wire shape by hand because a mobile client cannot derive them from Eden; `apps/web/src/features/decks/types.ts` asserts the two still agree at compile time.
 
 ## Shared derivations
 

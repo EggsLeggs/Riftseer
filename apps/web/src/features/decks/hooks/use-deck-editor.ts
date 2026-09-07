@@ -4,13 +4,13 @@ import * as React from "react";
 import { toast } from "sonner";
 
 import { applyDeckCardChangesAction } from "../actions";
-import { deckAddChange, type AddableCard } from "../deck-add";
+import { deckAddChange, type AddableCard } from "@riftseer/types/deck/add";
 import {
   applyDeckCardChanges,
   deckMoveChanges,
   deckPrintingSwapChanges,
   mergeDeckCardChanges,
-} from "../deck-changes";
+} from "@riftseer/types/deck/changes";
 import type { DeckCard, DeckCardChange, DeckToken, DeckViolation, DeckZone } from "../types";
 
 /**

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { validateDeck } from "@riftseer/types/deck-validate";
-import { formatDeckText } from "@riftseer/types/deck-text";
+import { validateDeck } from "../deck-validate.ts";
+import { formatDeckText } from "../deck-text.ts";
 
-import { deckPrintingSwapChanges } from "./deck-changes";
+import { deckPrintingSwapChanges } from "../deck/changes.ts";
 
 import {
   GUEST_DECK_VERSION,
@@ -20,7 +20,7 @@ import {
   withGuestLegalities,
   type GuestDeck,
   type GuestDeckCard,
-} from "./guest-deck";
+} from "../deck/guest-deck.ts";
 
 function card(overrides: Partial<GuestDeckCard> = {}): GuestDeckCard {
   return {

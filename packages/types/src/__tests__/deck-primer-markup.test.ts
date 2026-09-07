@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseMentionHref, primerMarkup } from "./primer-markup";
+import { parseMentionHref, primerMarkup } from "../deck/primer-markup.ts";
 
 describe("primerMarkup", () => {
   test("text with no tokens passes through untouched", () => {

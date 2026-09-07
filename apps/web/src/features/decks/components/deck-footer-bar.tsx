@@ -6,7 +6,7 @@ import { CheckIcon, ChevronUpIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { countDeckViolations } from "../deck-violations";
-import { deckZoneSections } from "../grouping";
+import { deckZoneSections } from "@riftseer/types/deck/grouping";
 import type { DeckCard, DeckViolation } from "../types";
 import { DeckViolationList } from "./deck-violation-list";
 

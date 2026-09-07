@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DECK_ZONE_LABELS, DECK_ZONES } from "@riftseer/types/deck";
-import { deckZoneSections } from "../grouping";
+import { deckZoneSections } from "@riftseer/types/deck/grouping";
 import type { DeckCard, DeckZone } from "../types";
 
 function cardKey(card: Pick<DeckCard, "zone" | "printing_id" | "oracle_id">) {

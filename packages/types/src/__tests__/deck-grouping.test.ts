@@ -5,7 +5,7 @@ import {
   groupDeckCards,
   totalCopies,
   type GroupableCard,
-} from "./grouping";
+} from "../deck/grouping.ts";
 
 function card(overrides: Partial<GroupableCard> & { name: string }): GroupableCard {
   return {

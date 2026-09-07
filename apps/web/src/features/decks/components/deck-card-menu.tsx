@@ -22,7 +22,7 @@ import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
 import { ChampionIcon } from "@/features/cards/card-icons";
 import { cardMarketLinks } from "@/features/cards/card-buy-links";
 import { DECK_ZONE_LABELS } from "@riftseer/types/deck";
-import { eligibleZones } from "../deck-add";
+import { eligibleZones } from "@riftseer/types/deck/add";
 import type { DeckCard, DeckZone } from "../types";
 
 /**

@@ -15,6 +15,8 @@
 import type { treaty } from "@elysiajs/eden";
 import type { App } from "@riftseer/api";
 import type { DeckZone } from "@riftseer/types/deck";
+import type { DeckCardChange as SharedDeckCardChange } from "@riftseer/types/deck/changes";
+import type { GuestDeckCard } from "@riftseer/types/deck/guest-deck";
 
 export type { DeckZone };
 export { DECK_ZONES, DECK_ZONE_LABELS } from "@riftseer/types/deck";
@@ -116,6 +118,21 @@ export type DeckPatch = Body<DeckById["patch"]>;
 export type DeckCardChange = Omit<Body<DeckById["cards"]["put"]>["changes"][number], "zone"> & {
   zone: DeckZone;
 };
+
+/**
+ * The shared deck logic in `@riftseer/types/deck` restates the change body and
+ * the guest row by hand, because a mobile client cannot derive them from Eden.
+ * These fail to compile the day the wire shape moves away from them.
+ */
+type Assert<T extends true> = T;
+type _changeShapesAgree = Assert<
+  DeckCardChange extends SharedDeckCardChange
+    ? SharedDeckCardChange extends DeckCardChange
+      ? true
+      : false
+    : false
+>;
+type _guestRowIsADeckCard = Assert<GuestDeckCard extends DeckCard ? true : false>;
 
 /** What a card mutation returns: the re-rendered list, tokens and violations. */
 export type DeckCardsResult = Ok<DeckById["cards"]["put"]>;

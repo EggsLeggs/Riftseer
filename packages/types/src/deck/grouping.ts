@@ -1,4 +1,4 @@
-import { DECK_ZONES, DECK_ZONE_LABELS, type DeckZone } from "@riftseer/types/deck";
+import { DECK_ZONES, DECK_ZONE_LABELS, type DeckZone } from "../deck.ts";
 
 /**
  * How a deck list is broken up for display.

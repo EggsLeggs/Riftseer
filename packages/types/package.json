@@ -20,7 +20,8 @@
     "./admin-printing": "./src/admin-printing.ts",
     "./reconciliation": "./src/reconciliation.ts",
     "./slug": "./src/slug.ts",
-    "./social-links": "./src/social-links.ts"
+    "./social-links": "./src/social-links.ts",
+    "./deck/*": "./src/deck/*.ts"
   },
   "scripts": {
     "test": "bun test src/__tests__"

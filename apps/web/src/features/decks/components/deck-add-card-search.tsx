@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/command";
 import { cardsApi, cardsQueryKeys, type CardResult } from "@/features/cards/api";
 import { DECK_ZONE_LABELS } from "@riftseer/types/deck";
-import { resolveAddZone, type AddableCard } from "../deck-add";
+import { resolveAddZone, type AddableCard } from "@riftseer/types/deck/add";
 import { addableFromResult } from "./deck-add-card-dialog";
 import { cn } from "@/lib/utils";
 import type { DeckZone } from "../types";
