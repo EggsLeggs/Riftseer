@@ -24,7 +24,7 @@
     "dev:ingest:local": "bun scripts/wrangler-dev.mjs ingest-worker --config wrangler.jsonc --port 8787 --inspector-port 9231 --env-file .dev.vars.local",
     "dev:raycast": "cd apps/raycast-extension && npm run dev",
     "dev:web": "cd apps/web && bun run --env-file ../../.env dev",
-    "build:web": "cd apps/web && bun run build",
+    "build:web": "cd apps/web && bun run --env-file ../../.env build",
     "preview:web": "cd apps/web && bun run --env-file ../../.env preview",
     "test": "bun test packages/types/src/__tests__ packages/core/src/__tests__ apps/api/src/__tests__ apps/ingest-worker/src/__tests__ apps/web/src apps/discord-bot/src",
     "test:core": "bun test packages/core/src/__tests__",

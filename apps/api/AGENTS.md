@@ -35,6 +35,8 @@ Nine route files, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` on
 
 ## Boundaries
 
+- `src/public-routes.ts` is the list of routes anyone may call from anywhere. A route not on it carries `authPlugin` or `adminPlugin`; `src/__tests__/route-security.test.ts` walks every mounted route and fails the build otherwise. Adding a route to the list also gives it `Access-Control-Allow-Origin: *`.
+- CORS is `src/plugins/cors.ts`. Public routes answer `*`, so third-party browser clients on the card data keep working; everything else answers only `SITE_ORIGIN` and localhost, and admin never reflects a foreign origin. Do not reintroduce reflect-any-origin.
 - Admin database access is isolated behind `src/lib/admin-data.ts` and admin RPCs. Deck access is isolated behind `src/lib/deck-data.ts` and `deck_apply_card_changes`.
 - `src/routes/decks.ts` is the real authorisation boundary. The Worker's service-role key bypasses RLS, so the migration's deck policies are defence in depth. A deck the caller may not read returns 404; a write refused on a readable deck returns 403. Unlisted-by-link access exists only here.
 - Deck tokens derive from `makes_token` edges, never stored membership. A `deck_token_printings` row whose oracle left the derived set is ignored and pruned in passing; ingest changing an edge is normal and must never fail a read.
@@ -57,10 +59,12 @@ Nine route files, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` on
 - Use `status(code, body)` for early responses from Elysia scoped plugins.
 - Cloudflare Workers forbid request I/O at module scope. Provider warmup and binding access stay lazy and retryable from request handling.
 - Admin image uploads put bounded, content-addressed source bytes in `CARD_IMAGES` and enqueue transformation on `CARD_IMAGE_QUEUE`. Never transform inline.
+- `src/plugins/rate-limit.ts` runs in `onRequest` and limits auth endpoints to 10/min and other non-public writes to 120/min per `CF-Connecting-IP`, sliding-window in Upstash. It fails open when Redis is unconfigured or erroring, so it can never be the outage. The limits are data in `RATE_LIMIT_RULES`.
 - Local API and ingest processes must share `../../.wrangler/shared`. A full remote queue path needs a deployed Worker; remote Wrangler does not support Queues.
 
 ## Change checklist
 
 - Add route schemas, a `detail` block and a focused handler test, then regenerate and commit the spec.
+- Account routes take `clients` and `protectedAuthPlugin` options the way deck and admin routes take a repository. Test them through `src/__tests__/fake_supabase.ts`, never by mocking `lib/supabase` for the whole run.
 - Revisit the privacy page when a route collects, stores or logs new personal data.
 - Reference kept beside the spec: `docs/search.md` (the search grammar and its one execution path) and `docs/access.md` (CORS and hosted images).

@@ -7,7 +7,7 @@ Each entry is the term, what it is, the words to avoid for it, and the terms it 
 ## The card model
 
 **Oracle**:
-The rules object: name, type, tags, domains, rules text, keywords, stats. One oracle exists per distinct rules object, however many times it is printed.
+The rules object: name, type, tags, domains, rules text, keywords, stats. Every printing of those rules resolves to the same oracle, however many editions exist.
 _Avoid_: card (when the rules are meant), card definition, base card
 _Related_: Printing, Oracle key, Relationship, Keyword, Preferred printing
 
@@ -17,7 +17,7 @@ _Avoid_: card (when the cardboard is meant), edition, variant, version
 _Related_: Oracle, Rarity, Set, Collector number, Slug, Delta
 
 **Card**:
-The aggregate a reader sees: an oracle together with the printing being looked at. Reserve this word for that pair; a field belongs to exactly one half, so a surface that shows rules reads the oracle and a surface that shows cardboard reads the printing.
+The pair a reader sees: an oracle together with the printing being looked at. Reserve this word for that pair; a field belongs to exactly one half, so a surface that shows rules reads the oracle and a surface that shows cardboard reads the printing.
 _Avoid_: using "card" alone where the oracle/printing distinction matters
 _Related_: Oracle, Printing, Card detail
 
