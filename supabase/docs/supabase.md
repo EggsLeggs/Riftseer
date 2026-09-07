@@ -1,4 +1,6 @@
-# Database environments
+---
+title: Database environments
+---
 
 Riftseer's services only care about a `SUPABASE_URL` and a `SUPABASE_SERVICE_ROLE_KEY`. Two things answer to those: the hosted Supabase project, and the local docker stack.
 
@@ -10,7 +12,7 @@ The `:local` dev scripts (`bun dev`, `bun run dev:api:local`, `bun run dev:inges
 
 The local catalogue starts empty. Fill it with `bun run dev:ingest:local` and `curl -X POST localhost:8787/ingest`.
 
-`bun run db:local:psql` opens a shell. `bun scripts/database-tests/database.mjs setup` prepares the test database; `bun scripts/database-tests/database.mjs reseed` reloads the fixture; `bun scripts/database-tests/database.mjs query <sql>` runs ad-hoc SQL against it. `bun run test:db` runs the SQL-level tests against it.
+`bun run db:local:psql` opens a shell. `bun scripts/database-tests/database.mjs setup` prepares the test database; `bun scripts/database-tests/database.mjs reseed` reloads the fixture; `bun scripts/database-tests/database.mjs query 'SELECT 1'` runs ad-hoc SQL against it. `bun run test:db` runs the SQL-level tests against it.
 
 ## Migrations
 

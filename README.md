@@ -66,7 +66,7 @@ an ingest rebuild.
 
 `CONTEXT.md` is the glossary for that model and everything around it.
 `AGENTS.md` carries the invariants and the map of the codebase, and
-`docs/standards.md` the rules prose and code follow. Read them before changing
+`docs/standards.md` contains the prose and code rules. Read them before changing
 anything; they are written for exactly that.
 
 ## License and attribution
