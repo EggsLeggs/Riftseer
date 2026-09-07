@@ -367,60 +367,6 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
         },
       )
 
-      // ── POST /auth/logout ─────────────────────────────────────────────────
-      .post(
-        "/auth/logout",
-        async ({ headers, set }) => {
-          const authHeader = headers.authorization;
-          if (!authHeader?.startsWith("Bearer ")) {
-            set.status = 401;
-            return { error: "Missing or invalid Authorization header", code: "MISSING_TOKEN" };
-          }
-          if (!authClient) {
-            set.status = 503;
-            return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
-          }
-          const accessToken = authHeader.slice(7);
-          let res: Response;
-          try {
-            res = await fetch(`${supabaseUrl}/auth/v1/logout`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-                apikey: supabaseAnonKey,
-                "Content-Type": "application/json",
-              },
-            });
-          } catch {
-            set.status = 503;
-            return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
-          }
-          if (!res.ok) {
-            const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-            set.status = res.status >= 500 ? 503 : 401;
-            return {
-              error: String(body.error_description ?? body.msg ?? "Logout failed"),
-              code: "LOGOUT_FAILED",
-            };
-          }
-          return { message: "Logged out successfully" };
-        },
-        {
-          response: {
-            200: t.Object({ message: t.String() }),
-            401: ErrorSchema,
-            503: ErrorSchema,
-          },
-          detail: {
-            tags: ["Auth"],
-            summary: "Logout",
-            description:
-              "Invalidates the current session. Requires a valid `Authorization: Bearer <access_token>` header. " +
-              "The refresh token is also revoked server-side.",
-          },
-        },
-      )
-
       // ── POST /auth/forgot-password ───────────────────────────────────────
       .post(
         "/auth/forgot-password",
@@ -498,6 +444,55 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
                   "the server-side admin allowlist. Clients use it to restore a session " +
                   "and gate admin UI on page load. Requires a valid " +
                   "`Authorization: Bearer <access_token>` header.",
+              },
+            },
+          )
+
+          // ── POST /auth/logout ─────────────────────────────────────────
+          .post(
+            "/auth/logout",
+            async ({ headers, set }) => {
+              if (!authClient) {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              const accessToken = headers.authorization!.slice(7);
+              let res: Response;
+              try {
+                res = await fetch(`${supabaseUrl}/auth/v1/logout`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    apikey: supabaseAnonKey,
+                    "Content-Type": "application/json",
+                  },
+                });
+              } catch {
+                set.status = 503;
+                return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };
+              }
+              if (!res.ok) {
+                const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+                set.status = res.status >= 500 ? 503 : 401;
+                return {
+                  error: String(body.error_description ?? body.msg ?? "Logout failed"),
+                  code: "LOGOUT_FAILED",
+                };
+              }
+              return { message: "Logged out successfully" };
+            },
+            {
+              response: {
+                200: t.Object({ message: t.String() }),
+                401: ErrorSchema,
+                503: ErrorSchema,
+              },
+              detail: {
+                tags: ["Auth"],
+                summary: "Logout",
+                description:
+                  "Invalidates the current session. Requires a valid `Authorization: Bearer <access_token>` header. " +
+                  "The refresh token is also revoked server-side.",
               },
             },
           )
