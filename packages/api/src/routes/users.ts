@@ -166,7 +166,11 @@ export function usersRoutes() {
           detail: {
             tags: ["Users"],
             summary: "Get user profile",
-            description: "Returns a public user profile by @handle, with follower/following counts.",
+            description:
+              "Returns a public profile by handle (case-insensitive) with follower and " +
+              "following counts. `is_supporter` and `is_member` come from the user's " +
+              "linked Metafy account. With a bearer token, `is_following` reports whether " +
+              "the caller follows this user; it is absent when anonymous or viewing yourself.",
           },
         },
       )
@@ -215,7 +219,9 @@ export function usersRoutes() {
           detail: {
             tags: ["Users"],
             summary: "Get followers",
-            description: "Returns a paginated list of profiles that follow the given user.",
+            description:
+              "Profiles that follow this user, most recent follow first. Paginated with " +
+              "`limit` (1–100, default 20) and `offset`; `total` is the full count.",
           },
         },
       )
@@ -264,7 +270,9 @@ export function usersRoutes() {
           detail: {
             tags: ["Users"],
             summary: "Get following",
-            description: "Returns a paginated list of profiles that the given user follows.",
+            description:
+              "Profiles this user follows, most recent follow first. Paginated with " +
+              "`limit` (1–100, default 20) and `offset`; `total` is the full count.",
           },
         },
       )
@@ -398,7 +406,18 @@ export function usersRoutes() {
                 500: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Users"], summary: "Update own profile" },
+              detail: {
+                tags: ["Users"],
+                summary: "Update own profile",
+                description:
+                  "Only the keys sent change. `handle` is lower-cased, must be 3–30 " +
+                  "characters of lowercase letters, digits and underscores, and must be " +
+                  "unique (409 `HANDLE_TAKEN`). `username` is the 1–50 character display " +
+                  "name. `bio` is at most 300 characters and blank clears it. `pronouns` " +
+                  "keeps the first three non-empty entries. `social_links` is keyed by " +
+                  "platform id; unknown platforms are dropped and each value is validated " +
+                  "for its platform.",
+              },
             },
           )
 
@@ -437,7 +456,13 @@ export function usersRoutes() {
                 500: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Users"], summary: "Delete own account" },
+              detail: {
+                tags: ["Users"],
+                summary: "Delete own account",
+                description:
+                  "Permanently deletes the caller's account. The auth user is removed " +
+                  "first and the profile cascades from it. There is no undo.",
+              },
             },
           )
 
@@ -490,7 +515,13 @@ export function usersRoutes() {
                 500: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Users"], summary: "Follow user" },
+              detail: {
+                tags: ["Users"],
+                summary: "Follow user",
+                description:
+                  "Follows the user with this handle. Idempotent: following someone you " +
+                  "already follow returns 200. You cannot follow yourself (400 `SELF_FOLLOW`).",
+              },
             },
           )
 
@@ -538,7 +569,11 @@ export function usersRoutes() {
                 500: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Users"], summary: "Unfollow user" },
+              detail: {
+                tags: ["Users"],
+                summary: "Unfollow user",
+                description: "Idempotent: not following the user is not an error.",
+              },
             },
           ),
       )

@@ -20,6 +20,7 @@ import { authRoutes } from "./routes/auth";
 import { usersRoutes } from "./routes/users";
 import { metafyRoutes } from "./routes/metafy";
 import { adminRoutes, type AdminImageBindings } from "./routes/admin";
+import openapiSpec from "../openapi.json";
 
 export interface BuildAppOptions {
   /** Runtime adapter. Omit for Bun (tests, spec generation). */
@@ -27,6 +28,30 @@ export interface BuildAppOptions {
   /** R2 + queue bindings for admin image uploads. Absent outside the Worker. */
   imageBindings?: AdminImageBindings;
 }
+
+// The committed spec is served verbatim. Widening it here keeps the literal
+// type of a large JSON file out of `App`, which every Eden consumer type-checks.
+const spec: Record<string, unknown> = openapiSpec;
+
+// One static page; Scalar reads the spec from the same origin, so the
+// "try it" requests go wherever this page was served from.
+const DOCS_HTML = `<!doctype html>
+<html>
+  <head>
+    <title>Riftseer API Reference</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body>
+    <script id="api-reference" data-url="/api/v1/openapi.json"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.51.0"
+      integrity="sha384-NMXUONwp2BXDpg9WZPFiCRAyu0xvHNbpLFT+x+5+sjMaJgNl8dxzEqlCWWwUJnRt"
+      crossorigin="anonymous"
+    ></script>
+  </body>
+</html>
+`;
 
 export function buildApp(cardProvider: CardDataProvider, options: BuildAppOptions = {}) {
   const startTime = Date.now();
@@ -58,8 +83,10 @@ export function buildApp(cardProvider: CardDataProvider, options: BuildAppOption
   })
     .onBeforeHandle(async ({ path, set }) => {
       // These routes do not read the card provider, so a catalogue warmup failure
-      // must not take down health, account, webhook, or admin traffic with them.
+      // must not take down health, docs, account, webhook, or admin traffic with them.
       if (
+        path === "/docs" ||
+        path === "/api/v1/openapi.json" ||
         path === "/api/v1/health" ||
         path === "/api/v1/users" ||
         path === "/api/v1/webhooks" ||
@@ -85,6 +112,17 @@ export function buildApp(cardProvider: CardDataProvider, options: BuildAppOption
         methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       }),
     )
+    // The reference page and the spec it reads. Both are hidden from the spec
+    // itself: they describe the API rather than belonging to it.
+    .get(
+      "/docs",
+      () =>
+        new Response(DOCS_HTML, {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        }),
+      { detail: { hide: true } },
+    )
+    .get("/api/v1/openapi.json", () => spec, { detail: { hide: true } })
     .use(
       new Elysia({ prefix: "/api/v1" })
         .use(metaRoutes(cardProvider, startTime))

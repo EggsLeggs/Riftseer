@@ -65,7 +65,14 @@ export function metafyRoutes() {
             401: ErrorSchema,
             503: ErrorSchema,
           },
-          detail: { tags: ["Auth"], summary: "Get Metafy link status" },
+          detail: {
+            tags: ["Auth"],
+            summary: "Get Metafy link status",
+            description:
+              "Whether the caller has linked a Metafy account and, if so, its username, " +
+              "supporter and community-membership flags and when they were last checked. " +
+              "Supporter status is what drives supporter perks across Riftseer.",
+          },
         },
       )
 
@@ -102,7 +109,14 @@ export function metafyRoutes() {
             401: ErrorSchema,
             503: ErrorSchema,
           },
-          detail: { tags: ["Auth"], summary: "Get Metafy OAuth URL" },
+          detail: {
+            tags: ["Auth"],
+            summary: "Get Metafy OAuth URL",
+            description:
+              "Starts the OAuth flow. Returns the Metafy authorisation URL to send the " +
+              "user to and the signed `state` the callback must echo back. 503 when " +
+              "Metafy OAuth is not configured on this deployment.",
+          },
         },
       )
 
@@ -249,7 +263,15 @@ export function metafyRoutes() {
             502: ErrorSchema,
             503: ErrorSchema,
           },
-          detail: { tags: ["Auth"], summary: "Complete Metafy OAuth callback" },
+          detail: {
+            tags: ["Auth"],
+            summary: "Complete Metafy OAuth callback",
+            description:
+              "Finishes the flow with the `code` and `state` Metafy redirected back with. " +
+              "Exchanges the code for tokens, reads the Metafy profile, checks supporter " +
+              "status and community membership, and upserts the caller's linked account " +
+              "(one per user). Returns the linked shape of the status route.",
+          },
         },
       )
 
@@ -289,7 +311,12 @@ export function metafyRoutes() {
             500: ErrorSchema,
             503: ErrorSchema,
           },
-          detail: { tags: ["Auth"], summary: "Disconnect Metafy account" },
+          detail: {
+            tags: ["Auth"],
+            summary: "Disconnect Metafy account",
+            description:
+              "Removes the linked Metafy account and its stored tokens. 404 when nothing is linked.",
+          },
         },
       )
 
@@ -349,7 +376,14 @@ export function metafyRoutes() {
             404: ErrorSchema,
             503: ErrorSchema,
           },
-          detail: { tags: ["Auth"], summary: "Refresh Metafy supporter status" },
+          detail: {
+            tags: ["Auth"],
+            summary: "Refresh Metafy supporter status",
+            description:
+              "Re-checks supporter status against Metafy with the stored access token and " +
+              "returns the updated link. 404 when nothing is linked; 400 when the link " +
+              "has no stored token.",
+          },
         },
       ),
   );

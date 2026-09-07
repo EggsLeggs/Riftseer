@@ -26,7 +26,9 @@ export function setsRoutes(cardProvider: CardDataProvider) {
         detail: {
           tags: ["Sets"],
           summary: "List all sets",
-          description: "Returns all known card sets with card counts.",
+          description:
+            "Returns all known card sets. `cardCount` is the number of cards currently " +
+            "in the index for that set. Browse a set's cards with `GET /cards?set=OGN`.",
         },
       },
     );
