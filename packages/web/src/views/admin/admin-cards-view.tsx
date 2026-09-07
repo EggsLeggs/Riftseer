@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cardsQueryKeys } from "@/features/cards/api";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref } from "@riftseer/types/render";
 import { setsApi, setsQueryKeys, type SetInfo } from "@/features/sets/api";
 import { listPrintingsAction } from "@/features/admin/actions";
 import { usePrintingMutations } from "@/features/admin/hooks/use-admin-mutations";

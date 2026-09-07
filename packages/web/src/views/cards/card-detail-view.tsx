@@ -45,12 +45,8 @@ import { CardRulings } from "@/features/cards/card-rulings";
 import { CardTags } from "@/features/cards/card-tags";
 import { CardText } from "@/features/cards/card-text";
 import { CopyButton } from "@/features/cards/copy-button";
-import {
-  cardIsLandscapeOriented,
-  meaningfulCardDomains,
-  meaningfulRulesText,
-} from "@/features/cards/format";
-import { cardHref } from "@/features/cards/paths";
+import { cardIsLandscapeOriented, meaningfulRulesText } from "@/features/cards/format";
+import { cardHref, meaningfulCardDomains } from "@riftseer/types/render";
 import { reportCardIssueUrl } from "@/features/cards/report-issue";
 import { artistSearchQuery, searchHref } from "@/features/cards/search-links";
 import { ShareButton } from "@/features/cards/share-button";

@@ -14,7 +14,7 @@ import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
 import { ChampionIcon } from "@/features/cards/card-icons";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref } from "@riftseer/types/render";
 import { cn } from "@/lib/utils";
 import { DeckCardMenuItems, type DeckCardMenuActions } from "./deck-card-menu";
 import { useDeckCardDraggable } from "./deck-dnd";

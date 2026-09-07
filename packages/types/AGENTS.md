@@ -25,12 +25,23 @@ Zero-dependency canonical types and runtime-neutral helpers shared by Bun, Node,
 ## Shared derivations
 
 - `src/card-image.ts` is the sole derivation of hosted image URLs and R2 keys. URLs derive from printing id and optional source hash, never stored.
-- `src/slug.ts` owns oracle and printing URL slugs. Both are pinned on first insert. Collision suffixes change only the final name segment.
+- `src/slug.ts` owns oracle and printing URL slugs. Both are pinned on first insert. Collision suffixes change only the final name segment. Turning a slug into a site URL is `src/render/urls.ts`.
 - `src/keywords.ts` contains the TypeScript keyword extractor used outside Postgres. The database trigger remains the write-time authority.
 - `src/parser.ts` owns both `[[Name|SET-123]]` token parsing and name normalization. Consumers import it rather than maintaining client-specific parsers.
-- `src/card-text.ts` owns rules-text paragraph and reminder-italics layout. `src/icons.ts` owns the `:rb_<key>:` token system.
-- Both are shared by web, Discord and Reddit. Hand-rolling a regex in a client instead of importing these is the mistake they exist to prevent.
+- `src/card-text.ts` repairs upstream flavour text on the way in. Everything a surface renders from lives in `src/render/`.
 - `src/reconciliation.ts` owns the reconciliation fields the API can confirm, so API and admin UI exhaustiveness checks derive from one value.
+
+## Render kernel
+
+`src/render/` is pure functions over card text and card fields, returning plain data. It is what web, Discord, Reddit and Raycast render from, so it never imports React, a DOM API or a Discord asset.
+
+- `src/render/index.ts` is the whole public surface, exported as `@riftseer/types/render` and from the package root. The boundary lint rejects any import of the files behind it.
+- `tokens.ts` owns the `:rb_<key>:` vocabulary: `tokenizeCardTextLine()` yields the neutral token stream (text, icon runs, keyword badges with absorbed costs, literal brackets, reminder italics); `replaceIconTokens()` serves text-only surfaces.
+- `card-text.ts` owns `normalizeCardTextLayout()`, the one paragraph splitter, plus `text.rich` parsing and the clipboard formatter.
+- `domains.ts` owns the six domain keys, their printed names, the rune-art hex fills and the softer wash triples. Go through `domainKey()`; never compare a domain string by hand.
+- `type-line.ts` owns `cardTypeLine()` ("Champion Unit", a bare "Legend", "Token Unit") and its glyph key.
+- `urls.ts` owns relative card paths and absolute `riftseer_uri` derivation from a `siteOrigin`, plus `cardSiteUrl()` for clients that prefer the API's field.
+- Surfaces keep only medium-specific assets: web's CSS class per token, Discord's emoji-id map in `@riftseer/core/icons`, Raycast's asset paths. Hand-rolling a regex in a client instead of importing the kernel is the mistake it exists to prevent.
 
 ## Vocabularies kept in step
 

@@ -15,7 +15,7 @@ import {
   formatUsd,
   tcgplayerUsdPrice,
 } from "@/features/cards/format";
-import { cardHref, oracleHref } from "@/features/cards/paths";
+import { cardHref, oracleHref } from "@riftseer/types/render";
 import { cn } from "@/lib/utils";
 
 function printingAccessibleName(printing: Printing, oracleName: string): string {

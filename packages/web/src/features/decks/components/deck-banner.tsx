@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { printingImageUrl } from "@riftseer/types";
 
 import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
-import { DOMAIN_RGB, NEUTRAL_DOMAIN_RGB } from "@/features/cards/domain-colors";
+import { NEUTRAL_DOMAIN_RGB, domainWashRgb } from "@riftseer/types/render";
 import { cn } from "@/lib/utils";
 
 /**
@@ -96,7 +96,7 @@ const FRAMING = {
   tintEndPct: 100,
 } as const;
 
-/** Decorative domain washes, in the game's own hues. See `domain-colors`. */
+/** Decorative domain washes, in the game's own hues — `DOMAIN_WASH_RGB` in `@riftseer/types/render`. */
 
 /**
  * The art's mask: held at nothing, then eased in.
@@ -317,7 +317,7 @@ export function DeckBanner({
 function tintsFor(card: BannerCard | null): string[] {
   const seen: string[] = [];
   for (const domain of card?.domains ?? []) {
-    const tint = DOMAIN_RGB[domain.trim().toLowerCase()];
+    const tint = domainWashRgb(domain);
     if (tint && !seen.includes(tint)) seen.push(tint);
     if (seen.length === 2) break;
   }

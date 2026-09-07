@@ -9,7 +9,7 @@ import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
 import { CardArt } from "@/features/cards/card-art";
 import { CardBuyLinks } from "@/features/cards/card-buy-links";
 import { cardIsLandscapeOriented } from "@/features/cards/format";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref } from "@riftseer/types/render";
 import { cn } from "@/lib/utils";
 import type { DeckCard } from "../types";
 

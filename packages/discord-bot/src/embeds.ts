@@ -4,40 +4,22 @@
 import type { APIEmbed, APIEmbedField } from "discord-api-types/v10";
 import { renderTextForDiscord } from "@riftseer/core/icons";
 import { printingImageUrl } from "@riftseer/types";
+import {
+  cardSiteUrl,
+  cardTypeLine,
+  domainRuneHex,
+  meaningfulCardDomains,
+} from "@riftseer/types/render";
 import type { Oracle, Printing } from "@riftseer/types";
 import type { CardSet } from "./api.ts";
 
-// Domain → embed accent colour
-const DOMAIN_COLORS: Record<string, number> = {
-  Fury: 0xe53e3e,
-  Light: 0xd69e2e,
-  Nature: 0x38a169,
-  Order: 0x4299e1,
-  Shadow: 0x805ad5,
-  Tech: 0xed8936,
-  Water: 0x00b5d8,
-};
 const DEFAULT_COLOR = 0x7c3aed; // Riftseer brand purple
 
-function domainColor(domains?: string[]): number {
-  const first = domains?.[0];
-  return first ? (DOMAIN_COLORS[first] ?? DEFAULT_COLOR) : DEFAULT_COLOR;
-}
-
-/**
- * Build the canonical site URL for a card. Prefer the API-provided
- * `riftseer_uri` so we follow whatever path scheme the API decides on; fall
- * back to the legacy `/card/<id>` shape only when the API hasn't filled it
- * in yet (e.g. SITE_ORIGIN unset, or pre-backfill rows).
- */
-function cardSiteUrl(
-  oracle: Oracle,
-  printing: Printing | null | undefined,
-  siteBaseUrl: string,
-): string {
-  if (printing?.riftseer_uri) return printing.riftseer_uri;
-  if (oracle.riftseer_uri) return oracle.riftseer_uri;
-  return `${siteBaseUrl.replace(/\/+$/, "")}/card/${printing?.id ?? oracle.id}`;
+/** Embed accent: the first domain's rune fill, or brand purple when it has none. */
+function domainColor(oracle: Pick<Oracle, "domains">): number {
+  const first = meaningfulCardDomains(oracle)[0];
+  const hex = first ? domainRuneHex(first) : null;
+  return hex ? Number.parseInt(hex.slice(1), 16) : DEFAULT_COLOR;
 }
 
 function tcgplayerPrice(printing: Printing | null | undefined): string | null {
@@ -55,8 +37,7 @@ export function buildCardEmbed(
 ): APIEmbed {
   const fields: APIEmbedField[] = [];
 
-  const supertype = oracle.supertype;
-  const typeLine = oracle.card_type;
+  const typeLine = cardTypeLine(oracle);
   const domains = oracle.domains;
   const tags = oracle.tags;
   const rarity = printing?.rarity;
@@ -69,9 +50,8 @@ export function buildCardEmbed(
     printing?.collector_label ?? printing?.collector_number;
   const plainText = oracle.text?.plain;
 
-  const typeParts = [typeLine, supertype].filter(Boolean);
-  if (typeParts.length) {
-    fields.push({ name: "Type", value: typeParts.join(" — "), inline: true });
+  if (typeLine) {
+    fields.push({ name: "Type", value: typeLine, inline: true });
   }
 
   if (energy != null) {
@@ -120,7 +100,7 @@ export function buildCardEmbed(
     title: oracle.name,
     url: cardSiteUrl(oracle, printing, siteBaseUrl),
     description,
-    color: domainColor(domains),
+    color: domainColor(oracle),
     image: imageUrl ? { url: imageUrl } : undefined,
     fields,
     footer: { text: footerText || "Riftseer" },
@@ -137,7 +117,7 @@ export function buildCardImageEmbed(
   return {
     title: oracle.name,
     url: cardSiteUrl(oracle, printing, siteBaseUrl),
-    color: domainColor(oracle.domains),
+    color: domainColor(oracle),
     image: imageUrl ? { url: imageUrl } : undefined,
     footer: {
       text:

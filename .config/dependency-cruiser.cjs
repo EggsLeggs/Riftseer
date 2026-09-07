@@ -39,6 +39,19 @@ module.exports = {
       from: { path: "^packages/ingest-worker/" },
       to: { path: "^packages/core/" },
     },
+    {
+      name: "render-kernel-public-surface",
+      severity: "error",
+      comment:
+        "The render kernel is reached through packages/types/src/render/index.ts " +
+        "(the @riftseer/types/render subpath). Its other files are private, so a " +
+        "surface cannot grow a dependency on how the kernel is split up inside.",
+      from: { pathNot: "^packages/types/src/render/" },
+      to: {
+        path: "^packages/types/src/render/",
+        pathNot: "^packages/types/src/render/index\\.ts$",
+      },
+    },
   ],
   options: {
     doNotFollow: { path: "node_modules" },

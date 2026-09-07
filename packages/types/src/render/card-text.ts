@@ -1,0 +1,264 @@
+/**
+ * Card rules-text layout.
+ *
+ * Upstream rules text arrives compressed — sentences run together and reminder
+ * italics markers are sometimes misplaced. Every surface needs the same
+ * paragraph splitting, so it happens once, here, before any tokenizing.
+ */
+
+import {
+  formatTokenDisplayList,
+  maskIconTokens,
+  restoreIconTokens,
+  tokenPlainLabel,
+  tokenizeCardTextInline,
+} from "./tokens.ts";
+
+/** True for scalar values `String.fromCodePoint` accepts (not surrogates / out of range). */
+function isUnicodeScalarValue(value: number): boolean {
+  return (
+    Number.isInteger(value) &&
+    value >= 0 &&
+    value <= 0x10ffff &&
+    !(value >= 0xd800 && value <= 0xdfff)
+  );
+}
+
+/** Upstream rules text sometimes ships HTML entities (`&quot;`, `&gt;`, …). */
+export function decodeCardTextEntities(text: string): string {
+  let prev = "";
+  let current = text;
+  while (current !== prev) {
+    prev = current;
+    current = current
+      .replace(/&quot;/gi, '"')
+      .replace(/&apos;/gi, "'")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&#(\d+);/g, (_, code: string) => {
+        const value = Number(code);
+        return isUnicodeScalarValue(value) ? String.fromCodePoint(value) : "";
+      })
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => {
+        const value = Number.parseInt(hex, 16);
+        return isUnicodeScalarValue(value) ? String.fromCodePoint(value) : "";
+      })
+      .replace(/&amp;/gi, "&");
+  }
+  return current;
+}
+
+function buildParenDepthMap(text: string): Uint16Array {
+  const depth = new Uint16Array(text.length + 1);
+  let current = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") current += 1;
+    else if (ch === ")" && current > 0) current -= 1;
+    depth[i + 1] = current;
+  }
+  return depth;
+}
+
+function collapseNewlinesInsideParentheses(text: string): string {
+  let result = "";
+  let depth = 0;
+  let pendingSpace = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") {
+      if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+      pendingSpace = false;
+      depth += 1;
+      result += ch;
+      continue;
+    }
+    if (ch === ")") {
+      pendingSpace = false;
+      if (depth > 0) depth -= 1;
+      result += ch;
+      continue;
+    }
+    if (depth > 0 && /\s/.test(ch)) {
+      pendingSpace = true;
+      continue;
+    }
+    if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+    pendingSpace = false;
+    result += ch;
+  }
+
+  if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
+  return result;
+}
+
+/**
+ * Normalizes card rules text formatting for clients that render plain text.
+ *
+ * - fixes malformed reminder italics markers around parentheticals
+ * - inserts paragraph breaks between sentences in compressed text
+ * - never inserts breaks inside parenthetical reminder text
+ */
+export function normalizeCardTextLayout(
+  text: string,
+  paragraphBreak = "\n",
+): string {
+  let normalized = decodeCardTextEntities(text)
+    .trim()
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
+
+  normalized = collapseNewlinesInsideParentheses(normalized)
+    .replace(/_ \(/g, "_(")
+    .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
+    // Standalone keyword chains (e.g. [Accelerate][Assault 2][Deflect]).
+    .replace(
+      /(\[[A-Za-z][^\]]*\])(?=\[(?!&gt;|>|&gt;&gt;|>>)[A-Za-z])/g,
+      `$1${paragraphBreak}`,
+    )
+    // Activated ability costs glued to a keyword (e.g. [Deflect]:rb_energy_2::…).
+    .replace(
+      /\](?=:rb_(?:energy_\d+|rune_\w+|exhaust|might|power):)/g,
+      `]${paragraphBreak}`,
+    )
+    // The mirror image: a keyword line that *ends* in its cost, with the next
+    // ability's keyword glued straight on — `[Empower] :rb_rune_body:[Empowered]`.
+    // `[>]` is excluded because it continues the keyword it follows rather than
+    // starting a line ("[Empowered][>] I have +3 …").
+    .replace(
+      /(:rb_\w+:)(?=\[(?!&gt;|>)[A-Za-z])/g,
+      `$1${paragraphBreak}`,
+    )
+    .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
+
+  const depthMap = buildParenDepthMap(normalized);
+  normalized = normalized.replace(
+    /([.)—])(\s*)(?=(?:[A-Z[]|:rb_))/g,
+    (match: string, punct: string, spacing: string, index: number) => {
+      const depthAfterPunct =
+        punct === ")" ? depthMap[index + 1] ?? 0 : depthMap[index] ?? 0;
+      if (depthAfterPunct > 0) return match;
+      if (spacing.length > 0) return match;
+      return `${punct}${paragraphBreak}`;
+    },
+  );
+
+  return normalized;
+}
+
+/** One paragraph (`<p>`) or bullet list (`<ul>`) from upstream `text.rich`. */
+export type CardTextBlock =
+  | { type: "paragraph"; lines: string[] }
+  | { type: "list"; items: string[] };
+
+/** Strip RiftCodex rich fragments to plain tokens/keywords for rendering. */
+export function richFragmentToPlain(fragment: string): string {
+  let text = fragment.trim();
+  text = text
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<em>([\s\S]*?)<\/em>/gi, "_$1_")
+    .replace(/<i>([\s\S]*?)<\/i>/gi, "_$1_")
+    .replace(/<strong>([\s\S]*?)<\/strong>/gi, "$1")
+    .replace(/<b>([\s\S]*?)<\/b>/gi, "$1")
+    .replace(/<[^>]+>/g, "");
+  return decodeCardTextEntities(text);
+}
+
+/**
+ * Parses the small HTML subset used in `text.rich` (`<p>`, `<br>`, `<ul>`,
+ * `<li>`). Returns null when there is no bullet list — callers should fall
+ * back to `text.plain` + {@link normalizeCardTextLayout}.
+ */
+export function parseCardTextRich(rich: string): CardTextBlock[] | null {
+  const trimmed = rich.trim();
+  if (!/<ul\b/i.test(trimmed)) return null;
+
+  const blocks: CardTextBlock[] = [];
+  const blockRe = /<(p|ul)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let match: RegExpExecArray | null;
+
+  while ((match = blockRe.exec(trimmed)) !== null) {
+    const tag = match[1]!.toLowerCase();
+    const inner = match[2]!;
+
+    if (tag === "p") {
+      const lines = normalizeCardTextLayout(richFragmentToPlain(inner))
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+      if (lines.length > 0) blocks.push({ type: "paragraph", lines });
+      continue;
+    }
+
+    const items: string[] = [];
+    const itemRe = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+    let itemMatch: RegExpExecArray | null;
+    while ((itemMatch = itemRe.exec(inner)) !== null) {
+      const html = itemMatch[1]!;
+      const plain = richFragmentToPlain(html);
+      // Keep break-only items (`<li><br /></li>`) as an explicit `\n` for renderers.
+      const isBreakOnly =
+        /<br\b/i.test(html) && plain.replace(/\n/g, "").length === 0;
+      if (isBreakOnly) {
+        items.push("\n");
+        continue;
+      }
+      if (plain.length === 0) continue;
+      const item = normalizeCardTextLayout(plain);
+      items.push(item.length > 0 ? item : "\n");
+    }
+    if (items.length > 0) blocks.push({ type: "list", items });
+  }
+
+  return blocks.some((block) => block.type === "list") ? blocks : null;
+}
+
+function formatTokenRun(keys: string[], preferText: boolean): string {
+  if (keys.length === 0) return "";
+  if (preferText) return formatTokenDisplayList(keys);
+  return keys.map(tokenPlainLabel).join("");
+}
+
+function formatLineForClipboard(line: string, preferText: boolean): string {
+  // Drop reminder-italic markers without touching underscores inside `:rb_…:`.
+  const { masked, tokens } = maskIconTokens(line);
+  const plain = restoreIconTokens(masked.replace(/_/g, ""), tokens);
+
+  let out = "";
+  for (const token of tokenizeCardTextInline(plain)) {
+    switch (token.kind) {
+      case "text":
+        out += token.text;
+        break;
+      case "icon":
+        out += formatTokenRun(token.keys, preferText);
+        break;
+      case "keyword": {
+        const costs = formatTokenRun(token.costs, preferText);
+        out += `[${token.label.trim()}]${token.arrow ? ">" : ""}${costs ? ` ${costs}` : ""}`;
+        break;
+      }
+      case "bracket":
+        out += `[${token.label}]`;
+        break;
+    }
+  }
+  return out.replace(/[^\S\n]+/g, " ").trim();
+}
+
+/**
+ * Plain-text rules for clipboard paste. Symbols become `{3}` / `{Power}`;
+ * prefer-text mode uses `3 Energy and Power`. Paragraphs stay on separate lines.
+ */
+export function formatCardTextForClipboard(
+  text: string,
+  options?: { preferText?: boolean },
+): string {
+  const preferText = options?.preferText ?? false;
+  return normalizeCardTextLayout(text)
+    .split("\n")
+    .map((line) => formatLineForClipboard(line, preferText))
+    .filter((line) => line.length > 0)
+    .join("\n");
+}

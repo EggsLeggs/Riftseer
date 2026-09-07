@@ -3,7 +3,7 @@ import {
   normalizeCardTextLayout,
   parseCardTextRich,
   richFragmentToPlain,
-} from "../card-text.ts";
+} from "../render/index.ts";
 
 const FLURRY_RICH =
   "<p>[Reaction]<br />Choose one —</p><ul><li>Counter a spell.</li><li>Play four 1 :rb_might: Bird unit tokens with [Deflect]. (Opponents must pay :rb_rune_rainbow: to choose them with a spell or ability.)</li></ul>";

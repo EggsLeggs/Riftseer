@@ -15,10 +15,9 @@ export {
   withNameCollisionSuffix,
   generatePublicSlug,
   generateOracleSlug,
-  absoluteRiftseerUri,
-  normalizeSiteOrigin,
   MISSING_COLLECTOR_SEGMENT,
 } from "@riftseer/types/slug";
+export { absoluteRiftseerUri, normalizeSiteOrigin } from "@riftseer/types/render";
 export { autocompleteSearch, scoreCard, rankIds } from "./search.ts";
 export type { Nameable } from "./search.ts";
 export {
@@ -71,17 +70,12 @@ export { logger } from "./logger.ts";
 // Errors
 export { BadRequestError, NotFoundError } from "./errors.ts";
 
-// Icon system
+// Discord emoji registry (the token system itself is `@riftseer/types/render`,
+// re-exported through `./types.ts` above)
 export {
-  TOKEN_REGEX,
-  TOKEN_ICON_MAP,
-  tokenPlainLabel,
-  tokenDisplayName,
-  formatTokenDisplayList,
   EMOJI_PREFIX,
   EMOJI_FILES,
   TOKEN_DISCORD_FALLBACK,
-  normalizeCardTextLayout,
   renderTextForDiscord,
 } from "./icons.ts";
 export type { EmojiFile } from "./icons.ts";

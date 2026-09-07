@@ -29,12 +29,8 @@ import { CardPrintingsTable } from "./card-printings-table";
 import { CardRulings } from "./card-rulings";
 import { CardTags } from "./card-tags";
 import { CardText } from "./card-text";
-import {
-  cardIsLandscapeOriented,
-  meaningfulCardDomains,
-  meaningfulRulesText,
-} from "./format";
-import { cardHref } from "./paths";
+import { cardHref, meaningfulCardDomains } from "@riftseer/types/render";
+import { cardIsLandscapeOriented, meaningfulRulesText } from "./format";
 
 /**
  * The card a quick view is about, as much of it as the opening list already

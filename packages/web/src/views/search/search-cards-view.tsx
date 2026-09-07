@@ -16,7 +16,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cardsApi, cardsQueryKeys, CardApiError } from "@/features/cards/api";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref } from "@riftseer/types/render";
 import {
   CardGrid,
   CardDetailsResults,

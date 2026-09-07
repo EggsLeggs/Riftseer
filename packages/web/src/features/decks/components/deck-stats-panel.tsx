@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { domainRgb } from "@/features/cards/domain-colors";
+import { NEUTRAL_DOMAIN_RGB, domainWashRgb, hasRuneGlyph } from "@riftseer/types/render";
 import { cn } from "@/lib/utils";
 import {
   deckStats,
@@ -166,7 +166,7 @@ function Shares({
                 style={{
                   width: `${(share.count / widest) * 100}%`,
                   ...(domainColors
-                    ? { backgroundColor: `rgb(${domainRgb(share.key)} / 0.85)` }
+                    ? { backgroundColor: `rgb(${domainWashRgb(share.key) ?? NEUTRAL_DOMAIN_RGB} / 0.85)` }
                     : {}),
                 }}
               />
@@ -182,18 +182,8 @@ function Shares({
 }
 
 /** Domains with a printed rune. Anything else is named but not illustrated. */
-const DOMAIN_GLYPHS = new Set([
-  "body",
-  "calm",
-  "chaos",
-  "fury",
-  "mind",
-  "order",
-  "rainbow",
-]);
-
 function glyphClass(key: string): string | undefined {
-  return DOMAIN_GLYPHS.has(key) ? `icon-rune-${key}-glyph` : undefined;
+  return hasRuneGlyph(key) ? `icon-rune-${key}-glyph` : undefined;
 }
 
 function oneDecimal(value: number | null): string {

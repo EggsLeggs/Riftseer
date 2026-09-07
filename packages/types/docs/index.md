@@ -25,7 +25,7 @@ Because it has no runtime dependencies it can be imported in any environment —
 | Card types | `src/card.ts` | `Card`, all sub-interfaces, `CardRequest`, `ResolvedCard`, `CardSearchOptions` |
 | Deck model | `src/deck.ts`, `src/deck-validate.ts`, `src/deck-text.ts` | Zone vocabulary, `zoneForCard()`, `validateDeck()`, text import/export |
 | Parser | `src/parser.ts` | `parseCardRequests()` and `normalizeCardName()` |
-| Icons | `src/icons.ts` | `TOKEN_REGEX` and `TOKEN_ICON_MAP` |
+| Render kernel | `src/render/` | `tokenizeCardTextLine()`, `normalizeCardTextLayout()`, domains, type line, site URLs |
 
 ---
 
@@ -37,7 +37,7 @@ import type { Card, CardRequest, ResolvedCard } from "@riftseer/types";
 import { parseCardRequests, normalizeCardName } from "@riftseer/types";
 
 // Sub-path exports (tree-shakeable)
-import { TOKEN_REGEX, TOKEN_ICON_MAP } from "@riftseer/types/icons";
+import { tokenizeCardTextLine, cardTypeLine } from "@riftseer/types/render";
 import { parseCardRequests, normalizeCardName } from "@riftseer/types/parser";
 ```
 

@@ -25,13 +25,15 @@ import {
 } from "@/features/cards/card-icons";
 import { CardTags } from "@/features/cards/card-tags";
 import { CardText } from "@/features/cards/card-text";
-import { cardHref } from "@/features/cards/paths";
+import {
+  cardHref,
+  cardTypeLine,
+  meaningfulCardDomains,
+} from "@riftseer/types/render";
 import {
   cardIsLandscapeOriented,
-  cardTypeLine,
   formatEur,
   formatUsd,
-  meaningfulCardDomains,
   meaningfulRulesText,
   tcgplayerUsdPrice,
 } from "@/features/cards/format";

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import type { Oracle, Printing } from "@riftseer/types";
 import { printingImageUrl } from "@riftseer/types";
 
-import { cardTypeLine, meaningfulRulesText } from "@/features/cards/format";
+import { cardTypeLine } from "@riftseer/types/render";
+
+import { meaningfulRulesText } from "@/features/cards/format";
 
 import { env } from "@/lib/env";
 
@@ -25,7 +27,7 @@ export function cardSeoDescription(oracle: Oracle, printing: Printing): string {
   if (stats.length > 0) parts.push(stats.join(", "));
 
   const typeLine = cardTypeLine(oracle);
-  if (typeLine !== "—") parts.push(typeLine);
+  if (typeLine) parts.push(typeLine);
 
   const rules = (meaningfulRulesText(oracle.text?.plain) ?? "")
     .replace(/:[a-z_]+:/gi, "")

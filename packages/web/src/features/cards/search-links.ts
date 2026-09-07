@@ -59,7 +59,7 @@ export function keywordSearchQuery(label: string): string {
 /**
  * The query matching a card's printed type line.
  *
- * Mirrors `cardTypeLine` in `./format.ts` branch for branch, so the query always
+ * Mirrors `cardTypeLine` in `@riftseer/types/render` branch for branch, so the query always
  * describes the label the user actually clicked. The compound case is the point:
  * a Signature Unit is `st:signature t:unit` — two filters — because
  * `t:"signature unit"` is not a type any card carries and would match nothing.
