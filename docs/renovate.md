@@ -19,10 +19,10 @@ portal are the whole interface.
   member, so a root `bun install` re-resolves its dependencies and commits them
   to `bun.lock` even though Renovate will not open a PR against
   `docs/package.json`. That is how #156 moved the Docusaurus tree and broke
-  Mermaid SSR. `docs.yml` now runs on `bun.lock` as well so the docs build
+  Mermaid SSR. `docs.yml` now runs on `bun.lock` as well, so the docs build
   actually gets exercised when that happens.
 - A release has to be three days old before Renovate will propose it. Until
-  then the PR carries a pending `renovate/stability-days` check.
+  then, the PR carries a pending `renovate/stability-days` check.
 - Vulnerability fixes come from the OSV database, not from Dependabot alerts.
   They ignore the schedule and the two limits below: every limit check in
   Renovate is guarded on `!isVulnerabilityAlert`, so a security PR opens
@@ -39,7 +39,7 @@ portal are the whole interface.
 - The **Dependency Dashboard** issue lists what is waiting on the schedule and
   every dependency Renovate detected. Tick a line to get that PR now. Tick the
   last checkbox to make Renovate run again.
-- The job log is on the Mend portal, sign-in with GitHub:
+- The job log is on the Mend portal, sign in with GitHub:
   `https://developer.mend.io/github/EggsLeggs/Riftseer`. Go there when a PR
   you expected never appeared.
 - From a terminal:
