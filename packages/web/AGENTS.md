@@ -44,7 +44,8 @@ bun run cf-typegen
 - Rarity, art, artist, set, collector, flavour and marketplace data come from the printing.
 - `src/features/cards/api.ts` returns oracle-shaped results by default and passes `unique` for set and gallery views.
 - It applies a timeout and disables fetch caching, so a failure reaches the error boundary instead of hanging a render.
-- Use `cardHref()` or `oracleHref()` from `src/features/cards/paths.ts` for same-origin paths, and API-provided `riftseer_uri` for absolute links.
+- Use `cardHref()` or `oracleHref()` from `@riftseer/types/render` for same-origin paths, and API-provided `riftseer_uri` for absolute links.
+- `src/features/cards/card-text.tsx` maps the kernel's `tokenizeCardTextLine()` stream to elements. The walk over icons, keywords and italics is not repeated here; only the CSS class per token is web's.
 - `/card/<printing-id>` is a permanent compatibility route. It resolves the printing and `permanentRedirect`s to the pinned slug.
 - The canonical route self-redirects too when the joined path no longer matches `public_slug`, so a rename never leaves a stale URL.
 - Card detail loads through `cardsApi.getDetail()` with exactly one oracle id, printing id or slug. React request caching shares the lookup with metadata.
@@ -78,7 +79,7 @@ bun run cf-typegen
 - Every framing number lives in one `FRAMING` const, chosen by looking rather than derived. `fadeStops` must ascend; CSS clamps an out-of-order stop into a hard step rather than erroring.
 - Riftbound art is delivered as the whole card, frame included, so scenery is a crop. `FRAMING.focus` is the one focal point — a fraction of the *card*, not an `object-position`, because those percentages are relative to the overflow and drift as the banner changes height. Do not add per-printing focal points or saliency detection before a specific card demonstrably needs it.
 - A stored dominant colour is worth adding only when a *non-image* surface needs one — a Discord embed stripe, an OG image. It cannot help the banner: no single colour matches a card that is gold in the corner and green in the middle.
-- `DeckStatsPanel` renders `deckStats()` and computes nothing itself. It sits full-width below the list and its rail, because it describes the deck rather than the column the list occupies. Stats cover the `main` zone only, count copies rather than rows, and state every figure in text. Domain bars use the shared hues in `domain-colors.ts` as decoration; the rune glyph and name still identify the domain.
+- `DeckStatsPanel` renders `deckStats()` and computes nothing itself. It sits full-width below the list and its rail, because it describes the deck rather than the column the list occupies. Stats cover the `main` zone only, count copies rather than rows, and state every figure in text. Domain bars use the kernel's `DOMAIN_WASH_RGB` as decoration; the rune glyph and name still identify the domain.
 - Card edits go through `use-deck-editor`, which batches them into one `PUT /decks/:id/cards`. The RPC coalesces revisions within five minutes, so a request per click writes a revision row per click.
 - Violations arrive precomputed. Render `severity` distinctly and read the structured fields, never `message`.
 - `/decks/new` renders signed out. `use-guest-deck` swaps localStorage for the API and `validateDeck` for precomputed violations.

@@ -1,6 +1,6 @@
 # packages/core
 
-Shared data-access library consumed by the API. Canonical wire types, parser primitives, deck model, icons, slugs and image helpers live in `@riftseer/types` and are re-exported where useful.
+Shared data-access library consumed by the API. Canonical wire types, parser primitives, deck model, the render kernel, slugs and image helpers live in `@riftseer/types` and are re-exported where useful. `src/icons.ts` keeps only what is Discord's: the emoji registry and `renderTextForDiscord()`.
 
 ## Boundaries
 

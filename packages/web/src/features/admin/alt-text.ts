@@ -1,5 +1,7 @@
 import type { Oracle, Printing } from "@riftseer/types";
-import { EMPTY_VALUE, cardTypeLine } from "@/features/cards/format";
+import { cardTypeLine } from "@riftseer/types/render";
+
+import { EMPTY_VALUE } from "@/features/cards/format";
 
 /**
  * Fields the alt-text suggestion reads. Kept as a plain shape so the editor can
@@ -68,7 +70,7 @@ export function suggestCardAltText(source: AltTextSource): string {
 export function suggestAltTextForCard(oracle: Oracle, printing: Printing): string {
   return suggestCardAltText({
     name: oracle.name,
-    typeLine: cardTypeLine(oracle),
+    typeLine: cardTypeLine(oracle) ?? undefined,
     collectorNumber: printing.collector_number,
     setCode: printing.set?.set_code,
     artist: printing.artist,

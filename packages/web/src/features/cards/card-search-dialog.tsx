@@ -20,7 +20,7 @@ import {
   CardApiError,
   type CardResult,
 } from "./api";
-import { cardHref } from "./paths";
+import { cardHref } from "@riftseer/types/render";
 import { printingImageUrl } from "@riftseer/types";
 
 function searchErrorInfo(err: unknown): { title: string; detail: string } {

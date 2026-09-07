@@ -1,8 +1,9 @@
-import { normalizeCardTextLayout } from "@riftseer/types";
-
-export { TOKEN_REGEX, TOKEN_ICON_MAP, normalizeCardTextLayout, tokenPlainLabel, tokenDisplayName, formatTokenDisplayList } from "@riftseer/types";
+import { normalizeCardTextLayout, replaceIconTokens } from "@riftseer/types/render";
 
 // ─── Discord emoji registry ───────────────────────────────────────────────────
+// Discord custom emoji are a Discord asset, not shared rendering logic, so the
+// registry and the text renderer that uses it live here rather than in the
+// render kernel.
 
 /** All Discord application emoji names are prefixed with this string. */
 export const EMOJI_PREFIX = "rb_";
@@ -70,7 +71,7 @@ export function renderTextForDiscord(
   text: string,
   emojiMap: Record<string, string>,
 ): string {
-  return normalizeCardTextLayout(text).replace(/:rb_(\w+):/g, (match, key: string) => {
+  return replaceIconTokens(normalizeCardTextLayout(text), (key, match) => {
     const id = emojiMap[key];
     if (id) {
       const entry = EMOJI_FILES.find((e) => e.tokenKey === key);

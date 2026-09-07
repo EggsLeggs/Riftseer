@@ -9,7 +9,7 @@
  * pure function.
  */
 
-import { absoluteRiftseerUri, normalizeSiteOrigin } from "@riftseer/types/slug";
+import { absoluteRiftseerUri, normalizeSiteOrigin } from "@riftseer/types/render";
 import type { Oracle, Printing } from "./types.ts";
 
 /** Add `riftseer_uri` to an oracle and to every relationship ref it carries. */

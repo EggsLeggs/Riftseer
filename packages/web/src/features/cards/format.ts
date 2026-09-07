@@ -1,4 +1,5 @@
 import type { CardPriceEntry, Oracle, Printing } from "@riftseer/types";
+import { domainRuneHex, meaningfulCardDomains } from "@riftseer/types/render";
 
 /**
  * What these formatters render when there is nothing to show. Exported so code
@@ -27,43 +28,6 @@ export function formatEur(n: number | null | undefined): string {
   return `€${n.toFixed(2)}`;
 }
 
-/**
- * Display type line: special + base as "X Y" (e.g. "Champion Unit",
- * "Signature Spell", "Token Unit"). Lone "Token" becomes "Token Unit".
- * Legends keep a lone "Legend" — upstream stores Champion as affiliation,
- * not a printed type prefix.
- */
-export function cardTypeLine(oracle: Oracle): string {
-  const type = oracle.card_type?.trim() || undefined;
-  const special = oracle.supertype?.trim() || undefined;
-  const typeKey = type?.toLowerCase();
-
-  if (typeKey === "legend") return type!;
-  if (type && special) return `${special} ${type}`;
-  if (typeKey === "token") return "Token Unit";
-  return type ?? special ?? EMPTY_VALUE;
-}
-
-/**
- * Glyph for {@link cardTypeLine}. Champion units use the champion icon;
- * legends use the legend icon. Every other special (Signature, Token, …)
- * keeps the base type's glyph.
- */
-export function cardTypeIconKey(oracle: Oracle): string | null {
-  const type = oracle.card_type?.trim();
-  const special = oracle.supertype?.trim();
-  const typeKey = type?.toLowerCase();
-  const specialKey = special?.toLowerCase();
-
-  if (typeKey === "legend") return "legend";
-  if (specialKey === "champion") return "champion";
-
-  const base = typeKey ?? specialKey;
-  if (!base) return null;
-  if (base === "token") return "unit";
-  return base;
-}
-
 export function cardIsLandscapeOriented(printing: Printing): boolean {
   const orientation = printing.image_orientation;
   return orientation === "landscape" || orientation === "horizontal";
@@ -73,23 +37,6 @@ export function cardIsLandscapeOriented(printing: Printing): boolean {
 export function cardIsGear(oracle: Pick<Oracle, "card_type">): boolean {
   return oracle.card_type?.trim().toLowerCase() === "gear";
 }
-
-/** Drops the placeholder "Colorless" domain, which has no rune of its own. */
-export function meaningfulCardDomains(oracle: Oracle): string[] {
-  return oracle.domains.filter(
-    (d) => d.trim() !== "" && d.trim().toLowerCase() !== "colorless",
-  );
-}
-
-/** Domain fills sampled from `public/icons/domains/rune_*.svg`. */
-const DOMAIN_BADGE_COLORS: Record<string, string> = {
-  fury: "#DF1620",
-  calm: "#488C38",
-  mind: "#0F6FA6",
-  body: "#E87600",
-  chaos: "#6A4094",
-  order: "#D2B400",
-};
 
 const TYPE_BADGE_GREY = "#c8c8c8";
 const TYPE_BADGE_GOLD = "#D6A93C";
@@ -161,8 +108,8 @@ export function typeBadgeStyle(
   }
 
   if (domains.length === 1) {
-    const domainKey = domains[0]!.toLowerCase();
-    const domainColor = DOMAIN_BADGE_COLORS[domainKey];
+    const domainKey = domains[0]!.trim().toLowerCase();
+    const domainColor = domainRuneHex(domainKey);
     if (domainColor) {
       return {
         labelBg: domainColor,

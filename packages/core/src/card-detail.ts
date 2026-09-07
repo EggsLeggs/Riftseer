@@ -8,7 +8,7 @@
 // now, already one row per card, so that pass is gone along with the ranking
 // heuristic it needed.
 
-import { absoluteRiftseerUri } from "@riftseer/types/slug";
+import { absoluteRiftseerUri } from "@riftseer/types/render";
 import { logger } from "./logger.ts";
 import type { CardDataProvider } from "./provider.ts";
 import type {

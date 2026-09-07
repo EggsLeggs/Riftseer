@@ -12,7 +12,7 @@ import {
   CardThumbnail,
 } from "@/features/cards/card-display";
 import { cardIsLandscapeOriented } from "@/features/cards/format";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref } from "@riftseer/types/render";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
 import { cn } from "@/lib/utils";
 import type { DeckCard, DeckToken } from "../types";

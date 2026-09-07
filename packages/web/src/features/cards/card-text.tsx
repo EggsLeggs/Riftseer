@@ -3,27 +3,16 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import { styleForKeyword } from "@riftseer/types/keywords";
+import type { CardTextToken } from "@riftseer/types/render";
 import {
-  maskIconTokens,
+  formatTokenDisplayList,
   normalizeCardTextLayout,
   parseCardTextRich,
-  restoreIconTokens,
-} from "@riftseer/types/card-text";
-import {
-  TOKEN_ICON_MAP,
-  TOKEN_REGEX,
-  formatTokenDisplayList,
   tokenDisplayName,
   tokenPlainLabel,
-} from "@riftseer/types/icons";
-import {
-  isKeywordStackConnector,
-  isKeywordTag,
-  KEYWORD_TAG_REGEX,
-  keywordAbsorbsTrailingCosts,
-  styleForKeyword,
-  takeKeywordBadgeCosts,
-} from "@riftseer/types/keywords";
+  tokenizeCardTextLine,
+} from "@riftseer/types/render";
 
 import { keywordSearchQuery, searchHref } from "@/features/cards/search-links";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
@@ -32,11 +21,10 @@ import { cn } from "@/lib/utils";
 /** `energy_3` renders as a numbered bubble rather than a fixed icon. */
 const ENERGY_VALUE_PATTERN = /^energy_(\d+)$/;
 
-/**
- * Italic reminder spans are wrapped in `_…_`. Underscores inside `:rb_…:`
- * tokens must not count as delimiters — mask tokens before splitting.
- */
-const ITALIC_SEGMENT_PATTERN = /(_(?:[^_\n]|:[^:\n]+:)+_)/;
+/** The CSS class drawing a `:rb_<key>:` glyph — see `app/icons.css`. */
+function iconClassForToken(key: string): string {
+  return `icon-${key.replace(/_/g, "-")}`;
+}
 
 /** Keyword label colours are only white or black — energy circle uses that, number the other. */
 function contrastingBw(hex: string): string {
@@ -160,7 +148,7 @@ function renderIconToken(
     <span
       className={cn(
         "inline-icon",
-        TOKEN_ICON_MAP[iconKey] ?? `icon-${iconKey}`,
+        iconClassForToken(iconKey),
         opts?.inKeyword && "card-keyword-rune",
       )}
       aria-hidden={opts?.inKeyword ? true : undefined}
@@ -278,94 +266,62 @@ interface RenderOpts {
   linkKeywords: boolean;
 }
 
-/**
- * Renders icon tokens (`:rb_*:`) and keyword tags (`[Accelerate]`) inside a
- * stretch of already-unmasked text.
- */
-function renderInline(
-  text: string,
+/** Maps the kernel's token stream to elements: icons, badges, italics, prose. */
+function renderTokens(
+  tokens: CardTextToken[],
   keyPrefix: string,
-  { preferText, linkKeywords }: RenderOpts,
+  opts: RenderOpts,
 ): ReactNode[] {
   const parts: ReactNode[] = [];
-  // Groups: 1 = icon key, 2 = keyword label, 3 = optional arrow marker.
-  const regex = new RegExp(
-    `${TOKEN_REGEX.source}|${KEYWORD_TAG_REGEX.source}`,
-    "g",
-  );
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let pendingStackLeft = false;
 
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
-
-    const key = `${keyPrefix}-${match.index}`;
-    const iconKey = match[1];
-    const keywordLabel = match[2];
-    const keywordArrow = match[3] != null;
-
-    if (iconKey) {
-      if (preferText) {
-        // Collapse adjacent `:rb_…:` runs into one phrase (`3 Energy and Power`).
-        const keys = [iconKey];
-        let end = regex.lastIndex;
-        const peek = new RegExp(TOKEN_REGEX.source, "g");
-        while (true) {
-          peek.lastIndex = end;
-          const next = peek.exec(text);
-          if (!next || next.index !== end) break;
-          keys.push(next[1]!);
-          end = peek.lastIndex;
+  tokens.forEach((token, index) => {
+    const key = `${keyPrefix}-${index}`;
+    switch (token.kind) {
+      case "text":
+        parts.push(token.text);
+        break;
+      case "icon":
+        if (opts.preferText) {
+          // Adjacent `:rb_…:` runs read as one phrase (`3 Energy and Power`).
+          const phrase = formatTokenDisplayList(token.keys);
+          parts.push(
+            <span
+              key={key}
+              className="text-foreground font-medium tabular-nums"
+              title={phrase}
+            >
+              {phrase}
+            </span>,
+          );
+          break;
         }
-        regex.lastIndex = end;
-        const phrase = formatTokenDisplayList(keys);
+        token.keys.forEach((iconKey, iconIndex) => {
+          parts.push(renderIconToken(iconKey, `${key}-${iconIndex}`, false));
+        });
+        break;
+      case "keyword":
         parts.push(
-          <span
+          <KeywordBadge
             key={key}
-            className="text-foreground font-medium tabular-nums"
-            title={phrase}
-          >
-            {phrase}
-          </span>,
+            label={token.label}
+            arrow={token.arrow}
+            arrowLeft={token.stackLeft}
+            costKeys={token.costs}
+            preferText={opts.preferText}
+            linked={opts.linkKeywords}
+          />,
         );
-        lastIndex = end;
-        continue;
-      }
-      parts.push(renderIconToken(iconKey, key, false));
-    } else if (keywordLabel != null && isKeywordStackConnector(keywordLabel)) {
-      pendingStackLeft = true;
-      lastIndex = regex.lastIndex;
-      continue;
-    } else if (keywordLabel != null && isKeywordTag(keywordLabel)) {
-      const absorbCosts = keywordAbsorbsTrailingCosts(keywordLabel);
-      const { keys: costKeys, end } = absorbCosts
-        ? takeKeywordBadgeCosts(text, regex.lastIndex)
-        : { keys: [], end: regex.lastIndex };
-      regex.lastIndex = end;
-      parts.push(
-        <KeywordBadge
-          key={key}
-          label={keywordLabel}
-          arrow={keywordArrow}
-          arrowLeft={pendingStackLeft}
-          costKeys={costKeys}
-          preferText={preferText}
-          linked={linkKeywords}
-        />,
-      );
-      pendingStackLeft = false;
-      lastIndex = end;
-      continue;
-    } else if (keywordLabel != null) {
-      // Non-keyword bracket span — keep the original literal.
-      parts.push(`[${keywordLabel}]`);
+        break;
+      case "bracket":
+        // Non-keyword bracket span — keep the original literal.
+        parts.push(`[${token.label}]`);
+        break;
+      case "italic":
+        parts.push(<em key={key}>{renderTokens(token.tokens, key, opts)}</em>);
+        break;
     }
+  });
 
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
   return parts;
 }
 
@@ -374,30 +330,7 @@ function renderLine(
   lineIndex: number,
   opts: RenderOpts,
 ): ReactNode[] {
-  // `:rb_exhaust:` / `:rb_rune_rainbow:` contain `_`, which the italic splitter
-  // would otherwise treat as `_…_` markers (Ornn's ability text is the classic case).
-  const { masked, tokens } = maskIconTokens(line);
-  const parts: ReactNode[] = [];
-
-  masked.split(ITALIC_SEGMENT_PATTERN).forEach((segment, segmentIndex) => {
-    const keyPrefix = `${lineIndex}-${segmentIndex}`;
-    if (segment.startsWith("_") && segment.endsWith("_") && segment.length > 2) {
-      parts.push(
-        <em key={`em-${keyPrefix}`}>
-          {renderInline(
-            restoreIconTokens(segment.slice(1, -1), tokens),
-            keyPrefix,
-            opts,
-          )}
-        </em>,
-      );
-      return;
-    }
-    parts.push(
-      ...renderInline(restoreIconTokens(segment, tokens), keyPrefix, opts),
-    );
-  });
-  return parts;
+  return renderTokens(tokenizeCardTextLine(line), `${lineIndex}`, opts);
 }
 
 /**

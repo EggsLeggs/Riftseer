@@ -17,7 +17,7 @@ Nothing in core is runtime-specific — it runs in Bun, Node, and Cloudflare Wor
 | Types | `src/types.ts` | Re-exports `Card`, `CardRequest`, `ResolvedCard`, and all sub-interfaces from `@riftseer/types` |
 | Provider interface | `src/provider.ts` | `CardDataProvider` — the only contract the API cares about |
 | Parser | `src/parser.ts` | Re-exports `parseCardRequests()` from `@riftseer/types` |
-| Icons | `src/icons.ts` | Re-exports `TOKEN_REGEX` and `TOKEN_ICON_MAP` from `@riftseer/types` |
+| Discord emoji | `src/icons.ts` | `EMOJI_FILES` and `renderTextForDiscord()`, over the `@riftseer/types/render` token kernel |
 | Search | `src/search.ts` | `autocompleteSearch()` — deterministic, position-aware name ranking |
 | Normalize | `src/normalize.ts` | Re-exports `normalizeCardName()` from `@riftseer/types` |
 | Supabase provider | `src/providers/supabase.ts` | `SupabaseCardProvider` — the only `CardDataProvider` implementation |

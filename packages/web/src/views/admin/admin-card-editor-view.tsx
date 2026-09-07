@@ -20,7 +20,7 @@ import {
   useOracleMutations,
   usePrintingMutations,
 } from "@/features/admin/hooks/use-admin-mutations";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref } from "@riftseer/types/render";
 import { AdminCardImagePanel } from "./admin-card-image-panel";
 import { AdminCardLegalitiesPanel } from "./admin-card-legalities-panel";
 import { AdminCardRelationshipsPanel } from "./admin-card-relationships-panel";

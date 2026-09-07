@@ -3,8 +3,9 @@
 import type * as React from "react";
 import Link from "next/link";
 import type { Oracle } from "@riftseer/types";
+import { cardTypeIconKey, cardTypeLine, hasRuneGlyph } from "@riftseer/types/render";
 
-import { cardIsGear, cardTypeIconKey, cardTypeLine, typeBadgeStyle } from "@/features/cards/format";
+import { EMPTY_VALUE, cardIsGear, typeBadgeStyle } from "@/features/cards/format";
 import {
   cardTypeLineSearchQuery,
   domainSearchQuery,
@@ -20,16 +21,6 @@ const RARITIES_WITH_ICONS = new Set([
   "uncommon",
   "rare",
   "epic",
-]);
-
-const DOMAINS_WITH_GLYPHS = new Set([
-  "fury",
-  "calm",
-  "mind",
-  "body",
-  "chaos",
-  "order",
-  "rainbow",
 ]);
 
 /** Energy cost bubble. Gear cards show a diamond instead of a circle. */
@@ -116,7 +107,7 @@ export function DomainRunes({
     >
       {domains.map((domain) => {
         const key = domain.toLowerCase();
-        const hasGlyph = DOMAINS_WITH_GLYPHS.has(key);
+        const hasGlyph = hasRuneGlyph(key);
         const content = (
           <>
             {hasGlyph ? (
@@ -205,7 +196,7 @@ export function CardTypeLine({
 }) {
   const { accessibility } = useSitePreferences();
   const label = cardTypeLine(oracle);
-  if (label === "—") return <span>—</span>;
+  if (!label) return <span>{EMPTY_VALUE}</span>;
 
   const query = linked ? cardTypeLineSearchQuery(oracle) : null;
   // Wrap whatever the chrome turned out to be, so the link never changes layout.

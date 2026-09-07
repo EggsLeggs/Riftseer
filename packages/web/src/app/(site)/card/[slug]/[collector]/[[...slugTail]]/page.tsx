@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 
 import { cardsApi } from "@/features/cards/api";
-import { cardHref, cardPathFromPublicSlug } from "@/features/cards/paths";
+import { cardHref, cardPathFromPublicSlug } from "@riftseer/types/render";
 import { cardMetadata } from "@/features/cards/seo";
 import { isAdminSession } from "@/lib/session";
 import { CardDetailView } from "@/views/cards/card-detail-view";

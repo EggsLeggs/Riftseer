@@ -12,7 +12,7 @@ import { cardsApi, cardsQueryKeys } from "@/features/cards/api";
 import { CardArt } from "@/features/cards/card-art";
 import { CardTextInline } from "@/features/cards/card-text";
 import { cardIsLandscapeOriented } from "@/features/cards/format";
-import { cardHref } from "@/features/cards/paths";
+import { cardHref } from "@riftseer/types/render";
 import { profileApi, profileQueryKeys } from "@/features/profile/api";
 import { parseMentionHref, primerMarkup, type PrimerMention } from "../primer-markup";
 import { userDecksHref } from "../paths";
