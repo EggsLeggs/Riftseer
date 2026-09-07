@@ -43,6 +43,7 @@
     "dev:prod": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260729.1",
     "@types/bun": "^1.3.11",
     "@types/node": "^20.19.30",
     "dependency-cruiser": "^18.2.0",

@@ -1,4 +1,10 @@
 {
+  // Deliberately not extending ../../tsconfig.base.json. Bun 1.3.9 resolves
+  // `extends` relative to the cwd rather than this file, so the root
+  // `bun test packages/web/src` fails to find the base, drops `paths`, and
+  // every `@/` import in a test's dependency graph stops resolving
+  // ("Cannot find module '@/features/cards/format'"). tsc is unaffected; the
+  // root test script is. Revisit when a Bun upgrade fixes it.
   "compilerOptions": {
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
@@ -20,9 +26,7 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"],
-      "elysia": ["../../node_modules/elysia"],
-      "elysia/*": ["../../node_modules/elysia/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
