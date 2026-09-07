@@ -168,7 +168,9 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         detail: {
           tags: ["Cards"],
           summary: "Get a random card",
-          description: "Returns a single random card, with its preferred printing.",
+          description:
+            "Returns a single random card with its preferred printing. Pass " +
+            "`include=prices` for marketplace prices on that printing.",
         },
       },
     )
@@ -301,8 +303,10 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         },
         detail: {
           tags: ["Cards"],
-          summary: "Get a card by oracle id",
-          description: "Returns one card by its stable oracle UUID.",
+          summary: "Get a card by oracle UUID, oracle_key or slug",
+          description:
+            "Returns one card by oracle UUID, `oracle_key`, or single-segment oracle " +
+            "slug. Does not accept a printing id — use `/printings/:id` for those.",
         },
       },
     )
@@ -331,7 +335,8 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
         detail: {
           tags: ["Cards"],
           summary: "Get a card as plain text",
-          description: "Returns copy-pasteable text (name, type line, rules).",
+          description:
+            "Returns a `text/plain` summary of the oracle: name, type line, then rules text.",
         },
       },
     )

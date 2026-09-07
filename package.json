@@ -38,11 +38,13 @@
     "db:local:psql": "docker compose exec postgres psql -U postgres -d riftseer",
     "test:db": "RIFTSEER_DATABASE_TESTS=1 RIFTSEER_DATABASE_URL=postgres://postgres:postgres@localhost:55432/riftseer_test RIFTSEER_POSTGREST_URL=http://localhost:54322/rest/v1 bun test packages/core/src/__tests__/database.integration.test.ts",
     "lint:boundaries": "./node_modules/.bin/depcruise --config .config/dependency-cruiser.cjs packages/types/src packages/core/src packages/api/src packages/ingest-worker/src packages/discord-bot/src packages/web/src",
-    "check": "bun run typecheck && bun test && node scripts/check-docs-references.mjs && bun run lint:md && bun run lint:boundaries && bun run check:wrangler",
+    "check": "bun run typecheck && bun test && node scripts/check-docs-references.mjs && bun run lint:md && bun run lint:boundaries && bun run check:wrangler && bun run spec:check",
     "check:wrangler": "bun scripts/check-wrangler-consistency.mjs && bun test scripts/check-wrangler-consistency.test.ts",
+    "spec:check": "cd packages/api && bun run generate:spec && git diff --exit-code -- openapi.json",
     "dev:prod": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260729.1",
     "@types/bun": "^1.3.11",
     "@types/node": "^20.19.30",
     "dependency-cruiser": "^18.2.0",

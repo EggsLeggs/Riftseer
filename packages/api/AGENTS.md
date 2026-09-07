@@ -9,6 +9,7 @@ bun run dev          # localhost:8789, shared Miniflare state
 bun run dev:remote   # live Cloudflare bindings
 bun run typecheck
 bun run test
+bun run generate:spec   # rewrites openapi.json; commit it with the route change
 bun run deploy
 ```
 
@@ -16,7 +17,7 @@ Copy `.dev.vars.example` to `.dev.vars` for local secrets. Treat `wrangler.jsonc
 
 ## Routes
 
-Nine route files, all mounted in `src/index.ts`. Check this list before adding a handler — a second `/formats` or `/auth` path is the easy mistake.
+Nine route files, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` only binds that to the Worker. Check this list before adding a handler — a second `/formats` or `/auth` path is the easy mistake.
 
 - `src/routes/cards.ts` — oracle search and detail, printing lookup, batch resolve. `/cards` is oracle-shaped; `unique=prints` is the explicit printing mode.
 - `src/routes/admin.ts` — oracle, printing, delta, relationship, legality, ruling, set, **format** and reconciliation mutations.
@@ -81,11 +82,12 @@ Metafy is split three ways: OAuth routes in `src/routes/metafy.ts`, the webhook 
 - The Metafy webhook is intercepted before Elysia because HMAC verification needs the unconsumed raw request body.
 - Admin image uploads put bounded, content-addressed source bytes in `CARD_IMAGES` and enqueue transformation on `CARD_IMAGE_QUEUE`. Never transform inline.
 - Local API and ingest processes must share `../../.wrangler/shared`. A full remote queue path needs a deployed Worker; remote Wrangler does not support Queues.
-- `@elysiajs/swagger` must not enter the Worker bundle; it depends on filesystem APIs.
+- `@elysiajs/swagger` must not enter the Worker bundle; it depends on filesystem APIs. Only `scripts/generate-spec.ts` mounts it. The Worker serves the committed `openapi.json` as a bundled import at `GET /api/v1/openapi.json` and a static Scalar page at `GET /docs`.
+- The spec is generated from `buildApp()` against the stub provider, so a mounted route is in it by construction. `bun run spec:check` fails CI when `openapi.json` is stale.
 
 ## Change checklist
 
 - Add route schemas and a focused handler test.
 - Update the relevant page under `docs/`.
 - Revisit the privacy page when a route collects, stores or logs new personal data.
-- Regenerate the spec when the public contract changes.
+- Give the route a `detail.summary` and `detail.description`; that is the public reference. Then `bun run generate:spec` and commit `openapi.json`.

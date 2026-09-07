@@ -11,7 +11,9 @@ export function metaRoutes(cardProvider: CardDataProvider, startTime: number) {
         detail: {
           tags: ["Meta"],
           summary: "Health check",
-          description: "Returns 200 if the server is running.",
+          description:
+            "Returns 200 if the server is running. For load balancers and uptime " +
+            "monitors — it does not check the card provider or the database.",
         },
       },
     )
@@ -48,7 +50,8 @@ export function metaRoutes(cardProvider: CardDataProvider, startTime: number) {
           tags: ["Meta"],
           summary: "Provider metadata",
           description:
-            "Returns provider name, cache age, last refresh time, and catalogue sizes.",
+            "Returns provider name, cache age, last refresh time, and catalogue sizes. " +
+            "`lastRefresh` is null on a cold isolate that has not completed warmup.",
         },
       },
     );

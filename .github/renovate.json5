@@ -1,0 +1,23 @@
+// Renovate needs the GitHub App installed on the repository before this file
+// does anything: https://github.com/apps/renovate
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    // One PR a week for everything non-major, so the batch is reviewed once.
+    // Majors stay separate because those are the ones that need reading.
+    "group:allNonMajor",
+    "schedule:weekly",
+  ],
+  // Bun workspace at the root (bun.lock) plus the two standalone npm packages
+  // (packages/reddit-bot, packages/raycast-extension) with their own
+  // package-lock.json. Renovate finds every package.json itself; this only
+  // keeps the standalone lockfiles current when nothing in them is bumped.
+  lockFileMaintenance: { enabled: true, extends: ["schedule:weekly"] },
+  // The default rangeStrategy keeps existing ranges and pins as written, so
+  // the root `overrides` block (typescript, elysia, kysely, typebox) is bumped
+  // in place rather than bypassed.
+  // Skip a release's first days so a compromised publish can be yanked before
+  // it lands here.
+  minimumReleaseAge: "3 days",
+}

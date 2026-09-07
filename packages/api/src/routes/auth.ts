@@ -326,7 +326,7 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
             summary: "Refresh token",
             description:
               "Exchanges a refresh token for a new access token and refresh token pair. " +
-              "Refresh tokens are rotated on each use.",
+              "Refresh tokens are rotated on each use — store the new pair.",
           },
         },
       )
@@ -451,8 +451,10 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
                 tags: ["Auth"],
                 summary: "Get current user",
                 description:
-                  "Returns the authenticated user's profile and computed admin status. " +
-                  "Requires a valid `Authorization: Bearer <access_token>` header.",
+                  "Returns the authenticated user's profile and whether the account is in " +
+                  "the server-side admin allowlist. Clients use it to restore a session " +
+                  "and gate admin UI on page load. Requires a valid " +
+                  "`Authorization: Bearer <access_token>` header.",
               },
             },
           )

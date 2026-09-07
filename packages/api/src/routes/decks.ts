@@ -1158,7 +1158,14 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 401: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Create a deck" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Create a deck",
+                description:
+                  "Creates an empty deck owned by the caller. `format` is a format code " +
+                  "(default `standard`); `visibility` defaults to `private`. Add cards " +
+                  "with PUT /decks/:id/cards.",
+              },
             },
           )
 
@@ -1242,7 +1249,14 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Update deck metadata" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Update deck metadata",
+                description:
+                  "Name, description, primer, format and visibility. Owner or editor, " +
+                  "except `visibility`, which only the owner may change — being invited " +
+                  "to help build is not consent to be published.",
+              },
             },
           )
 
@@ -1274,7 +1288,11 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Delete a deck" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Delete a deck",
+                description: "Owner only. A deck the caller cannot read answers 404, never 403.",
+              },
             },
           )
 
@@ -1365,11 +1383,17 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                   set.status = 400;
                   return { error: "No such comment to reply to.", code: "NO_SUCH_PARENT" };
                 }
-                parentId = parent.id;
                 // The cap flattens rather than refuses: reply eight becomes a
                 // sibling of reply seven, which is what the collapsed UI shows
-                // anyway.
-                depth = Math.min(parent.depth + 1, COMMENT_DEPTH_MAX);
+                // anyway. Reuse the grandparent so client-side nesting cannot
+                // exceed the capped level via parent_id.
+                if (parent.depth >= COMMENT_DEPTH_MAX) {
+                  parentId = parent.parent_id;
+                  depth = COMMENT_DEPTH_MAX;
+                } else {
+                  parentId = parent.id;
+                  depth = parent.depth + 1;
+                }
               }
 
               const row = await repository.insertComment({
@@ -1397,7 +1421,13 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Comment on a deck" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Comment on a deck",
+                description:
+                  "Any signed-in reader of the deck. Pass `parent_id` to reply; depth is " +
+                  "capped at 7 and deeper replies flatten to that level.",
+              },
             },
           )
 
@@ -1684,7 +1714,14 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Create or regenerate the invite link" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Create or regenerate the invite link",
+                description:
+                  "Owner only. Issues a fresh code granting `role` (default `editor`). " +
+                  "Regenerating replaces the link and nothing else: anyone who already " +
+                  "redeemed it keeps their access.",
+              },
             },
           )
 
@@ -1716,7 +1753,11 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Disable the invite link" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Disable the invite link",
+                description: "Owner only. Existing collaborators are unaffected.",
+              },
             },
           )
 
@@ -1808,7 +1849,13 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Invite a collaborator by handle" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Invite a collaborator by handle",
+                description:
+                  "Owner only. Adds the user directly with `role` (default `editor`); " +
+                  "the owner cannot be added.",
+              },
             },
           )
 
@@ -1846,7 +1893,11 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Remove a collaborator" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Remove a collaborator",
+                description: "Owner only. Names the collaborator by `?handle=`.",
+              },
             },
           )
 
@@ -1883,7 +1934,13 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 401: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "List your deck folders" },
+              detail: {
+                tags: ["Decks"],
+                summary: "List your deck folders",
+                description:
+                  "Folders are private organisation: flat, unordered, owner-only. Pass " +
+                  "`?deck=` to add `contains_deck` to each folder.",
+              },
             },
           )
 
@@ -1963,7 +2020,12 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "One folder and its decks" },
+              detail: {
+                tags: ["Decks"],
+                summary: "One folder and its decks",
+                description:
+                  "Contents are pruned on read to decks the caller can still read. A folder that is not yours 404s.",
+              },
             },
           )
 
@@ -2026,7 +2088,11 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "Delete a deck folder" },
+              detail: {
+                tags: ["Decks"],
+                summary: "Delete a deck folder",
+                description: "Never touches the decks filed in it.",
+              },
             },
           )
 
@@ -2057,7 +2123,12 @@ export function decksRoutes(options: DeckRoutesOptions = {}) {
                 404: ErrorSchema,
                 503: ErrorSchema,
               },
-              detail: { tags: ["Decks"], summary: "File a deck into a folder", description: "Idempotent." },
+              detail: {
+                tags: ["Decks"],
+                summary: "File a deck into a folder",
+                description:
+                  "Idempotent. Any deck the caller can read may be filed — an item is a bookmark, not a claim.",
+              },
             },
           )
 
