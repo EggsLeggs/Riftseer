@@ -38,7 +38,11 @@ supabase/.temp/
 .DS_Store
 
 # Editor
-.vscode/
+# settings.json and extensions.json are committed: formatter, lint fixes on
+# save and the recommended extensions are part of the repo, not the machine.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 .agents/
 .claude/

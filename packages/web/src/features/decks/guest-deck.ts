@@ -423,7 +423,7 @@ export function withGuestLegalities(
     legalities[entry.format_code] = {
       ...existing,
       [rung]: {
-        ...(existing[rung] ?? {}),
+        ...existing[rung],
         [id]: { status: entry.status as LegalityStatus, note: entry.note ?? null },
       },
     };

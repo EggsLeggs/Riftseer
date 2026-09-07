@@ -189,7 +189,6 @@ export function DeckCardMenuItems({
         markets.map((market) => (
           <kit.Item key={market.name} asChild>
             <a href={market.url} target="_blank" rel="noreferrer nofollow">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={market.logoSrc} alt="" width={16} height={16} className="size-4" />
               Buy on {market.name}
               <span className="text-muted-foreground ml-auto text-xs tabular-nums">

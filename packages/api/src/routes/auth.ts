@@ -515,7 +515,7 @@ export function authRoutes(options: AuthRoutesOptions = {}) {
           // ── PATCH /auth/change-password ─────────────────────────────────
           .patch(
             "/auth/change-password",
-            async ({ body, user, headers, set }) => {
+            async ({ body, user, set }) => {
               if (!authClient || !authAdminClient || !supabaseUrl || !supabaseAnonKey) {
                 set.status = 503;
                 return { error: "Auth service unavailable", code: "SERVICE_UNAVAILABLE" };

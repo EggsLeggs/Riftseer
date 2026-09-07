@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeAll } from "bun:test";
-import { Elysia, t } from "elysia";
+import { Elysia } from "elysia";
 import { swagger } from "@elysiajs/swagger";
 import type { CardDataProvider } from "@riftseer/core";
 import { StubProvider } from "../stub_card_provider";

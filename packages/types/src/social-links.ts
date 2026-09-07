@@ -178,7 +178,7 @@ function validateLinkedin(value: string): string | null {
 function validateDiscord(value: string): string | null {
   const trimmed = value.trim();
   if (!/^https?:\/\//i.test(trimmed)) {
-    if (/^[\w.\-]{2,32}$/.test(trimmed)) return null;
+    if (/^[\w.-]{2,32}$/.test(trimmed)) return null;
     return "Enter a Discord invite URL or username.";
   }
 

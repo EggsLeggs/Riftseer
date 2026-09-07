@@ -90,7 +90,6 @@ export function DeckPrintingPicker({
                       isCurrent ? "bg-muted" : "hover:bg-muted/40",
                     )}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={printingImageUrl(printing, "small")}
                       alt=""

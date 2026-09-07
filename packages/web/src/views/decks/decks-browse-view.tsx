@@ -47,6 +47,8 @@ import { cn } from "@/lib/utils";
  */
 
 const PER_PAGE = 24;
+// A fresh `[]` per render defeats every memo below it.
+const NO_ITEMS: never[] = [];
 
 function parseOwnership(raw: string | null): DeckListOwnership {
   return (DECK_LIST_OWNERSHIP as readonly string[]).includes(raw ?? "")
@@ -116,7 +118,7 @@ export function DecksBrowseView({ isSignedIn }: { isSignedIn: boolean }) {
       : ownership === "favorites"
         ? favorites
         : decks;
-  const items = source.data?.items ?? [];
+  const items = source.data?.items ?? NO_ITEMS;
   const formats = React.useMemo(() => deckListFormats(items), [items]);
   const filtered = React.useMemo(
     () => filterDeckSummaries(items, { query, format: format || undefined, ownership }),

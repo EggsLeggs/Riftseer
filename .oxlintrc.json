@@ -1,0 +1,39 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    // Dropping a key with `({ line, ...rest }) => rest` is the idiom for
+    // omission; `_` prefixes mark the rest as deliberate.
+    "no-unused-vars": [
+      "error",
+      {
+        "ignoreRestSiblings": true,
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    // React Compiler-derived rules. They flag 45 real patterns in web that
+    // need refactoring, not a style pass; they come on in the web chunk of
+    // the overhaul that extracts deck logic.
+    "react/set-state-in-effect": "off",
+    "react/refs": "off",
+    "react/immutability": "off"
+  },
+  "env": {
+    "builtin": true
+  },
+  // Patterns resolve inside this file's directory and cannot use `..`, which
+  // is why the config lives at the root and not in .config/.
+  "ignorePatterns": [
+    "packages/api/src/worker-configuration.d.ts",
+    "packages/ingest-worker/src/worker-configuration.d.ts",
+    "packages/web/cloudflare-env.d.ts",
+    "packages/raycast-extension",
+    "docs",
+    "apps/tts"
+  ]
+}

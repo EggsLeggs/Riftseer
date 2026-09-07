@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  // 94% of the code already fits in 80 columns; 100 leaves the rest alone
+  // instead of rewrapping it.
+  "printWidth": 100,
+  // package.json order is hand-kept: scripts read top-down, deps grouped.
+  "sortPackageJson": false,
+  // Patterns resolve inside this file's directory and cannot use `..`, which
+  // is why the config lives at the root and not in .config/.
+  "ignorePatterns": [
+    // Generated.
+    "packages/api/openapi.json",
+    "packages/api/src/worker-configuration.d.ts",
+    "packages/ingest-worker/src/worker-configuration.d.ts",
+    "packages/web/cloudflare-env.d.ts",
+    // Raycast's `ray lint` requires its own ESLint and Prettier.
+    "packages/raycast-extension",
+    // Docusaurus, deleted in the docs chunk of the overhaul.
+    "docs/doc-pages",
+    "docs/src",
+    "docs/static",
+    "docs/*.ts",
+    // SQL and Lua are not formatted here; listed so nobody adds them.
+    "supabase/migrations",
+    "apps/tts"
+  ]
+}

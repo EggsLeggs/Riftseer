@@ -323,7 +323,6 @@ function DetailsCardArt({ printing }: { printing: CardResult["printing"] }) {
           </span>
         </div>
       ) : (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={imageUrl}
           alt=""
@@ -591,7 +590,6 @@ export function CardThumbnail({
         ) : null}
         {showRotatedInPortraitSlot ? (
           <div className="absolute left-1/2 top-1/2 h-[calc(100%*5/7)] w-[140%] -translate-x-1/2 -translate-y-1/2 origin-center -rotate-90">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt=""
@@ -602,7 +600,6 @@ export function CardThumbnail({
             />
           </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
             alt=""

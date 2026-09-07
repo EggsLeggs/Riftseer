@@ -259,7 +259,6 @@ export function DeckBanner({
               { "--banner-holder-w": `${FRAMING.holderWidthPct}%` } as React.CSSProperties
             }
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageUrl}
               alt=""

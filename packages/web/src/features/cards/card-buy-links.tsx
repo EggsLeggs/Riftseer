@@ -75,7 +75,6 @@ export function CardBuyLinks({
           >
             <a href={market.url} target="_blank" rel="noreferrer nofollow">
               <span className="inline-flex min-w-0 items-center gap-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={market.logoSrc}
                   alt=""

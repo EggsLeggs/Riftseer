@@ -39,7 +39,6 @@ export function CardArt({
   const showUpright = isLandscape && rotated;
 
   const image = (
-    // eslint-disable-next-line @next/next/no-img-element
     <img
       src={imageUrl}
       alt={name}

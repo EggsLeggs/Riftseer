@@ -69,7 +69,7 @@ export const KEYWORD_STYLES: Record<string, KeywordStyle> = {
  * Does not match nested brackets.
  * Capture group 1 = inner label; group 2 = arrow marker when present.
  */
-export const KEYWORD_TAG_REGEX = /\[([^\[\]]+)\](?:\[(&gt;|>)\])?/g;
+export const KEYWORD_TAG_REGEX = /\[([^[\]]+)\](?:\[(&gt;|>)\])?/g;
 
 /** "Deflect 3" → "deflect"; "ADD" → "add"; "Weaponmaster" → "weaponmaster". */
 export function keywordBaseKey(label: string): string {

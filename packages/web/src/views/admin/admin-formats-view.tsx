@@ -45,7 +45,7 @@ import type {
   AdminViolationSeverityInput,
 } from "@/features/admin/types";
 import { AdminPageHeader } from "./admin-page-header";
-import { CheckboxField, SelectField } from "./admin-form-field";
+import { SelectField } from "./admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** Mirrors the API's accepted input shape; the stored code is always lowercase. */

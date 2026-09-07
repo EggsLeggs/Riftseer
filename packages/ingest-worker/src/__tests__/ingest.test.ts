@@ -6,14 +6,14 @@ import {
   collectorCandidates,
   enrichPrintings,
 } from "../pipeline/enrich.ts";
-import { EdgeSet, linkChampionsLegends, linkOracles, linkTokens } from "../pipeline/link.ts";
+import { EdgeSet, linkChampionsLegends, linkOracles } from "../pipeline/link.ts";
 import { buildOracles, oracleDisplayName } from "../pipeline/oracles.ts";
 import {
   RECONCILIATION_BATCH_SIZE,
   buildReconciliationEntries,
   syncReconciliationQueue,
 } from "../pipeline/reconcile.ts";
-import type { IngestOracle, IngestPrinting } from "../pipeline/types.ts";
+import type { IngestOracle } from "../pipeline/types.ts";
 import type { TCGGroupResult, TCGProduct } from "../sources/tcgcsv.ts";
 import {
   printedCollectorNumber,
