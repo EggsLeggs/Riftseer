@@ -1,0 +1,55 @@
+# The Tabletop Simulator mod is one JSON save plus the Lua and XmlUI extracted
+# from it, and both are committed. The check is that they agree: the save
+# parses, extracting it changes nothing, and injecting the sources back
+# reproduces the save byte for byte. The tools are stdlib-only Python.
+name: TTS mod
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/tts/**"
+      - ".gitattributes"
+      - ".github/workflows/tts.yml"
+  pull_request:
+    paths:
+      - "apps/tts/**"
+      - ".gitattributes"
+      - ".github/workflows/tts.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  round-trip:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/tts
+    env:
+      # The tools open the save in text mode; pin the codec so a runner's
+      # locale cannot change what they read.
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Save parses
+        run: python3 -c 'import json; json.load(open("mod/Riftbound.json"))'
+
+      - name: Extract is a fixed point
+        run: |
+          python3 tools/extract.py
+          git status --porcelain -- scripts ui
+          test -z "$(git status --porcelain -- scripts ui)"
+
+      - name: Inject reproduces the committed save
+        run: |
+          cp mod/Riftbound.json "${RUNNER_TEMP}/committed.json"
+          python3 tools/inject.py
+          cmp mod/Riftbound.json "${RUNNER_TEMP}/committed.json"
