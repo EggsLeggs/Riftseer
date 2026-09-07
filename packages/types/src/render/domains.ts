@@ -28,7 +28,8 @@ export function domainDisplayName(key: DomainKey): string {
 export const RUNE_GLYPH_KEYS = [...DOMAIN_KEYS, "rainbow"] as const;
 
 export function hasRuneGlyph(name: string): boolean {
-  return (RUNE_GLYPH_KEYS as readonly string[]).includes(name.trim().toLowerCase());
+  // Rainbow is a rune glyph but not a domain — check it beside domainKey().
+  return domainKey(name) !== null || name.trim().toLowerCase() === "rainbow";
 }
 
 /** Domain fills sampled from the rune art (`icons/domains/rune_*.svg`). */
@@ -68,10 +69,9 @@ export const NEUTRAL_DOMAIN_RGB = "120 120 130";
 
 /** The wash triple for a domain or `rainbow` in any spelling, or null. */
 export function domainWashRgb(name: string): string | null {
-  const key = name.trim().toLowerCase();
-  return Object.prototype.hasOwnProperty.call(DOMAIN_WASH_RGB, key)
-    ? DOMAIN_WASH_RGB[key as keyof typeof DOMAIN_WASH_RGB]
-    : null;
+  if (name.trim().toLowerCase() === "rainbow") return DOMAIN_WASH_RGB.rainbow;
+  const key = domainKey(name);
+  return key ? DOMAIN_WASH_RGB[key] : null;
 }
 
 /** Drops the placeholder "Colorless" domain, which has no rune of its own. */

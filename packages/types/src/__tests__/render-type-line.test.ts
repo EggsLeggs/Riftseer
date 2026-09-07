@@ -4,6 +4,7 @@ import { cardTypeIconKey, cardTypeLine } from "../render/index.ts";
 const CASES: Array<{
   card_type?: string;
   supertype?: string;
+  is_token?: boolean;
   line: string | null;
   icon: string | null;
 }> = [
@@ -12,6 +13,8 @@ const CASES: Array<{
   { card_type: "Legend", supertype: "Champion", line: "Legend", icon: "legend" },
   { card_type: "Token", line: "Token Unit", icon: "unit" },
   { card_type: "Unit", supertype: "Token", line: "Token Unit", icon: "unit" },
+  // Unit tokens flagged only via is_token (no Token type/supertype).
+  { card_type: "Unit", is_token: true, line: "Token Unit", icon: "unit" },
   { card_type: "Spell", line: "Spell", icon: "spell" },
   { card_type: "Gear", line: "Gear", icon: "gear" },
   { card_type: "Battlefield", line: "Battlefield", icon: "battlefield" },
@@ -22,10 +25,10 @@ const CASES: Array<{
 ];
 
 describe("cardTypeLine / cardTypeIconKey", () => {
-  for (const { card_type, supertype, line, icon } of CASES) {
-    it(`${card_type ?? "∅"} / ${supertype ?? "∅"} → ${line ?? "null"} (${icon ?? "no glyph"})`, () => {
-      expect(cardTypeLine({ card_type, supertype })).toBe(line);
-      expect(cardTypeIconKey({ card_type, supertype })).toBe(icon);
+  for (const { card_type, supertype, is_token, line, icon } of CASES) {
+    it(`${card_type ?? "∅"} / ${supertype ?? "∅"}${is_token ? " / token" : ""} → ${line ?? "null"} (${icon ?? "no glyph"})`, () => {
+      expect(cardTypeLine({ card_type, supertype, is_token })).toBe(line);
+      expect(cardTypeIconKey({ card_type, supertype, is_token })).toBe(icon);
     });
   }
 });

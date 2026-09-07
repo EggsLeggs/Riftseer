@@ -195,8 +195,15 @@ export function parseCardTextRich(rich: string): CardTextBlock[] | null {
     const itemRe = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
     let itemMatch: RegExpExecArray | null;
     while ((itemMatch = itemRe.exec(inner)) !== null) {
-      const plain = richFragmentToPlain(itemMatch[1]!);
+      const html = itemMatch[1]!;
+      const plain = richFragmentToPlain(html);
       // Keep break-only items (`<li><br /></li>`) as an explicit `\n` for renderers.
+      const isBreakOnly =
+        /<br\b/i.test(html) && plain.replace(/\n/g, "").length === 0;
+      if (isBreakOnly) {
+        items.push("\n");
+        continue;
+      }
       if (plain.length === 0) continue;
       const item = normalizeCardTextLayout(plain);
       items.push(item.length > 0 ? item : "\n");

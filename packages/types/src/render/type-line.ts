@@ -4,18 +4,26 @@
 
 import type { Oracle } from "../card.ts";
 
-type TypedOracle = Pick<Oracle, "card_type" | "supertype">;
+type TypedOracle = Pick<Oracle, "card_type" | "supertype"> & {
+  is_token?: boolean;
+};
 
 /**
  * Display type line: special + base as "X Y" (e.g. "Champion Unit",
  * "Signature Spell", "Token Unit"). Lone "Token" becomes "Token Unit".
+ * `is_token` units without a Token supertype still print as "Token Unit".
  * Legends keep a lone "Legend" — upstream stores Champion as affiliation,
  * not a printed type prefix. Null when the card carries no type at all.
  */
 export function cardTypeLine(oracle: TypedOracle): string | null {
   const type = oracle.card_type?.trim() || undefined;
-  const special = oracle.supertype?.trim() || undefined;
+  let special = oracle.supertype?.trim() || undefined;
   const typeKey = type?.toLowerCase();
+
+  // Flagged tokens without a printed Token supertype still show "Token …".
+  if (oracle.is_token && !special && typeKey !== "token") {
+    special = "Token";
+  }
 
   if (typeKey === "legend") return type!;
   if (type && special) return `${special} ${type}`;
