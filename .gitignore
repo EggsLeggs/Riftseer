@@ -1,12 +1,6 @@
 # Dependencies
 node_modules/
 
-# SQLite database files
-data/
-*.db
-*.db-shm
-*.db-wal
-
 # Build artifacts
 dist/
 *.tsbuildinfo
@@ -29,7 +23,11 @@ next-env.d.ts
 .wrangler/
 
 # npm
+# npm lockfiles are ignored except for the two standalone npm packages,
+# whose installs must be reproducible in CI.
 package-lock.json
+!packages/reddit-bot/package-lock.json
+!packages/raycast-extension/package-lock.json
 
 # Supabase
 .supabase/

@@ -6,7 +6,7 @@ Cloudflare Worker implementing Riftseer slash commands through the public API. I
 
 ```bash
 bun run dev
-bun run type-check
+bun run typecheck
 bun run register       # after command-definition changes
 bun run setup-emojis
 bun run deploy

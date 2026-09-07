@@ -63,8 +63,8 @@ Run these from the repository root. This is a **Bun workspace** — `bun install
 ```bash
 bun install             # all workspace members
 
-bun dev                 # API + web, against whatever .dev.vars points at
-bun run dev:local       # API + web, pinned to the local docker database
+bun dev                 # API + web, pinned to the local docker database
+bun run dev:prod        # API + web, against whatever .dev.vars points at
 bun dev:api             # API alone at http://localhost:8789
 bun dev:web             # Next.js alone
 bun run dev:ingest      # ingest worker at http://localhost:8787
@@ -75,8 +75,8 @@ bun run db:local:reset  # drop the volume, rebuild from supabase/migrations
 bun run db:local:psql
 ```
 
-- Only the `:local` scripts pin a database. They load `.dev.vars.local`, which holds docker placeholders and is committed on purpose.
-- Plain `bun dev` uses whatever `packages/api/.dev.vars` contains, and that is conventionally production. Check before an ingest or an admin mutation.
+- `bun dev` and the `:local` scripts pin the docker database. They load `.dev.vars.local`, which holds docker placeholders and is committed on purpose.
+- `bun run dev:prod` uses whatever `packages/api/.dev.vars` contains, and that is conventionally production. It is the explicit opt-in; check before an ingest or an admin mutation.
 - `curl localhost:8787/` reports the host the ingest worker would write to, plus a `local` flag. An ingest rewrites the whole catalogue, so look first.
 - The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
 - The local stack is real Postgres and PostgREST behind a Supabase-shaped proxy, not a mock. It needs Docker.
@@ -96,19 +96,21 @@ bun run db:local:psql
 ## Verifying
 
 ```bash
+bun run check                               # the gate: typecheck, tests, docs references, markdown lint, boundaries
 bun test                                    # types, core, api, ingest-worker, web, discord-bot
-bun run typecheck                           # tsc --noEmit across six project configs
-node scripts/check-docs-references.mjs      # dangling paths and identifiers in guidance files
-bun run lint:md
+bun run typecheck                           # tsc --noEmit for every package, including web and discord-bot
+bun run lint:boundaries                     # dependency-cruiser rules in .config/dependency-cruiser.cjs
 bun run test:db                             # needs db:local:up first
 bun run build:web
 bun run preview:web                         # builds and runs in workerd
 ```
 
-- `bun test` and `bun run typecheck` are the gate. `.github/workflows/test.yml` runs both on every PR, unfiltered.
+- `bun run check` is the gate. `.github/workflows/test.yml` runs it on every PR, unfiltered; CONTRIBUTING and CI name the same command, so a green local check is a green PR.
+- Boundary rules are structural invariants, not style: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports `@riftseer/core`.
 - **There is no formatter and no general linter.** No biome, eslint or prettier. Match the file you are in, and do not add one without asking.
 - `bun dev` does not exercise the Workers runtime. Run `bun run preview:web` before shipping anything that touches web's server runtime or bindings.
-- `discord-bot` and `ingest-worker` spell it `type-check`. Everything else uses `typecheck`.
+- `ingest-worker` spells it `type-check`. Everything else uses `typecheck`, and root `typecheck` covers every workspace member.
+- reddit-bot and raycast-extension are gated by `.github/workflows/standalone.yml` (`npm ci` + `tsc --noEmit` on their committed lockfiles).
 - Validate a migration by running it. `bun run db:local:reset` surfaces the SQL error that reading it will not.
 
 ## Pull requests
@@ -191,7 +193,6 @@ Read a package's own AGENTS.md before changing it. This is the map, not the deta
 - `docs` — Docusaurus, a workspace member, reads each package's `docs/` in place.
 - `supabase/migrations` — append-only after the squashed baseline.
 - `scripts`, `docker` — repository checks, the test harness, the local database stack.
-- `packages/frontend` is dead but not deletable: `.github/workflows/discord-bot.yml` path-filters on its `public/icons/**`.
 
 ## Invariants
 

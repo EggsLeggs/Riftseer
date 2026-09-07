@@ -11,7 +11,7 @@
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "deploy": "bun run check:production-env && opennextjs-cloudflare build && opennextjs-cloudflare deploy --env production",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts --include-runtime false",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@c15t/backend": "^2.0.4",
@@ -27,7 +27,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
-    "drizzle-orm": "^0.45.2",
     "elysia": "^1.4.7",
     "kysely": "0.28.17",
     "kysely-postgres-js": "^3.0.0",
@@ -40,7 +39,6 @@
     "react-dom": "19.2.4",
     "react-hook-form": "^7.56.0",
     "react-markdown": "^10.1.0",
-    "shadcn": "^4.7.0",
     "simple-icons": "^16.19.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",

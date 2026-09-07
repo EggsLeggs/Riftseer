@@ -1,0 +1,58 @@
+# reddit-bot (Devvit) and raycast-extension (Raycast) are npm projects outside
+# the Bun workspace — their vendor toolchains demand it. This is their gate;
+# without it a @riftseer/types change can break either silently.
+name: Standalone packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/reddit-bot/**"
+      - "packages/raycast-extension/**"
+      - "packages/types/**"
+      - ".github/workflows/standalone.yml"
+  pull_request:
+    paths:
+      - "packages/reddit-bot/**"
+      - "packages/raycast-extension/**"
+      - "packages/types/**"
+      - ".github/workflows/standalone.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  reddit-bot:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/reddit-bot
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx tsc --noEmit
+
+  raycast-extension:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/raycast-extension
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run lint

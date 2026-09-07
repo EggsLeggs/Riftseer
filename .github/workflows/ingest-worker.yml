@@ -7,18 +7,15 @@ on:
       - "packages/ingest-worker/**"
       - "packages/types/**"
       - "package.json"
-      - "bun.lockb"
+      - "bun.lock"
       - ".github/workflows/ingest-worker.yml"
   pull_request:
     paths:
       - "packages/ingest-worker/**"
       - "packages/types/**"
       - "package.json"
-      - "bun.lockb"
+      - "bun.lock"
       - ".github/workflows/ingest-worker.yml"
-
-env:
-  BUN_VERSION: "1.2.0"
 
 jobs:
   build:
@@ -28,7 +25,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -55,7 +52,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: package.json
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

@@ -13,7 +13,7 @@ export interface EmojiFile {
   /** Discord emoji name — [a-zA-Z0-9_]{2,32} */
   emojiName: string;
   /**
-   * Icon file path relative to packages/frontend/public/.
+   * Icon file path relative to packages/web/public/.
    * .svg files are converted to PNG before upload; .png files are uploaded as-is.
    */
   file: string;
