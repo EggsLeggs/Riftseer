@@ -6,7 +6,7 @@ randomized = false
 
 function onObjectRandomize( Object , player_color )
  if Object.getGUID() == self.getGUID() then
-  if player_color != player then
+  if player_color ~= player then
    changePlayer(player_color)
   end
   if not randomized then

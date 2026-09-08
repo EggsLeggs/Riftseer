@@ -68,6 +68,6 @@ function updateCardCount()
     lab = ''
   end
   for ind=0,nButs do
-    self.editButton({index=inds, label=lab})
+    self.editButton({index=ind, label=lab})
   end
 end
