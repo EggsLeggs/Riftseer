@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { productionBindingProblems } from "./check-wrangler-consistency.mjs";
+import {
+  missingGeneratedBindings,
+  productionBindingProblems,
+} from "./check-wrangler-consistency.mjs";
 
 const top = {
   name: "riftseer-web",
@@ -46,5 +49,47 @@ describe("productionBindingProblems", () => {
     };
 
     expect(productionBindingProblems(top, production)).toEqual([]);
+  });
+});
+
+describe("missingGeneratedBindings", () => {
+  const config = {
+    vars: { SITE_ORIGIN: "https://riftseer.com" },
+    secrets: { required: ["SUPABASE_URL", "METAFY_WEBHOOK_SECRET"] },
+  };
+
+  test("names every declared binding the generated Env omits", () => {
+    const types = [
+      "interface Env {",
+      "\tSITE_ORIGIN: string;",
+      "\tSUPABASE_URL: string;",
+      "}",
+    ].join("\n");
+
+    expect(missingGeneratedBindings("w.jsonc", config, "env.d.ts", types)).toEqual([
+      "env.d.ts: METAFY_WEBHOOK_SECRET is declared in w.jsonc but missing from the generated Env — rerun `wrangler types`",
+    ]);
+  });
+
+  test("an optional binding counts as present", () => {
+    const types = [
+      "interface Env {",
+      "\tSITE_ORIGIN: string;",
+      "\tSUPABASE_URL: string;",
+      "\tMETAFY_WEBHOOK_SECRET?: string;",
+      "}",
+    ].join("\n");
+
+    expect(missingGeneratedBindings("w.jsonc", config, "env.d.ts", types)).toEqual([]);
+  });
+
+  test("a name mentioned only inside another identifier does not count", () => {
+    const types = ["interface Env {", "\tSITE_ORIGIN_LEGACY: string;", "}"].join("\n");
+
+    expect(
+      missingGeneratedBindings("w.jsonc", { vars: { SITE_ORIGIN: "x" } }, "env.d.ts", types),
+    ).toEqual([
+      "env.d.ts: SITE_ORIGIN is declared in w.jsonc but missing from the generated Env — rerun `wrangler types`",
+    ]);
   });
 });
