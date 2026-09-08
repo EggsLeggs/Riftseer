@@ -7,16 +7,15 @@
  * Consumers pinned here, both in `apps/tts/scripts/objects/`:
  *
  *   80c03d_riftbound_card_importer.lua  POST /cards/resolve in batches of 20
- *   25dbaf_riftbound_deck_loader.lua    GET /cards?name=&set=<CODE>&limit=500,
- *                                       then GET <printing uri> for a fallback
- *                                       image
+ *   25dbaf_riftbound_deck_loader.lua    GET /cards?q=set:<CODE>&unique=prints,
+ *                                       paged, to turn a TTS code into a name
  *
- * Fields the mod reads today that the spec no longer carries are `test.todo`
- * entries naming the exact path, tracked by #126. A failing assertion would
- * only block the API for a breakage the mod already has.
+ * Every path below is one the mod reads, so a failure here is a mod that has
+ * broken. Add a path when the Lua starts reading it and drop one when the Lua
+ * stops; an assertion nothing consumes only makes the API harder to change.
  */
 
-import { describe, expect, it, test } from "bun:test";
+import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
@@ -92,41 +91,30 @@ function expectShape(schema: unknown, shape: Shape) {
   it.each(shape)("%s is %s", (dotted, type) => expectField(schema, dotted, type));
 }
 
-/** The same assertions, parked: `bun test --todo` runs them and reports which still fail. */
-function todoShape(schema: unknown, shape: Shape) {
-  for (const [dotted, type] of shape) {
-    test.todo(`${dotted} is ${type}`, () => expectField(schema, dotted, type));
-  }
-}
-
 describe("GET /api/v1/cards, the deck loader's set listing", () => {
   const route = "/api/v1/cards";
 
   it("is mounted with the query parameters the loader sends", () => {
     expect(operation("get", route)).toBeDefined();
-    expect(queryParameters("get", route)).toEqual(expect.arrayContaining(["name", "set", "limit"]));
+    expect(queryParameters("get", route)).toEqual(
+      expect.arrayContaining(["q", "unique", "limit", "offset"]),
+    );
   });
 
   describe("response", () => {
+    // A TTS code is a set and a collector number, which are printing-level, and
+    // the name it translates to is the oracle's. `unique=prints` answers with
+    // both halves: the printings, and the oracles that own them. `total` ends
+    // the paging walk, which search needs because it clamps `limit` to 100.
     expectShape(responseSchema("get", route), [
-      ["cards", "array"],
-      ["cards[].name", "string"],
       ["printings", "array"],
       ["printings[].set.set_code", "string"],
       ["printings[].collector_number", "string"],
       ["printings[].oracle_id", "string"],
-      ["cards[].printings[].set.set_code", "string"],
-      ["cards[].printings[].collector_number", "string"],
-    ]);
-  });
-
-  describe("read by the loader, missing from the spec (#126)", () => {
-    // A `set` filter answers in printings mode: `cards` is empty and the rows
-    // are in `printings`, which carry the set and collector number the loader
-    // looks for on `cards[]`. Every TTS code lands in "unresolved".
-    todoShape(responseSchema("get", route), [
-      ["cards[].set.set_code", "string"],
-      ["cards[].collector_number", "string"],
+      ["cards", "array"],
+      ["cards[].id", "string"],
+      ["cards[].name", "string"],
+      ["total", "number"],
     ]);
   });
 });
@@ -142,13 +130,14 @@ describe("POST /api/v1/cards/resolve, the importer's name resolution", () => {
   });
 
   describe("response", () => {
+    // A card on the table is the pair: the nickname, rules text and the zone it
+    // spawns into come from the oracle, the face image from the printing resolve
+    // picked. The oracle's own printings carry the images the loader falls back
+    // to when that face URL is dead, so a fallback costs no second request.
     expectShape(responseSchema("post", route), [
       ["results", "array"],
       ["results[].request.raw", "string"],
       ["results[].request.name", "string"],
-      ["results[].matchType", "string"],
-      // The shape #126 moves the importer onto: rules from the oracle, the
-      // image from the printing, fallback images from the oracle's printings.
       ["results[].oracle.name", "string"],
       ["results[].oracle.card_type", "string"],
       ["results[].oracle.supertype", "string"],
@@ -156,42 +145,11 @@ describe("POST /api/v1/cards/resolve, the importer's name resolution", () => {
       ["results[].oracle.energy", "number"],
       ["results[].oracle.might", "number"],
       ["results[].oracle.tags", "array"],
+      ["results[].oracle.is_token", "boolean"],
+      ["results[].oracle.relationships.makes_tokens[].id", "string"],
+      ["results[].oracle.relationships.makes_tokens[].name", "string"],
       ["results[].oracle.printings[].image.normal", "string"],
       ["results[].printing.image.normal", "string"],
-      ["results[].printing.set.set_code", "string"],
-      ["results[].printing.collector_number", "string"],
     ]);
-  });
-
-  describe("read by the importer, missing from the spec (#126)", () => {
-    // The importer reads `results[].card` in the RiftCodex shape the May-era
-    // API returned. The spec answers `oracle` plus `printing`, so every name
-    // resolves to nil and the import fails.
-    todoShape(responseSchema("post", route), [
-      ["results[].card", "object"],
-      ["results[].card.name", "string"],
-      ["results[].card.text.plain", "string"],
-      ["results[].card.classification.supertype", "string"],
-      ["results[].card.classification.type", "string"],
-      ["results[].card.attributes.energy", "number"],
-      ["results[].card.attributes.might", "number"],
-      ["results[].card.tags", "array"],
-      ["results[].card.media.media_urls.normal", "string"],
-      ["results[].card.related_printings[].uri", "string"],
-    ]);
-  });
-});
-
-describe("GET /api/v1/printings/{id}, the loader's fallback image", () => {
-  const route = "/api/v1/printings/{id}";
-
-  describe("response", () => {
-    expectShape(responseSchema("get", route), [["image.normal", "string"]]);
-  });
-
-  describe("read by the loader, missing from the spec (#126)", () => {
-    // The loader follows `related_printings[].uri` and reads the image from
-    // `media.media_urls.normal`; the printing detail spells it `image.normal`.
-    todoShape(responseSchema("get", route), [["media.media_urls.normal", "string"]]);
   });
 });

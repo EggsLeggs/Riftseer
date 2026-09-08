@@ -53,7 +53,7 @@ function whoGoesFirst()
       local url = "0rganics.org/tts/wgf/2.php?v=" .. whoGoesFirstVersion .. "&c=" .. seated
       local arr = {image=url,type=dietype}
       local cur = self.getCustomObject()
-      if cur.image != url then
+      if cur.image ~= url then
           self.setCustomObject(arr)
           self.reload()
       else
@@ -67,7 +67,7 @@ function whoGoesFirstNameSides()
     local cur = self.getCustomObject()
     local rotvals = {}
 
-    if cur.image != url then
+    if cur.image ~= url then
         local colors = {"Red","Orange","Yellow","Green","Teal","Blue","Purple","Pink","Brown","White"}
         local shortc = {"r","o","y","g","t","b","p","i","n","w"}
         local c = string.sub(cur.image,string.len(url))

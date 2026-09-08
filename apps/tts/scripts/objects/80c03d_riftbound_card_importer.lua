@@ -160,7 +160,7 @@ function loadDeckFromRiftseer(bundledData)
 			passThroughData (any) — echoed back to the caller unchanged
 
 		Calls caller.call(onSuccess, {
-			resolvedByName  = { ["Card Name"] = <riftseer card object> },
+			resolvedByName  = { ["Card Name"] = {oracle = <oracle>, printing = <printing>} },
 			passThroughData = bundledData.passThroughData,
 		})
 	]]
@@ -209,15 +209,19 @@ function loadDeckFromRiftseer(bundledData)
 			if res.response_code == 200 then
 				local ok, decoded = pcall(function() return json.decode(res.text) end)
 				if ok and decoded then
-					-- Response: {count, results: [{request: {raw, name}, card, matchType}]}
+					-- Response: {count, results: [{request: {raw, name}, oracle, printing, matchType}]}
+					-- A card is the pair: rules on the oracle, cardboard on the printing.
+					-- A name that resolved to neither is left out, and the caller warns.
 					local results = (type(decoded) == "table" and decoded.results) or decoded
 					if type(results) == "table" then
 						for _, result in ipairs(results) do
 							-- request is an object {raw, name}; use raw to match what we sent
 							local requestName = result.request and (result.request.raw or result.request.name)
-							local card        = result.card
-							if card and requestName then
-								resolvedByName[requestName] = card
+							if requestName and result.oracle and result.printing then
+								resolvedByName[requestName] = {
+									oracle   = result.oracle,
+									printing = result.printing,
+								}
 							end
 						end
 					end
@@ -253,31 +257,26 @@ end
 -- ============================================================================
 -- Single-card reimport
 -- ============================================================================
-local function buildCardNickname(name, resolvedCard)
-	if not resolvedCard or not resolvedCard.classification then return name end
-	local c = resolvedCard.classification
+local function buildCardNickname(name, oracle)
+	if not oracle then return name end
 	local parts = {}
-	if c.supertype and c.supertype ~= "" then parts[#parts+1] = c.supertype end
-	if c.type      and c.type      ~= "" then parts[#parts+1] = c.type      end
-	if c.subtype   and c.subtype   ~= "" then parts[#parts+1] = "— " .. c.subtype end
+	if oracle.supertype and oracle.supertype ~= "" then parts[#parts+1] = oracle.supertype end
+	if oracle.card_type and oracle.card_type ~= "" then parts[#parts+1] = oracle.card_type end
 	if #parts > 0 then return name .. "\n" .. table.concat(parts, " ") end
 	return name
 end
 
-local function buildCardDescription(resolvedCard)
+local function buildCardDescription(oracle)
 	local desc = ""
-	if resolvedCard.text and resolvedCard.text.plain and resolvedCard.text.plain ~= "" then
-		desc = resolvedCard.text.plain
+	if oracle.text and oracle.text.plain and oracle.text.plain ~= "" then
+		desc = oracle.text.plain
 	end
-	if resolvedCard.attributes then
-		local attrs = resolvedCard.attributes
-		local statParts = {}
-		if attrs.energy then statParts[#statParts+1] = "Energy: " .. tostring(attrs.energy) end
-		if attrs.might  then statParts[#statParts+1] = "Might: "  .. tostring(attrs.might)  end
-		if #statParts > 0 then
-			if desc ~= "" then desc = desc .. "\n" end
-			desc = desc .. table.concat(statParts, " | ")
-		end
+	local statParts = {}
+	if oracle.energy then statParts[#statParts+1] = "Energy: " .. tostring(oracle.energy) end
+	if oracle.might  then statParts[#statParts+1] = "Might: "  .. tostring(oracle.might)  end
+	if #statParts > 0 then
+		if desc ~= "" then desc = desc .. "\n" end
+		desc = desc .. table.concat(statParts, " | ")
 	end
 	return desc
 end
@@ -324,13 +323,14 @@ function reimportCard(p)
 			return
 		end
 
-		local resolvedCard = results[1] and results[1].card
-		if resolvedCard == nil then
+		local oracle   = results[1] and results[1].oracle
+		local printing = results[1] and results[1].printing
+		if oracle == nil or printing == nil then
 			printToColor(ERROR_MESSAGE_IMPORTER .. "No match for '" .. name .. "'.", p.playerColor, {r=1,g=0,b=0})
 			return
 		end
 
-		local imageURL = resolvedCard.media and resolvedCard.media.media_urls and resolvedCard.media.media_urls.normal
+		local imageURL = printing.image and printing.image.normal
 		if not imageURL then
 			printToColor(ERROR_MESSAGE_IMPORTER .. "No image found for '" .. name .. "'.", p.playerColor, {r=1,g=0,b=0})
 			return
@@ -342,13 +342,11 @@ function reimportCard(p)
 			return
 		end
 
-		cardRef.destruct()
-
 		spawnObjectData({
 			data = {
 				Name        = "Card",
-				Nickname    = buildCardNickname(name, resolvedCard),
-				Description = buildCardDescription(resolvedCard),
+				Nickname    = buildCardNickname(name, oracle),
+				Description = buildCardDescription(oracle),
 				Transform   = {
 					posX   = position.x,
 					posY   = position.y + 0.5,
@@ -371,6 +369,12 @@ function reimportCard(p)
 				},
 				CardID = 100,
 			},
+			callback_function = function(_)
+				-- Destroy the original only once its replacement is on the table, so
+				-- a failed spawn leaves the card the player had.
+				local original = getObjectFromGUID(cardGUID)
+				if original then original.destruct() end
+			end,
 		})
 	end)
 end

@@ -244,15 +244,15 @@ local function hasWord(haystack, needle)
 	return haystack:find("%f[%a]" .. needle .. "%f[%A]") ~= nil
 end
 
-local function classifyResolvedCard(card)
+-- `resolved` is one `/cards/resolve` result: the oracle carries the rules, the
+-- printing carries the cardboard. Which zone a card spawns into is a rules
+-- question, so everything here reads the oracle.
+local function classifyResolvedCard(resolved)
+	local oracle = resolved and resolved.oracle
 	local classificationBlob = metadataString(
-		card and card.classification and card.classification.supertype,
-		card and card.classification and card.classification.type,
-		card and card.classification and card.classification.subtype,
-		card and card.classification and card.classification.subtypes,
-		card and card.classification and card.classification.tags,
-		card and card.tags,
-		card and card.text and card.text.tags
+		oracle and oracle.supertype,
+		oracle and oracle.card_type,
+		oracle and oracle.tags
 	):lower()
 
 	if hasWord(classificationBlob, "legend") then return "legend" end
@@ -384,47 +384,33 @@ end
 -- ============================================================================
 -- RIFTSEER CARD DATA → TTS ENTRY
 -- ============================================================================
-local function riftCardToEntry(card, qty)
-	-- Build TTS card entry from a Riftseer resolved card object.
-	local name = card.name or (card.text and card.text.name) or "Unknown"
+-- One `/cards/resolve` result becomes one TTS card: the nickname and
+-- description come from the oracle, the face image from the printing resolve
+-- picked. The oracle's other printings ride along so a dead image URL can fall
+-- back to another edition without a second lookup.
+local function resolvedCardToEntry(resolved, qty)
+	local oracle   = resolved.oracle or {}
+	local printing = resolved.printing or {}
+	local name = oracle.name or "Unknown"
 
-	local typeStr = ""
-	if card.classification then
-		typeStr = metadataString(
-			card.classification.supertype,
-			card.classification.type,
-			card.classification.subtype,
-			card.classification.subtypes
-		)
-	end
+	local typeStr = metadataString(oracle.supertype, oracle.card_type)
 
 	local desc = ""
-	if card.text and card.text.plain and card.text.plain ~= "" then
-		desc = card.text.plain
+	if oracle.text and oracle.text.plain and oracle.text.plain ~= "" then
+		desc = oracle.text.plain
 	end
 
-	if card.attributes then
-		local attrs = card.attributes
-		local statParts = {}
-		if attrs.energy  then statParts[#statParts+1] = "Energy: " .. tostring(attrs.energy)  end
-		if attrs.might   then statParts[#statParts+1] = "Might: "  .. tostring(attrs.might)   end
-		if #statParts > 0 then
-			if desc ~= "" then desc = desc .. "\n" end
-			desc = desc .. table.concat(statParts, " | ")
-		end
+	local statParts = {}
+	if oracle.energy then statParts[#statParts+1] = "Energy: " .. tostring(oracle.energy) end
+	if oracle.might  then statParts[#statParts+1] = "Might: "  .. tostring(oracle.might)  end
+	if #statParts > 0 then
+		if desc ~= "" then desc = desc .. "\n" end
+		desc = desc .. table.concat(statParts, " | ")
 	end
 
-	local tagStr = metadataString(
-		card.tags,
-		card.classification and card.classification.tags,
-		card.text and card.text.tags
-	)
-	desc = appendMetadataLine(desc, "Tags", tagStr)
+	desc = appendMetadataLine(desc, "Tags", metadataString(oracle.tags))
 
-	local imageURL = nil
-	if card.media and card.media.media_urls then
-		imageURL = card.media.media_urls.normal
-	end
+	local imageURL = printing.image and printing.image.normal
 
 	local nickname = name
 	if typeStr ~= "" then
@@ -432,11 +418,11 @@ local function riftCardToEntry(card, qty)
 	end
 
 	return {
-		name             = nickname,
-		description      = desc,
-		imageURL         = imageURL,
-		relatedPrintings = card.related_printings or {},
-		qty              = qty or 1,
+		name        = nickname,
+		description = desc,
+		imageURL    = imageURL,
+		printings   = oracle.printings or {},
+		qty         = qty or 1,
 	}
 end
 
@@ -444,6 +430,10 @@ end
 -- SPAWNING
 -- ============================================================================
 local RIFTSEER_API_BASE = "https://api.riftseer.com"
+-- Search clamps `limit` to 100 rows, so a set listing arrives in pages.
+-- SET_PAGE_CAP bounds the walk in case a `total` ever outruns the rows.
+local SET_PAGE_SIZE = 100
+local SET_PAGE_CAP  = 2000
 
 local function spawnDeckIfAny(decklist, options)
 	if not decklist or #decklist == 0 then return nil end
@@ -524,29 +514,24 @@ local function spawnDeckIfAny(decklist, options)
 		})
 	end
 
-	-- For a card whose main image URL is unreachable, walk its related_printings
-	-- sequentially until we find one with a live image URL.
+	-- For a card whose main image URL is unreachable, walk the oracle's other
+	-- printings until one of their images loads. Resolve already sent every
+	-- printing with its image, so this needs no further API call.
 	local function fetchPrintingFallback(entry, callback)
-		local printings = entry.relatedPrintings or {}
+		local printings = entry.printings or {}
 		local i = 1
 		local function tryNext()
 			if i > #printings then callback(nil) return end
-			local uri = printings[i].uri
+			local printing = printings[i]
 			i = i + 1
-			if not uri then tryNext() return end
-			WebRequest.get(RIFTSEER_API_BASE .. uri, function(resp)
-				if resp.response_code ~= 200 then tryNext() return end
-				local ok, data = pcall(function() return json.decode(resp.text) end)
-				if not ok or not data then tryNext() return end
-				local imgURL = data.media and data.media.media_urls and data.media.media_urls.normal
-				if not imgURL then tryNext() return end
-				WebRequest.get(imgURL, function(imgResp)
-					if imgResp.response_code == 200 then
-						callback(imgURL)
-					else
-						tryNext()
-					end
-				end)
+			local imgURL = printing and printing.image and printing.image.normal
+			if not imgURL or imgURL == entry.imageURL then tryNext() return end
+			WebRequest.get(imgURL, function(imgResp)
+				if imgResp.response_code == 200 then
+					callback(imgURL)
+				else
+					tryNext()
+				end
 			end)
 		end
 		tryNext()
@@ -572,7 +557,7 @@ local function spawnDeckIfAny(decklist, options)
 	local seenNilName = {}
 	for _, entry in ipairs(decklist) do
 		if (not entry.imageURL or entry.imageURL == "") and
-		   entry.relatedPrintings and #entry.relatedPrintings > 0 and
+		   entry.printings and #entry.printings > 0 and
 		   not seenNilName[entry.name] then
 			seenNilName[entry.name] = true
 			nilImageEntries[#nilImageEntries+1] = entry
@@ -622,7 +607,7 @@ local function spawnDeckIfAny(decklist, options)
 						break
 					end
 				end
-				if failedEntry and failedEntry.relatedPrintings and #failedEntry.relatedPrintings > 0 then
+				if failedEntry and failedEntry.printings and #failedEntry.printings > 0 then
 					fetchPrintingFallback(failedEntry, function(fallbackURL)
 						resolvedURLs[url] = fallbackURL
 						remaining = remaining - 1
@@ -675,13 +660,6 @@ local function loadDeckFromMainModule(cardMap, callbackName, options)
 			return passThroughData
 		end)(),
 	})
-end
-
-local function isTokenPart(part)
-	if not part or type(part) ~= "table" then return false end
-	local component = part.component
-	if type(component) ~= "string" then return false end
-	return string.lower(trim(component)) == "token"
 end
 
 local function spawnResolvedDecks(data)
@@ -782,9 +760,9 @@ function postDeckLoadTokens(bundledData)
 	local missingTokenCount = 0
 
 	for _, tokenName in ipairs(tokenNameList) do
-		local tokenCard = resolvedByName[tokenName]
-		if tokenCard then
-			local entry = riftCardToEntry(tokenCard, 1)
+		local resolvedToken = resolvedByName[tokenName]
+		if resolvedToken then
+			local entry = resolvedCardToEntry(resolvedToken, 1)
 			entry.qty = 1
 			tokenList[#tokenList+1] = entry
 		else
@@ -808,16 +786,19 @@ function postDeckLoadTokens(bundledData)
 	})
 end
 
-local function collectTokenNamesFromResolvedCard(card, tokenNames, seenTokenNames)
-	if card.is_token == true or not card.all_parts then return end
-	for _, part in ipairs(card.all_parts) do
-		if isTokenPart(part) then
-			local tokenName = trim(tostring(part.name or ""))
-			local tokenKey = part.id and ("id:" .. tostring(part.id)) or ("name:" .. string.lower(tokenName))
-			if tokenName ~= "" and not seenTokenNames[tokenKey] then
-				seenTokenNames[tokenKey] = true
-				tokenNames[#tokenNames+1] = tokenName
-			end
+-- The tokens a card makes are `makes_tokens` edges on its oracle. A token that
+-- itself makes tokens is not walked, so the chase stops at one level.
+local function collectTokenNamesFromResolvedCard(resolved, tokenNames, seenTokenNames)
+	local oracle = resolved.oracle
+	if not oracle or oracle.is_token == true then return end
+	local makesTokens = oracle.relationships and oracle.relationships.makes_tokens
+	if type(makesTokens) ~= "table" then return end
+	for _, token in ipairs(makesTokens) do
+		local tokenName = trim(tostring(token.name or ""))
+		local tokenKey = token.id and ("id:" .. tostring(token.id)) or ("name:" .. string.lower(tokenName))
+		if tokenName ~= "" and not seenTokenNames[tokenKey] then
+			seenTokenNames[tokenKey] = true
+			tokenNames[#tokenNames+1] = tokenName
 		end
 	end
 end
@@ -829,14 +810,14 @@ local function buildResolvedDeckBuckets(cardMap, resolvedByName, options)
 	local tokenNames, seenTokenNames = {}, {}
 
 	for _, cardMapData in pairs(cardMap or {}) do
-		local card = resolvedByName[cardMapData.name]
-		if not card then
+		local resolved = resolvedByName[cardMapData.name]
+		if not resolved then
 			printWarn("Card not found, skipping: " .. tostring(cardMapData.name), playerColor)
 		else
 			if options.autoClassifyMainboard then
 				local qty = cardMapData.mainboardQty or 0
 				if qty > 0 then
-					local bucket = classifyResolvedCard(card)
+					local bucket = classifyResolvedCard(resolved)
 					if bucket == "legend" then
 						cardMapData.legendQty = (cardMapData.legendQty or 0) + qty
 						cardMapData.mainboardQty = 0
@@ -857,10 +838,10 @@ local function buildResolvedDeckBuckets(cardMap, resolvedByName, options)
 			local function push(list, qtyField)
 				local qty = cardMapData[qtyField] or 0
 				if qty > 0 then
-					local entry = riftCardToEntry(card, qty)
+					local entry = resolvedCardToEntry(resolved, qty)
 					if cardMapData.variantImageURL then
-						entry.imageURL         = cardMapData.variantImageURL
-						entry.relatedPrintings = {}
+						entry.imageURL  = cardMapData.variantImageURL
+						entry.printings = {}
 					end
 					list[#list+1] = entry
 				end
@@ -872,7 +853,7 @@ local function buildResolvedDeckBuckets(cardMap, resolvedByName, options)
 			push(runeList,        "runeQty")
 			push(sideboardList,   "sideboardQty")
 			push(mainboardList,   "mainboardQty")
-			collectTokenNamesFromResolvedCard(card, tokenNames, seenTokenNames)
+			collectTokenNamesFromResolvedCard(resolved, tokenNames, seenTokenNames)
 		end
 	end
 
@@ -1084,40 +1065,11 @@ local function queryDeckNotebook(_)
 		end
 
 		for _, setCode in ipairs(setCodes) do
-			local setRequestURL = RIFTSEER_API_BASE .. "/api/v1/cards?name=&set=" .. setCode .. "&limit=500"
-			WebRequest.get(setRequestURL, function(res)
-				if res.response_code ~= 200 then
-					printWarn("Failed to fetch set " .. setCode .. " while translating TTS codes.", playerColor)
-					for collectorNum in pairs(codeMetaBySet[setCode]) do
-						unresolvedCodes[#unresolvedCodes+1] = setCode .. "-" .. collectorNum
-					end
-					pendingSetRequests = pendingSetRequests - 1
-					completeIfDone()
-					return
-				end
+			local byCollector = {}
 
-				local ok, data = pcall(function() return json.decode(res.text) end)
-				if not ok or not data or type(data.cards) ~= "table" then
-					printWarn("Unexpected cards payload for set " .. setCode .. ".", playerColor)
-					for collectorNum in pairs(codeMetaBySet[setCode]) do
-						unresolvedCodes[#unresolvedCodes+1] = setCode .. "-" .. collectorNum
-					end
-					pendingSetRequests = pendingSetRequests - 1
-					completeIfDone()
-					return
-				end
-
-				local byCollector = {}
-				for _, card in ipairs(data.cards) do
-					local cardSetCode = card.set and card.set.set_code and string.upper(card.set.set_code) or ""
-					if cardSetCode == setCode then
-						local collector = normalizeCollectorNumber(card.collector_number)
-						if collector ~= "" and not byCollector[collector] then
-							byCollector[collector] = card.name
-						end
-					end
-				end
-
+			-- Every code this set never answered for is reported as unresolved, so
+			-- a failed request warns once instead of losing the codes silently.
+			local function finishSet()
 				for collectorNum, qty in pairs(codeMetaBySet[setCode]) do
 					local cardName = byCollector[collectorNum]
 					if cardName and cardName ~= "" then
@@ -1126,10 +1078,66 @@ local function queryDeckNotebook(_)
 						unresolvedCodes[#unresolvedCodes+1] = setCode .. "-" .. collectorNum
 					end
 				end
-
 				pendingSetRequests = pendingSetRequests - 1
 				completeIfDone()
-			end)
+			end
+
+			-- A page that fails keeps whatever earlier pages resolved; finishSet
+			-- reports the rest as unresolved codes.
+			local function failSet(warning)
+				printWarn(warning, playerColor)
+				finishSet()
+			end
+
+			-- A TTS code names a set and a collector number, so the listing has to
+			-- be printing-shaped; the name it translates to belongs to the oracle.
+			-- `unique=prints` answers with both: one row per printing in
+			-- `printings`, the owning oracles in `cards`, joined on `oracle_id`.
+			-- Search pages at SET_PAGE_SIZE rows, so walk the pages.
+			local function requestSetPage(offset)
+				local url = RIFTSEER_API_BASE .. "/api/v1/cards?q=set%3A" .. setCode ..
+					"&unique=prints&limit=" .. tostring(SET_PAGE_SIZE) ..
+					"&offset=" .. tostring(offset)
+				WebRequest.get(url, function(res)
+					if res.response_code ~= 200 then
+						failSet("Failed to fetch set " .. setCode .. " while translating TTS codes.")
+						return
+					end
+
+					local ok, data = pcall(function() return json.decode(res.text) end)
+					if not ok or not data or type(data.printings) ~= "table" or type(data.cards) ~= "table" then
+						failSet("Unexpected cards payload for set " .. setCode .. ".")
+						return
+					end
+
+					local nameByOracleID = {}
+					for _, card in ipairs(data.cards) do
+						if card.id then nameByOracleID[card.id] = card.name end
+					end
+
+					for _, printing in ipairs(data.printings) do
+						local printingSetCode = printing.set and printing.set.set_code and string.upper(printing.set.set_code) or ""
+						if printingSetCode == setCode then
+							local collector = normalizeCollectorNumber(printing.collector_number)
+							local cardName  = printing.oracle_id and nameByOracleID[printing.oracle_id]
+							if collector ~= "" and cardName and cardName ~= "" and not byCollector[collector] then
+								byCollector[collector] = cardName
+							end
+						end
+					end
+
+					local seenSoFar = offset + #data.printings
+					local total = tonumber(data.total) or seenSoFar
+					if #data.printings > 0 and seenSoFar < total and seenSoFar < SET_PAGE_CAP then
+						requestSetPage(seenSoFar)
+						return
+					end
+
+					finishSet()
+				end)
+			end
+
+			requestSetPage(0)
 		end
 		return
 	end
