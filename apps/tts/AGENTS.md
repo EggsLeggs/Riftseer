@@ -103,6 +103,15 @@ GUID match in `ObjectStates`).
 3. Run `python3 tools/extract.py` to regenerate `scripts/`.
 4. Review `git diff`, commit.
 
+Step 2 is an assumption, and it is worth checking before you trust step 3. The
+save TTS loads is `~/Library/Tabletop Simulator/Saves/Riftbound.json`, and it
+has to be a symlink to **this** checkout's `mod/Riftbound.json`. A link made
+before the monorepo import points at the old standalone `riftbound-tcg-tts`
+repo, in which case the user's in-game save writes there, `mod/Riftbound.json`
+never moves and `extract.py` reports no diff — the whole path fails silently
+and looks like the user did nothing. `readlink` it and `cmp` it against
+`mod/Riftbound.json` before concluding that a Path B change did not take.
+
 For the GUI-driven Path B, prepare instructions for the user rather than
 attempting it yourself.
 
@@ -152,6 +161,15 @@ attempting it yourself.
 - **Do not commit changes that fail round-tripping**. After any edit, verify
   `tools/extract.py` followed by `tools/inject.py` produces a JSON whose
   re-extracted scripts equal the source files.
+- **Never commit `riftseer.code-workspace` out of a TTS session**. The
+  extension's **Get Lua Scripts** adds its temp directory to the workspace via
+  `updateWorkspaceFolders`, which rewrites the tracked workspace file: a
+  machine-specific `/var/folders/…` path plus a reflow of the whole `folders`
+  array, ~44 lines for one added folder. It has to stay while the user works —
+  **Save And Play** refuses to run unless that directory is a workspace root —
+  so the rule is `git checkout -- riftseer.code-workspace` before committing,
+  not removing it early. Check `git status` at the repository root, not just
+  under `apps/tts/`.
 - **Do not "fix" code from the original authors that looks idiosyncratic**
   but works. The MTG mod has had 985 updates over five years; weird patterns
   often have history.

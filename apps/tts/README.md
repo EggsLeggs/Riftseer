@@ -70,18 +70,43 @@ straight from a clone.
 
 ### 1. Clone
 
+The mod lives inside the Riftseer monorepo at `apps/tts`. Clone the monorepo,
+not the old standalone `riftbound-tcg-tts` repo — that one stopped receiving
+changes when the mod was imported here with its history.
+
 ```bash
-git clone git@github.com:YOUR_USERNAME/riftbound-tcg-tts.git
-cd riftbound-tcg-tts
+git clone git@github.com:EggsLeggs/Riftseer.git
+cd Riftseer/apps/tts
 ```
+
+Every path below is relative to `apps/tts/`. The mod needs no `bun install`;
+it is Lua plus two stdlib-only Python tools and is not a Bun workspace member.
 
 ### 2. Symlink the save into TTS
 
-This makes editing in the repo equivalent to editing the save TTS loads.
+This makes editing in the repo equivalent to editing the save TTS loads. Run it
+from `apps/tts/`, and use `-sfn` so it replaces an existing link rather than
+nesting a new one inside a stale directory:
 
 ```bash
-ln -s "$(pwd)/mod/Riftbound.json" "$HOME/Library/Tabletop Simulator/Saves/Riftbound.json"
+ln -sfn "$(pwd)/mod/Riftbound.json" "$HOME/Library/Tabletop Simulator/Saves/Riftbound.json"
 ```
+
+Check it landed on this checkout, not another one:
+
+```bash
+readlink "$HOME/Library/Tabletop Simulator/Saves/Riftbound.json"
+cmp "$HOME/Library/Tabletop Simulator/Saves/Riftbound.json" mod/Riftbound.json && echo in sync
+```
+
+> **If you set this up before the monorepo import, your link is stale.** It
+> points at `riftbound-tcg-tts/mod/Riftbound.json`, so TTS loads a save frozen
+> at the import and **saving in TTS writes to the old repo** —
+> `apps/tts/mod/Riftbound.json` never changes and `tools/extract.py` shows no
+> diff no matter what you did in game. The symptom is subtle: the table loads
+> and plays fine, but **Get Lua Scripts** returns scripts that disagree with
+> `scripts/objects/` for the objects that have moved since. Re-run the `ln`
+> above to fix it, then reload the save in TTS.
 
 In TTS: Create → Singleplayer → Save & Load → **Saves** tab → Riftbound. This
 should match the [published Riftbound table](#workshop-items) when built from
@@ -110,35 +135,90 @@ code --install-extension "vendor/Tabletop Simulator Lua 1.1.3 Patched.vsix"
 If `code` isn't on your PATH, install via the UI instead: `Cmd+Shift+P` →
 "Extensions: Install from VSIX..." → pick `vendor/Tabletop Simulator Lua 1.1.3 Patched.vsix`.
 
-Reopen VS Code, open this repo, then open `scripts/global.lua` to activate the
+Reopen VS Code, open `riftseer.code-workspace` from the monorepo root (the
+`tts` folder root is the mod), then open `scripts/global.lua` to activate the
 extension.
 
 ### 4. Verify the dev loop
 
-1. Launch TTS, load the Riftbound save.
+1. Launch TTS and **load the Riftbound save**. This has to be the actual save,
+   not a fresh table — see the check in step 3 below.
 2. In VS Code: `Cmd+Shift+P` → **Tabletop Simulator: Get Lua Scripts**.
-3. The extension dumps scripts into `~/Documents/Tabletop Simulator/` and
-   opens them. From there, edit and use **Tabletop Simulator: Save And Play**
-   to push changes back into the live game.
+3. The extension adds a folder to your workspace and fills it with the running
+   game's scripts, one file per scripted object plus `Global.-1.lua`. Confirm
+   you pulled the real table: `Global.-1.lua` should be around 109 KB and
+   roughly 70 files should arrive. A 320-byte `Global.-1.lua` on its own is
+   TTS's empty-table boilerplate, which means no save was loaded.
+4. Edit the files in that folder, then `Cmd+Shift+P` → **Tabletop Simulator:
+   Save And Play** to push them into the live game.
 
-> **Note on script location.** The rolandostar extension dumps scripts into
-> `~/Documents/Tabletop Simulator/`, not into this repo. Day-to-day editing
-> happens there. When you save the mod in TTS itself (via the in-game save
-> menu), the JSON in `mod/Riftbound.json` updates via the symlink — and you
-> can run `python3 tools/extract.py` to regenerate the readable `.lua` files
-> in `scripts/` for committing.
+**Where the scripts actually go.** Not into this repo, and not into
+`~/Documents/Tabletop Simulator`. The extension writes to a fixed temporary
+directory, `$TMPDIR/TabletopSimulator/Tabletop Simulator Lua`, and **Get Lua
+Scripts** adds that directory to your VS Code workspace. There is no setting
+to change it; the path is hardcoded. `~/Documents/Tabletop Simulator` is a
+different thing — it is the `require()` include root that the **Add include
+folder to workspace** command mounts as "TTS Includes", and where Console++
+installs.
+
+**Get Lua Scripts before Save And Play, every session.** Save And Play sends
+the contents of that temp directory to the game, and refuses to run at all
+unless the directory is one of your workspace folders — you get a modal
+reading "The workspace does not contain the Tabletop Simulator folder". Get
+Lua Scripts is what adds it. Running Save And Play on a temp directory left
+over from an earlier session pushes those older scripts into the game and
+overwrites what is there.
+
+**Not every script comes down.** TTS only sends scripts for objects in play,
+so objects nested inside bags and decks never appear in the temp directory.
+Expect it to be a subset of `scripts/objects/` — around 70 files against 111
+on disk. That gap is normal and is not drift.
 
 ## Workflow
 
-### Edit / test cycle
+There are two loops. Use the second one for anything that is only code — it is
+shorter, and it never puts the game between you and the diff.
+
+### Through the game (needed for object placement, or to test live)
 
 1. Launch TTS, load the Riftbound save.
 2. `Cmd+Shift+P` → **Tabletop Simulator: Get Lua Scripts** (pulls from the running game).
-3. Edit the scripts the extension opened.
+3. Edit the scripts the extension opened, in the temp folder it added to the workspace.
 4. `Cmd+Shift+P` → **Tabletop Simulator: Save And Play** (pushes back, TTS reloads).
 5. When happy, save the mod in TTS itself — this writes the JSON via the symlink.
 6. Run `python3 tools/extract.py` to refresh `scripts/*.lua` from the new JSON.
-7. `git diff` to review, then commit both the JSON and the regenerated scripts.
+7. Drop the temp folder from the workspace file (below), `git diff` to review,
+   then commit both the JSON and the regenerated scripts.
+
+### Straight in the repo (preferred for code)
+
+1. Edit `scripts/*.lua` and `ui/global.xml` directly.
+2. Run `python3 tools/inject.py` to write them into `mod/Riftbound.json`.
+3. Reload the save in TTS to verify.
+4. `git diff` to review, then commit the sources and the JSON together.
+
+From the monorepo root, `bun run tts:extract` and `bun run tts:inject` are the
+same two commands, and are what the workspace file's tasks call.
+
+### Get Lua Scripts dirties the workspace file
+
+**Get Lua Scripts** adds the temp directory to the workspace by calling VS
+Code's `updateWorkspaceFolders`. In a saved multi-root workspace that edits the
+workspace file on disk, so `riftseer.code-workspace` comes back modified — with
+a machine-specific `../../../../var/folders/…` path appended, and the whole
+`folders` array reflowed from one line per entry into expanded objects. It is a
+~44-line diff for what looks like one added folder.
+
+Leave it while you work: Save And Play stops working the moment that folder is
+not a workspace root. Just never commit it. Before you commit anything from a
+TTS session, from the monorepo root:
+
+```bash
+git checkout -- riftseer.code-workspace
+```
+
+Committing it would break the workspace for everyone else, since the temp path
+is specific to your machine.
 
 ### Rebuilding the JSON manually
 
