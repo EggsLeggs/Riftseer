@@ -283,6 +283,12 @@ export class StubProvider implements CardDataProvider {
     };
   }
 
+  async resolveRequests(requests: CardRequest[]): Promise<ResolvedCard[]> {
+    // The stub has no round-trips to save, so batching is the loop. The point
+    // of the interface is the contract, which is per-entry identical.
+    return Promise.all(requests.map((request) => this.resolveRequest(request)));
+  }
+
   async browseOracles(opts: { limit: number; offset: number }): Promise<OracleSearchResult> {
     return {
       oracles: ORACLES.slice(opts.offset, opts.offset + opts.limit),

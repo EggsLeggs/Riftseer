@@ -795,6 +795,123 @@ export class SupabaseCardProvider implements CardDataProvider {
     return { request: req, oracle: { ...oracle, printings }, printing, matchType };
   }
 
+  /**
+   * Resolve many requests in a fixed number of round-trips.
+   *
+   * `resolveRequest` costs three subrequests per card — the oracle row, the
+   * preferred printing behind it, then every printing of that oracle — so a
+   * full 20-request batch through `Promise.all` spent 60+ and tripped the
+   * Workers per-invocation subrequest limit before it could answer (#181).
+   * Here the whole batch takes two: one `in` over `name_normalized` and one
+   * `in` over `printings.oracle_id`. That second read covers both jobs the
+   * per-card path did separately, since an oracle's preferred printing is one
+   * of its printings.
+   *
+   * Only names that miss exactly still cost extra, and they cost what they
+   * always did. Order follows the requests, as callers index the two together.
+   */
+  async resolveRequests(reqs: CardRequest[]): Promise<ResolvedCard[]> {
+    if (reqs.length === 0) return [];
+
+    const miss = (req: CardRequest): ResolvedCard => ({
+      request: req,
+      oracle: null,
+      printing: null,
+      matchType: "not-found",
+    });
+
+    const normalized = reqs.map((req) => normalizeCardName(req.name));
+    const rowsByName = new Map<string, OracleRow>();
+    for (const part of chunk([...new Set(normalized)], ID_IN_CHUNK_SIZE)) {
+      const { data, error } = await this.db
+        .from("oracles")
+        .select(ORACLE_SELECT)
+        .in("name_normalized", part)
+        .is("deleted_at", null);
+      if (error) throw new Error(`resolveRequests exact query failed: ${error.message}`);
+      for (const row of (data ?? []) as OracleRow[]) {
+        rowsByName.set(row.name_normalized, row);
+      }
+    }
+
+    // A miss falls back to the search path one at a time, as before. Sequential
+    // rather than concurrent: the fallback is the expensive branch, and a batch
+    // of misses is exactly the case that used to exhaust the budget.
+    const matched: (Oracle | null)[] = [];
+    const matchTypes: ResolvedCard["matchType"][] = [];
+    // `preferred_printing_id` lives on the row, not on the mapped Oracle.
+    const preferredIdByOracle = new Map<string, string>();
+    for (const [i, req] of reqs.entries()) {
+      const row = rowsByName.get(normalized[i]!);
+      if (row) {
+        if (row.preferred_printing_id) {
+          preferredIdByOracle.set(row.id, row.preferred_printing_id);
+        }
+        matched.push(oracleRowToOracle(row));
+        matchTypes.push("exact");
+        continue;
+      }
+      const { ast } = parseCardSearchQuery(req.name);
+      if (!ast) {
+        matched.push(null);
+        matchTypes.push("not-found");
+        continue;
+      }
+      const result = await this.searchOraclesByAst(ast, { limit: 1 }).catch((err) => {
+        logger.error("resolveRequests search failed", { error: String(err) });
+        return { oracles: [], total: 0 };
+      });
+      matched.push(result.oracles[0] ?? null);
+      matchTypes.push("fuzzy");
+    }
+
+    const printingsByOracle = await this.printingsByOracleIds(
+      matched.filter((o): o is Oracle => o !== null).map((o) => o.id),
+    );
+
+    return reqs.map((req, i) => {
+      const oracle = matched[i];
+      if (!oracle) return miss(req);
+      // The fuzzy path already carries its preferred printing; the exact path
+      // reads it out of the batch fetch rather than paying for it again.
+      const printings = printingsByOracle.get(oracle.id) ?? [];
+      const preferredId = preferredIdByOracle.get(oracle.id);
+      const preferred = oracle.preferred_printing ?? printings.find((p) => p.id === preferredId);
+      const printing = pickRequestedPrinting(printings, req, preferred);
+      if (!printing) return miss(req);
+      return {
+        request: req,
+        oracle: { ...oracle, printings, preferred_printing: preferred },
+        printing,
+        matchType: matchTypes[i]!,
+      };
+    });
+  }
+
+  /** Every non-deleted printing for each oracle id, grouped, in one `in` read. */
+  private async printingsByOracleIds(ids: string[]): Promise<Map<string, Printing[]>> {
+    const grouped = new Map<string, Printing[]>();
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return grouped;
+
+    for (const part of chunk(unique, ID_IN_CHUNK_SIZE)) {
+      const { data, error } = await this.db
+        .from("printings")
+        .select(PRINTING_SELECT)
+        .in("oracle_id", part)
+        .is("deleted_at", null);
+      if (error) throw new Error(`printingsByOracleIds failed: ${error.message}`);
+      for (const row of (data ?? []) as PrintingRow[]) {
+        const printing = printingRowToPrinting(row);
+        const list = grouped.get(printing.oracle_id);
+        if (list) list.push(printing);
+        else grouped.set(printing.oracle_id, [printing]);
+      }
+    }
+    for (const list of grouped.values()) list.sort(comparePrintings);
+    return grouped;
+  }
+
   // ── Sets, formats, rulings ───────────────────────────────────────────────
 
   async getSets() {

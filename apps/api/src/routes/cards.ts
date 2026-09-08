@@ -682,9 +682,7 @@ export function cardsRoutes(cardProvider: CardDataProvider) {
             return parsed[0] ?? { raw: r, name: inner };
           });
 
-          const results = await Promise.all(
-            requests.map((req) => cardProvider.resolveRequest(req)),
-          );
+          const results = await cardProvider.resolveRequests(requests);
 
           return {
             count: results.length,
