@@ -15,15 +15,16 @@ Copy `.dev.vars.example` to `.dev.vars` for local secrets. `wrangler.jsonc` and 
 
 ## Routes
 
-Nine route files, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` only binds that to the Worker. Check this list before adding a handler; a second `/formats` or `/auth` path is the easy mistake.
+Seven route files and two route directories, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` only binds that to the Worker. Check this list before adding a handler; a second `/formats` or `/auth` path is the easy mistake.
 
 - `src/routes/cards.ts`: oracle search and detail, printing lookup, batch resolve. `/cards` is oracle-shaped; `unique=prints` is the explicit printing mode.
-- `src/routes/admin.ts`: oracle, printing, delta, relationship, legality, ruling, set, format and reconciliation mutations.
-- `src/routes/decks.ts`: decks, zones, collaborators, revisions, invites, text import/export, card tags, favorites, view counts, comments and `/deck-folders`.
+- `src/routes/admin/`: one file per group (`dashboard.ts`, `review.ts`, `oracles.ts`, `printings.ts`, `images.ts`, `legalities.ts`, `formats.ts`, `rulings.ts`, `sets.ts`), each a function over the `AdminRouteContext` in `shared.ts`; `schemas.ts` holds the bodies and responses. `index.ts` mounts the groups under `/admin`.
+- `src/routes/decks/`: `crud.ts`, `cards.ts`, `comments.ts`, `favorites.ts`, `collaborators.ts`, `folders.ts`, `revisions.ts` and `export.ts` (text import and export), each exporting a reads group, a writes group or both over the `DeckRouteContext` built in `shared.ts`. `index.ts` mounts them and `/deck-folders`.
+- A group's position in `index.ts` is its position in `openapi.json`, because the spec lists paths in registration order. Add a route to the group it belongs to and expect the spec diff to show it there.
 - `src/routes/auth.ts`: register, login, refresh, logout, password reset, email change, `/auth/me`.
 - `src/routes/users.ts`: public profiles, followers, following, `/users/me`, follow and unfollow.
 - `src/routes/metafy.ts`: Metafy OAuth. The webhook and API client are `src/lib/metafy.ts`, and the webhook path is intercepted in `src/index.ts` before Elysia because HMAC verification needs the unconsumed raw body. Change one, check the others.
-- `src/routes/formats.ts`, `src/routes/sets.ts`, `src/routes/meta.ts`: public `GET /formats`, `GET /sets`, `GET /health` and `GET /meta`. Format mutations live in `admin.ts`.
+- `src/routes/formats.ts`, `src/routes/sets.ts`, `src/routes/meta.ts`: public `GET /formats`, `GET /sets`, `GET /health` and `GET /meta`. Format mutations live in `src/routes/admin/formats.ts`.
 
 ## The public reference is the spec
 
@@ -37,8 +38,8 @@ Nine route files, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` on
 
 - `src/public-routes.ts` is the list of routes anyone may call from anywhere. A route not on it carries `authPlugin` or `adminPlugin`; `src/__tests__/route-security.test.ts` walks every mounted route and fails the build otherwise. Adding a route to the list also gives it `Access-Control-Allow-Origin: *`.
 - CORS is `src/plugins/cors.ts`. Public routes answer `*`, so third-party browser clients on the card data keep working; everything else answers only `SITE_ORIGIN` and localhost, and admin never reflects a foreign origin. Do not reintroduce reflect-any-origin.
-- Admin database access is isolated behind `src/lib/admin-data.ts` and admin RPCs. Deck access is isolated behind `src/lib/deck-data.ts` and `deck_apply_card_changes`.
-- `src/routes/decks.ts` is the real authorisation boundary. The Worker's service-role key bypasses RLS, so the migration's deck policies are defence in depth. A deck the caller may not read returns 404; a write refused on a readable deck returns 403. Unlisted-by-link access exists only here.
+- Every Supabase query lives in `src/repos/`: `admin.repo.ts` and the admin RPCs, `decks.repo.ts` and `deck_apply_card_changes`, `profiles.repo.ts` for profiles and follows, `linked-accounts.repo.ts` for Metafy links. `src/lib/supabase.ts` builds the clients. Nothing else imports `@supabase/*`; `.config/dependency-cruiser.cjs` fails the build otherwise.
+- `src/authz/deck-access.ts` is the real authorisation boundary: `roleFor()`, `canRead()` and `canWrite()`, applied by every deck handler. The Worker's service-role key bypasses RLS, so the migration's deck policies are defence in depth. A deck the caller may not read returns 404; a write refused on a readable deck returns 403. Unlisted-by-link access exists only here.
 - Deck tokens derive from `makes_token` edges, never stored membership. A `deck_token_printings` row whose oracle left the derived set is ignored and pruned in passing; ingest changing an edge is normal and must never fail a read.
 - `SITE_ORIGIN` only decorates responses with `riftseer_uri`; it is never persisted. Prices are opt-in, and affiliate-link rewriting is independent of price inclusion and stays printing-level.
 - `POST /cards/resolve` returns an oracle plus the requested printing, or the preferred one when none was asked for. Bots depend on this contract.

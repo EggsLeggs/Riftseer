@@ -1,5 +1,8 @@
 import { authAdminClient } from "./supabase";
 import { runInBackground } from "./background";
+import { createLinkedAccountsRepository } from "../repos/linked-accounts.repo";
+
+const linkedAccounts = authAdminClient ? createLinkedAccountsRepository(authAdminClient) : null;
 
 /** Upstream Metafy calls must not hold a request open until the platform limit. */
 const METAFY_TIMEOUT_MS = 8_000;
@@ -116,7 +119,7 @@ function webhookStatusUpdate(type: string): Record<string, boolean> | null {
 }
 
 async function processWebhookEvent(payload: MetafyWebhookPayload): Promise<void> {
-  if (!authAdminClient) return;
+  if (!linkedAccounts) return;
 
   const { type, data } = payload;
   const metafyUserId = data?.user_id;
@@ -128,12 +131,8 @@ async function processWebhookEvent(payload: MetafyWebhookPayload): Promise<void>
   const parsedOccurredAt = Date.parse(payload.occurred_at);
   const occurredAt = Number.isNaN(parsedOccurredAt) ? Date.now() : parsedOccurredAt;
 
-  const { data: linked, error: lookupError } = await authAdminClient
-    .from("linked_accounts")
-    .select("user_id, status_checked_at")
-    .eq("provider", "metafy")
-    .eq("provider_user_id", metafyUserId)
-    .maybeSingle();
+  const { data: linked, error: lookupError } =
+    await linkedAccounts.findMetafyLinkByProviderUser(metafyUserId);
 
   if (lookupError) {
     console.error(
@@ -150,11 +149,10 @@ async function processWebhookEvent(payload: MetafyWebhookPayload): Promise<void>
     : NaN;
   if (!Number.isNaN(lastChecked) && lastChecked > occurredAt) return;
 
-  const { error: updateError } = await authAdminClient
-    .from("linked_accounts")
-    .update({ ...updates, status_checked_at: new Date(occurredAt).toISOString() })
-    .eq("user_id", linked.user_id)
-    .eq("provider", "metafy");
+  const { error: updateError } = await linkedAccounts.updateMetafyStatus(linked.user_id, {
+    ...updates,
+    status_checked_at: new Date(occurredAt).toISOString(),
+  });
 
   if (updateError) {
     console.error(
@@ -235,15 +233,11 @@ export async function refreshMetafySupporterStatus(
     // Network error — best-effort, skip update
   }
 
-  if (gotDefinitiveAnswer && authAdminClient) {
-    const { error } = await authAdminClient
-      .from("linked_accounts")
-      .update({
-        is_supporter: isSupporter,
-        status_checked_at: new Date().toISOString(),
-      })
-      .eq("user_id", userId)
-      .eq("provider", "metafy");
+  if (gotDefinitiveAnswer && linkedAccounts) {
+    const { error } = await linkedAccounts.updateMetafyStatus(userId, {
+      is_supporter: isSupporter,
+      status_checked_at: new Date().toISOString(),
+    });
     if (error) {
       console.error(`[metafy] supporter status update failed for user ${userId}:`, error.message);
     }

@@ -31,6 +31,19 @@ module.exports = {
       },
     },
     {
+      name: "api-supabase-only-in-repos",
+      severity: "error",
+      comment:
+        "Every Supabase query in the API lives in src/repos/, and " +
+        "src/lib/supabase.ts builds the clients. A route or lib that reaches " +
+        "for @supabase/* directly is a query the repository layer cannot see.",
+      from: {
+        path: "^apps/api/src/",
+        pathNot: "^apps/api/src/(repos/|lib/supabase\\.ts$)",
+      },
+      to: { path: "node_modules/@supabase/" },
+    },
+    {
       name: "ingest-worker-no-core",
       severity: "error",
       comment:

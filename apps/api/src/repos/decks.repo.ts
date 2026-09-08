@@ -17,13 +17,13 @@ import type { PrintingImage } from "@riftseer/types";
 // ─── Deck data access ─────────────────────────────────────────────────────────
 //
 // Every deck read and write the API performs, behind one interface, mirroring
-// `admin-data.ts`. The routes hold the authorisation rules and nothing else;
+// `admin.repo.ts`. The routes hold the authorisation rules and nothing else;
 // this module holds the queries and nothing else, so a route test can run the
 // whole permission matrix against an in-memory stub.
 //
 // The client is the service-role one, so RLS is bypassed: the policies in the
 // migration are defence in depth against a leaked anon key, and the real
-// boundary is `apps/api/src/routes/decks.ts`.
+// boundary is `apps/api/src/authz/deck-access.ts`.
 
 export type DeckVisibility = "private" | "unlisted" | "public";
 export type CollaboratorRole = "editor" | "viewer";
