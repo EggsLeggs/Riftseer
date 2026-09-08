@@ -35,6 +35,29 @@ export const PUBLIC_ROUTES = [
   "GET /api/v1/users/:handle/following",
 ] as const;
 
+/**
+ * Public routes whose answer changes when a bearer token is sent.
+ *
+ * The deck reads add the caller's role, their favourite state and their own
+ * decks. `GET /users/:handle` adds `is_following`. A view is not counted for
+ * the deck's own owner. All of them still answer anonymously, so they carry
+ * no guard and `route-guards.ts` has nothing to derive them from. Hence a
+ * second list, kept beside the first so the two are read together.
+ *
+ * `generate-spec.ts` turns an entry here into `security: [{}, { bearerAuth: [] }]`,
+ * the anonymous requirement first, which is what tells a reader of the
+ * reference where those extra fields come from.
+ */
+export const OPTIONAL_AUTH_ROUTES = [
+  "GET /api/v1/decks",
+  "GET /api/v1/decks/:id",
+  "GET /api/v1/decks/:id/comments",
+  "GET /api/v1/decks/:id/export",
+  "GET /api/v1/decks/:id/revisions",
+  "POST /api/v1/decks/:id/views",
+  "GET /api/v1/users/:handle",
+] as const;
+
 interface CompiledRoute {
   method: string;
   pattern: RegExp;

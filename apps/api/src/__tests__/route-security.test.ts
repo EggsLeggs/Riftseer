@@ -5,18 +5,23 @@
  * `.use(authPlugin)` is a full-database read for anyone. This test walks every
  * mounted route: it is either named in `PUBLIC_ROUTES` (or is a session
  * endpoint listed below) or it carries the auth or admin guard. Guarded is
- * decided by hook identity — the very function the plugins register — and,
- * for routes without an input schema, confirmed by an anonymous request
- * answering 401. Body validation runs before `resolve` in Elysia, so a
- * bodied route cannot be probed the same way without knowing its shape.
+ * decided by hook identity in `src/route-guards.ts` — the very function the
+ * plugins register — and, for routes without an input schema, confirmed by an
+ * anonymous request answering 401. Body validation runs before `resolve` in
+ * Elysia, so a bodied route cannot be probed the same way without knowing its
+ * shape. `openapi.json` is checked against the same set, because the published
+ * reference is the other place this fact has to be true.
  */
 
 import { describe, expect, it } from "bun:test";
+import { readFileSync } from "fs";
+import path from "path";
 import { Elysia } from "elysia";
 import { buildApp } from "../app";
 import { adminPlugin } from "../plugins/admin-auth";
 import { authPlugin } from "../plugins/auth";
-import { isPublicRoute, PUBLIC_ROUTES } from "../public-routes";
+import { isPublicRoute, OPTIONAL_AUTH_ROUTES, PUBLIC_ROUTES } from "../public-routes";
+import { isAdminGuarded, isGuarded, securityByOperation, toSpecPath } from "../route-guards";
 import { StubProvider } from "./stub_card_provider";
 
 /**
@@ -33,29 +38,6 @@ const SESSION_ROUTES = [
 const app = buildApp(new StubProvider());
 
 type Route = (typeof app.routes)[number];
-type HookContainer = { fn?: unknown };
-
-function registeredGuards(plugin: { event: { beforeHandle?: HookContainer[] } }): unknown[] {
-  return (plugin.event.beforeHandle ?? []).map((hook) => hook.fn);
-}
-
-const USER_GUARDS = new Set(registeredGuards(authPlugin));
-const ADMIN_GUARDS = new Set(registeredGuards(adminPlugin));
-
-function guardsOn(route: Route): Set<unknown> {
-  const hooks = (route.hooks.beforeHandle ?? []) as HookContainer[];
-  return new Set(hooks.map((hook) => hook.fn));
-}
-
-function hasAny(found: Set<unknown>, wanted: Set<unknown>): boolean {
-  for (const fn of wanted) if (found.has(fn)) return true;
-  return false;
-}
-
-function isGuarded(route: Route): boolean {
-  const found = guardsOn(route);
-  return hasAny(found, USER_GUARDS) || hasAny(found, ADMIN_GUARDS);
-}
 
 const routes = app.routes.filter((route) => route.method !== "OPTIONS");
 const routeKey = (route: Route) => `${route.method} ${route.path}`;
@@ -97,7 +79,7 @@ describe("route-auth invariant", () => {
   it("puts every admin route behind the admin guard specifically", () => {
     const weak = routes
       .filter((route) => route.path.startsWith("/api/v1/admin"))
-      .filter((route) => !hasAny(guardsOn(route), ADMIN_GUARDS))
+      .filter((route) => !isAdminGuarded(route))
       .map(routeKey);
     expect(weak).toEqual([]);
   });
@@ -125,6 +107,68 @@ describe("route-auth invariant", () => {
         refused.push(`${routeKey(route)} -> ${res.status}`);
     }
     expect(refused).toEqual([]);
+  });
+});
+
+/**
+ * The same fact, one step further out: what the published reference tells a
+ * third party. `generate-spec.ts` stamps `security` from `securityByOperation`,
+ * so a guard added or removed without regenerating the spec fails here rather
+ * than shipping a document that says the route is anonymous.
+ */
+describe("the committed spec's security", () => {
+  interface Operation {
+    security?: unknown;
+  }
+  interface Spec {
+    paths: Record<string, Record<string, Operation>>;
+    components?: { securitySchemes?: Record<string, unknown> };
+  }
+  const spec: Spec = JSON.parse(
+    readFileSync(path.join(import.meta.dirname, "../../openapi.json"), "utf8"),
+  );
+
+  const documented = new Map<string, unknown>();
+  for (const [specPath, operations] of Object.entries(spec.paths)) {
+    for (const [method, operation] of Object.entries(operations)) {
+      if (operation.security !== undefined)
+        documented.set(`${method.toUpperCase()} ${specPath}`, operation.security);
+    }
+  }
+
+  it("matches the routes that need a token, operation for operation", () => {
+    const wanted = securityByOperation(routes);
+    expect([...documented.keys()].sort()).toEqual([...wanted.keys()].sort());
+    for (const [operation, security] of wanted) {
+      expect(documented.get(operation)).toEqual(security);
+    }
+  });
+
+  it("declares the bearer scheme it references", () => {
+    expect(spec.components?.securitySchemes?.bearerAuth).toMatchObject({
+      type: "http",
+      scheme: "bearer",
+      bearerFormat: "JWT",
+    });
+  });
+
+  it("leaves the four anonymous session endpoints bare", () => {
+    for (const key of SESSION_ROUTES) {
+      const [method, elysiaPath] = key.split(" ");
+      expect(documented.has(`${method} ${toSpecPath(elysiaPath)}`)).toBe(false);
+    }
+  });
+});
+
+describe("optionally authenticated routes", () => {
+  it("names only public, unguarded, mounted routes", () => {
+    const byKey = new Map(routes.map((route) => [routeKey(route), route]));
+    const publicKeys = new Set<string>(PUBLIC_ROUTES);
+    const wrong = OPTIONAL_AUTH_ROUTES.filter((key) => {
+      const route = byKey.get(key);
+      return !route || isGuarded(route) || !publicKeys.has(key);
+    });
+    expect(wrong).toEqual([]);
   });
 });
 

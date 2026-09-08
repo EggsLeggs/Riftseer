@@ -39,6 +39,17 @@
       "description": "Admin-only durable card and set mutations"
     }
   ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "A Supabase access token from `POST /api/v1/auth/login` or `POST /api/v1/auth/refresh`, sent as `Authorization: Bearer <token>`. Admin routes take the same token and additionally require the account to be listed in the Worker's `ADMIN_USER_IDS`."
+      }
+    },
+    "schemas": {}
+  },
   "paths": {
     "/api/v1/health": {
       "get": {
@@ -21200,7 +21211,13 @@
           "Decks"
         ],
         "summary": "List decks",
-        "description": "Your own decks and decks shared with you, or a user's decks by ?handle. Another user's private and unlisted decks are never listed."
+        "description": "Your own decks and decks shared with you, or a user's decks by ?handle. Another user's private and unlisted decks are never listed.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "parameters": [],
@@ -22120,7 +22137,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}": {
@@ -24056,7 +24078,13 @@
           "Decks"
         ],
         "summary": "Get a deck",
-        "description": "Resolved cards, derived tokens and format violations. Unlisted decks resolve by id."
+        "description": "Resolved cards, derived tokens and format violations. Unlisted decks resolve by id.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "patch": {
         "parameters": [
@@ -26319,7 +26347,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -26602,7 +26635,12 @@
           "Decks"
         ],
         "summary": "Delete a deck",
-        "description": "Owner only. A deck the caller cannot read answers 404, never 403."
+        "description": "Owner only. A deck the caller cannot read answers 404, never 403.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/views": {
@@ -26777,7 +26815,13 @@
           "Decks"
         ],
         "summary": "Count a view",
-        "description": "Fire-and-forget from the deck page. Deduplicated per viewer for six hours; owner views never count."
+        "description": "Fire-and-forget from the deck page. Deduplicated per viewer for six hours; owner views never count.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/comments": {
@@ -27219,7 +27263,13 @@
           "Decks"
         ],
         "summary": "List comments",
-        "description": "One flat list, newest first; the client builds the tree from parent_id."
+        "description": "One flat list, newest first; the client builds the tree from parent_id.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "parameters": [
@@ -27780,7 +27830,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/export": {
@@ -27967,7 +28022,13 @@
           "Decks"
         ],
         "summary": "Export a deck as text",
-        "description": "Moxfield-style plain text, round-trippable through import."
+        "description": "Moxfield-style plain text, round-trippable through import.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/revisions": {
@@ -28453,7 +28514,13 @@
           "Decks"
         ],
         "summary": "Deck revision history",
-        "description": "Coalesced edit bursts, newest first."
+        "description": "Coalesced edit bursts, newest first.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/cards": {
@@ -30235,7 +30302,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/comments/{commentId}": {
@@ -30528,7 +30600,12 @@
           "Decks"
         ],
         "summary": "Delete a comment",
-        "description": "Author or deck owner. Always a tombstone, so replies keep their place."
+        "description": "Author or deck owner. Always a tombstone, so replies keep their place.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/comments/{commentId}/like": {
@@ -30778,7 +30855,12 @@
           "Decks"
         ],
         "summary": "Like a comment",
-        "description": "Idempotent. Any signed-in reader of the deck."
+        "description": "Idempotent. Any signed-in reader of the deck.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -31026,7 +31108,12 @@
           "Decks"
         ],
         "summary": "Unlike a comment",
-        "description": "Idempotent."
+        "description": "Idempotent.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/favorite": {
@@ -31268,7 +31355,12 @@
           "Decks"
         ],
         "summary": "Favorite a deck",
-        "description": "Idempotent."
+        "description": "Idempotent.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -31508,7 +31600,12 @@
           "Decks"
         ],
         "summary": "Unfavorite a deck",
-        "description": "Idempotent."
+        "description": "Idempotent.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/card-tags": {
@@ -31940,7 +32037,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/invite": {
@@ -32299,7 +32401,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -32582,7 +32689,12 @@
           "Decks"
         ],
         "summary": "Disable the invite link",
-        "description": "Owner only. Existing collaborators are unaffected."
+        "description": "Owner only. Existing collaborators are unaffected.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/join/{code}": {
@@ -32824,7 +32936,12 @@
           "Decks"
         ],
         "summary": "Redeem an invite link",
-        "description": "Inserts a collaborator row, so revoking the link later does not revoke this access."
+        "description": "Inserts a collaborator row, so revoking the link later does not revoke this access.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/{id}/collaborators": {
@@ -33268,7 +33385,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -33559,7 +33681,12 @@
           "Decks"
         ],
         "summary": "Remove a collaborator",
-        "description": "Owner only. Names the collaborator by `?handle=`."
+        "description": "Owner only. Names the collaborator by `?handle=`.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/deck-folders": {
@@ -33836,7 +33963,12 @@
           "Decks"
         ],
         "summary": "List your deck folders",
-        "description": "Folders are private organisation: flat, unordered, owner-only. Pass `?deck=` to add `contains_deck` to each folder."
+        "description": "Folders are private organisation: flat, unordered, owner-only. Pass `?deck=` to add `contains_deck` to each folder.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "parameters": [],
@@ -34158,7 +34290,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/deck-folders/{id}": {
@@ -34835,7 +34972,12 @@
           "Decks"
         ],
         "summary": "One folder and its decks",
-        "description": "Contents are pruned on read to decks the caller can still read. A folder that is not yours 404s."
+        "description": "Contents are pruned on read to decks the caller can still read. A folder that is not yours 404s.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "patch": {
         "parameters": [
@@ -35221,7 +35363,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -35449,7 +35596,12 @@
           "Decks"
         ],
         "summary": "Delete a deck folder",
-        "description": "Never touches the decks filed in it."
+        "description": "Never touches the decks filed in it.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/deck-folders/{id}/decks/{deckId}": {
@@ -35687,7 +35839,12 @@
           "Decks"
         ],
         "summary": "File a deck into a folder",
-        "description": "Idempotent. Any deck the caller can read may be filed — an item is a bookmark, not a claim."
+        "description": "Idempotent. Any deck the caller can read may be filed — an item is a bookmark, not a claim.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -35923,7 +36080,12 @@
           "Decks"
         ],
         "summary": "Remove a deck from a folder",
-        "description": "Idempotent."
+        "description": "Idempotent.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/decks/import": {
@@ -36969,7 +37131,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/register": {
@@ -38779,7 +38946,12 @@
           "Auth"
         ],
         "summary": "Get current user",
-        "description": "Returns the authenticated user's profile and whether the account is in the server-side admin allowlist. Clients use it to restore a session and gate admin UI on page load. Requires a valid `Authorization: Bearer <access_token>` header."
+        "description": "Returns the authenticated user's profile and whether the account is in the server-side admin allowlist. Clients use it to restore a session and gate admin UI on page load. Requires a valid `Authorization: Bearer <access_token>` header.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/logout": {
@@ -38944,7 +39116,12 @@
           "Auth"
         ],
         "summary": "Logout",
-        "description": "Invalidates the current session. Requires a valid `Authorization: Bearer <access_token>` header. The refresh token is also revoked server-side."
+        "description": "Invalidates the current session. Requires a valid `Authorization: Bearer <access_token>` header. The refresh token is also revoked server-side.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/email": {
@@ -39212,7 +39389,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/change-password": {
@@ -39553,7 +39735,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/reset-password": {
@@ -39824,7 +40011,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/users/{handle}": {
@@ -40176,7 +40368,13 @@
           "Users"
         ],
         "summary": "Get user profile",
-        "description": "Returns a public profile by handle (case-insensitive) with follower and following counts. `is_supporter` and `is_member` come from the user's linked Metafy account. With a bearer token, `is_following` reports whether the caller follows this user; it is absent when anonymous or viewing yourself."
+        "description": "Returns a public profile by handle (case-insensitive) with follower and following counts. `is_supporter` and `is_member` come from the user's linked Metafy account. With a bearer token, `is_following` reports whether the caller follows this user; it is absent when anonymous or viewing yourself.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/users/{handle}/followers": {
@@ -41192,7 +41390,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "responses": {
@@ -41410,7 +41613,12 @@
           "Users"
         ],
         "summary": "Delete own account",
-        "description": "Permanently deletes the caller's account. The auth user is removed first and the profile cascades from it. There is no undo."
+        "description": "Permanently deletes the caller's account. The auth user is removed first and the profile cascades from it. There is no undo.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/users/{handle}/follow": {
@@ -41750,7 +41958,12 @@
           "Users"
         ],
         "summary": "Follow user",
-        "description": "Follows the user with this handle. Idempotent: following someone you already follow returns 200. You cannot follow yourself (400 `SELF_FOLLOW`)."
+        "description": "Follows the user with this handle. Idempotent: following someone you already follow returns 200. You cannot follow yourself (400 `SELF_FOLLOW`).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -42033,7 +42246,12 @@
           "Users"
         ],
         "summary": "Unfollow user",
-        "description": "Idempotent: not following the user is not an error."
+        "description": "Idempotent: not following the user is not an error.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/metafy/status": {
@@ -42483,7 +42701,12 @@
           "Auth"
         ],
         "summary": "Get Metafy link status",
-        "description": "Whether the caller has linked a Metafy account and, if so, its username, supporter and community-membership flags and when they were last checked. Supporter status is what drives supporter perks across Riftseer."
+        "description": "Whether the caller has linked a Metafy account and, if so, its username, supporter and community-membership flags and when they were last checked. Supporter status is what drives supporter perks across Riftseer.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/metafy/connect": {
@@ -42660,7 +42883,12 @@
           "Auth"
         ],
         "summary": "Get Metafy OAuth URL",
-        "description": "Starts the OAuth flow. Returns the Metafy authorisation URL to send the user to and the signed `state` the callback must echo back. 503 when Metafy OAuth is not configured on this deployment."
+        "description": "Starts the OAuth flow. Returns the Metafy authorisation URL to send the user to and the signed `state` the callback must echo back. 503 when Metafy OAuth is not configured on this deployment.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/metafy/callback": {
@@ -43084,7 +43312,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/metafy/disconnect": {
@@ -43359,7 +43592,12 @@
           "Auth"
         ],
         "summary": "Disconnect Metafy account",
-        "description": "Removes the linked Metafy account and its stored tokens. 404 when nothing is linked."
+        "description": "Removes the linked Metafy account and its stored tokens. 404 when nothing is linked.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/auth/metafy/refresh-status": {
@@ -43671,7 +43909,12 @@
           "Auth"
         ],
         "summary": "Refresh Metafy supporter status",
-        "description": "Re-checks supporter status against Metafy with the stored access token and returns the updated link. 404 when nothing is linked; 400 when the link has no stored token."
+        "description": "Re-checks supporter status against Metafy with the stored access token and returns the updated link. 404 when nothing is linked; 400 when the link has no stored token.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/audit-log": {
@@ -44339,7 +44582,12 @@
           "Admin"
         ],
         "summary": "Read the admin audit log",
-        "description": "Returns admin mutations newest first, optionally filtered by action, target, or actor."
+        "description": "Returns admin mutations newest first, optionally filtered by action, target, or actor.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/reconciliation": {
@@ -46153,7 +46401,12 @@
           "Admin"
         ],
         "summary": "List review-queue entries",
-        "description": "What ingest could not reconcile: TCGPlayer products that match no printing, printings and cards the official gallery lists that we do not hold, and field disagreements from either source. Defaults to pending entries, newest first."
+        "description": "What ingest could not reconcile: TCGPlayer products that match no printing, printings and cards the official gallery lists that we do not hold, and field disagreements from either source. Defaults to pending entries, newest first.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/reconciliation/{id}/confirm": {
@@ -46786,7 +47039,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/reconciliation/{id}/dismiss": {
@@ -47389,7 +47647,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/oracles": {
@@ -48291,7 +48554,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/oracles/{id}": {
@@ -49194,7 +49462,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -49696,7 +49969,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/oracles/{id}/restore": {
@@ -50162,7 +50440,12 @@
           "Admin"
         ],
         "summary": "Restore a deleted card",
-        "description": "Clears `deleted_at` on the oracle and its printings and rebuilds the projection."
+        "description": "Clears `deleted_at` on the oracle and its printings and rebuilds the projection.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/oracles/{id}/relationships": {
@@ -50868,7 +51151,12 @@
           "Admin"
         ],
         "summary": "Read a card's relationship edges",
-        "description": "Outgoing edges are the stored rows; incoming ones are the reverse view — `used_by` is not separately stored."
+        "description": "Outgoing edges are the stored rows; incoming ones are the reverse view — `used_by` is not separately stored.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "put": {
         "parameters": [
@@ -51445,7 +51733,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/stats": {
@@ -51921,7 +52214,12 @@
           "Admin"
         ],
         "summary": "Dashboard totals",
-        "description": "Live counts of sets, oracles and printings, plus the pending review backlog. Oracles and printings are counted separately because one card carries many printings — a single catalogue number would answer neither question."
+        "description": "Live counts of sets, oracles and printings, plus the pending review backlog. Oracles and printings are counted separately because one card carries many printings — a single catalogue number would answer neither question.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/printings": {
@@ -52811,7 +53109,12 @@
           "Admin"
         ],
         "summary": "List printings for the admin catalogue",
-        "description": "The admin card list. Unlike public search this can see the catalogue's bookkeeping — soft-deleted rows, manually created rows, admin-locked columns, printings carrying a delta, and printings with no hosted image — none of which the search grammar expresses, because that grammar is a language about cards rather than about the catalogue. Defaults to live printings."
+        "description": "The admin card list. Unlike public search this can see the catalogue's bookkeeping — soft-deleted rows, manually created rows, admin-locked columns, printings carrying a delta, and printings with no hosted image — none of which the search grammar expresses, because that grammar is a language about cards rather than about the catalogue. Defaults to live printings.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "parameters": [],
@@ -53696,7 +53999,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/printings/{id}": {
@@ -54553,7 +54861,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -55054,7 +55367,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/printings/{id}/restore": {
@@ -55518,6 +55836,11 @@
             "in": "path",
             "name": "id",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
           }
         ]
       }
@@ -55996,6 +56319,11 @@
             "name": "id",
             "required": true
           }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
         ]
       }
     },
@@ -56019,7 +56347,12 @@
         "description": "Returns `delta: null` when the printing inherits its oracle wholesale. Ingest-authored deltas are deliberately not returned — they record genuine upstream divergence, not an admin decision.",
         "responses": {
           "200": {}
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "put": {
         "parameters": [
@@ -57105,7 +57438,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/printings/{id}/image": {
@@ -57674,7 +58012,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/printings/{id}/legalities": {
@@ -58309,6 +58652,11 @@
             "in": "path",
             "name": "id",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
           }
         ]
       },
@@ -59042,7 +59390,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/printings/{id}/rulings": {
@@ -59803,6 +60156,11 @@
             "in": "path",
             "name": "id",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
           }
         ]
       }
@@ -60637,7 +60995,12 @@
           "Admin"
         ],
         "summary": "List formats",
-        "description": "Returns every format including retired ones, each with the legality row counts a delete would cascade away."
+        "description": "Returns every format including retired ones, each with the legality row counts a delete would cascade away.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "parameters": [],
@@ -61222,7 +61585,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/formats/order": {
@@ -61731,7 +62099,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/formats/{code}": {
@@ -62321,7 +62694,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "responses": {
@@ -62807,6 +63185,11 @@
             "in": "path",
             "name": "code",
             "required": true
+          }
+        ],
+        "security": [
+          {
+            "bearerAuth": []
           }
         ]
       }
@@ -63681,7 +64064,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -64217,7 +64605,12 @@
           "Admin"
         ],
         "summary": "Remove a format's rule for one zone",
-        "description": "Leaves the zone unconstrained. Idempotent: removing a rule that is not there succeeds with deleted=false."
+        "description": "Leaves the zone unconstrained. Idempotent: removing a rule that is not there succeeds with deleted=false.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/formats/{code}/severities/{legality_status}": {
@@ -64851,7 +65244,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/rulings": {
@@ -65849,7 +66247,12 @@
           "Admin"
         ],
         "summary": "List rulings",
-        "description": "Every ruling with its targets, newest first. `q` matches ruling text; `kind` narrows to rulings carrying a target of that kind."
+        "description": "Every ruling with its targets, newest first. `q` matches ruling text; `kind` narrows to rulings carrying a target of that kind.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "post": {
         "parameters": [],
@@ -66593,7 +66996,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/rulings/preview": {
@@ -67279,7 +67687,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/rulings/{rulingId}": {
@@ -68101,7 +68514,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -68565,7 +68983,12 @@
           "Admin"
         ],
         "summary": "Delete a ruling",
-        "description": "Deletes a ruling and every target it carries, wherever it appeared."
+        "description": "Deletes a ruling and every target it carries, wherever it appeared.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/sets": {
@@ -69263,7 +69686,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/v1/admin/sets/{setCode}": {
@@ -69940,7 +70368,12 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -70441,11 +70874,13 @@
               }
             }
           }
-        }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     }
-  },
-  "components": {
-    "schemas": {}
   }
 }
