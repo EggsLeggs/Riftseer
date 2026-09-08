@@ -118,6 +118,16 @@ export interface CardDataProvider {
    */
   resolveRequest(req: CardRequest): Promise<ResolvedCard>;
 
+  /**
+   * Resolve many requests at once, in request order.
+   *
+   * Same contract as `resolveRequest` per entry, but a provider is expected to
+   * answer the whole batch in a bounded number of round-trips rather than one
+   * set per card. Calling `resolveRequest` in a loop is what exhausted the
+   * Workers subrequest budget on a full batch (#181).
+   */
+  resolveRequests(reqs: CardRequest[]): Promise<ResolvedCard[]>;
+
   /** All oracles, paginated, for the browse-everything view. */
   browseOracles(opts: { limit: number; offset: number }): Promise<OracleSearchResult>;
 
