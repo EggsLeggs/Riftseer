@@ -34,6 +34,7 @@ Notable changes to Riftseer. The format follows [Keep a Changelog](https://keepa
 
 - The dead Vite frontend, the root wrangler config and the emoji pipeline's old target (#119).
 - The Docusaurus docs site (#163).
+- `c15t-backend.config.ts`, which nothing imported and no command ran. The consent backend is configured in `apps/web/src/lib/c15t.ts`.
 
 ### Fixed
 
