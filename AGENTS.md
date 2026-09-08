@@ -61,6 +61,7 @@ bun run db:local:reset  # drop the volume, rebuild from supabase/migrations
 - The root `.env` belongs to the web dev server and holds production values. `bunfig.toml` sets `env = false`, so Bun does not auto-load it into tests, database runners or other non-web processes; web commands pass `--env-file ../../.env` explicitly. Wrangler still reads declared secrets from `process.env` first, so `scripts/wrangler-dev.mjs` strips those keys before spawning as a safeguard. A Worker's local values live in its own `.dev.vars*` files, never in `.env`.
 - The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
 - A new env var or secret touches several files per Worker, and a missed one is silently absent under `wrangler dev`. `docs/adding-an-env-var.md` is the checklist.
+- `riftseer.code-workspace` is the VS Code entry point: every folder once, the db, api and web scripts as tasks, and one compound launch that starts docker, attaches to the API on inspector port 9229 and debugs web. It never runs `dev:prod`.
 
 ## Verifying
 
@@ -74,7 +75,7 @@ bun run preview:web     # builds and runs in workerd
 
 - oxlint and oxfmt are the linter and formatter, configured in `.oxlintrc.json` and `.oxfmtrc.json` at the root because ignore patterns resolve inside the config's own directory. No eslint, prettier or biome anywhere else; raycast keeps its own because `ray lint` requires them.
 - The React Compiler rules (`set-state-in-effect`, `refs`, `immutability`) are off until the web deck-logic extraction. Do not switch them on in passing.
-- Boundary rules in `.config/dependency-cruiser.cjs` are structural invariants: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports core, the render kernel is reached only through its index.
+- Boundary rules in `.config/dependency-cruiser.cjs` are structural invariants: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports core, the render kernel is reached only through its index, and the API imports `@supabase/*` only from `apps/api/src/repos/` and `apps/api/src/lib/supabase.ts`.
 - `bun dev` does not exercise the Workers runtime. Run `bun run preview:web` before shipping anything that touches web's server runtime or bindings.
 - `ingest-worker` spells it `type-check`; everything else says `typecheck`, and root `typecheck` covers every workspace member.
 - The standalone gate is `.github/workflows/standalone.yml`: `npm ci` plus `tsc --noEmit` in `apps/reddit-bot` and `apps/raycast-extension`. It is not part of `bun run check`; both gates must pass.
