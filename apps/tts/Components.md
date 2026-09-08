@@ -282,3 +282,32 @@ one per scripted object in the save.
 
 When an object is removed from the table in TTS, delete its script file in the
 same commit. Nothing else will tell you.
+
+### Self-rewriting objects — do not trust a save from a live table
+
+Three objects ship a **bootstrap** script and replace it with a smaller runtime
+handler on first load: `30f3c2_experience.lua`, `94b67a_experience_counter.lua`
+and `e6f47f_experience_counter.lua`. Each `onLoad` enables its πCounter
+property, calls `self.setLuaScript(handler)` and reloads. The committed 1.2 KB
+file is the bootstrap; once the table is loaded, the object holds a 252-byte
+`onNumberTyped` handler instead.
+
+This is by design, and it means **Get Lua Scripts on a loaded table reports
+those objects as differing from the repo**. That is not drift and must not be
+"fixed" by copying the game's version back.
+
+It also means an in-game save of a table that has been loaded writes the
+252-byte handler into `mod/Riftbound.json`, and `extract.py` then overwrites the
+bootstrap with it — silently, since the round trip still passes. Path B is only
+safe for these objects if you check them afterwards:
+
+```bash
+git diff --stat -- scripts/objects/94b67a_experience_counter.lua \
+  scripts/objects/e6f47f_experience_counter.lua scripts/objects/30f3c2_experience.lua
+```
+
+A large deletion in any of those three is the bootstrap being lost. Restore
+those files rather than committing the shrink.
+
+`4f684b`, `c1ae57` and `def0af` also call `setLuaScript`, but on an object
+passed into `toggleProp`, not on themselves, so their own sources are stable.

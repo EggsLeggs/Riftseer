@@ -161,6 +161,14 @@ attempting it yourself.
 - **Do not commit changes that fail round-tripping**. After any edit, verify
   `tools/extract.py` followed by `tools/inject.py` produces a JSON whose
   re-extracted scripts equal the source files.
+- **Three objects rewrite their own script at runtime.** `30f3c2`, `94b67a`
+  and `e6f47f` ship a bootstrap that calls `self.setLuaScript(handler)` on
+  load, so a loaded table holds a 252-byte handler where the repo holds a
+  1.2 KB bootstrap. Get Lua Scripts reporting them as different is expected
+  and is not drift. After any Path B save, check those three for a large
+  deletion before committing — `extract.py` will bake the runtime handler over
+  the bootstrap and the round trip will still pass. `Components.md` has the
+  detail.
 - **Never commit `riftseer.code-workspace` out of a TTS session**. The
   extension's **Get Lua Scripts** adds its temp directory to the workspace via
   `updateWorkspaceFolders`, which rewrites the tracked workspace file: a
