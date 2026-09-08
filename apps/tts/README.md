@@ -214,8 +214,13 @@ not a workspace root. Just never commit it. Before you commit anything from a
 TTS session, from the monorepo root:
 
 ```bash
+git diff -- riftseer.code-workspace   # the temp folder and the reflow, nothing else?
 git checkout -- riftseer.code-workspace
 ```
+
+Read the diff first. If you also changed the workspace file on purpose that
+session, the reflow rewrites the whole `folders` array, so the two are not
+separable hunk by hunk: restore the file, then redo your edit on top.
 
 Committing it would break the workspace for everyone else, since the temp path
 is specific to your machine.

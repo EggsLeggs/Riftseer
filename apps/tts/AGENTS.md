@@ -183,8 +183,10 @@ attempting it yourself.
   array, ~44 lines for one added folder. It has to stay while the user works —
   **Save And Play** refuses to run unless that directory is a workspace root —
   so the rule is `git checkout -- riftseer.code-workspace` before committing,
-  not removing it early. Check `git status` at the repository root, not just
-  under `apps/tts/`.
+  not removing it early. Read `git diff` on it first: a deliberate workspace
+  edit made in the same session goes with it, and the reflow means the two do
+  not separate hunk by hunk, so restore and redo the edit. Check `git status`
+  at the repository root, not just under `apps/tts/`.
 - **Do not "fix" code from the original authors that looks idiosyncratic**
   but works. The MTG mod has had 985 updates over five years; weird patterns
   often have history.
