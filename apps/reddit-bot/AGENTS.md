@@ -16,7 +16,8 @@ npm run deploy
 ## Invariants
 
 - Import token parsing from `@riftseer/types`; do not maintain a Reddit-specific parser.
-- Resolve batches through `POST /api/v1/cards/resolve`. Each result is an oracle plus a selected printing, and the printing id remains the compatibility fallback for public links.
+- Resolve batches through `createRiftseerClient().cards.resolve()` from `@riftseer/types/client`. Each result is a `ResolvedCard`: an oracle plus a selected printing, and `cardSiteUrl()` keeps the printing id as the compatibility fallback for public links. The wire shape is declared once in `packages/types`; do not redeclare it here.
+- The client answers a result, never throws. A `status` of `0` means the request never reached the API, which under Devvit is the HTTP fetch policy refusing the domain.
 - The API origin lives in **two** places: `devvit.json` HTTP permissions and `Devvit.configure()` in `src/main.ts`. An origin change needs both, plus a redeploy.
 - `apiBaseUrl` and `siteBaseUrl` are Devvit app settings, not secrets. An unset `apiBaseUrl` logs and returns — no reply, and nothing surfaces to the subreddit.
 - Skip spam, deleted content, bot authors and ids already recorded in KV.

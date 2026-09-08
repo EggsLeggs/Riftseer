@@ -8,6 +8,7 @@
     ".": "./index.ts",
     "./card-text": "./src/card-text.ts",
     "./render": "./src/render/index.ts",
+    "./client": "./src/client/index.ts",
     "./card-image": "./src/card-image.ts",
     "./deck": "./src/deck.ts",
     "./deck-text": "./src/deck-text.ts",

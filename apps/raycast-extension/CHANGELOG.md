@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-09-08
+
+### Changed
+
+- Rules text is laid out by the same code as riftseer.com: keyword chains and glued ability costs now break onto their own lines, and HTML entities in upstream text are decoded.
+- Type lines read as the site prints them (`Champion Unit`, `Token Unit`, a bare `Legend`).
+- Copy Rules Text writes `{3}` and `{Exhaust}` stand-ins for icons instead of raw `:rb_…:` tokens.
+
 ## [1.0.1] - 2026-08-01
 
 ### Fixed

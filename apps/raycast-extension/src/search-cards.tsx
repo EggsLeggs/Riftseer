@@ -1,22 +1,20 @@
 import {
   Action,
   ActionPanel,
-  Color,
   Grid,
-  Image,
   List,
-  getPreferenceValues,
   showToast,
   Toast,
 } from "@raycast/api";
-import { useFetch, useLocalStorage } from "@raycast/utils";
+import { useCachedPromise, useLocalStorage } from "@raycast/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Jimp, JimpMime } from "jimp";
-import { CardDetail, formatTypeLine } from "./components/CardDetail";
+import { CardDetail } from "./components/CardDetail";
 import { parseMaxRecentHistory, useRecentCardHistory } from "./recentHistory";
 import type { Oracle } from "@riftseer/types";
-import { printingImageUrl } from "@riftseer/types";
-import type { CardsSearchResponse } from "./types";
+import { cardSiteUrl, cardTypeLine, printingImageUrl } from "@riftseer/types";
+import { typeIcon } from "./assets";
+import { riftseer } from "./client";
 
 // Cache rotated images by URL to avoid re-processing on re-render
 const rotatedImageCache = new Map<string, string>();
@@ -58,63 +56,10 @@ const VIEW_OPTIONS: { value: ViewType; title: string }[] = [
   { value: "6", title: "6 Columns" },
 ];
 
-const TYPE_ICONS: Record<string, string> = {
-  unit: "icons/types/unit.png",
-  champion: "icons/types/champion.png",
-  legend: "icons/types/legend.png",
-  spell: "icons/types/spell.png",
-  gear: "icons/types/gear.png",
-  battlefield: "icons/types/battlefield.png",
-  rune: "icons/types/rune.png",
-};
-
-type SearchApiError = {
-  error: string;
-  code: string;
-};
-
-function isSearchApiError(value: unknown): value is SearchApiError {
-  if (!value || typeof value !== "object") return false;
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.error === "string" && typeof candidate.code === "string"
-  );
-}
-
-function parseErrorInfo(err: unknown): { message: string; code?: string } {
-  if (!err || typeof err !== "object") return { message: String(err) };
-  const candidate = err as Record<string, unknown>;
-  const message =
-    typeof candidate.message === "string" ? candidate.message : String(err);
-  const code = typeof candidate.code === "string" ? candidate.code : undefined;
-  return { message, code };
-}
-
-function cardTypeIcon(card: Oracle): Image.ImageLike | undefined {
-  const tl = card.card_type?.toLowerCase();
-  const st = card.supertype?.toLowerCase();
-  const key =
-    st === "token" || st === "basic"
-      ? tl === "token"
-        ? "unit"
-        : tl
-      : (tl ?? st);
-  const src = key ? TYPE_ICONS[key] : undefined;
-  return src ? { source: src, tintColor: Color.PrimaryText } : undefined;
-}
-
 function cardAccessory(card: Oracle): List.Item.Accessory | null {
-  const icon = cardTypeIcon(card);
+  const icon = typeIcon(card);
   if (icon) return { icon };
   return null;
-}
-
-function cardSiteUrl(card: Oracle, siteBaseUrl: string): string {
-  return (
-    card.preferred_printing?.riftseer_uri ??
-    card.riftseer_uri ??
-    `${siteBaseUrl.replace(/\/$/, "")}/card/${card.preferred_printing?.id ?? card.id}`
-  );
 }
 
 function cardActions(
@@ -122,7 +67,7 @@ function cardActions(
   siteBaseUrl: string,
   onViewCard: (c: Oracle) => void,
 ) {
-  const siteUrl = cardSiteUrl(card, siteBaseUrl);
+  const siteUrl = cardSiteUrl(card, card.preferred_printing, siteBaseUrl);
   return (
     <ActionPanel>
       <ActionPanel.Section>
@@ -154,8 +99,8 @@ function CardSidebarDetail({
   card: Oracle;
   siteBaseUrl: string;
 }) {
-  const siteUrl = cardSiteUrl(card, siteBaseUrl);
   const printing = card.preferred_printing;
+  const siteUrl = cardSiteUrl(card, printing, siteBaseUrl);
   const isLandscape = printing?.image_orientation === "landscape";
   const imgUrl = printingImageUrl(printing, "small");
   const altText = printing?.image_alt_text ?? card.name;
@@ -174,7 +119,7 @@ function CardSidebarDetail({
     }
   }, [imgUrl, isLandscape]);
 
-  const typeLine = formatTypeLine(card.card_type, card.supertype);
+  const typeLine = cardTypeLine(card);
 
   return (
     <List.Item.Detail
@@ -317,10 +262,8 @@ function ViewDropdownGrid({
 }
 
 export default function SearchCards() {
-  const prefs = getPreferenceValues<Preferences>();
-  const api = prefs.apiBaseUrl.replace(/\/$/, "");
-  const site = prefs.siteBaseUrl.replace(/\/$/, "");
-  const maxRecent = parseMaxRecentHistory(prefs.maxRecentHistory);
+  const { client, siteBaseUrl: site, maxRecentHistory } = riftseer();
+  const maxRecent = parseMaxRecentHistory(maxRecentHistory);
 
   const [query, setQuery] = useState("");
   const { value: savedView, setValue: saveView } = useLocalStorage<ViewType>(
@@ -358,75 +301,35 @@ export default function SearchCards() {
     saveView(v);
   }
 
-  const hasQuery = query.trim().length > 0;
   const trimmedQuery = query.trim();
-  const [queryErrorMessage, setQueryErrorMessage] = useState<string | null>(
-    null,
-  );
-  const [requestErrorMessage, setRequestErrorMessage] = useState<string | null>(
-    null,
-  );
-  const searchPath = hasQuery
-    ? `${api}/api/v1/cards?q=${encodeURIComponent(trimmedQuery)}&fuzzy=true&limit=20`
-    : "";
+  const hasQuery = trimmedQuery.length > 0;
 
-  const { data, isLoading, error } = useFetch<CardsSearchResponse>(searchPath, {
-    execute: hasQuery,
-    parseResponse: async (response) => {
-      const rawText = await response.text();
-      let body: CardsSearchResponse | SearchApiError | null = null;
-      if (rawText) {
-        try {
-          body = JSON.parse(rawText) as CardsSearchResponse | SearchApiError;
-        } catch {
-          body = null;
-        }
-      }
-      if (response.ok) {
-        if (body) return body as CardsSearchResponse;
-        throw new Error(
-          `Request failed (${response.status}): ${rawText || "Empty response body"}`,
-        );
-      }
-      if (body && isSearchApiError(body)) {
-        const apiErr = new Error(body.error) as Error & { code?: string };
-        apiErr.code = body.code;
-        throw apiErr;
-      }
-      throw new Error(
-        `Request failed (${response.status}): ${rawText || "Empty response body"}`,
-      );
+  // The client answers a result, never throws, so a failed search is data:
+  // a bad query renders inline, anything else also gets a toast.
+  const { data: result, isLoading } = useCachedPromise(
+    (q: string) => client.cards.search({ q, fuzzy: true, limit: 20 }),
+    [trimmedQuery],
+    {
+      execute: hasQuery,
+      keepPreviousData: true,
+      onData: (searched) => {
+        if (searched.ok || searched.error.code === "BAD_QUERY") return;
+        showToast({
+          style: Toast.Style.Failure,
+          title: "Search failed",
+          message: searched.error.error,
+        });
+      },
     },
-    onError: (err) => {
-      const { message, code } = parseErrorInfo(err);
-      if (code === "BAD_QUERY") {
-        setQueryErrorMessage(message);
-        setRequestErrorMessage(null);
-        return;
-      }
-      setQueryErrorMessage(null);
-      setRequestErrorMessage(message);
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Search failed",
-        message,
-      });
-    },
-  });
+  );
 
-  useEffect(() => {
-    if (!hasQuery) {
-      setQueryErrorMessage(null);
-      setRequestErrorMessage(null);
-      return;
-    }
-    if (data) {
-      setQueryErrorMessage(null);
-      setRequestErrorMessage(null);
-    }
-  }, [hasQuery, data]);
+  const searchError = hasQuery && result && !result.ok ? result.error : null;
+  const queryErrorMessage =
+    searchError?.code === "BAD_QUERY" ? searchError.error : null;
+  const requestErrorMessage =
+    searchError && searchError.code !== "BAD_QUERY" ? searchError.error : null;
 
-  const cards = data?.cards ?? [];
+  const cards = result?.ok ? result.data.cards : [];
   const showRecent = !hasQuery && maxRecent > 0;
   const displayCards = hasQuery ? cards : maxRecent > 0 ? recentCards : [];
   const viewLoading = hasQuery ? isLoading : maxRecent > 0 && isLoadingHistory;
@@ -470,7 +373,7 @@ export default function SearchCards() {
           !viewLoading &&
           displayCards.length === 0 &&
           emptySearchHint}
-        {hasQuery && !isLoading && cards.length === 0 && !error && (
+        {hasQuery && !isLoading && cards.length === 0 && !searchError && (
           <Grid.EmptyView
             title="No cards found"
             description={`No results for "${trimmedQuery}".`}
@@ -482,15 +385,12 @@ export default function SearchCards() {
             description={queryErrorMessage}
           />
         )}
-        {hasQuery &&
-          !isLoading &&
-          !queryErrorMessage &&
-          requestErrorMessage && (
-            <Grid.EmptyView
-              title="Search failed"
-              description={requestErrorMessage}
-            />
-          )}
+        {hasQuery && !isLoading && requestErrorMessage && (
+          <Grid.EmptyView
+            title="Search failed"
+            description={requestErrorMessage}
+          />
+        )}
         {showRecent && displayCards.length > 0 ? (
           <Grid.Section title="Recent">
             {displayCards.map((card) => (
@@ -533,7 +433,7 @@ export default function SearchCards() {
         !viewLoading &&
         displayCards.length === 0 &&
         emptySearchHintList}
-      {hasQuery && !isLoading && cards.length === 0 && !error && (
+      {hasQuery && !isLoading && cards.length === 0 && !searchError && (
         <List.EmptyView
           title="No cards found"
           description={`No results for "${trimmedQuery}".`}
@@ -545,7 +445,7 @@ export default function SearchCards() {
           description={queryErrorMessage}
         />
       )}
-      {hasQuery && !isLoading && !queryErrorMessage && requestErrorMessage && (
+      {hasQuery && !isLoading && requestErrorMessage && (
         <List.EmptyView
           title="Search failed"
           description={requestErrorMessage}

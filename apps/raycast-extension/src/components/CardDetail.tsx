@@ -2,9 +2,7 @@ import {
   Action,
   ActionPanel,
   Clipboard,
-  Color,
   Detail,
-  Image,
   environment,
   showToast,
   Toast,
@@ -16,37 +14,30 @@ import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
 import { useEffect } from "react";
 import type { Oracle } from "@riftseer/types";
-import { printingImageDownloadUrl, printingImageUrl } from "@riftseer/types";
-
-function tinted(source: string): Image.ImageLike {
-  return { source, tintColor: Color.PrimaryText };
-}
+import {
+  cardSiteUrl,
+  cardTypeLine,
+  formatCardTextForClipboard,
+  normalizeCardTextLayout,
+  printingImageDownloadUrl,
+  printingImageUrl,
+  replaceIconTokens,
+  tokenPlainLabel,
+} from "@riftseer/types";
+import {
+  domainIcon,
+  rarityIcon,
+  tinted,
+  TOKEN_PNG_ASSETS,
+  TOKEN_SVG_ASSETS,
+  typeIcon,
+} from "../assets";
 
 // ─── Card text token rendering ────────────────────────────────────────────────
 
 const CIRCLED_DIGITS = ["⓪", "①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨"];
 
-/**
- * SVG token icons have hardcoded fill="white". We swap the fill to black on
- * light mode and re-encode as a data URI so the colour tracks the theme.
- * PNG domain rune icons have baked-in colours and work as-is with file:// URLs.
- */
-const TOKEN_SVG_ASSETS: Record<string, string> = {
-  exhaust: "icons/stats/exhaust.svg",
-  might: "icons/stats/might.svg",
-  power: "icons/stats/card_type_rune.svg",
-  rune_rainbow: "icons/domains/rune_rainbow.svg",
-};
-
-const TOKEN_PNG_ASSETS: Record<string, string> = {
-  rune_fury: "icons/domains/rune_fury.png",
-  rune_calm: "icons/domains/rune_calm.png",
-  rune_mind: "icons/domains/rune_mind.png",
-  rune_body: "icons/domains/rune_body.png",
-  rune_chaos: "icons/domains/rune_chaos.png",
-  rune_order: "icons/domains/rune_order.png",
-};
-
+/** Tokens with no picture in `assets/` that read better as a glyph than `{Energy}`. */
 const TOKEN_TEXT_FALLBACKS: Record<string, string> = {
   energy: "⚡",
 };
@@ -54,79 +45,6 @@ const TOKEN_TEXT_FALLBACKS: Record<string, string> = {
 const svgDataUriCache = new Map<string, string>();
 
 const INLINE_ICON_SIZE = 16;
-
-function buildParenDepthMap(text: string): Uint16Array {
-  const depth = new Uint16Array(text.length + 1);
-  let current = 0;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === "(") current += 1;
-    else if (ch === ")" && current > 0) current -= 1;
-    depth[i + 1] = current;
-  }
-  return depth;
-}
-
-function collapseNewlinesInsideParentheses(text: string): string {
-  let result = "";
-  let depth = 0;
-  let pendingSpace = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === "(") {
-      if (pendingSpace && result.length > 0 && !result.endsWith(" "))
-        result += " ";
-      pendingSpace = false;
-      depth += 1;
-      result += ch;
-      continue;
-    }
-    if (ch === ")") {
-      pendingSpace = false;
-      if (depth > 0) depth -= 1;
-      result += ch;
-      continue;
-    }
-    if (depth > 0 && /\s/.test(ch)) {
-      pendingSpace = true;
-      continue;
-    }
-    if (pendingSpace && result.length > 0 && !result.endsWith(" "))
-      result += " ";
-    pendingSpace = false;
-    result += ch;
-  }
-
-  if (pendingSpace && result.length > 0 && !result.endsWith(" ")) result += " ";
-  return result;
-}
-
-function normalizeCardTextLayout(
-  text: string,
-  paragraphBreak = "\n\n",
-): string {
-  let normalized = text.trim().replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
-  normalized = collapseNewlinesInsideParentheses(normalized)
-    .replace(/_ \(/g, "_(")
-    .replace(/\)_([^\s_\n])/g, `)_${paragraphBreak}$1`)
-    .replace(/\]([A-Z])/g, `]${paragraphBreak}$1`);
-
-  const depthMap = buildParenDepthMap(normalized);
-  normalized = normalized.replace(
-    /([.)—])(\s*)(?=(?:[A-Z[]|:rb_))/g,
-    (match: string, punct: string, spacing: string, index: number) => {
-      const depthAfterPunct =
-        punct === ")" ? (depthMap[index + 1] ?? 0) : (depthMap[index] ?? 0);
-      if (depthAfterPunct > 0) return match;
-      if (spacing.length > 0) return match;
-      return `${punct}${paragraphBreak}`;
-    },
-  );
-
-  return normalized;
-}
 
 function themedSvgDataUri(assetRelPath: string): string {
   const cacheKey = `${assetRelPath}:${environment.appearance}`;
@@ -166,111 +84,33 @@ function themedSvgDataUri(assetRelPath: string): string {
   }
 }
 
-function renderTextForRaycast(text: string): string {
-  return normalizeCardTextLayout(text).replace(
-    /:rb_(\w+):/g,
-    (_match, key: string) => {
-      const energyMatch = /^energy_(\d+)$/.exec(key);
-      if (energyMatch) {
-        const n = parseInt(energyMatch[1], 10);
-        return CIRCLED_DIGITS[n] ?? `(${n})`;
-      }
-      const svgAsset = TOKEN_SVG_ASSETS[key];
-      if (svgAsset) {
-        const uri = themedSvgDataUri(svgAsset);
-        if (uri) return `![${key}](${uri})`;
-      }
-      const pngAsset = TOKEN_PNG_ASSETS[key];
-      if (pngAsset) {
-        const filePath = join(environment.assetsPath, pngAsset);
-        const fileUrl = pathToFileURL(filePath);
-        fileUrl.searchParams.set("raycast-width", String(INLINE_ICON_SIZE));
-        fileUrl.searchParams.set("raycast-height", String(INLINE_ICON_SIZE));
-        return `![${key}](${fileUrl.href})`;
-      }
-      return TOKEN_TEXT_FALLBACKS[key] ?? `[${key}]`;
-    },
-  );
-}
-
-const TYPE_ICONS: Record<string, string> = {
-  unit: "icons/types/unit.png",
-  champion: "icons/types/champion.png",
-  legend: "icons/types/legend.png",
-  spell: "icons/types/spell.png",
-  gear: "icons/types/gear.png",
-  battlefield: "icons/types/battlefield.png",
-  rune: "icons/types/rune.png",
-};
-
-const RARITY_ICONS: Record<string, string> = {
-  common: "icons/rarity/rarity_common.png",
-  uncommon: "icons/rarity/rarity_uncommon.png",
-  rare: "icons/rarity/rarity_rare.png",
-  showcase: "icons/rarity/rarity_showcase.png",
-};
-
-const DOMAIN_ICONS: Record<string, string> = {
-  fury: "icons/domains/rune_fury.png",
-  calm: "icons/domains/rune_calm.png",
-  mind: "icons/domains/rune_mind.png",
-  body: "icons/domains/rune_body.png",
-  chaos: "icons/domains/rune_chaos.png",
-  order: "icons/domains/rune_order.png",
-};
-
-/** Pick the icon key that best represents the type line, mirroring frontend prefix logic. */
-function typeIconKey(
-  type?: string,
-  supertype?: string | null,
-): string | undefined {
-  const tl = type?.toLowerCase();
-  const st = supertype?.toLowerCase();
-  if (st === "token" || st === "basic") return tl === "token" ? "unit" : tl;
-  if (tl) return tl;
-  return st;
-}
-
-function getTypeIcon(
-  type?: string,
-  supertype?: string | null,
-): Image.ImageLike | undefined {
-  const key = typeIconKey(type, supertype);
-  const src = key ? TYPE_ICONS[key] : undefined;
-  return src ? tinted(src) : undefined;
-}
-
-function getRarityIcon(rarity?: string): Image.ImageLike | undefined {
-  const src = rarity ? RARITY_ICONS[rarity.toLowerCase()] : undefined;
-  return src ? { source: src } : undefined;
-}
-
-function getDomainIcon(domain: string): Image.ImageLike | undefined {
-  const src = DOMAIN_ICONS[domain.toLowerCase()];
-  return src ? { source: src } : undefined;
-}
-
 /**
- * Plain-text type line aligned with `CardPage.tsx` (no icons): supertype
- * `token` / `basic` uses a space prefix (`Token Unit`); type `unit` / `basic`
- * with a supertype uses an em dash (`Unit — Champion`); otherwise
- * `supertype type`.
+ * Rules text as Raycast Markdown: the kernel splits paragraphs (a blank line
+ * each, since Markdown folds single newlines) and every `:rb_…:` token becomes
+ * an inline image from `assets/`, a circled digit, or a text stand-in.
  */
-export function formatTypeLine(
-  type?: string,
-  supertype?: string | null,
-): string | null {
-  if (!type && !supertype) return null;
-  if (!type) return supertype!;
-  if (!supertype) return type;
-  const tl = type.toLowerCase();
-  const st = supertype.toLowerCase();
-  // Supertype is a prefix modifier (e.g. "Token Unit", "Basic Land")
-  if (st === "token" || st === "basic") return `${supertype} ${type}`;
-  // Type carries the subtype after an em dash (e.g. "Unit — Champion")
-  if (tl === "unit" || tl === "basic") return `${type} — ${supertype}`;
-  // Fallback: supertype then type
-  return `${supertype} ${type}`;
+function renderTextForRaycast(text: string): string {
+  return replaceIconTokens(normalizeCardTextLayout(text, "\n\n"), (key) => {
+    const energyMatch = /^energy_(\d+)$/.exec(key);
+    if (energyMatch) {
+      const n = parseInt(energyMatch[1], 10);
+      return CIRCLED_DIGITS[n] ?? `(${n})`;
+    }
+    const svgAsset = TOKEN_SVG_ASSETS[key];
+    if (svgAsset) {
+      const uri = themedSvgDataUri(svgAsset);
+      if (uri) return `![${key}](${uri})`;
+    }
+    const pngAsset = TOKEN_PNG_ASSETS[key];
+    if (pngAsset) {
+      const filePath = join(environment.assetsPath, pngAsset);
+      const fileUrl = pathToFileURL(filePath);
+      fileUrl.searchParams.set("raycast-width", String(INLINE_ICON_SIZE));
+      fileUrl.searchParams.set("raycast-height", String(INLINE_ICON_SIZE));
+      return `![${key}](${fileUrl.href})`;
+    }
+    return TOKEN_TEXT_FALLBACKS[key] ?? tokenPlainLabel(key);
+  });
 }
 
 interface CardDetailProps {
@@ -322,26 +162,23 @@ function buildMarkdown(card: Oracle): string {
   return lines.join("\n");
 }
 
+/** Name, type line, then rules text with `{3}` / `{Exhaust}` stand-ins for icons. */
 function buildCopyableText(card: Oracle): string {
   const lines: string[] = [card.name];
-  const typeLine = formatTypeLine(card.card_type, card.supertype);
+  const typeLine = cardTypeLine(card);
   if (typeLine) lines.push(typeLine);
   if (card.text?.plain?.trim()) {
     if (lines.length > 1) lines.push("");
-    lines.push(card.text.plain.trim());
+    lines.push(formatCardTextForClipboard(card.text.plain));
   }
   return lines.join("\n");
 }
 
 export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
-  const site = siteBaseUrl.replace(/\/$/, "");
   const printing = card.preferred_printing;
-  const siteUrl =
-    printing?.riftseer_uri ??
-    card.riftseer_uri ??
-    `${site}/card/${printing?.id ?? card.id}`;
+  const siteUrl = cardSiteUrl(card, printing, siteBaseUrl);
   const markdown = buildMarkdown(card);
-  const typeLine = formatTypeLine(card.card_type, card.supertype);
+  const typeLine = cardTypeLine(card);
   const imageDownloadUrl = printingImageDownloadUrl(printing);
 
   useEffect(() => {
@@ -356,7 +193,7 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
         <Detail.Metadata.Label
           title="Type"
           text={typeLine}
-          icon={getTypeIcon(card.card_type, card.supertype)}
+          icon={typeIcon(card)}
         />
       )}
       {card.energy != null && (
@@ -378,7 +215,7 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
             <Detail.Metadata.TagList.Item
               key={d}
               text={d}
-              icon={getDomainIcon(d)}
+              icon={domainIcon(d)}
             />
           ))}
         </Detail.Metadata.TagList>
@@ -397,7 +234,7 @@ export function CardDetail({ card, siteBaseUrl, onView }: CardDetailProps) {
         <Detail.Metadata.Label
           title="Rarity"
           text={printing.rarity}
-          icon={getRarityIcon(printing.rarity)}
+          icon={rarityIcon(printing.rarity)}
         />
       )}
       {printing?.set && (
