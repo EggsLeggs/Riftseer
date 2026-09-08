@@ -59,7 +59,21 @@
     },
   },
   // https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
+  // An ALLOWLIST, not just a deploy-time assertion: declaring it replaces
+  // wrangler's .dev.vars/.env inference, so a key missing from here never
+  // reaches the Worker under `wrangler dev`. Both optional secrets below were
+  // missing, and a secret that silently does not arrive is not merely absent:
+  // `INGEST_SECRET` guards the manual POST /ingest, and that guard is written
+  // `if (env.INGEST_SECRET)`, so an unset value skips the check rather than
+  // failing it. See docs/adding-an-env-var.md.
   "secrets": {
-    "required": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+    "required": [
+      "SUPABASE_URL",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      // Optional — unauthenticated upstream calls when unset.
+      "RIFTCODEX_API_KEY",
+      // Optional — leave unset only where POST /ingest may be called freely.
+      "INGEST_SECRET",
+    ],
   },
 }
