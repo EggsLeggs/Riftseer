@@ -3,8 +3,10 @@
 The Tabletop Simulator mod, imported from `EggsLeggs/riftbound-tcg-tts` with its
 history. It is Lua plus two Python tools, not a Bun workspace member. Paths in
 this file are relative to `apps/tts/`, and the tools run from that directory.
-The root `AGENTS.md` governs commits and PRs; this file carries the rules of the
-mod itself.
+`bun run tts:extract` and `bun run tts:inject` from the repository root are the
+same two commands, and are what the workspace file's tasks call. The root
+`AGENTS.md` governs commits and PRs; this file carries the rules of the mod
+itself.
 
 ## What this project is
 

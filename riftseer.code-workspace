@@ -14,6 +14,7 @@
     { "name": "discord-bot", "path": "apps/discord-bot" },
     { "name": "reddit-bot", "path": "apps/reddit-bot" },
     { "name": "raycast-extension", "path": "apps/raycast-extension" },
+    { "name": "tts", "path": "apps/tts" },
     { "name": "types", "path": "packages/types" },
     { "name": "core", "path": "packages/core" },
   ],
@@ -25,6 +26,7 @@
       "apps/discord-bot": true,
       "apps/reddit-bot": true,
       "apps/raycast-extension": true,
+      "apps/tts": true,
       "packages/types": true,
       "packages/core": true,
       "**/.next": true,
@@ -35,6 +37,10 @@
       "**/package-lock.json": true,
       "**/worker-configuration.d.ts": true,
       "**/cloudflare-env.d.ts": true,
+      // The TTS save is the build artifact tools/inject.py writes, not
+      // what you edit. scripts/*.lua and ui/global.xml are the source;
+      // hand-editing the JSON is how the two fall out of sync.
+      "**/mod/Riftbound.json": true,
     },
     "typescript.tsdk": "node_modules/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,
@@ -96,6 +102,24 @@
             "endsPattern": "Ready in",
           },
         },
+      },
+      // The two halves of the TTS round trip. `tts:extract` after the user
+      // saves in TTS, `tts:inject` after editing scripts/ or ui/ here. Both
+      // are one-shot, so they show their output in the shared panel and take
+      // no problem matcher; the tools print what they changed.
+      {
+        "label": "tts:extract",
+        "type": "shell",
+        "command": "bun run tts:extract",
+        "options": { "cwd": "${workspaceFolder:ROOT}" },
+        "problemMatcher": [],
+      },
+      {
+        "label": "tts:inject",
+        "type": "shell",
+        "command": "bun run tts:inject",
+        "options": { "cwd": "${workspaceFolder:ROOT}" },
+        "problemMatcher": [],
       },
     ],
   },

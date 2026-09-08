@@ -29,6 +29,7 @@ Notable changes to Riftseer. The format follows [Keep a Changelog](https://keepa
 - Deck logic moved from the web app into `packages/types`, the deck editor became a reducer, and the server seam is enforced by a boundary rule (#170).
 - The React Compiler lint rules are on; a site that must read storage or the URL after hydration carries an inline suppression with its reason (#171).
 - The source licence is the Functional Source License 1.1 with Apache-2.0 as its future licence, replacing all rights reserved. The affiliate-link rule moved from the licence into the API's terms of service.
+- The VS Code workspace carries `apps/tts` as a folder root, with the extract and inject round trip as tasks.
 
 ### Removed
 

@@ -62,7 +62,7 @@ bun run db:local:reset  # drop the volume, rebuild from supabase/migrations
 - The root `.env` belongs to the web dev server and holds production values. `bunfig.toml` sets `env = false`, so Bun does not auto-load it into tests, database runners or other non-web processes; web commands pass `--env-file ../../.env` explicitly. Wrangler still reads declared secrets from `process.env` first, so `scripts/wrangler-dev.mjs` strips those keys before spawning as a safeguard. A Worker's local values live in its own `.dev.vars*` files, never in `.env`.
 - The API and ingest worker share `--persist-to ../../.wrangler/shared`. Split them and an admin image upload lands in a bucket the consumer cannot see.
 - A new env var or secret touches several files per Worker, and a missed one is silently absent under `wrangler dev`. `docs/adding-an-env-var.md` is the checklist.
-- `riftseer.code-workspace` is the VS Code entry point: every folder once, the db, api and web scripts as tasks, and one compound launch that starts docker, attaches to the API on inspector port 9229 and debugs web. It never runs `dev:prod`.
+- `riftseer.code-workspace` is the VS Code entry point: every folder once, the db, api, web and tts scripts as tasks, and one compound launch that starts docker, attaches to the API on inspector port 9229 and debugs web. It never runs `dev:prod`.
 
 ## Verifying
 

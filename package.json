@@ -44,6 +44,8 @@
     "check": "bun run lint && bun run format:check && bun run typecheck && bun test && node scripts/check-docs-references.mjs && bun run lint:md && bun run lint:boundaries && bun run check:wrangler && bun run spec:check",
     "check:wrangler": "bun scripts/check-wrangler-consistency.mjs && bun test scripts",
     "spec:check": "cd apps/api && bun run generate:spec && git diff --exit-code -- openapi.json",
+    "tts:extract": "cd apps/tts && PYTHONUTF8=1 python3 tools/extract.py",
+    "tts:inject": "cd apps/tts && PYTHONUTF8=1 python3 tools/inject.py",
     "dev:prod": "bun run --filter '@riftseer/api' dev & bun run --filter '@riftseer/web' dev & wait"
   },
   "devDependencies": {
