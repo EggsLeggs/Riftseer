@@ -71,7 +71,11 @@ if (!res.ok) {
 interface Operation {
   security?: readonly SecurityRequirement[];
 }
-const spec: { paths: Record<string, Record<string, Operation>> } = await res.json();
+// `Response.json()` answers `unknown`, and this one is our own swagger
+// output rather than a third party's, so a narrow assertion is honest here.
+// The loop below is the real check: every route that should carry a lock must
+// find its operation, or generation fails.
+const spec = (await res.json()) as { paths: Record<string, Record<string, Operation>> };
 
 // A guarded route with no operation to stamp means the route and the document
 // have already drifted, which is the failure this whole mechanism exists to

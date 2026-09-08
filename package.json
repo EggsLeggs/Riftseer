@@ -29,7 +29,7 @@
     "test": "bun test packages/types/src/__tests__ packages/core/src/__tests__ apps/api/src/__tests__ apps/ingest-worker/src/__tests__ apps/web/src apps/discord-bot/src",
     "test:core": "bun test packages/core/src/__tests__",
     "test:api": "bun test apps/api/src/__tests__",
-    "typecheck": "./node_modules/.bin/tsc --noEmit -p packages/types/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/core/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p apps/api/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p apps/api/tsconfig.test.json && ./node_modules/.bin/tsc --noEmit -p apps/ingest-worker/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p apps/ingest-worker/tsconfig.test.json && ./node_modules/.bin/tsc --noEmit -p apps/discord-bot/tsconfig.json && cd apps/web && bun run typecheck",
+    "typecheck": "./node_modules/.bin/tsc --noEmit -p packages/types/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p packages/core/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p apps/api/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p apps/api/tsconfig.test.json && ./node_modules/.bin/tsc --noEmit -p apps/ingest-worker/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p apps/ingest-worker/tsconfig.test.json && ./node_modules/.bin/tsc --noEmit -p apps/discord-bot/tsconfig.json && ./node_modules/.bin/tsc --noEmit -p tooling/tsconfig.scripts.json && cd apps/web && bun run typecheck",
     "lint": "./node_modules/.bin/oxlint --deny-warnings --report-unused-disable-directives .",
     "lint:fix": "./node_modules/.bin/oxlint --fix . && ./node_modules/.bin/oxfmt",
     "format": "./node_modules/.bin/oxfmt",
