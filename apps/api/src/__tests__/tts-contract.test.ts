@@ -148,8 +148,35 @@ describe("POST /api/v1/cards/resolve, the importer's name resolution", () => {
       ["results[].oracle.is_token", "boolean"],
       ["results[].oracle.relationships.makes_tokens[].id", "string"],
       ["results[].oracle.relationships.makes_tokens[].name", "string"],
-      ["results[].oracle.printings[].image.normal", "string"],
-      ["results[].printing.image.normal", "string"],
+      ["results[].oracle.printings[].image.original", "string"],
+      ["results[].printing.image.original", "string"],
     ]);
+
+    // Every key of `image` is optional, so pinning one of them proves only that
+    // it is declared. The mod read `image.normal` on that basis and spawned
+    // every card blank: no printing in production is hosted, and unhosted art
+    // carries `original` alone. The Lua walks the same ladder as
+    // `printingImageUrl()` now, so the whole ladder is what has to stay
+    // declared — and `original` is the rung that is actually always there.
+    it.each([
+      ["results[].printing.image.small", "string"],
+      ["results[].printing.image.normal", "string"],
+      ["results[].printing.image.large", "string"],
+    ] as Shape)("%s is declared as %s, though never guaranteed", (dotted, type) =>
+      expectField(responseSchema("post", route), dotted, type),
+    );
+
+    it("declares no image key as required, which is why the ladder exists", () => {
+      const image = resolve(responseSchema("post", route), "results[].printing.image");
+      // Prove the node resolved before asserting something is absent from it,
+      // or this passes on a typo.
+      expect(Object.keys(field(image, "properties") as object).sort()).toEqual([
+        "large",
+        "normal",
+        "original",
+        "small",
+      ]);
+      expect(field(image, "required")).toBeUndefined();
+    });
   });
 });
