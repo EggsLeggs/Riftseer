@@ -10,10 +10,14 @@
  *   R2 and queue names   the API produces into a queue nobody consumes
  *   web's env.production wrangler does not inherit bindings under --env,
  *                        so the block duplicates the top level by hand
+ *   generated env types  a var or secret declared in the config but absent
+ *                        from the Worker's worker-configuration.d.ts
  *
  * Bun parses JSONC on import, so the configs are read as-is. Runs under bun,
  * not node, for that reason.
  */
+
+import { readFileSync } from "node:fs";
 
 import api from "../apps/api/wrangler.jsonc";
 import discordBot from "../apps/discord-bot/wrangler.jsonc";
@@ -124,6 +128,32 @@ export function productionBindingProblems(top, production = {}) {
 
 problems.push(...productionBindingProblems(web, web.env?.production ?? {}));
 
+// `wrangler types` writes the Env interface from the config, so a var or
+// secret added to a wrangler.jsonc without rerunning it leaves the Worker's
+// own Env type missing a binding the code may already read. That is how the
+// API's type went six secrets stale.
+//
+// This compares names only, never the generated file's shape or its hash, so
+// a wrangler upgrade that changes formatting cannot turn it red on an
+// unrelated pull request.
+export function missingGeneratedBindings(configFile, config, typesFile, typesSource) {
+  const declared = [...Object.keys(config.vars ?? {}), ...(config.secrets?.required ?? [])];
+  return declared
+    .filter((name) => !new RegExp(`^\\s*${name}\\??:`, "m").test(typesSource))
+    .map(
+      (name) =>
+        `${typesFile}: ${name} is declared in ${configFile} but missing from the generated Env — rerun \`wrangler types\``,
+    );
+}
+
+for (const [configFile, config, typesFile] of [
+  ["apps/api/wrangler.jsonc", api, "apps/api/src/worker-configuration.d.ts"],
+  ["apps/ingest-worker/wrangler.jsonc", ingest, "apps/ingest-worker/src/worker-configuration.d.ts"],
+]) {
+  const typesSource = readFileSync(new URL(`../${typesFile}`, import.meta.url), "utf8");
+  problems.push(...missingGeneratedBindings(configFile, config, typesFile, typesSource));
+}
+
 if (import.meta.main) {
   if (problems.length > 0) {
     console.error("Wrangler configs disagree:\n");
@@ -133,6 +163,6 @@ if (import.meta.main) {
   }
 
   console.log(
-    `Wrangler configs agree: compatibility_date ${newest}, shared R2 and queue names, web env.production matches its top level.`,
+    `Wrangler configs agree: compatibility_date ${newest}, shared R2 and queue names, web env.production matches its top level, generated Env types carry every declared binding.`,
   );
 }
