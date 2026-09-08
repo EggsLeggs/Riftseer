@@ -3,8 +3,10 @@
 The Tabletop Simulator mod, imported from `EggsLeggs/riftbound-tcg-tts` with its
 history. It is Lua plus two Python tools, not a Bun workspace member. Paths in
 this file are relative to `apps/tts/`, and the tools run from that directory.
-The root `AGENTS.md` governs commits and PRs; this file carries the rules of the
-mod itself.
+`bun run tts:extract` and `bun run tts:inject` from the repository root are the
+same two commands, and are what the workspace file's tasks call. The root
+`AGENTS.md` governs commits and PRs; this file carries the rules of the mod
+itself.
 
 ## What this project is
 
@@ -101,6 +103,15 @@ GUID match in `ObjectStates`).
 3. Run `python3 tools/extract.py` to regenerate `scripts/`.
 4. Review `git diff`, commit.
 
+Step 2 is an assumption, and it is worth checking before you trust step 3. The
+save TTS loads is `~/Library/Tabletop Simulator/Saves/Riftbound.json`, and it
+has to be a symlink to **this** checkout's `mod/Riftbound.json`. A link made
+before the monorepo import points at the old standalone `riftbound-tcg-tts`
+repo, in which case the user's in-game save writes there, `mod/Riftbound.json`
+never moves and `extract.py` reports no diff — the whole path fails silently
+and looks like the user did nothing. `readlink` it and `cmp` it against
+`mod/Riftbound.json` before concluding that a Path B change did not take.
+
 For the GUI-driven Path B, prepare instructions for the user rather than
 attempting it yourself.
 
@@ -150,6 +161,32 @@ attempting it yourself.
 - **Do not commit changes that fail round-tripping**. After any edit, verify
   `tools/extract.py` followed by `tools/inject.py` produces a JSON whose
   re-extracted scripts equal the source files.
+- **Read card art through the size ladder, never `image.normal` directly.**
+  The API sends the full variant set only for art hosted in R2; an unhosted
+  printing carries `original` alone, and every printing in production is
+  currently unhosted. Both mod scripts have a local `printingImageURL` that
+  walks `normal → large → small → original`, which is `SIZE_FALLBACKS.normal`
+  in `packages/types/src/card-image.ts`. Other clients get this from the shared
+  helper; the Lua cannot import it, so it is duplicated on purpose.
+- **Three objects rewrite their own script at runtime.** `30f3c2`, `94b67a`
+  and `e6f47f` ship a bootstrap that calls `self.setLuaScript(handler)` on
+  load, so a loaded table holds a 252-byte handler where the repo holds a
+  1.2 KB bootstrap. Get Lua Scripts reporting them as different is expected
+  and is not drift. After any Path B save, check those three for a large
+  deletion before committing — `extract.py` will bake the runtime handler over
+  the bootstrap and the round trip will still pass. `Components.md` has the
+  detail.
+- **Never commit `riftseer.code-workspace` out of a TTS session**. The
+  extension's **Get Lua Scripts** adds its temp directory to the workspace via
+  `updateWorkspaceFolders`, which rewrites the tracked workspace file: a
+  machine-specific `/var/folders/…` path plus a reflow of the whole `folders`
+  array, ~44 lines for one added folder. It has to stay while the user works —
+  **Save And Play** refuses to run unless that directory is a workspace root —
+  so the rule is `git checkout -- riftseer.code-workspace` before committing,
+  not removing it early. Read `git diff` on it first: a deliberate workspace
+  edit made in the same session goes with it, and the reflow means the two do
+  not separate hunk by hunk, so restore and redo the edit. Check `git status`
+  at the repository root, not just under `apps/tts/`.
 - **Do not "fix" code from the original authors that looks idiosyncratic**
   but works. The MTG mod has had 985 updates over five years; weird patterns
   often have history.

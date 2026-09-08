@@ -154,6 +154,7 @@ Three shared slots on the table centre line. `getBattlefieldZone()` / `getBattle
 | 3c7ad3, 82e64d | Drop-On-Card Counter bags ×2 | OIBAP | ✓ | Spawns draggable chip counters (`7071ce`, `f62d00`, `4f684b`, `c1ae57`); chip art retextured to Riftbound UI. Bag mesh/diffuse still upstream. |
 | 3cba4d/30f3c2/94b67a, bfceec/30f3c2/e6f47f | Experience Counter bags ×2 | amory | ✓ | Re-added from legacy side-table pile; converted to custom-card objects using Riftbound experience front/back art. |
 | 7ae211/be93f0, daebb2/8e1f05, b991d5/a90926, 887dd2/63e4e1, 52e44b/a7dc6e, 389c4d/2c49c6 (set 1) + 4783af, cdbccc, 220d2f, 1c4a59, aeeb11, cd8bb6 (set 2) | Domain Counter bags ×12 | OIBAP | ✓ | Retextured and relabelled from upstream mana colours to Riftbound domains: Calm, Body, Fury, Chaos, Mind, Order. |
+| 70c001 (left), 70c002 (right) | Riftbound Tokens pile ×2 | amory | ✓ | `DeckCustom` of the three Riftbound tokens — Gold (Gear), Recruit and Sprite (Units) — one beside each Experience Counter at z ±11.70. Contains `70c0a1`–`70c0a3` and `70c0b1`–`70c0b3`, deck keys 9001–9003. Faces are Riot CMS art from the Riftseer API; back is `CARD_BACK_NORMAL` from the importer. Drawable, so it empties as tokens are taken — reset the table or re-add to refill. |
 
 ---
 
@@ -223,6 +224,18 @@ Unknown purpose — do not remove until identified.
 
 ---
 
+### Adding an object to a player column
+
+`e40450_table_instructions.lua:closeSelf` tears the table down to two seats when
+the Table Instructions tile is closed. It **destructs** every GUID in
+`unnecessaryStuff` — which is the whole right-hand utility column, `bfceec` and
+`e6f47f` included — and shifts every GUID in `moveThese`, the left-hand column,
+by −3 on x.
+
+Anything new placed on either column has to join the matching list, or it is
+left floating where its neighbours used to be. The token piles are registered:
+`70c001` in `moveThese`, `70c002` in `unnecessaryStuff`.
+
 ## Tiles needing content updates
 
 ~~These objects exist and function but display legacy MTG content.~~
@@ -254,11 +267,60 @@ These are live code issues — not cosmetic. They should be cleaned up before th
 
 ### MTG-specific logic still in `global.lua`
 
+The ready/untap remnants are fixed. What is left is cosmetic and tracked above.
+
 | Location | Code | Issue |
 |----------|------|-------|
-| `global.lua:904` | `cname:find('mana vault') or cname:find('basalt monolith') or cname:find('grim monolith')` | Ready function skips rotation for these MTG card names. Dead in Riftbound but harmless unless a card is ever named that. |
-| `global.lua:908` | `cdesc:find("doesn't untap during your untap step")` | Ready function skips rotation for cards with this MTG rules text. |
-| `global.lua:864–866` | `rb_stuncounter`, `rb_frozen`, `rb_exert` keys in `playerUntap` | Leftover MTG mechanic keys. `rb_stuncounter` doesn't match the registered keyword `rb_stun` (boolean) — so Stun **never prevents readying and is never cleared by Ready**. `rb_frozen` and `rb_exert` are not registered keywords at all. |
-| `global.lua:2887, 2916` | `'mana_cost'` in `card_keys` and `card_face_keys` arrays | Legacy Scryfall API field kept in the JSON parse key-list; already commented out at line 2666 but not removed from the arrays. |
-| `global.lua:1489` | `-- this should get the highest resting card from the library zones` | Comment uses "library zones" (MTG term for deck zone). |
-| `4a0860_custom_dice.lua:37` | `player.." paid "..timesRolled.." mana for "..side.."."` | Chat string says "paid X mana for Y" — MTG terminology in the custom dice script. |
+| `global.lua:3051` | `--json.mana_cost` | A commented-out Scryfall field left beside the parser. The key itself is gone from `normal_card_keys` and `card_face_keys`. |
+
+Fixed and kept here so the same ground is not re-walked:
+
+| Was | Resolution |
+|-----|------------|
+| `rb_stuncounter`, `rb_frozen`, `rb_exert` in `playerUntap` | `playerUntap` reads `rb_stun`, the registered boolean, and clears it on ready. Stun now prevents readying and is consumed by it, which is what the Ready button row above always claimed. `rb_frozen` and `rb_exert` were never registered keywords, so both branches were unreachable and are gone. |
+| `'mana_cost'` in `card_keys` and `card_face_keys` | Removed from both arrays. |
+| `-- ... from the library zones` | Comment says "deck zones". |
+| `4a0860_custom_dice.lua:37` "paid X mana for Y" | The object is not in the save. Its orphaned script was deleted rather than reworded — see below. |
+| `mana vault` / `basalt monolith` / `grim monolith` / `doesn't untap during your untap step` | Not present in `global.lua`; cleaned up before this pass. |
+
+### Orphaned object scripts
+
+`scripts/objects/` held 19 `.lua` files whose GUIDs are in no object in the
+save — MTG Planechase and Archenemy cards plus the custom dice, removed from
+the table but never from the source tree. Neither tool notices: `extract.py`
+only writes files for objects it finds and `inject.py` skips a file with no
+matching GUID, so the round trip in `.github/workflows/tts.yml` stayed green
+with all 19 present. Deleted, taking `scripts/objects/` from 111 files to 92,
+one per scripted object in the save.
+
+When an object is removed from the table in TTS, delete its script file in the
+same commit. Nothing else will tell you.
+
+### Self-rewriting objects — do not trust a save from a live table
+
+Three objects ship a **bootstrap** script and replace it with a smaller runtime
+handler on first load: `30f3c2_experience.lua`, `94b67a_experience_counter.lua`
+and `e6f47f_experience_counter.lua`. Each `onLoad` enables its πCounter
+property, calls `self.setLuaScript(handler)` and reloads. The committed 1.2 KB
+file is the bootstrap; once the table is loaded, the object holds a 252-byte
+`onNumberTyped` handler instead.
+
+This is by design, and it means **Get Lua Scripts on a loaded table reports
+those objects as differing from the repo**. That is not drift and must not be
+"fixed" by copying the game's version back.
+
+It also means an in-game save of a table that has been loaded writes the
+252-byte handler into `mod/Riftbound.json`, and `extract.py` then overwrites the
+bootstrap with it — silently, since the round trip still passes. Path B is only
+safe for these objects if you check them afterwards:
+
+```bash
+git diff --stat -- scripts/objects/94b67a_experience_counter.lua \
+  scripts/objects/e6f47f_experience_counter.lua scripts/objects/30f3c2_experience.lua
+```
+
+A large deletion in any of those three is the bootstrap being lost. Restore
+those files rather than committing the shrink.
+
+`4f684b`, `c1ae57` and `def0af` also call `setLuaScript`, but on an object
+passed into `toggleProp`, not on themselves, so their own sources are stable.
