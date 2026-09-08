@@ -154,6 +154,7 @@ Three shared slots on the table centre line. `getBattlefieldZone()` / `getBattle
 | 3c7ad3, 82e64d | Drop-On-Card Counter bags ×2 | OIBAP | ✓ | Spawns draggable chip counters (`7071ce`, `f62d00`, `4f684b`, `c1ae57`); chip art retextured to Riftbound UI. Bag mesh/diffuse still upstream. |
 | 3cba4d/30f3c2/94b67a, bfceec/30f3c2/e6f47f | Experience Counter bags ×2 | amory | ✓ | Re-added from legacy side-table pile; converted to custom-card objects using Riftbound experience front/back art. |
 | 7ae211/be93f0, daebb2/8e1f05, b991d5/a90926, 887dd2/63e4e1, 52e44b/a7dc6e, 389c4d/2c49c6 (set 1) + 4783af, cdbccc, 220d2f, 1c4a59, aeeb11, cd8bb6 (set 2) | Domain Counter bags ×12 | OIBAP | ✓ | Retextured and relabelled from upstream mana colours to Riftbound domains: Calm, Body, Fury, Chaos, Mind, Order. |
+| 70c001 (left), 70c002 (right) | Riftbound Tokens pile ×2 | amory | ✓ | `DeckCustom` of the three Riftbound tokens — Gold (Gear), Recruit and Sprite (Units) — one beside each Experience Counter at z ±11.70. Contains `70c0a1`–`70c0a3` and `70c0b1`–`70c0b3`, deck keys 9001–9003. Faces are Riot CMS art from the Riftseer API; back is `CARD_BACK_NORMAL` from the importer. Drawable, so it empties as tokens are taken — reset the table or re-add to refill. |
 
 ---
 
@@ -222,6 +223,18 @@ Unknown purpose — do not remove until identified.
 | 3d4319 | Custom_Model | unknown | — |
 
 ---
+
+### Adding an object to a player column
+
+`e40450_table_instructions.lua:closeSelf` tears the table down to two seats when
+the Table Instructions tile is closed. It **destructs** every GUID in
+`unnecessaryStuff` — which is the whole right-hand utility column, `bfceec` and
+`e6f47f` included — and shifts every GUID in `moveThese`, the left-hand column,
+by −3 on x.
+
+Anything new placed on either column has to join the matching list, or it is
+left floating where its neighbours used to be. The token piles are registered:
+`70c001` in `moveThese`, `70c002` in `unnecessaryStuff`.
 
 ## Tiles needing content updates
 
