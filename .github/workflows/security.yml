@@ -26,3 +26,9 @@ jobs:
       - uses: gitleaks/gitleaks-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The action scans `<BASE_REF>^..<head>` and defaults BASE_REF to the
+          # oldest commit in the event. A root commit has no `^`, which is what
+          # #166 (the TTS subtree import) hit. The base branch tip always has
+          # a parent, so scan from there; on a push, `before` is all zeros for
+          # a new branch, and scanning from the head alone is the fallback.
+          BASE_REF: ${{ github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || github.sha }}
