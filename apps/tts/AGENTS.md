@@ -116,6 +116,12 @@ attempting it yourself.
   byte for byte.
 - The user verifies behaviourally by loading the save in TTS. Always tell
   them what to test (e.g. "load the save and try drawing from a deck").
+- The mod is the only client with no compiler between it and the API, so the
+  fields the Lua reads from `api.riftseer.com` are asserted on the API side in
+  `apps/api/src/__tests__/tts-contract.test.ts`. Change what the Lua reads and
+  change that list in the same PR — a path nothing consumes only makes the API
+  harder to move, and one that is missing lets a response shape break an import
+  in the field (#126).
 
 ## Conventions
 
