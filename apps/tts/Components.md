@@ -254,11 +254,31 @@ These are live code issues — not cosmetic. They should be cleaned up before th
 
 ### MTG-specific logic still in `global.lua`
 
+The ready/untap remnants are fixed. What is left is cosmetic and tracked above.
+
 | Location | Code | Issue |
 |----------|------|-------|
-| `global.lua:904` | `cname:find('mana vault') or cname:find('basalt monolith') or cname:find('grim monolith')` | Ready function skips rotation for these MTG card names. Dead in Riftbound but harmless unless a card is ever named that. |
-| `global.lua:908` | `cdesc:find("doesn't untap during your untap step")` | Ready function skips rotation for cards with this MTG rules text. |
-| `global.lua:864–866` | `rb_stuncounter`, `rb_frozen`, `rb_exert` keys in `playerUntap` | Leftover MTG mechanic keys. `rb_stuncounter` doesn't match the registered keyword `rb_stun` (boolean) — so Stun **never prevents readying and is never cleared by Ready**. `rb_frozen` and `rb_exert` are not registered keywords at all. |
-| `global.lua:2887, 2916` | `'mana_cost'` in `card_keys` and `card_face_keys` arrays | Legacy Scryfall API field kept in the JSON parse key-list; already commented out at line 2666 but not removed from the arrays. |
-| `global.lua:1489` | `-- this should get the highest resting card from the library zones` | Comment uses "library zones" (MTG term for deck zone). |
-| `4a0860_custom_dice.lua:37` | `player.." paid "..timesRolled.." mana for "..side.."."` | Chat string says "paid X mana for Y" — MTG terminology in the custom dice script. |
+| `global.lua:3051` | `--json.mana_cost` | A commented-out Scryfall field left beside the parser. The key itself is gone from `normal_card_keys` and `card_face_keys`. |
+
+Fixed and kept here so the same ground is not re-walked:
+
+| Was | Resolution |
+|-----|------------|
+| `rb_stuncounter`, `rb_frozen`, `rb_exert` in `playerUntap` | `playerUntap` reads `rb_stun`, the registered boolean, and clears it on ready. Stun now prevents readying and is consumed by it, which is what the Ready button row above always claimed. `rb_frozen` and `rb_exert` were never registered keywords, so both branches were unreachable and are gone. |
+| `'mana_cost'` in `card_keys` and `card_face_keys` | Removed from both arrays. |
+| `-- ... from the library zones` | Comment says "deck zones". |
+| `4a0860_custom_dice.lua:37` "paid X mana for Y" | The object is not in the save. Its orphaned script was deleted rather than reworded — see below. |
+| `mana vault` / `basalt monolith` / `grim monolith` / `doesn't untap during your untap step` | Not present in `global.lua`; cleaned up before this pass. |
+
+### Orphaned object scripts
+
+`scripts/objects/` held 19 `.lua` files whose GUIDs are in no object in the
+save — MTG Planechase and Archenemy cards plus the custom dice, removed from
+the table but never from the source tree. Neither tool notices: `extract.py`
+only writes files for objects it finds and `inject.py` skips a file with no
+matching GUID, so the round trip in `.github/workflows/tts.yml` stayed green
+with all 19 present. Deleted, taking `scripts/objects/` from 111 files to 92,
+one per scripted object in the save.
+
+When an object is removed from the table in TTS, delete its script file in the
+same commit. Nothing else will tell you.

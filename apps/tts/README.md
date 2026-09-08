@@ -233,7 +233,6 @@ This rewrites `mod/Riftbound.json` using the current `.lua` and `.xml` files.
 ## Optional follow-ups
 
 - **Table Instructions** (`e40450`) and **Chat Commands** (`7b59f7`) — rewrite tile copy for Riftbound (content is still legacy MTG).
-- **`global.lua` cleanup** — remove dead MTG ready/untap paths and align Stun with `rb_stun` (see Components.md).
 - **πMenu** — replace WUBRGC colour-filter variable names with Riftbound domains.
 
 ### Re-adding physical keyword token bags (optional)

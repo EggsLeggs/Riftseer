@@ -1190,10 +1190,7 @@ function playerUntap(button, playerColor, alt)
   if button == data[playerColor]["untapButton"] then
     buttonPress(button,drawDelay*0.75)
     local enc = Global.getVar("Encoder")
-    local keywordPrefix = 'rb_'
-    local stunCounterKey = keywordPrefix..'stuncounter'
-    local frozenKey = keywordPrefix..'frozen'
-    local exertKey = keywordPrefix..'exert'
+    local stunKey = 'rb_stun'
     local readyRotY = getPlayboardReadyRotationY(playerColor)
     local rr = nil
     local untaps = true
@@ -1204,29 +1201,15 @@ function playerUntap(button, playerColor, alt)
         if enc ~= nil then
           if enc.call("APIobjectExists",{obj=v}) then
             local encdat = enc.call("APIobjGetAllData",{obj=v})
-            if encdat[stunCounterKey] ~= nil and untaps then
-              if encdat[stunCounterKey] > 0 then
-                flash = true
-                untaps = false
-                encdat[stunCounterKey] = encdat[stunCounterKey]-1
-                enc.call("APIobjSetAllData",{obj=v,data=encdat})
-                enc.call("APIrebuildButtons",{obj=v})
-              end
-            end
-            if encdat[frozenKey] ~= nil then
-              if encdat[frozenKey] == true then
-                flash = true
-                untaps = false
-              end
-            end
-            if encdat[exertKey] ~= nil then
-              if encdat[exertKey] == true then
-                flash = true
-                untaps = false
-                encdat[exertKey] = false
-                enc.call("APIobjSetAllData",{obj=v,data=encdat})
-                enc.call("APIrebuildButtons",{obj=v})
-              end
+            -- Stun is a boolean status, not a counter: see KeywordList in
+            -- ae12d3_keywords.lua. A stunned card does not ready, and readying
+            -- it is what clears the stun.
+            if encdat[stunKey] == true then
+              flash = true
+              untaps = false
+              encdat[stunKey] = false
+              enc.call("APIobjSetAllData",{obj=v,data=encdat})
+              enc.call("APIrebuildButtons",{obj=v})
             end
           end
         end
@@ -1860,7 +1843,7 @@ end
 
 ----------------------------------- UNIVERSAL ----------------------------------
 
--- this should get the highest resting card from the library zones
+-- this should get the highest resting card from the deck zones
 -- works if there are extra cards flipped face up on top of the deck
 -- (personally, I play with a bunch of decks that keep the top card of the library revealed)
 -- works if there is just one card remaining in the zone, too
@@ -3286,7 +3269,6 @@ normal_card_keys={
   'lang',
   'layout',
   'image_uris',
-  'mana_cost',
   'cmc',
   'type_line',
   'printed_type_line',  --for non-EN cards
@@ -3315,7 +3297,6 @@ related_card_keys={     -- "all_parts":[{"object":"related_card",
 card_face_keys={        -- "card_faces":[{"object":"card_face",
   'name',
   'printed_name',       --for non-EN cards
-  'mana_cost',
   'type_line',
   'printed_type_line',  --for non-EN cards
   'oracle_text',
