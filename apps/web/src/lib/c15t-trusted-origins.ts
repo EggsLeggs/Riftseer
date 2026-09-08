@@ -1,4 +1,4 @@
-/** Same comma-split logic as root `c15t-backend.config.ts` for c15t `trustedOrigins`. */
+/** Splits `C15T_TRUSTED_ORIGINS` for c15t, falling back to the app URL when it is unset or blank. */
 export function parseC15tTrustedOrigins(
   trustedOriginsEnv: string | undefined,
   fallbackOrigin: string,
