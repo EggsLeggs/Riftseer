@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Python
+__pycache__/
+*.pyc
+
+# TTS local working files (we only commit our canonical save)
+mod/*.bak
+mod/*.tmp

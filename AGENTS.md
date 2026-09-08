@@ -39,6 +39,7 @@ Prefer the smallest change that makes the correct behaviour unsurprising. Do not
 - `apps/ingest-worker`: scheduled ingest and image hosting.
 - `apps/discord-bot`: Worker, slash commands.
 - `apps/raycast-extension` and `apps/reddit-bot`: standalone npm projects outside the workspace, importing `@riftseer/types` through `file:../../packages/types`. A types change reaches them only after `npm install` in their own directory.
+- `apps/tts`: the Tabletop Simulator mod, Lua plus two Python tools, outside the workspace and imported with its own history. `apps/tts/AGENTS.md` explains the save, the extract and inject tools and the split licence; `.github/workflows/tts.yml` is its gate.
 - `supabase/migrations`: the schema. `docker/`, `docker-compose.yml`, `scripts/database-tests/`: the local database stack and its fixture. `supabase/docs/supabase.md` covers both environments and how a migration reaches production.
 - `scripts/`: repository checks. `docs/`: plain markdown reference, read once, rendered by GitHub.
 
@@ -84,7 +85,7 @@ bun run preview:web     # builds and runs in workerd
 
 ## Hit every surface
 
-A change to shared behaviour is not done when the website shows it. Surfaces here are `apps/web`, `apps/discord-bot`, `apps/reddit-bot` and `apps/raycast-extension`; the TTS mod lives elsewhere. Every client resolves through the API, so a provider fix reaches all of them at once, and a types change silently misses the two standalone packages until they reinstall. Say so in the PR when you leave a surface behind on purpose.
+A change to shared behaviour is not done when the website shows it. Surfaces here are `apps/web`, `apps/discord-bot`, `apps/reddit-bot`, `apps/raycast-extension` and `apps/tts`. Every client resolves through the API, so a provider fix reaches all of them at once, and a types change silently misses the two standalone packages until they reinstall. The TTS mod reads the API from inside the game and shares no code, so `apps/api/src/__tests__/tts-contract.test.ts` is what fails when a response shape it consumes moves. Say so in the PR when you leave a surface behind on purpose.
 
 ## Pull requests
 

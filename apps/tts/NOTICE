@@ -1,0 +1,209 @@
+Riftbound TCG — Tabletop Simulator Table
+Third-party notices and license scope
+
+This file is not legal advice. If you redistribute or publish derivatives,
+confirm rights for upstream Workshop content, embedded assets, and game IP
+before relying on any license here.
+
+================================================================================
+Licensed under MIT
+================================================================================
+
+The MIT License in LICENSE applies to the following.
+
+Repository files:
+
+  tools/extract.py
+  tools/inject.py
+  README.md
+  AGENTS.md
+  CLAUDE.md
+  Components.md
+  scripts/objects/80c03d_riftbound_card_importer.lua
+  scripts/objects/25dbaf_riftbound_deck_loader.lua
+  scripts/objects/c91a72_riftbound_deck_loader_dx.lua
+  scripts/objects/f4d8be_riftbound_deck_loader_dx.lua
+  scripts/objects/bfc001_battlefield_controller.lua
+  scripts/objects/7cf430_battlefield_count_control.lua
+
+Original visual assets (amory):
+
+  Visual art created for this fork and referenced by Steam Cloud URL in
+  mod/Riftbound.json, including but not limited to:
+    - Playmat / table art (per-seat playmats, legend/champion/rune zones)
+    - Banishment zones and shared battlefield row art
+    - Domain counter bag and token art (six Riftbound domains)
+    - Experience counter card faces
+    - Turn order card faces
+    - Card back textures used by the deck loader (main, legend, rune, battlefield)
+    - Counter chip, drop-on-card token, and +1 counter UI art
+    - Battlefield Link/Unlink and Conquer/Unclaim button art
+    - Score / might token presentation on the board edge
+    - Channel, Predict, and other per-player control reskins where applied
+    - Steam Workshop link tile and related table chrome
+
+  Asset binaries are hosted on Steam Cloud, not checked into this repo. MIT
+  applies to these works themselves; when redistributing copies of the art,
+  include the LICENSE and this NOTICE.
+
+When copying any MIT-licensed file or asset, include the LICENSE and this NOTICE.
+
+================================================================================
+Everything else — not under MIT
+================================================================================
+
+Unless a separate license is stated in a file header, the following are
+NOT covered by LICENSE and retain their upstream terms:
+
+  mod/Riftbound.json
+      The TTS save/build artifact. Embeds upstream Lua/XmlUI plus asset URLs.
+      Most visual URLs in this fork point to original art by amory (see below);
+      inherited script content remains upstream-licensed.
+
+  scripts/global.lua
+  scripts/objects/*.lua   (except MIT-listed paths under "Licensed under MIT" above)
+  ui/global.xml
+
+  vendor/
+      Third-party software (patched VS Code extension). See that package's
+      own license; this repo only redistributes the .vsix for convenience.
+
+================================================================================
+Upstream Tabletop Simulator mod (primary fork)
+================================================================================
+
+Forked from:
+  "MTG 4 player table - scripted"
+  Steam Workshop ID 2296042369
+  https://steamcommunity.com/sharedfiles/filedetails/?id=2296042369
+
+Original authors (no explicit license found in upstream):
+  Oops I Baked a Pie — table design, global script, hand counters, timers,
+    draw/mill/predict/reveal buttons, mulligan tiles, highlight mats, core UX
+  TyrantNomad — Easy Modules Unified; πMenu, πNotepad, πScry, πKeywords, etc.
+  Tipsy Hobbit (STEAM_0:1:13465982) — Keyword Abilities module (πKeywords lineage)
+  Amuzet / π — Score Tracker lineage (might tokens on this table)
+  rikrassen — MTG Deck / Draft / Cube Importer (removed or replaced in fork)
+  Encoder API — author unattributed in source
+
+Riftbound fork adaptation (zones, battlefield, importers, reskin art):
+  amory — MIT-scoped repository files and original visual assets listed above
+
+Upstream is distributed via Steam Workshop without a stated open-source
+license. Treat inherited scripts and the save JSON as personal-use /
+workshop-derivative unless you obtain permission from those authors.
+
+================================================================================
+This fork's Steam Workshop items
+================================================================================
+
+Published separately from the upstream MTG table; not MIT-licensed as
+Workshop submissions themselves:
+
+  Riftbound 4-Player Table — Workshop ID 3732199052
+  https://steamcommunity.com/sharedfiles/filedetails/?id=3732199052
+
+  Riftbound Card Importer — Workshop ID 3717685169
+  https://steamcommunity.com/sharedfiles/filedetails/?id=3717685169
+
+================================================================================
+Riftbound Deck Loader lineage (partial MIT, partial upstream)
+================================================================================
+
+The MIT-scoped importer and deck loader scripts above are derived from and/or
+incorporate architecture from:
+
+  DXHHH101 — "Infinite Bag" / MTG Importer deck loader family
+  https://github.com/DXHHH101/TabletopSimulatorScripts/tree/main/MTGImporter
+
+  Omes and Amuzet — original importer architecture (credited in upstream)
+
+MIT on those files covers this fork's Riftbound-specific changes and
+documentation in-repo. It does not replace any license or permission that
+may apply to DXHHH101's or the original importer's code outside this repo.
+
+================================================================================
+Battlefield Controller (MIT script, not MIT save)
+================================================================================
+
+scripts/objects/bfc001_battlefield_controller.lua is original Riftbound work
+by amory (MIT). It integrates with upstream highlight mats and zone triggers
+defined in mod/Riftbound.json; those embedded objects remain upstream-licensed.
+
+================================================================================
+Easy Modules Unified — Riftbound fork (not MIT)
+================================================================================
+
+scripts/objects/b93b40_tyrantnomad_s_easy_modules_unified.lua is a Riftbound
+adaptation of TyrantNomad's Easy Modules Unified. MTG-only UI is stripped; Might
+and Riftseer re-import modules target this save's Encoder and importers. Not
+listed under MIT; credit TyrantNomad and Tipsy Hobbit (Encoder) as above.
+
+================================================================================
+Domain counters and other reskins (not MIT)
+================================================================================
+
+Domain counter bags (Calm, Body, Fury, Chaos, Mind, Order) use scripts
+derived from the fork's MTG mana-colour counter bags. They are reskinned and
+relabeled for Riftbound (port complete on-table) but are not listed under MIT.
+Credit the upstream table authors above.
+
+Score Tracker objects (Amuzet / π lineage, might-token layout by this fork)
+and other upstream counter bags (+1, generic, text, drop-on-card) follow the
+same rule: reskins may use MIT art URLs in the save without MIT-licensing the
+underlying Lua.
+
+================================================================================
+πKeywords card tokens (not MIT)
+================================================================================
+
+scripts/objects/ae12d3_keywords.lua (Encoder object GUID ae12d3) drives the
+πKeywords property on encoded cards. It is adapted from Tipsy Hobbit's Keyword
+Abilities module and integrated via TyrantNomad's Easy Modules / πKeywords
+suite. This fork replaces MTG keyword names and mechanics with a Riftbound
+counter and status set (`rb_*` keys; legacy `mtg_*` removed). Not listed under
+MIT; credit Tipsy Hobbit and TyrantNomad as above. Physical keyword token bags
+were removed from the table; on-card πKeywords remain the supported path.
+
+================================================================================
+Tiles and docs still showing upstream MTG text (not MIT)
+================================================================================
+
+Table Instructions (`e40450`) and Chat Commands (`7b59f7`) tiles still display
+legacy MTG copy. πMenu colour-filter variables in global.lua still use WUBRGC
+names. These are tracked for cleanup in Components.md ("MTG remnants in code");
+they remain upstream-derived content in the save until rewritten.
+
+================================================================================
+Visual assets — not under MIT
+================================================================================
+
+Asset files are not stored in this git repo — mod/Riftbound.json references
+them by URL. Only original assets by amory (listed above) are MIT-licensed.
+
+Legacy / third-party assets (still present)
+  Some URLs may still reference inherited upstream workshop content, or a
+  small subset adapted from other community Workshop mods (see README.md →
+  Credits). Credit remains with those authors; not licensed under MIT.
+
+Imported card faces
+  Cards spawned by the deck loader pull faces from import sources (e.g.
+  piltoverarchive.com). Those images are separate works; rights belong to
+  their respective owners. This table does not bundle official Riftbound card
+  art in the repository.
+
+================================================================================
+Riftbound game IP
+================================================================================
+
+"Riftbound" and related game names, card text, and official art are
+trademarks and/or copyrights of their respective owners. This project is
+an unofficial fan Tabletop Simulator table, not affiliated with or
+endorsed by the game's rights holders.
+
+================================================================================
+Contact
+================================================================================
+
+If you are an upstream author and want attribution changes or licensing
+clarification, open an issue in this repository.
