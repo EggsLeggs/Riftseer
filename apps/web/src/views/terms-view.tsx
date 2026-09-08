@@ -9,7 +9,7 @@ export function TermsView() {
           <h1 className="text-4xl font-bold tracking-tight text-foreground">Terms of Service</h1>
         </div>
 
-        <p className="mb-6 text-sm text-muted-foreground">Last updated: 27 July 2026</p>
+        <p className="mb-6 text-sm text-muted-foreground">Last updated: 8 September 2026</p>
 
         <div className="mb-6">
           <SubHeading>Introduction</SubHeading>
@@ -92,6 +92,27 @@ export function TermsView() {
             (if applicable), restrict your access, or report illegal activity to authorities. We are
             the final arbiter of acceptable behavior and may take action outside these guidelines
             when needed to protect the service or users.
+          </Text>
+        </div>
+
+        <div className="mb-6">
+          <SubHeading>Using the API</SubHeading>
+          <Text>
+            The Riftseer API is free to build on: tools, bots and integrations that read card and
+            deck data from it are welcome, subject to these terms and the acceptable use rules
+            above.
+          </Text>
+          <Text>
+            <strong className="font-semibold">Affiliate links.</strong> Purchase links the API
+            returns (for example TCGplayer links) may carry our affiliate or referral code. When you
+            show data obtained from the API you must present those links as we sent them. You may
+            not remove, replace, modify or obscure them, and you may not substitute your own or a
+            third party&apos;s affiliate, referral or attribution links for ours.
+          </Text>
+          <Text>
+            <strong className="font-semibold">Attribution.</strong> Anything that shows card data or
+            art obtained from the API must keep the Riot Games attribution described under
+            Third-Party Services and Trademarks below.
           </Text>
         </div>
 

@@ -95,7 +95,7 @@ A change to shared behaviour is not done when the website shows it. Surfaces her
 - Renovate opens the routine dependency PRs weekly; OSV vulnerability fixes ignore the schedule. `docs/renovate.md` covers the cadence and how to force a run.
 - When babysitting: poll checks and comments newer than the last push, verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when the bots are green on the latest commit.
 - Track active work in the GitHub issue or project item that owns it (`docs/agents/issue-tracker.md`, labels in `docs/agents/triage-labels.md`). A merged PR is the implementation record; close its tracking item and keep no second checklist in the repository.
-- Rules an agent can break go in the nearest `AGENTS.md`. Vocabulary goes in `CONTEXT.md` (`docs/agents/domain.md` says how). Reference read once goes in `docs/` or a package's `docs/`. Neither, and it is probably not worth writing.
+- Rules an agent can break go in the nearest `AGENTS.md`. Vocabulary goes in `CONTEXT.md` (`docs/agents/domain.md` says how). Reference read once goes in `docs/` or a package's `docs/`. Neither, and it is probably not worth writing. `CONTRIBUTING.md` and `SECURITY.md` are this section written for people outside the repository, and `docs/out-of-scope.md` records the tooling we already rejected.
 
 ## Invariants
 

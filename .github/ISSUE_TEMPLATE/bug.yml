@@ -1,0 +1,39 @@
+name: Bug report
+description: Something Riftseer does that it should not, or fails to do.
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      options:
+        - riftseer.com
+        - API (api.riftseer.com)
+        - Discord bot
+        - Reddit bot
+        - Raycast extension
+        - Tabletop Simulator mod
+        - Card catalogue / ingest
+        - Local development
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead. A URL, a request or a deck link is worth more than a description of one.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Browser, client version, screenshots, console or network output.

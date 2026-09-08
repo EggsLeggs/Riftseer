@@ -1,0 +1,10 @@
+# Files where a change is a decision rather than an edit. The maintainer reviews these.
+
+/supabase/migrations/                     @EggsLeggs
+/apps/api/src/authz/                      @EggsLeggs
+/apps/api/src/public-routes.ts            @EggsLeggs
+/apps/web/src/views/privacy-view.tsx      @EggsLeggs
+/apps/web/src/views/terms-view.tsx        @EggsLeggs
+/LICENSE                                  @EggsLeggs
+/apps/tts/LICENSE                         @EggsLeggs
+/apps/tts/NOTICE                          @EggsLeggs

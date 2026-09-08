@@ -72,8 +72,17 @@ anything; they are written for exactly that.
 
 ## License and attribution
 
-Source terms are in [LICENSE](LICENSE). The public API may be used under the
-conditions described there.
+The source is licensed under the Functional Source License, Version 1.1,
+with the Apache License 2.0 as its future licence: `FSL-1.1-ALv2`, in
+[LICENSE](LICENSE). In practice: read it, self-host it, change it and send
+the change back, freely. What you may not do is offer it, or something
+substantially like it, as a commercial product or service that competes with
+Riftseer. Each version becomes Apache-2.0 two years after it is released.
+
+Using the public API is governed by the [Terms of Service](https://riftseer.com/terms),
+not by the source licence. Those terms cover the affiliate links the API
+returns: they must reach the user as sent, never removed or swapped for your
+own.
 
 `apps/tts` carries its own terms and the root LICENSE does not extend to it.
 Its MIT licence in `apps/tts/LICENSE` covers only the files `apps/tts/NOTICE`

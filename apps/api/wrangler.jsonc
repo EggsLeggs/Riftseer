@@ -10,7 +10,8 @@
   "observability": { "enabled": true },
   "vars": {
     "CARD_PROVIDER": "supabase",
-    "LEGAL_TERMS_VERSION": "2",
+    // 3 — 8 September 2026: affiliate-link and attribution terms for the API.
+    "LEGAL_TERMS_VERSION": "3",
     // 5 — 6 September 2026: comment likes.
     "LEGAL_PRIVACY_VERSION": "5",
     // Public site origin used to build absolute riftseer_uri values on every

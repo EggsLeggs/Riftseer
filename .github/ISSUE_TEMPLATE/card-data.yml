@@ -1,0 +1,24 @@
+name: Card data issue
+description: A card, printing, set, ruling or legality that is wrong or missing.
+labels: ["Card Data Issue"]
+body:
+  - type: input
+    id: card
+    attributes:
+      label: Card
+      description: The name, plus the set code and collector number when only one printing is wrong.
+      placeholder: "Jinx, Loose Cannon (OGN 042)"
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Riftseer URL
+      placeholder: https://riftseer.com/card/...
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What is wrong
+      description: What Riftseer shows, what it should show, and how you know. A photo of the printed card settles most of these.
+    validations:
+      required: true
