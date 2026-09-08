@@ -32,7 +32,7 @@ Seven route files and two route directories, all mounted by `buildApp()` in `src
 - The Worker serves the committed JSON as a bundled import at `GET /api/v1/openapi.json` and a static Scalar page at `GET /docs`. `@elysiajs/swagger` must never enter the Worker bundle; it depends on filesystem APIs.
 - Tags are declared in `scripts/generate-spec.ts`. Add one there before referencing it from `detail.tags`.
 - Response schemas in `src/schemas.ts` are hand-written, but `Mirrors<>` and `Assert<>` check them against `@riftseer/types` in both directions. Preserve both: Elysia strips response fields its schema omits, so a one-way check passes while the field disappears.
-- Keep the versioned sub-app under `/api/v1`; CORS belongs on the root app.
+- Keep the versioned sub-app under `/api/v1`; CORS belongs on the root app. What may change under `/api/v1` without notice, and what needs a changelog entry first, is `docs/api-versioning.md`.
 
 ## Boundaries
 
