@@ -11498,7 +11498,7 @@
           "Stretch": true
         }
       },
-      "LuaScript": "function onload()\r\n\r\n  chatInstr = getObjectFromGUID('7b59f7')\r\n  altButton = getObjectFromGUID('fb6538')\r\n  self.interactable = true\r\n  chatInstr.interactable = true\r\n\r\n  self.createButton({\r\n    label='×',\r\n    click_function=\"closeSelf\",\r\n    tooltip='[i]remove clutter[/i]:\\ndelete room background and a lot of the clutter on the table',\r\n    function_owner=self,\r\n    position={0.97,0.1,-0.8},\r\n    height=500,\r\n    width=500,\r\n    scale={0.3,0.3,0.3},\r\n    font_size=1000,\r\n    font_color={1,1,1,2},\r\n    color={1,1,1,0.05}\r\n  })\r\n\r\nend\r\n\r\nfunction closeSelf(obj,ply)\r\n\r\n  unnecessaryStuff={\"fc40c8\",\"b7ccfb\",\"cafe02\",\"de6cde\",\"9cf532\",\"32f398\",\"e7428d\",\r\n  \"1a20bf\",\"0a79c7\",\"792837\",\"163a5f\",\"63bc71\",\"e0d9cc\",\"917dc3\",\"f62d00\",\r\n  \"82e64d\",\"0cebc6\",\"59d2ee\",\"080e23\",\"d658b5\",\"cbcbea\",\"fcd8d9\",\"c3ca32\",\"b8b9ed\",\r\n  \"c36338\",\"721b69\",\"8764e9\",\"28297f\",\"b41ace\",\"220d2f\",\"1c4a59\",\"aeeb11\",\r\n  \"e2c813\",\"d9bd81\",\"7eeb77\",\"195243\",\"d82eb8\",\"64d53e\",\"005d07\",\"c1840d\",\"e3ecb3\",\r\n  \"023349\",\"cdbccc\",\"69ab89\",\"4783af\",\"721688\",\"444725\",\"f209f9\",\"895bd9\",\"ae70ca\",\r\n  \"f378f1\",\"6c1ede\",\"cd8bb6\",\"bfceec\",\"e6f47f\",\"c99d05\",\"5ca969\",\"6d46cd\",\"6ed442\",\r\n  \"1d701a\",\"5c471e\",\"544ef3\",\"d471e5\",\"3ef9ac\",\"7746f9\",\"d0cca5\",\"14da25\",\"979e78\",\r\n  \"eab63d\",\"e86d81\",\"2d87b2\",\"b35666\",\"feadfa\",\"243420\",\"1e573a\",\"71d33b\",\"bc8aef\",\r\n  \"f082df\",\"9f82de\",\"372113\",\"47f1ce\",\"b9f545\",\"7edac2\",\"673bac\",\"098c38\",\"c5addf\",\r\n  \"123asd\",\"05b07c\",\"8dad82\",\"4bf968\",\"6d07c3\",\"7cf430\",\"70c002\"}\r\n\r\n  moveThese={\"b3961f\",\"3cba4d\",\"576ccd\",\"94b67a\",\"5035f1\",\"da1b48\",\"beb998\",\r\n  \"56a44e\",\"855d09\",\"7ae211\",\"daebb2\",\"b991d5\",\"887dd2\",\"52e44b\",\"389c4d\",\"e76686\",\r\n  \"b02684\",\"0beb07\",\"4256ba\",\"1f2263\",\"8c31d2\",\"7071ce\",\"3c7ad3\",\"70c001\"}\r\n\r\n  -- if ply=='Black' then\r\n\r\n    for _,guid in pairs({'cb1610', 'a7a029', '4c02f8', 'a3e6a8', '9c553c', 'eb479b'}) do\r\n      pcall(function() getObjectFromGUID(guid).destruct() end)\r\n    end\r\n\r\n    for _,guid in pairs(unnecessaryStuff) do\r\n      pcall(function() getObjectFromGUID(guid).destruct() end)\r\n    end\r\n\r\n    for _,guid in pairs(moveThese) do\r\n      pcall(function()\r\n        local obj=getObjectFromGUID(guid)\r\n        if obj then\r\n          pos=obj.getPosition()\r\n          pos[1]=pos[1]-3\r\n          obj.setPosition(pos)\r\n        end\r\n      end)\r\n    end\r\n\r\n  -- end\r\n\r\n  altButton.destruct()\r\n  chatInstr.destruct()\r\n  Wait.frames(function() self.destruct() end, 1)\r\nend",
+      "LuaScript": "function onload()\r\n\r\n  chatInstr = getObjectFromGUID('7b59f7')\r\n  altButton = getObjectFromGUID('fb6538')\r\n  self.interactable = true\r\n  chatInstr.interactable = true\r\n\r\n  self.createButton({\r\n    label='×',\r\n    click_function=\"closeSelf\",\r\n    tooltip='[i]remove clutter[/i]:\\ndelete room background and a lot of the clutter on the table',\r\n    function_owner=self,\r\n    position={0.97,0.1,-0.8},\r\n    height=500,\r\n    width=500,\r\n    scale={0.3,0.3,0.3},\r\n    font_size=1000,\r\n    font_color={1,1,1,2},\r\n    color={1,1,1,0.05}\r\n  })\r\n\r\nend\r\n\r\nfunction closeSelf(obj,ply)\r\n\r\n  unnecessaryStuff={\"fc40c8\",\"b7ccfb\",\"cafe02\",\"de6cde\",\"9cf532\",\"32f398\",\"e7428d\",\r\n  \"1a20bf\",\"0a79c7\",\"792837\",\"163a5f\",\"63bc71\",\"e0d9cc\",\"917dc3\",\"f62d00\",\r\n  \"82e64d\",\"0cebc6\",\"59d2ee\",\"080e23\",\"d658b5\",\"cbcbea\",\"fcd8d9\",\"c3ca32\",\"b8b9ed\",\r\n  \"c36338\",\"721b69\",\"8764e9\",\"28297f\",\"b41ace\",\"220d2f\",\"1c4a59\",\"aeeb11\",\r\n  \"e2c813\",\"d9bd81\",\"7eeb77\",\"195243\",\"d82eb8\",\"64d53e\",\"005d07\",\"c1840d\",\"e3ecb3\",\r\n  \"023349\",\"cdbccc\",\"69ab89\",\"4783af\",\"721688\",\"444725\",\"f209f9\",\"895bd9\",\"ae70ca\",\r\n  \"f378f1\",\"6c1ede\",\"cd8bb6\",\"bfceec\",\"e6f47f\",\"c99d05\",\"5ca969\",\"6d46cd\",\"6ed442\",\r\n  \"1d701a\",\"5c471e\",\"544ef3\",\"d471e5\",\"3ef9ac\",\"7746f9\",\"d0cca5\",\"14da25\",\"979e78\",\r\n  \"eab63d\",\"e86d81\",\"2d87b2\",\"b35666\",\"feadfa\",\"243420\",\"1e573a\",\"71d33b\",\"bc8aef\",\r\n  \"f082df\",\"9f82de\",\"372113\",\"47f1ce\",\"b9f545\",\"7edac2\",\"673bac\",\"098c38\",\"c5addf\",\r\n  \"123asd\",\"05b07c\",\"8dad82\",\"4bf968\",\"6d07c3\",\"7cf430\",\"70c102\"}\r\n\r\n  moveThese={\"b3961f\",\"3cba4d\",\"576ccd\",\"94b67a\",\"5035f1\",\"da1b48\",\"beb998\",\r\n  \"56a44e\",\"855d09\",\"7ae211\",\"daebb2\",\"b991d5\",\"887dd2\",\"52e44b\",\"389c4d\",\"e76686\",\r\n  \"b02684\",\"0beb07\",\"4256ba\",\"1f2263\",\"8c31d2\",\"7071ce\",\"3c7ad3\",\"70c101\"}\r\n\r\n  -- if ply=='Black' then\r\n\r\n    for _,guid in pairs({'cb1610', 'a7a029', '4c02f8', 'a3e6a8', '9c553c', 'eb479b'}) do\r\n      pcall(function() getObjectFromGUID(guid).destruct() end)\r\n    end\r\n\r\n    for _,guid in pairs(unnecessaryStuff) do\r\n      pcall(function() getObjectFromGUID(guid).destruct() end)\r\n    end\r\n\r\n    for _,guid in pairs(moveThese) do\r\n      pcall(function()\r\n        local obj=getObjectFromGUID(guid)\r\n        if obj then\r\n          pos=obj.getPosition()\r\n          pos[1]=pos[1]-3\r\n          obj.setPosition(pos)\r\n        end\r\n      end)\r\n    end\r\n\r\n  -- end\r\n\r\n  altButton.destruct()\r\n  chatInstr.destruct()\r\n  Wait.frames(function() self.destruct() end, 1)\r\nend",
       "LuaScriptState": "",
       "XmlUI": ""
     },
@@ -17753,8 +17753,8 @@
       "XmlUI": ""
     },
     {
-      "GUID": "70c001",
-      "Name": "DeckCustom",
+      "GUID": "70c101",
+      "Name": "BlockSquare",
       "Transform": {
         "posX": -45.92,
         "posY": 1.1,
@@ -17763,19 +17763,27 @@
         "rotY": 90.0,
         "rotZ": 0.0,
         "scaleX": 1.0,
-        "scaleY": 1.0,
+        "scaleY": 0.05,
         "scaleZ": 1.0
       },
-      "Nickname": "Riftbound Tokens",
-      "Description": "Gold, Recruit and Sprite.",
+      "Nickname": "Riftbound Token Spawner",
+      "Description": "Click the button to spawn a pile of the three Riftbound tokens.",
       "GMNotes": "",
       "Memo": "",
+      "AltLookAngle": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
       "ColorDiffuse": {
         "r": 1.0,
         "g": 1.0,
-        "b": 1.0
+        "b": 1.0,
+        "a": 0.0
       },
-      "Locked": false,
+      "LayoutGroupSortIndex": 0,
+      "Value": 0,
+      "Locked": true,
       "Grid": true,
       "Snap": true,
       "IgnoreFoW": false,
@@ -17785,196 +17793,15 @@
       "Sticky": true,
       "Tooltip": true,
       "GridProjection": false,
-      "HideWhenFaceDown": true,
+      "HideWhenFaceDown": false,
       "Hands": false,
-      "SidewaysCard": false,
-      "DeckIDs": [
-        900100,
-        900200,
-        900300
-      ],
-      "CustomDeck": {
-        "9001": {
-          "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e878c39b562a4e870e93b819c6d85cdf3fdc5238-744x1039.png?accountingTag=RB",
-          "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-          "NumWidth": 1,
-          "NumHeight": 1,
-          "BackIsHidden": true
-        },
-        "9002": {
-          "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7c3362dc6e6e6fb724ef31b061a44d2976f5b01f-744x1039.png",
-          "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-          "NumWidth": 1,
-          "NumHeight": 1,
-          "BackIsHidden": true
-        },
-        "9003": {
-          "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/055892752559d2d3d32e76f491a7a0b540e1a669-744x1039.png?accountingTag=RB",
-          "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-          "NumWidth": 1,
-          "NumHeight": 1,
-          "BackIsHidden": true
-        }
-      },
-      "ContainedObjects": [
-        {
-          "GUID": "70c0a1",
-          "Name": "Card",
-          "Transform": {
-            "posX": 0.0,
-            "posY": 0.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-          },
-          "Nickname": "Gold",
-          "Description": "Riftbound Gear token",
-          "GMNotes": "",
-          "Memo": "",
-          "ColorDiffuse": {
-            "r": 1.0,
-            "g": 1.0,
-            "b": 1.0
-          },
-          "Locked": false,
-          "Grid": true,
-          "Snap": true,
-          "IgnoreFoW": false,
-          "MeasureMovement": false,
-          "DragSelectable": true,
-          "Autoraise": true,
-          "Sticky": true,
-          "Tooltip": true,
-          "GridProjection": false,
-          "HideWhenFaceDown": true,
-          "Hands": true,
-          "CardID": 900100,
-          "SidewaysCard": false,
-          "CustomDeck": {
-            "9001": {
-              "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e878c39b562a4e870e93b819c6d85cdf3fdc5238-744x1039.png?accountingTag=RB",
-              "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-              "NumWidth": 1,
-              "NumHeight": 1,
-              "BackIsHidden": true
-            }
-          },
-          "LuaScript": "",
-          "LuaScriptState": "",
-          "XmlUI": ""
-        },
-        {
-          "GUID": "70c0a2",
-          "Name": "Card",
-          "Transform": {
-            "posX": 0.0,
-            "posY": 0.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-          },
-          "Nickname": "Recruit",
-          "Description": "Riftbound Unit token",
-          "GMNotes": "",
-          "Memo": "",
-          "ColorDiffuse": {
-            "r": 1.0,
-            "g": 1.0,
-            "b": 1.0
-          },
-          "Locked": false,
-          "Grid": true,
-          "Snap": true,
-          "IgnoreFoW": false,
-          "MeasureMovement": false,
-          "DragSelectable": true,
-          "Autoraise": true,
-          "Sticky": true,
-          "Tooltip": true,
-          "GridProjection": false,
-          "HideWhenFaceDown": true,
-          "Hands": true,
-          "CardID": 900200,
-          "SidewaysCard": false,
-          "CustomDeck": {
-            "9002": {
-              "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7c3362dc6e6e6fb724ef31b061a44d2976f5b01f-744x1039.png",
-              "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-              "NumWidth": 1,
-              "NumHeight": 1,
-              "BackIsHidden": true
-            }
-          },
-          "LuaScript": "",
-          "LuaScriptState": "",
-          "XmlUI": ""
-        },
-        {
-          "GUID": "70c0a3",
-          "Name": "Card",
-          "Transform": {
-            "posX": 0.0,
-            "posY": 0.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-          },
-          "Nickname": "Sprite",
-          "Description": "Riftbound Unit token",
-          "GMNotes": "",
-          "Memo": "",
-          "ColorDiffuse": {
-            "r": 1.0,
-            "g": 1.0,
-            "b": 1.0
-          },
-          "Locked": false,
-          "Grid": true,
-          "Snap": true,
-          "IgnoreFoW": false,
-          "MeasureMovement": false,
-          "DragSelectable": true,
-          "Autoraise": true,
-          "Sticky": true,
-          "Tooltip": true,
-          "GridProjection": false,
-          "HideWhenFaceDown": true,
-          "Hands": true,
-          "CardID": 900300,
-          "SidewaysCard": false,
-          "CustomDeck": {
-            "9003": {
-              "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/055892752559d2d3d32e76f491a7a0b540e1a669-744x1039.png?accountingTag=RB",
-              "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-              "NumWidth": 1,
-              "NumHeight": 1,
-              "BackIsHidden": true
-            }
-          },
-          "LuaScript": "",
-          "LuaScriptState": "",
-          "XmlUI": ""
-        }
-      ],
-      "LuaScript": "",
+      "LuaScript": "--[[\n\"Riftbound Tokens\" spawner.\n\nRiftbound has exactly three tokens — Gold (Gear), Recruit and Sprite (both\nUnits) — so this is a fixed list, not a search problem. The widget is an\ninvisible locked BlockSquare sitting where the pile used to sit; its button is\nthe only part you see. Clicking it drops a fresh three-card pile on the spot.\n\nEvery click spawns another pile. A pile is drawable, so it empties as players\ntake tokens from it, and clicking again is how you refill — which is why this\nkeeps no record of what the last click produced.\n\nThe deck shape is the one 80c03d_riftbound_card_importer.lua builds: one\nCustomDeck entry per card with NumWidth/NumHeight 1 and BackIsHidden, contained\nobjects named Card, and CardID as the deck key × 100. Copying the importer\nrather than inventing a shape means the pile matches what the deck loader puts\non the table.\n\nNothing here carries a GUID. TTS assigns fresh ones on spawn, and hard-coding\nthem would collide on the second click.\n\nDuplicated at 70c101 (left column) and 70c102 (right), the way the four score\ntrackers and six domain counters are: TTS gives an object script no way to\nimport a shared one.\n]]\n\n-- CARD_BACK_NORMAL, the same back the importer gives a spawned deck.\nlocal CARD_BACK = \"https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/\"\n\nlocal DECK_NICKNAME    = \"Riftbound Tokens\"\nlocal DECK_DESCRIPTION = \"Gold, Recruit and Sprite.\"\n\n-- Face art is Riot CMS, the same URLs the Riftseer API serves for these three.\nlocal TOKENS = {\n\t{\n\t\tkey         = 9001,\n\t\tname        = \"Gold\",\n\t\tdescription = \"Riftbound Gear token\",\n\t\tface        = \"https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e878c39b562a4e870e93b819c6d85cdf3fdc5238-744x1039.png?accountingTag=RB\",\n\t},\n\t{\n\t\tkey         = 9002,\n\t\tname        = \"Recruit\",\n\t\tdescription = \"Riftbound Unit token\",\n\t\tface        = \"https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7c3362dc6e6e6fb724ef31b061a44d2976f5b01f-744x1039.png\",\n\t},\n\t{\n\t\tkey         = 9003,\n\t\tname        = \"Sprite\",\n\t\tdescription = \"Riftbound Unit token\",\n\t\tface        = \"https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/055892752559d2d3d32e76f491a7a0b540e1a669-744x1039.png?accountingTag=RB\",\n\t},\n}\n\nlocal IDENTITY_TRANSFORM = {\n\tposX = 0, posY = 0, posZ = 0,\n\trotX = 0, rotY = 0, rotZ = 0,\n\tscaleX = 1, scaleY = 1, scaleZ = 1,\n}\n\nlocal function deckEntry(token)\n\treturn {\n\t\tFaceURL      = token.face,\n\t\tBackURL      = CARD_BACK,\n\t\tNumWidth     = 1,\n\t\tNumHeight    = 1,\n\t\tBackIsHidden = true,\n\t}\nend\n\n-- A DeckCustom carries every card's deck entry; each contained card carries\n-- only its own. Both are required — a card without its entry spawns blank.\nlocal function tokenDeckData()\n\tlocal customDeck = {}\n\tlocal deckIDs    = {}\n\tlocal contained  = {}\n\n\tfor _, token in ipairs(TOKENS) do\n\t\tlocal key    = tostring(token.key)\n\t\tlocal cardID = token.key * 100\n\n\t\tcustomDeck[key] = deckEntry(token)\n\t\ttable.insert(deckIDs, cardID)\n\t\ttable.insert(contained, {\n\t\t\tName             = \"Card\",\n\t\t\tNickname         = token.name,\n\t\t\tDescription      = token.description,\n\t\t\tTransform        = IDENTITY_TRANSFORM,\n\t\t\tCardID           = cardID,\n\t\t\tSidewaysCard     = false,\n\t\t\tHideWhenFaceDown = true,\n\t\t\tHands            = true,\n\t\t\tCustomDeck       = { [key] = deckEntry(token) },\n\t\t})\n\tend\n\n\treturn {\n\t\tName             = \"DeckCustom\",\n\t\tNickname         = DECK_NICKNAME,\n\t\tDescription      = DECK_DESCRIPTION,\n\t\tTransform        = IDENTITY_TRANSFORM,\n\t\tSidewaysCard     = false,\n\t\tHideWhenFaceDown = true,\n\t\tHands            = false,\n\t\tDeckIDs          = deckIDs,\n\t\tCustomDeck       = customDeck,\n\t\tContainedObjects = contained,\n\t}\nend\n\nfunction spawnTokenPile()\n\tlocal position = self.getPosition()\n\n\tspawnObjectData({\n\t\tdata     = tokenDeckData(),\n\t\t-- Drop it in rather than intersecting whatever is already on the spot.\n\t\tposition = { x = position.x, y = position.y + 1.5, z = position.z },\n\t\trotation = self.getRotation(),\n\t})\nend\n\nfunction onLoad()\n\t-- The block is a button anchor, not a game piece: invisible, static, and\n\t-- not something a player can pick up or drop a card onto by accident.\n\tself.setColorTint({ 1, 1, 1, 0 })\n\tself.setLock(true)\n\tself.interactable = false\n\n\tself.createButton({\n\t\tclick_function = \"spawnTokenPile\",\n\t\tfunction_owner = self,\n\t\tlabel          = \"Riftbound\\nTokens\",\n\t\ttooltip        = \"Spawn a pile of the three Riftbound tokens.\",\n\t\tposition       = { 0, 0.6, 0 },\n\t\trotation       = { 0, 0, 0 },\n\t\twidth          = 1100,\n\t\theight         = 620,\n\t\tfont_size      = 180,\n\t\tcolor          = { 0.05, 0.08, 0.14, 0.92 },\n\t\tfont_color     = { 0, 0.71, 1, 1 },\n\t})\nend\n",
       "LuaScriptState": "",
       "XmlUI": ""
     },
     {
-      "GUID": "70c002",
-      "Name": "DeckCustom",
+      "GUID": "70c102",
+      "Name": "BlockSquare",
       "Transform": {
         "posX": 45.92,
         "posY": 1.1,
@@ -17983,19 +17810,27 @@
         "rotY": 270.0,
         "rotZ": 0.0,
         "scaleX": 1.0,
-        "scaleY": 1.0,
+        "scaleY": 0.05,
         "scaleZ": 1.0
       },
-      "Nickname": "Riftbound Tokens",
-      "Description": "Gold, Recruit and Sprite.",
+      "Nickname": "Riftbound Token Spawner",
+      "Description": "Click the button to spawn a pile of the three Riftbound tokens.",
       "GMNotes": "",
       "Memo": "",
+      "AltLookAngle": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
       "ColorDiffuse": {
         "r": 1.0,
         "g": 1.0,
-        "b": 1.0
+        "b": 1.0,
+        "a": 0.0
       },
-      "Locked": false,
+      "LayoutGroupSortIndex": 0,
+      "Value": 0,
+      "Locked": true,
       "Grid": true,
       "Snap": true,
       "IgnoreFoW": false,
@@ -18005,190 +17840,9 @@
       "Sticky": true,
       "Tooltip": true,
       "GridProjection": false,
-      "HideWhenFaceDown": true,
+      "HideWhenFaceDown": false,
       "Hands": false,
-      "SidewaysCard": false,
-      "DeckIDs": [
-        900100,
-        900200,
-        900300
-      ],
-      "CustomDeck": {
-        "9001": {
-          "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e878c39b562a4e870e93b819c6d85cdf3fdc5238-744x1039.png?accountingTag=RB",
-          "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-          "NumWidth": 1,
-          "NumHeight": 1,
-          "BackIsHidden": true
-        },
-        "9002": {
-          "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7c3362dc6e6e6fb724ef31b061a44d2976f5b01f-744x1039.png",
-          "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-          "NumWidth": 1,
-          "NumHeight": 1,
-          "BackIsHidden": true
-        },
-        "9003": {
-          "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/055892752559d2d3d32e76f491a7a0b540e1a669-744x1039.png?accountingTag=RB",
-          "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-          "NumWidth": 1,
-          "NumHeight": 1,
-          "BackIsHidden": true
-        }
-      },
-      "ContainedObjects": [
-        {
-          "GUID": "70c0b1",
-          "Name": "Card",
-          "Transform": {
-            "posX": 0.0,
-            "posY": 0.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-          },
-          "Nickname": "Gold",
-          "Description": "Riftbound Gear token",
-          "GMNotes": "",
-          "Memo": "",
-          "ColorDiffuse": {
-            "r": 1.0,
-            "g": 1.0,
-            "b": 1.0
-          },
-          "Locked": false,
-          "Grid": true,
-          "Snap": true,
-          "IgnoreFoW": false,
-          "MeasureMovement": false,
-          "DragSelectable": true,
-          "Autoraise": true,
-          "Sticky": true,
-          "Tooltip": true,
-          "GridProjection": false,
-          "HideWhenFaceDown": true,
-          "Hands": true,
-          "CardID": 900100,
-          "SidewaysCard": false,
-          "CustomDeck": {
-            "9001": {
-              "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e878c39b562a4e870e93b819c6d85cdf3fdc5238-744x1039.png?accountingTag=RB",
-              "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-              "NumWidth": 1,
-              "NumHeight": 1,
-              "BackIsHidden": true
-            }
-          },
-          "LuaScript": "",
-          "LuaScriptState": "",
-          "XmlUI": ""
-        },
-        {
-          "GUID": "70c0b2",
-          "Name": "Card",
-          "Transform": {
-            "posX": 0.0,
-            "posY": 0.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-          },
-          "Nickname": "Recruit",
-          "Description": "Riftbound Unit token",
-          "GMNotes": "",
-          "Memo": "",
-          "ColorDiffuse": {
-            "r": 1.0,
-            "g": 1.0,
-            "b": 1.0
-          },
-          "Locked": false,
-          "Grid": true,
-          "Snap": true,
-          "IgnoreFoW": false,
-          "MeasureMovement": false,
-          "DragSelectable": true,
-          "Autoraise": true,
-          "Sticky": true,
-          "Tooltip": true,
-          "GridProjection": false,
-          "HideWhenFaceDown": true,
-          "Hands": true,
-          "CardID": 900200,
-          "SidewaysCard": false,
-          "CustomDeck": {
-            "9002": {
-              "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7c3362dc6e6e6fb724ef31b061a44d2976f5b01f-744x1039.png",
-              "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-              "NumWidth": 1,
-              "NumHeight": 1,
-              "BackIsHidden": true
-            }
-          },
-          "LuaScript": "",
-          "LuaScriptState": "",
-          "XmlUI": ""
-        },
-        {
-          "GUID": "70c0b3",
-          "Name": "Card",
-          "Transform": {
-            "posX": 0.0,
-            "posY": 0.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-          },
-          "Nickname": "Sprite",
-          "Description": "Riftbound Unit token",
-          "GMNotes": "",
-          "Memo": "",
-          "ColorDiffuse": {
-            "r": 1.0,
-            "g": 1.0,
-            "b": 1.0
-          },
-          "Locked": false,
-          "Grid": true,
-          "Snap": true,
-          "IgnoreFoW": false,
-          "MeasureMovement": false,
-          "DragSelectable": true,
-          "Autoraise": true,
-          "Sticky": true,
-          "Tooltip": true,
-          "GridProjection": false,
-          "HideWhenFaceDown": true,
-          "Hands": true,
-          "CardID": 900300,
-          "SidewaysCard": false,
-          "CustomDeck": {
-            "9003": {
-              "FaceURL": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/055892752559d2d3d32e76f491a7a0b540e1a669-744x1039.png?accountingTag=RB",
-              "BackURL": "https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/",
-              "NumWidth": 1,
-              "NumHeight": 1,
-              "BackIsHidden": true
-            }
-          },
-          "LuaScript": "",
-          "LuaScriptState": "",
-          "XmlUI": ""
-        }
-      ],
-      "LuaScript": "",
+      "LuaScript": "--[[\n\"Riftbound Tokens\" spawner.\n\nRiftbound has exactly three tokens — Gold (Gear), Recruit and Sprite (both\nUnits) — so this is a fixed list, not a search problem. The widget is an\ninvisible locked BlockSquare sitting where the pile used to sit; its button is\nthe only part you see. Clicking it drops a fresh three-card pile on the spot.\n\nEvery click spawns another pile. A pile is drawable, so it empties as players\ntake tokens from it, and clicking again is how you refill — which is why this\nkeeps no record of what the last click produced.\n\nThe deck shape is the one 80c03d_riftbound_card_importer.lua builds: one\nCustomDeck entry per card with NumWidth/NumHeight 1 and BackIsHidden, contained\nobjects named Card, and CardID as the deck key × 100. Copying the importer\nrather than inventing a shape means the pile matches what the deck loader puts\non the table.\n\nNothing here carries a GUID. TTS assigns fresh ones on spawn, and hard-coding\nthem would collide on the second click.\n\nDuplicated at 70c101 (left column) and 70c102 (right), the way the four score\ntrackers and six domain counters are: TTS gives an object script no way to\nimport a shared one.\n]]\n\n-- CARD_BACK_NORMAL, the same back the importer gives a spawned deck.\nlocal CARD_BACK = \"https://steamusercontent-a.akamaihd.net/ugc/17923936841557333394/E61E2190D4439BC190F2B572BBD6D36C0B487565/\"\n\nlocal DECK_NICKNAME    = \"Riftbound Tokens\"\nlocal DECK_DESCRIPTION = \"Gold, Recruit and Sprite.\"\n\n-- Face art is Riot CMS, the same URLs the Riftseer API serves for these three.\nlocal TOKENS = {\n\t{\n\t\tkey         = 9001,\n\t\tname        = \"Gold\",\n\t\tdescription = \"Riftbound Gear token\",\n\t\tface        = \"https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e878c39b562a4e870e93b819c6d85cdf3fdc5238-744x1039.png?accountingTag=RB\",\n\t},\n\t{\n\t\tkey         = 9002,\n\t\tname        = \"Recruit\",\n\t\tdescription = \"Riftbound Unit token\",\n\t\tface        = \"https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/7c3362dc6e6e6fb724ef31b061a44d2976f5b01f-744x1039.png\",\n\t},\n\t{\n\t\tkey         = 9003,\n\t\tname        = \"Sprite\",\n\t\tdescription = \"Riftbound Unit token\",\n\t\tface        = \"https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/055892752559d2d3d32e76f491a7a0b540e1a669-744x1039.png?accountingTag=RB\",\n\t},\n}\n\nlocal IDENTITY_TRANSFORM = {\n\tposX = 0, posY = 0, posZ = 0,\n\trotX = 0, rotY = 0, rotZ = 0,\n\tscaleX = 1, scaleY = 1, scaleZ = 1,\n}\n\nlocal function deckEntry(token)\n\treturn {\n\t\tFaceURL      = token.face,\n\t\tBackURL      = CARD_BACK,\n\t\tNumWidth     = 1,\n\t\tNumHeight    = 1,\n\t\tBackIsHidden = true,\n\t}\nend\n\n-- A DeckCustom carries every card's deck entry; each contained card carries\n-- only its own. Both are required — a card without its entry spawns blank.\nlocal function tokenDeckData()\n\tlocal customDeck = {}\n\tlocal deckIDs    = {}\n\tlocal contained  = {}\n\n\tfor _, token in ipairs(TOKENS) do\n\t\tlocal key    = tostring(token.key)\n\t\tlocal cardID = token.key * 100\n\n\t\tcustomDeck[key] = deckEntry(token)\n\t\ttable.insert(deckIDs, cardID)\n\t\ttable.insert(contained, {\n\t\t\tName             = \"Card\",\n\t\t\tNickname         = token.name,\n\t\t\tDescription      = token.description,\n\t\t\tTransform        = IDENTITY_TRANSFORM,\n\t\t\tCardID           = cardID,\n\t\t\tSidewaysCard     = false,\n\t\t\tHideWhenFaceDown = true,\n\t\t\tHands            = true,\n\t\t\tCustomDeck       = { [key] = deckEntry(token) },\n\t\t})\n\tend\n\n\treturn {\n\t\tName             = \"DeckCustom\",\n\t\tNickname         = DECK_NICKNAME,\n\t\tDescription      = DECK_DESCRIPTION,\n\t\tTransform        = IDENTITY_TRANSFORM,\n\t\tSidewaysCard     = false,\n\t\tHideWhenFaceDown = true,\n\t\tHands            = false,\n\t\tDeckIDs          = deckIDs,\n\t\tCustomDeck       = customDeck,\n\t\tContainedObjects = contained,\n\t}\nend\n\nfunction spawnTokenPile()\n\tlocal position = self.getPosition()\n\n\tspawnObjectData({\n\t\tdata     = tokenDeckData(),\n\t\t-- Drop it in rather than intersecting whatever is already on the spot.\n\t\tposition = { x = position.x, y = position.y + 1.5, z = position.z },\n\t\trotation = self.getRotation(),\n\t})\nend\n\nfunction onLoad()\n\t-- The block is a button anchor, not a game piece: invisible, static, and\n\t-- not something a player can pick up or drop a card onto by accident.\n\tself.setColorTint({ 1, 1, 1, 0 })\n\tself.setLock(true)\n\tself.interactable = false\n\n\tself.createButton({\n\t\tclick_function = \"spawnTokenPile\",\n\t\tfunction_owner = self,\n\t\tlabel          = \"Riftbound\\nTokens\",\n\t\ttooltip        = \"Spawn a pile of the three Riftbound tokens.\",\n\t\tposition       = { 0, 0.6, 0 },\n\t\trotation       = { 0, 0, 0 },\n\t\twidth          = 1100,\n\t\theight         = 620,\n\t\tfont_size      = 180,\n\t\tcolor          = { 0.05, 0.08, 0.14, 0.92 },\n\t\tfont_color     = { 0, 0.71, 1, 1 },\n\t})\nend\n",
       "LuaScriptState": "",
       "XmlUI": ""
     }
