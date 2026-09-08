@@ -41,6 +41,20 @@ local function printError(str, pc)
 	lockImporter(false)
 end
 
+-- The API sends the full variant set only for art hosted in R2. Unhosted
+-- printings carry `original` alone, so reading `.normal` directly finds
+-- nothing and the card spawns blank. This is SIZE_FALLBACKS.normal from
+-- packages/types/src/card-image.ts, the ladder every other client walks.
+local function printingImageURL(printing)
+	local image = printing and printing.image
+	if not image then return nil end
+	for _, key in ipairs({'normal', 'large', 'small', 'original'}) do
+		local url = image[key]
+		if type(url) == 'string' and url ~= '' then return url end
+	end
+	return nil
+end
+
 -- ============================================================================
 -- Import Lock Helpers
 -- ============================================================================
@@ -330,7 +344,7 @@ function reimportCard(p)
 			return
 		end
 
-		local imageURL = printing.image and printing.image.normal
+		local imageURL = printingImageURL(printing)
 		if not imageURL then
 			printToColor(ERROR_MESSAGE_IMPORTER .. "No image found for '" .. name .. "'.", p.playerColor, {r=1,g=0,b=0})
 			return

@@ -385,6 +385,20 @@ end
 -- RIFTSEER CARD DATA → TTS ENTRY
 -- ============================================================================
 -- One `/cards/resolve` result becomes one TTS card: the nickname and
+-- The API sends the full variant set only for art hosted in R2. Unhosted
+-- printings carry `original` alone, so reading `.normal` directly finds
+-- nothing and the card spawns blank. This is SIZE_FALLBACKS.normal from
+-- packages/types/src/card-image.ts, the ladder every other client walks.
+local function printingImageURL(printing)
+	local image = printing and printing.image
+	if not image then return nil end
+	for _, key in ipairs({'normal', 'large', 'small', 'original'}) do
+		local url = image[key]
+		if type(url) == 'string' and url ~= '' then return url end
+	end
+	return nil
+end
+
 -- description come from the oracle, the face image from the printing resolve
 -- picked. The oracle's other printings ride along so a dead image URL can fall
 -- back to another edition without a second lookup.
@@ -410,7 +424,7 @@ local function resolvedCardToEntry(resolved, qty)
 
 	desc = appendMetadataLine(desc, "Tags", metadataString(oracle.tags))
 
-	local imageURL = printing.image and printing.image.normal
+	local imageURL = printingImageURL(printing)
 
 	local nickname = name
 	if typeStr ~= "" then
@@ -524,7 +538,7 @@ local function spawnDeckIfAny(decklist, options)
 			if i > #printings then callback(nil) return end
 			local printing = printings[i]
 			i = i + 1
-			local imgURL = printing and printing.image and printing.image.normal
+			local imgURL = printingImageURL(printing)
 			if not imgURL or imgURL == entry.imageURL then tryNext() return end
 			WebRequest.get(imgURL, function(imgResp)
 				if imgResp.response_code == 200 then

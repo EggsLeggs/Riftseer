@@ -161,6 +161,13 @@ attempting it yourself.
 - **Do not commit changes that fail round-tripping**. After any edit, verify
   `tools/extract.py` followed by `tools/inject.py` produces a JSON whose
   re-extracted scripts equal the source files.
+- **Read card art through the size ladder, never `image.normal` directly.**
+  The API sends the full variant set only for art hosted in R2; an unhosted
+  printing carries `original` alone, and every printing in production is
+  currently unhosted. Both mod scripts have a local `printingImageURL` that
+  walks `normal → large → small → original`, which is `SIZE_FALLBACKS.normal`
+  in `packages/types/src/card-image.ts`. Other clients get this from the shared
+  helper; the Lua cannot import it, so it is duplicated on purpose.
 - **Three objects rewrite their own script at runtime.** `30f3c2`, `94b67a`
   and `e6f47f` ship a bootstrap that calls `self.setLuaScript(handler)` on
   load, so a loaded table holds a 252-byte handler where the repo holds a
