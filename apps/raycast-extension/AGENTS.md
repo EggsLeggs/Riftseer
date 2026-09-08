@@ -21,7 +21,7 @@ The Raycast Store author in `package.json` must be a real Raycast username befor
 - Render rules fields from the oracle and physical-card fields from the printing.
 - Search sends `fuzzy=true` and `limit=20` as fixed query parameters. Neither is a Raycast preference.
 - Every request goes through `createRiftseerClient()` from `src/client.ts`, and every result is a value: read `result.ok` before `result.data`, never expect a throw. `useCachedPromise` and `usePromise` carry those results as `data`.
-- Rules text, type lines, domain keys and site URLs come from the render kernel in `@riftseer/types`. `src/assets.ts` owns only the asset path per kernel key; the old per-file copies of `normalizeCardTextLayout` and `formatTypeLine` drifted from the site and are gone.
+- Rules text, type lines, domain keys and site URLs come from the render kernel in `@riftseer/types`. `src/assets.ts` maps a kernel key to an asset path and asks the kernel (`cardTypeIconKey`, `domainKey`) which key a card gets; it never decides that itself. The old per-file copies of `normalizeCardTextLayout` and `formatTypeLine` drifted from the site and are gone.
 - `normalizeCardTextLayout(text, "\n\n")` is deliberate: Raycast renders Markdown, which folds a single newline.
 - `tsconfig.json` uses `moduleResolution: node`, which ignores `exports` maps, so import from the `@riftseer/types` root rather than a subpath such as `@riftseer/types/client`.
 - `@riftseer/types` resolves through `file:../../packages/types` straight to TypeScript source, with no build step. Edits there are picked up immediately.

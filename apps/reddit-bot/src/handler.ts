@@ -30,10 +30,10 @@ export async function buildReply(
   // including prefixed collector tracks such as VEN-SP3 and OGN-T03.
   const result = await client.cards.resolve({ requests: requests.map((r) => r.raw) });
   if (!result.ok) {
-    // Status 0 is the client's own code for a request that never reached the API.
-    console.error(
-      `[Riftseer] resolve failed: HTTP ${result.status} ${result.error.code}: ${result.error.error}`,
-    );
+    // Status 0 is the client's own code for a request that never reached the
+    // API. Only the status and code are logged: the message can be a raw
+    // response body, and a bounded log line is enough to diagnose the failure.
+    console.error(`[Riftseer] resolve failed: HTTP ${result.status} ${result.error.code}`);
     return null;
   }
 

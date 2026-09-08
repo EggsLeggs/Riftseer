@@ -161,7 +161,19 @@ export function createRiftseerClient(options: RiftseerClientOptions) {
       return { ok: false, status: 0, error: { error: message, code: CLIENT_ERROR_CODES.network } };
     }
 
-    const text = await response.text();
+    // The status line arrived but the body can still fail mid-stream; that is
+    // the transport's failure, reported with the status the API did send.
+    let text: string;
+    try {
+      text = await response.text();
+    } catch (cause) {
+      const message = cause instanceof Error ? cause.message : String(cause);
+      return {
+        ok: false,
+        status: response.status,
+        error: { error: message, code: CLIENT_ERROR_CODES.network },
+      };
+    }
     let body: unknown = null;
     try {
       body = text ? JSON.parse(text) : null;

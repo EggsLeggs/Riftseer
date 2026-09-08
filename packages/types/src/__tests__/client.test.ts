@@ -107,6 +107,21 @@ describe("createRiftseerClient", () => {
     });
   });
 
+  it("reports a body that fails mid-stream as a result, keeping the status", async () => {
+    const interrupted = new ReadableStream({
+      start(controller) {
+        controller.error(new Error("body interrupted"));
+      },
+    });
+    const { send } = fakeFetch(() => new Response(interrupted, { status: 200 }));
+    const result = await createRiftseerClient({ baseUrl: "http://api", fetch: send }).sets.list();
+    expect(result).toEqual({
+      ok: false,
+      status: 200,
+      error: { error: "body interrupted", code: CLIENT_ERROR_CODES.network },
+    });
+  });
+
   it("rejects a 2xx body that is not a JSON object", async () => {
     const { send } = fakeFetch(() => new Response("plain text", { status: 200 }));
     const result = await createRiftseerClient({ baseUrl: "http://api", fetch: send }).sets.list();
