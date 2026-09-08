@@ -45,6 +45,13 @@ Zero-dependency canonical types and runtime-neutral helpers shared by Bun, Node,
 - `urls.ts` owns relative card paths and absolute `riftseer_uri` derivation from a `siteOrigin`, plus `cardSiteUrl()` for clients that prefer the API's field.
 - Surfaces keep only medium-specific assets: web's CSS class per token, Discord's emoji-id map in `@riftseer/core/icons`, Raycast's asset paths. Hand-rolling a regex in a client instead of importing the kernel is the mistake it exists to prevent.
 
+## API client
+
+- `src/client/index.ts` is `createRiftseerClient()`, the zero-dependency fetch client the standalone surfaces and the mobile app read the API through, exported as `@riftseer/types/client` and from the root. It declares the response envelopes (`CardSearchResponse`, `CardResolveResponse`, `SetSummary`, `FormatListResponse`, `ApiError`) once; the card, printing, format and detail halves are this package's own types.
+- Every method answers a `ClientResult<T>` and never throws. `status: 0` is the client's own code for a request that never reached the API.
+- `apps/api/src/__tests__/client-contract.test.ts` asserts each response type against the route's inferred schema in both directions and runs the client against `buildApp()` in memory. Change a route's response, and that test says which side to fix.
+- Raycast resolves modules with `moduleResolution: node`, which ignores `exports`; it imports from the package root, so keep the client and the render kernel re-exported from `index.ts`.
+
 ## Vocabularies kept in step
 
 These mirror something outside TypeScript. A stale copy fails silently rather than erroring.
