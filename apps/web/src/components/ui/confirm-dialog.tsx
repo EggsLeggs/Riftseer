@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 interface Props {
   open: boolean;
@@ -42,9 +43,9 @@ export function ConfirmDialog({
 
   // Each invocation starts clean — a reason typed for one card must not carry
   // over into the audit log of the next.
-  React.useEffect(() => {
+  useResetWhen([open], () => {
     if (open) setReason("");
-  }, [open]);
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -38,6 +38,7 @@ export function NewDeckView() {
   const started = React.useRef(false);
 
   React.useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- localStorage is read after hydration so server and client markup agree
     setDeck(wantsSave ? readGuestDeck() : null);
     setChecked(true);
   }, [wantsSave]);

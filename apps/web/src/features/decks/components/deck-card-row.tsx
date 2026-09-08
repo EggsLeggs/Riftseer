@@ -68,7 +68,7 @@ export function DeckCardRow({
   onOpenCard,
 }: DeckCardRowProps) {
   const editable = canEdit && !!onQuantityChange;
-  const drag = useDeckCardDraggable(card, !editable);
+  const { setNodeRef, isDragging, handleProps } = useDeckCardDraggable(card, !editable);
 
   const preview = React.useMemo(
     () => (onPreview ? () => onPreview(card) : undefined),
@@ -113,18 +113,18 @@ export function DeckCardRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <li
-          ref={drag.ref}
+          ref={setNodeRef}
           // items-start, not center: a long name wraps rather than truncating,
           // and the row's chrome should hug its first line.
           className={cn(
             "group/row hover:bg-muted/40 flex items-start gap-2 rounded-md px-1.5 py-1 text-sm",
-            drag.isDragging && "opacity-40",
+            isDragging && "opacity-40",
           )}
           // `onFocus` bubbles from the link and the stepper, so tabbing through the
           // list drives the preview exactly as pointing at it does.
           onMouseEnter={preview}
           onFocus={preview}
-          {...drag.handleProps}
+          {...handleProps}
         >
           {editable ? (
             <DeckQuantity

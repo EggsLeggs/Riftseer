@@ -24,6 +24,7 @@ import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 import { AdminListState, AdminPager } from "@/features/admin/components/admin-list";
 import { SelectField, TextField } from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 const PAGE_SIZE = 40;
 
@@ -94,9 +95,7 @@ export function AdminCardsView() {
   });
 
   // A narrower filter can leave the viewer past the end of the new result set.
-  React.useEffect(() => {
-    setPage(0);
-  }, [trimmed, setCode, state]);
+  useResetWhen([trimmed, setCode, state], () => setPage(0));
 
   const printings = results.data?.printings ?? [];
   const total = results.data?.total ?? 0;

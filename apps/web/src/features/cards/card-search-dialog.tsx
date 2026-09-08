@@ -17,6 +17,7 @@ import {
 import { cardsApi, cardsQueryKeys, CardApiError, type CardResult } from "./api";
 import { cardHref } from "@riftseer/types/render";
 import { printingImageUrl } from "@riftseer/types";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 function searchErrorInfo(err: unknown): { title: string; detail: string } {
   if (err instanceof CardApiError) {
@@ -84,12 +85,12 @@ export function CardSearchDialog({
     return () => window.clearTimeout(handle);
   }, [query]);
 
-  React.useEffect(() => {
+  useResetWhen([open], () => {
     if (!open) {
       setQuery("");
       setDebouncedQuery("");
     }
-  }, [open]);
+  });
 
   React.useEffect(() => {
     hasNavigated.current = false;

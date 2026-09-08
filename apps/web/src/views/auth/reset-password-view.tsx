@@ -45,6 +45,7 @@ export function ResetPasswordView() {
 
   useEffect(() => {
     const token = sessionStorage.getItem("rs_recovery_token");
+    // oxlint-disable-next-line react/set-state-in-effect -- the recovery token is read from session storage after hydration and removed in the same step
     setRecoveryToken(token);
     if (token) sessionStorage.removeItem("rs_recovery_token");
     setTokenChecked(true);

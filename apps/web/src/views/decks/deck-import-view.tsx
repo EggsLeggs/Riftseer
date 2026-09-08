@@ -40,10 +40,9 @@ export function DeckImportView() {
   const [problems, setProblems] = React.useState<DeckImportProblem[] | null>(null);
   const [created, setCreated] = React.useState<{ id: string; name: string } | null>(null);
 
-  React.useEffect(() => {
-    const first = formats.data?.[0];
-    if (first) setFormat((current) => current || first.code);
-  }, [formats.data]);
+  // The first listed format until the user picks one, derived rather than
+  // copied into state so the select never shows a blank option.
+  const selectedFormat = format || (formats.data?.[0]?.code ?? "");
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -52,7 +51,7 @@ export function DeckImportView() {
       const result = await importDeck.mutateAsync([
         {
           text,
-          format,
+          format: selectedFormat,
           visibility,
           ...(name.trim() ? { name: name.trim() } : {}),
         },
@@ -139,7 +138,7 @@ export function DeckImportView() {
           id="import-deck-format"
           label="Format"
           options={options}
-          value={format}
+          value={selectedFormat}
           onChange={(event) => setFormat(event.target.value)}
         />
         <SelectField
@@ -151,10 +150,10 @@ export function DeckImportView() {
         />
 
         <div className="flex gap-2">
-          <Button type="submit" disabled={importDeck.isPending || !text.trim() || !format}>
+          <Button type="submit" disabled={importDeck.isPending || !text.trim() || !selectedFormat}>
             {importDeck.isPending ? "Importing…" : "Import"}
           </Button>
-          {!format && (
+          {!selectedFormat && (
             <p className="text-muted-foreground self-center text-sm">
               No formats are configured on this environment.
             </p>

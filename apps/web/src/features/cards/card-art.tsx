@@ -5,6 +5,7 @@ import { ImageOffIcon, RotateCwIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 /**
  * Full-size card art. Landscape cards (battlefields) can be rotated upright so
@@ -22,10 +23,10 @@ export function CardArt({
   const [rotated, setRotated] = React.useState(false);
   const [failed, setFailed] = React.useState(false);
 
-  React.useEffect(() => {
+  useResetWhen([imageUrl], () => {
     setRotated(false);
     setFailed(false);
-  }, [imageUrl]);
+  });
 
   if (!imageUrl || failed) {
     return (

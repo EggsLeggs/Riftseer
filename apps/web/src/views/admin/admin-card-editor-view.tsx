@@ -47,10 +47,13 @@ export function AdminCardEditorView({
   setCodes: string[];
 }) {
   const router = useRouter();
-  const oracleBaseline = React.useRef(oracleToEditorValues(oracle));
-  const printingBaseline = React.useRef(printingToEditorValues(printing));
-  const [oracleValues, setOracleValues] = React.useState(oracleBaseline.current);
-  const [printingValues, setPrintingValues] = React.useState(printingBaseline.current);
+  // What the form last saved, so a patch carries only the keys that changed.
+  const [oracleBaseline, setOracleBaseline] = React.useState(() => oracleToEditorValues(oracle));
+  const [printingBaseline, setPrintingBaseline] = React.useState(() =>
+    printingToEditorValues(printing),
+  );
+  const [oracleValues, setOracleValues] = React.useState(oracleBaseline);
+  const [printingValues, setPrintingValues] = React.useState(printingBaseline);
   const oracleMutations = useOracleMutations();
   const printingMutations = usePrintingMutations();
 
@@ -63,22 +66,22 @@ export function AdminCardEditorView({
 
   async function saveOracle(event: React.FormEvent) {
     event.preventDefault();
-    const patch = buildOraclePatch(oracleValues, oracleBaseline.current);
+    const patch = buildOraclePatch(oracleValues, oracleBaseline);
     if (Object.keys(patch).length === 0) return void toast.info("No oracle changes to save");
     try {
       await oracleMutations.patch.mutateAsync([oracle.id, patch]);
-      oracleBaseline.current = oracleValues;
+      setOracleBaseline(oracleValues);
       router.refresh();
     } catch {}
   }
 
   async function savePrinting(event: React.FormEvent) {
     event.preventDefault();
-    const patch = buildPrintingPatch(printingValues, printingBaseline.current);
+    const patch = buildPrintingPatch(printingValues, printingBaseline);
     if (Object.keys(patch).length === 0) return void toast.info("No printing changes to save");
     try {
       await printingMutations.patch.mutateAsync([printing.id, patch, printing.public_slug]);
-      printingBaseline.current = printingValues;
+      setPrintingBaseline(printingValues);
       router.refresh();
     } catch {}
   }

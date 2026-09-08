@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,8 +34,6 @@ type Fields = z.infer<typeof schema>;
 
 export function RegisterView() {
   const [state, action, pending] = useActionState(registerAction, null);
-  const formRef = useRef<HTMLFormElement>(null);
-
   const {
     register,
     handleSubmit,
@@ -45,9 +43,10 @@ export function RegisterView() {
   });
 
   // handleSubmit blocks submission until the schema passes, then hands the raw
-  // form data to the server action.
-  const onSubmit = handleSubmit(() => {
-    if (formRef.current) action(new FormData(formRef.current));
+  // form data to the server action. The form comes off the submit event
+  // rather than a ref, so nothing reads a ref during render.
+  const onSubmit = handleSubmit((_fields, event) => {
+    if (event?.target instanceof HTMLFormElement) action(new FormData(event.target));
   });
 
   if (state?.pending) {
@@ -80,7 +79,7 @@ export function RegisterView() {
             <AlertDescription>{state.error}</AlertDescription>
           </Alert>
         )}
-        <form ref={formRef} onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4">
           <div className="flex gap-2 rounded-md border p-3 text-sm leading-snug">
             <input
               id="accepted_terms"

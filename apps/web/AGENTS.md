@@ -27,6 +27,7 @@ bun run cf-typegen  # after a wrangler.jsonc change
 - Admin and deck types derive from the Eden `App` type. Hand-written ruling types silently lost fields the API had started returning; never restate a wire shape by hand.
 - `src/lib/env.ts` parses at module scope, so importing it with a public var unset throws at import time, build included. Public variables carry the `NEXT_PUBLIC_` prefix.
 - Do not hand-edit generated shadcn components unless the change belongs in the shared primitive.
+- An effect that only sets state fails lint (`react/set-state-in-effect`). State that follows a prop resets through `useResetWhen()` and a browser-only value renders through `useBrowserValue()`, both in `src/lib/use-derived-state.ts`; a read of storage or the URL after hydration keeps the effect with a one-line `oxlint-disable-next-line` reason.
 
 ## Cards
 

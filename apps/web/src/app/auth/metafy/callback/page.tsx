@@ -28,6 +28,7 @@ export default function MetafyCallbackPage() {
     if (error || errorDescription) {
       // Upstream text is not shown to the user — it is attacker-influenced.
       console.error("[metafy callback] authorization failed:", { error, errorDescription });
+      // oxlint-disable-next-line react/set-state-in-effect -- the OAuth query is read after hydration and the exchange runs once, guarded by startedRef
       setState({ status: "error", message: "Metafy authorization was denied." });
       return;
     }

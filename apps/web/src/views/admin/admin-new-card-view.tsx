@@ -72,12 +72,14 @@ export function AdminNewCardView() {
   });
 
   React.useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- a random id generated in render would differ between server and client markup
     setPrintingId(generateCardId());
   }, []);
   React.useEffect(() => {
     const draft = readReviewCreateDraft(reviewEntryId);
     if (!draft) return;
     const next = galleryToPrefill(draft.gallery);
+    // oxlint-disable-next-line react/set-state-in-effect -- the review draft lives in session storage, read after hydration
     setValues(next);
     setUploadArt(Boolean(next.imageUrl));
   }, [reviewEntryId]);

@@ -83,6 +83,7 @@ export function useGuestDeck(formats: readonly DeckFormatOption[]): GuestDeckEdi
   // such storage, so reading it during render would produce markup that does
   // not match what hydration then draws.
   React.useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- localStorage is read once after hydration so server and client markup agree
     setDeck(readGuestDeck() ?? emptyGuestDeck());
     setReady(true);
   }, []);
