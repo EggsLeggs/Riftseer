@@ -6,7 +6,7 @@ import { PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CARD_GRID_COLUMNS } from "@/features/cards/card-display";
 import { cn } from "@/lib/utils";
-import { groupDeckCards, type DeckGroupMode } from "../grouping";
+import { groupDeckCards, type DeckGroupMode } from "@riftseer/types/deck/grouping";
 import { violationsForCard, type DeckViolationIndex } from "../deck-violations";
 import type { DeckListView } from "../deck-views";
 import type { DeckCard, DeckViolation, DeckZone as Zone } from "../types";
@@ -106,7 +106,7 @@ export function DeckZoneSection({
   // Battlefields are the one sideways zone; their tiles and stacks keep the
   // wide aspect rather than rotating the art.
   const landscape = zone === "battlefields";
-  const drop = useDeckZoneDroppable(zone);
+  const { setNodeRef, canReceive, isOver } = useDeckZoneDroppable(zone);
   const tileActions = {
     onQuantityChange,
     onMoveZone,
@@ -117,11 +117,11 @@ export function DeckZoneSection({
 
   return (
     <section
-      ref={drop.ref}
+      ref={setNodeRef}
       className={cn(
         "min-w-0 rounded-lg",
-        drop.canReceive && "ring-1 ring-ring/40",
-        drop.isOver && "bg-accent/30 ring-2 ring-ring",
+        canReceive && "ring-1 ring-ring/40",
+        isOver && "bg-accent/30 ring-2 ring-ring",
         className,
       )}
       aria-labelledby={`deck-zone-${zone}`}

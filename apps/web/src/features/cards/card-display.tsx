@@ -35,6 +35,7 @@ import {
 } from "@/features/cards/format";
 import { cn } from "@/lib/utils";
 import type { CardResult } from "./api";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 // Re-exported so existing client views keep their single import site. Server
 // components must import from ./format directly — this module is client-only.
@@ -277,9 +278,7 @@ function DetailsCardArt({ printing }: { printing: CardResult["printing"] }) {
   const [failed, setFailed] = React.useState(false);
   const isLandscape = cardIsLandscapeOriented(printing);
 
-  React.useEffect(() => {
-    setFailed(false);
-  }, [imageUrl]);
+  useResetWhen([imageUrl], () => setFailed(false));
 
   return (
     <div
@@ -497,9 +496,7 @@ export function CardThumbnail({
   const showOverlayName = cardNamePlacement === "overlay" && Boolean(cardName);
   const showBelowName = cardNamePlacement === "below" && Boolean(cardName);
 
-  React.useEffect(() => {
-    setFailed(false);
-  }, [imageUrl]);
+  useResetWhen([imageUrl], () => setFailed(false));
 
   const belowCaption = showBelowName ? (
     <span

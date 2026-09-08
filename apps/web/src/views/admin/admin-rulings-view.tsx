@@ -22,10 +22,16 @@ import type {
   AdminRulingType,
 } from "@/features/admin/types";
 import { cn } from "@/lib/utils";
-import { AdminPageHeader } from "./admin-page-header";
-import { AdminListState, AdminPager } from "./admin-list";
-import { CheckboxField, SelectField, TextAreaField, TextField } from "./admin-form-field";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { AdminListState, AdminPager } from "@/features/admin/components/admin-list";
+import {
+  CheckboxField,
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 const PAGE_SIZE = 25;
 /** Long enough that typing a rule does not fire a request per keystroke. */
@@ -146,9 +152,7 @@ export function AdminRulingsView() {
   });
 
   // A narrower filter can leave the viewer past the end of the new result set.
-  React.useEffect(() => {
-    setPage(0);
-  }, [submitted, kind]);
+  useResetWhen([submitted, kind], () => setPage(0));
 
   const rows = rulings.data?.rulings ?? [];
   const total = rulings.data?.total ?? 0;

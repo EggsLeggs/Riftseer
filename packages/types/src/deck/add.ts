@@ -1,5 +1,5 @@
-import { zoneForCard, type DeckZone } from "@riftseer/types/deck";
-import type { DeckCard, DeckCardChange } from "./types";
+import { zoneForCard, type DeckZone } from "../deck.ts";
+import type { DeckCardChange, DeckCardRow } from "./changes.ts";
 
 /**
  * Turning "the user picked this card" into a `DeckCardChange`.
@@ -64,7 +64,7 @@ export function resolveAddZone(card: AddableCard, requested?: DeckZone | null): 
  * counts across.
  */
 export function deckAddChange(
-  cards: readonly DeckCard[],
+  cards: readonly DeckCardRow[],
   card: AddableCard,
   options: { zone?: DeckZone | null; copies?: number } = {},
 ): DeckCardChange {

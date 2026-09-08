@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { AdminPageHeader } from "./admin-page-header";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 
 import type { AdminStats } from "@/features/admin/types";
 

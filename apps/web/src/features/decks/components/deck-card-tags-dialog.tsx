@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { setDeckCardTagsAction } from "../actions";
 import type { DeckCard } from "../types";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 /**
  * Editing one card's manual tags: chips plus a text field, saved wholesale.
@@ -39,17 +40,17 @@ export function DeckCardTagsDialog({
   card: DeckCard | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [tags, setTags] = React.useState<string[]>([]);
+  const [tags, setTags] = React.useState<string[]>(card?.tags ?? []);
   const [draft, setDraft] = React.useState("");
   const [saving, setSaving] = React.useState(false);
 
   // Each opening starts from the card's current tags, not the last edit's.
-  React.useEffect(() => {
+  useResetWhen([card], () => {
     if (card) {
       setTags(card.tags);
       setDraft("");
     }
-  }, [card]);
+  });
 
   const addDraft = () => {
     const tag = draft.trim().slice(0, TAG_LENGTH_MAX);

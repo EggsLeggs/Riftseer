@@ -34,9 +34,10 @@ import type {
   AdminReviewPage,
   AdminReviewStatus,
 } from "@/features/admin/types";
-import { AdminPageHeader } from "./admin-page-header";
-import { SelectField } from "./admin-form-field";
-import { AdminListState, AdminPager } from "./admin-list";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { SelectField } from "@/features/admin/components/admin-form-field";
+import { AdminListState, AdminPager } from "@/features/admin/components/admin-list";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 const PAGE_SIZE = 50;
 
@@ -102,9 +103,7 @@ export function AdminReviewView() {
     retry: false,
   });
 
-  React.useEffect(() => {
-    setPage(0);
-  }, [status, kind, source]);
+  useResetWhen([status, kind, source], () => setPage(0));
 
   const entries = review.data?.entries ?? [];
   const counts = review.data?.counts;

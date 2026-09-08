@@ -15,13 +15,7 @@
         "varsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_"
       }
-    ],
-    // React Compiler-derived rules. They flag 45 real patterns in web that
-    // need refactoring, not a style pass; they come on in the web chunk of
-    // the overhaul that extracts deck logic.
-    "react/set-state-in-effect": "off",
-    "react/refs": "off",
-    "react/immutability": "off"
+    ]
   },
   "env": {
     "builtin": true

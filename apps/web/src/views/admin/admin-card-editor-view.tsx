@@ -21,12 +21,12 @@ import {
   usePrintingMutations,
 } from "@/features/admin/hooks/use-admin-mutations";
 import { cardHref } from "@riftseer/types/render";
-import { AdminCardImagePanel } from "./admin-card-image-panel";
-import { AdminCardLegalitiesPanel } from "./admin-card-legalities-panel";
-import { AdminCardRelationshipsPanel } from "./admin-card-relationships-panel";
-import { AdminCardRulingsPanel } from "./admin-card-rulings-panel";
-import { AdminLockedFieldsNotice } from "./admin-locked-fields-notice";
-import { AdminPrintingDeltaPanel } from "./admin-printing-delta-panel";
+import { AdminCardImagePanel } from "@/features/admin/components/admin-card-image-panel";
+import { AdminCardLegalitiesPanel } from "@/features/admin/components/admin-card-legalities-panel";
+import { AdminCardRelationshipsPanel } from "@/features/admin/components/admin-card-relationships-panel";
+import { AdminCardRulingsPanel } from "@/features/admin/components/admin-card-rulings-panel";
+import { AdminLockedFieldsNotice } from "@/features/admin/components/admin-locked-fields-notice";
+import { AdminPrintingDeltaPanel } from "@/features/admin/components/admin-printing-delta-panel";
 import {
   AdminSection,
   CheckboxField,
@@ -34,8 +34,8 @@ import {
   SelectField,
   TextAreaField,
   TextField,
-} from "./admin-form-field";
-import { AdminPageHeader } from "./admin-page-header";
+} from "@/features/admin/components/admin-form-field";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
 
 export function AdminCardEditorView({
   oracle,
@@ -47,10 +47,13 @@ export function AdminCardEditorView({
   setCodes: string[];
 }) {
   const router = useRouter();
-  const oracleBaseline = React.useRef(oracleToEditorValues(oracle));
-  const printingBaseline = React.useRef(printingToEditorValues(printing));
-  const [oracleValues, setOracleValues] = React.useState(oracleBaseline.current);
-  const [printingValues, setPrintingValues] = React.useState(printingBaseline.current);
+  // What the form last saved, so a patch carries only the keys that changed.
+  const [oracleBaseline, setOracleBaseline] = React.useState(() => oracleToEditorValues(oracle));
+  const [printingBaseline, setPrintingBaseline] = React.useState(() =>
+    printingToEditorValues(printing),
+  );
+  const [oracleValues, setOracleValues] = React.useState(oracleBaseline);
+  const [printingValues, setPrintingValues] = React.useState(printingBaseline);
   const oracleMutations = useOracleMutations();
   const printingMutations = usePrintingMutations();
 
@@ -63,22 +66,22 @@ export function AdminCardEditorView({
 
   async function saveOracle(event: React.FormEvent) {
     event.preventDefault();
-    const patch = buildOraclePatch(oracleValues, oracleBaseline.current);
+    const patch = buildOraclePatch(oracleValues, oracleBaseline);
     if (Object.keys(patch).length === 0) return void toast.info("No oracle changes to save");
     try {
       await oracleMutations.patch.mutateAsync([oracle.id, patch]);
-      oracleBaseline.current = oracleValues;
+      setOracleBaseline(oracleValues);
       router.refresh();
     } catch {}
   }
 
   async function savePrinting(event: React.FormEvent) {
     event.preventDefault();
-    const patch = buildPrintingPatch(printingValues, printingBaseline.current);
+    const patch = buildPrintingPatch(printingValues, printingBaseline);
     if (Object.keys(patch).length === 0) return void toast.info("No printing changes to save");
     try {
       await printingMutations.patch.mutateAsync([printing.id, patch, printing.public_slug]);
-      printingBaseline.current = printingValues;
+      setPrintingBaseline(printingValues);
       router.refresh();
     } catch {}
   }

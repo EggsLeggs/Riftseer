@@ -9,7 +9,7 @@ import {
   type DeckStatBucket,
   type DeckStatShare,
   type StattableCard,
-} from "../deck-stats";
+} from "@riftseer/types/deck/stats";
 
 /**
  * What the deck is made of, under the list.

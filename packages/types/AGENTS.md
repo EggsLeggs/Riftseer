@@ -21,6 +21,8 @@ Zero-dependency canonical types and runtime-neutral helpers shared by Bun, Node,
 - `zoneForCard()` keys off `card_type` (`Legend`, `Rune`, `Battlefield`), never `supertype`. The old model used `supertype` and routed every rune and battlefield into the main deck.
 - Deck text is line-based and human-pasteable, marking champions with `*CH*` and pinning a printing with a `(SET) COLLECTOR` suffix.
 - It replaced an opaque binary short form. Keep it diffable; do not reintroduce a compact encoding.
+- `src/deck/` is the deck logic a client runs, and the boundary lint keeps it inside this package so it never reaches React or an app. `grouping.ts` and `stats.ts` are display, counting copies rather than rows. `changes.ts` is the change queue, its merge rules and the optimistic projection; `add.ts` is zone eligibility and what a second `+` means. `guest-deck.ts` owns the signed-out deck's stored shape and its projections, with the localStorage calls left in web. `primer-markup.ts` scans mention spans over `src/parser.ts`. `editor.ts` is the builder's write path as a reducer over `changes.ts`: it decides what is queued, what is sent at once and what the list shows meanwhile, and leaves the debounce and the request to the hook that wraps it.
+- The change body and the guest row in `src/deck/` restate the wire shape by hand because a mobile client cannot derive them from Eden; `apps/web/src/features/decks/types.ts` asserts the two still agree at compile time.
 
 ## Shared derivations
 
@@ -42,6 +44,13 @@ Zero-dependency canonical types and runtime-neutral helpers shared by Bun, Node,
 - `type-line.ts` owns `cardTypeLine()` ("Champion Unit", a bare "Legend", "Token Unit") and its glyph key.
 - `urls.ts` owns relative card paths and absolute `riftseer_uri` derivation from a `siteOrigin`, plus `cardSiteUrl()` for clients that prefer the API's field.
 - Surfaces keep only medium-specific assets: web's CSS class per token, Discord's emoji-id map in `@riftseer/core/icons`, Raycast's asset paths. Hand-rolling a regex in a client instead of importing the kernel is the mistake it exists to prevent.
+
+## API client
+
+- `src/client/index.ts` is `createRiftseerClient()`, the zero-dependency fetch client the standalone surfaces and the mobile app read the API through, exported as `@riftseer/types/client` and from the root. It declares the response envelopes (`CardSearchResponse`, `CardResolveResponse`, `SetSummary`, `FormatListResponse`, `ApiError`) once; the card, printing, format and detail halves are this package's own types.
+- Every method answers a `ClientResult<T>` and never throws. `status: 0` is the client's own code for a request that never reached the API.
+- `apps/api/src/__tests__/client-contract.test.ts` asserts each response type against the route's inferred schema in both directions and runs the client against `buildApp()` in memory. Change a route's response, and that test says which side to fix.
+- Raycast resolves modules with `moduleResolution: node`, which ignores `exports`; it imports from the package root, so keep the client and the render kernel re-exported from `index.ts`.
 
 ## Vocabularies kept in step
 

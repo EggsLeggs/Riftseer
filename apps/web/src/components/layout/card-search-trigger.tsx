@@ -4,6 +4,7 @@ import * as React from "react";
 import { Kbd } from "@/components/ui/kbd";
 import { SearchIcon } from "lucide-react";
 import { useCardSearch } from "@/features/cards/card-search-provider";
+import { useBrowserValue } from "@/lib/use-derived-state";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,15 +13,14 @@ import { cn } from "@/lib/utils";
  * heuristic; userAgentData isn't available in Safari/Firefox yet. Heuristic-only —
  * the keyboard handler accepts both modifiers regardless.
  */
+function readIsAppleOs(): boolean {
+  const platform = navigator.platform ?? "";
+  const ua = navigator.userAgent ?? "";
+  return /Mac|iPhone|iPad|iPod/i.test(platform) || /Mac OS X/.test(ua);
+}
+
 function useIsAppleOs(): boolean {
-  const [isApple, setIsApple] = React.useState(false);
-  React.useEffect(() => {
-    if (typeof navigator === "undefined") return;
-    const platform = navigator.platform ?? "";
-    const ua = navigator.userAgent ?? "";
-    setIsApple(/Mac|iPhone|iPad|iPod/i.test(platform) || /Mac OS X/.test(ua));
-  }, []);
-  return isApple;
+  return useBrowserValue(readIsAppleOs, false);
 }
 
 interface CardSearchTriggerProps {

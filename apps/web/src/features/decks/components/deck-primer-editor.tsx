@@ -38,6 +38,7 @@ import { cn } from "@/lib/utils";
 import { useDeckMutations } from "../hooks/use-deck-mutations";
 import { DeckPrimer } from "./deck-primer";
 import type { DeckDetail } from "../types";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 const PRIMER_MAX = 20_000;
 
@@ -106,13 +107,13 @@ export function DeckPrimerEditor({
   const [userOpen, setUserOpen] = React.useState(false);
   const [userHandle, setUserHandle] = React.useState("");
 
-  React.useEffect(() => {
+  useResetWhen([deck.primer, open], () => {
     if (open) {
       setDraft(deck.primer ?? "");
       setMode("write");
       setFullscreen(false);
     }
-  }, [deck.primer, open]);
+  });
 
   const insert = React.useCallback((before: string, after = "", placeholder = "") => {
     const field = textareaRef.current;

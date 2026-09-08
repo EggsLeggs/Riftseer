@@ -2,13 +2,25 @@
 
 Zero-dependency deck vocabulary, validator and text interchange format, shared by the web builder, the API and the database's own rule tables.
 
-Three modules:
+The model and its rules:
 
 | File                   | Owns                                                                                     |
 | ---------------------- | ---------------------------------------------------------------------------------------- |
 | `src/deck.ts`          | Zone vocabulary, counting groups, `zoneForCard()`, legality resolution, the shapes below |
 | `src/deck-validate.ts` | `validateDeck()`                                                                         |
 | `src/deck-text.ts`     | `formatDeckText()` / `parseDeckText()`                                                   |
+
+The logic a builder runs over it, in `src/deck/`:
+
+| File                        | Owns                                                                                     |
+| --------------------------- | ---------------------------------------------------------------------------------------- |
+| `src/deck/grouping.ts`      | `groupDeckCards()`, `deckZoneSections()`, `deckDisplayOrder()`: display, copies not rows |
+| `src/deck/stats.ts`         | `deckStats()`: curves, averages and shares over the main deck                            |
+| `src/deck/changes.ts`       | `DeckCardChange`, the queue merge rules, `applyDeckCardChanges()`, move and art swaps    |
+| `src/deck/add.ts`           | `AddableCard`, zone eligibility, `deckAddChange()`                                       |
+| `src/deck/guest-deck.ts`    | The signed-out deck: stored shape, parse and serialise, edits, projections               |
+| `src/deck/primer-markup.ts` | `primerMarkup()`: mention spans to Markdown links over the card-mention parser           |
+| `src/deck/editor.ts`        | `deckEditorReducer()`: the builder's queue, its one batch on the wire and the projection |
 
 ---
 

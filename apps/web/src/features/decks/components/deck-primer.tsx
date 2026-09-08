@@ -14,7 +14,11 @@ import { CardTextInline } from "@/features/cards/card-text";
 import { cardIsLandscapeOriented } from "@/features/cards/format";
 import { cardHref } from "@riftseer/types/render";
 import { profileApi, profileQueryKeys } from "@/features/profile/api";
-import { parseMentionHref, primerMarkup, type PrimerMention } from "../primer-markup";
+import {
+  parseMentionHref,
+  primerMarkup,
+  type PrimerMention,
+} from "@riftseer/types/deck/primer-markup";
 import { userDecksHref } from "../paths";
 
 /**

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { CardSearchDialog } from "@/features/cards/card-search-dialog";
 import type { CardResult } from "@/features/cards/api";
 import { DECK_ZONE_LABELS } from "@riftseer/types/deck";
-import { resolveAddZone, type AddableCard } from "../deck-add";
+import { resolveAddZone, type AddableCard } from "@riftseer/types/deck/add";
 import type { DeckZone } from "../types";
 
 /**

@@ -16,9 +16,10 @@ import {
 import { listAuditLogAction } from "@/features/admin/actions";
 import type { AdminAuditEntry, AdminAuditPage } from "@/features/admin/types";
 import { ADMIN_AUDIT_ACTIONS } from "@riftseer/types/admin-actions";
-import { AdminPageHeader } from "./admin-page-header";
-import { SelectField, TextField } from "./admin-form-field";
-import { AdminListState, AdminPager } from "./admin-list";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { SelectField, TextField } from "@/features/admin/components/admin-form-field";
+import { AdminListState, AdminPager } from "@/features/admin/components/admin-list";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 const PAGE_SIZE = 50;
 
@@ -60,9 +61,7 @@ export function AdminAuditLogView() {
     retry: false,
   });
 
-  React.useEffect(() => {
-    setPage(0);
-  }, [action, targetId]);
+  useResetWhen([action, targetId], () => setPage(0));
 
   const entries = log.data?.entries ?? [];
   const total = log.data?.total ?? 0;

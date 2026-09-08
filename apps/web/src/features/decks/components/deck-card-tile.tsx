@@ -63,7 +63,7 @@ export function DeckCardTile({
 }) {
   const imageUrl = useTileImageUrl(card);
   const [failed, setFailed] = React.useState(false);
-  const drag = useDeckCardDraggable(card, !canEdit);
+  const { setNodeRef, isDragging, handleProps } = useDeckCardDraggable(card, !canEdit);
 
   const openCard = onOpenCard
     ? (event: React.MouseEvent<HTMLAnchorElement>) => {
@@ -85,9 +85,9 @@ export function DeckCardTile({
     <ContextMenu>
       <ContextMenuTrigger asChild>
         <div
-          ref={drag.ref}
-          className={cn("group/tile relative", drag.isDragging && "opacity-40")}
-          {...drag.handleProps}
+          ref={setNodeRef}
+          className={cn("group/tile relative", isDragging && "opacity-40")}
+          {...handleProps}
         >
           <Link
             href={cardHref({ id: card.printing_id, public_slug: card.public_slug })}

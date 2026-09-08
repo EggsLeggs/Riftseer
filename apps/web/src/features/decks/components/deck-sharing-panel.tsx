@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SelectField } from "@/views/admin/admin-form-field";
+import { SelectField } from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CARD_BROWSE_SELECT_CLASS } from "@/features/cards/card-display";
 import { deckJoinHref } from "../paths";
 import { useDeckMutations } from "../hooks/use-deck-mutations";
 import type { DeckCollaborator, DeckCollaboratorRole, DeckDetail } from "../types";
+import { useBrowserValue, useResetWhen } from "@/lib/use-derived-state";
 
 /**
  * Sharing: the invite link and the collaborator roster.
@@ -70,13 +71,11 @@ export function DeckSharingPanel({ deck }: { deck: DeckDetail }) {
   const [handle, setHandle] = React.useState("");
   const [addRole, setAddRole] = React.useState<DeckCollaboratorRole>("editor");
   const [pendingRemoval, setPendingRemoval] = React.useState<string | null>(null);
-  const [origin, setOrigin] = React.useState("");
-
   // The absolute link is only knowable in the browser, and rendering it during
   // SSR would hydrate-mismatch against whatever origin the page was served on.
-  React.useEffect(() => setOrigin(window.location.origin), []);
+  const origin = useBrowserValue(() => window.location.origin, "");
 
-  React.useEffect(() => setInviteCode(deck.invite_code ?? null), [deck.invite_code]);
+  useResetWhen([deck.invite_code], () => setInviteCode(deck.invite_code ?? null));
 
   const inviteUrl = inviteCode ? `${origin}${deckJoinHref(inviteCode)}` : "";
 

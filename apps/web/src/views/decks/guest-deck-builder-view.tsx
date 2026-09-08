@@ -18,7 +18,7 @@ import {
   GUEST_DECK_DEFAULT_FORMAT,
   guestDeckTextCards,
   isGuestDeckEmpty,
-} from "@/features/decks/guest-deck";
+} from "@riftseer/types/deck/guest-deck";
 import { useGuestDeck } from "@/features/decks/hooks/use-guest-deck";
 import { importDeckHref, signInToSaveDeckHref } from "@/features/decks/paths";
 

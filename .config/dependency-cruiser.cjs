@@ -65,6 +65,29 @@ module.exports = {
         pathNot: "^packages/types/src/render/index\\.ts$",
       },
     },
+    {
+      name: "web-client-no-server-only",
+      severity: "error",
+      comment:
+        "Client modules (components, hooks, providers) reach the server only " +
+        'through a "use server" actions.ts. server-api.ts and server-loader.ts ' +
+        "import server-only, and a client import of either fails the build with " +
+        "a message far from the cause.",
+      from: { path: "^apps/web/src/(components|providers|features/[^/]+/(components|hooks))/" },
+      to: {
+        path: "^apps/web/src/features/[^/]+/(server-api|server-loader)\\.ts$|" + "^server-only$",
+      },
+    },
+    {
+      name: "types-deck-self-contained",
+      severity: "error",
+      comment:
+        "packages/types/src/deck is the deck logic a mobile app imports. It " +
+        "reaches nothing outside the package: not React, not an app, not a " +
+        "dependency the package does not have.",
+      from: { path: "^packages/types/src/deck/" },
+      to: { pathNot: "^packages/types/src/" },
+    },
   ],
   options: {
     doNotFollow: { path: "node_modules" },

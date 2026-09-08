@@ -10,6 +10,7 @@ import { setDeckFavoriteAction } from "../actions";
 import { deckHref } from "../paths";
 import { cn } from "@/lib/utils";
 import type { DeckDetail } from "../types";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 /** Shared with the other header chips so favorite, views, comments and folder match. */
 export const HEADER_ACTION_CLASS =
@@ -69,9 +70,9 @@ export function DeckFavoriteButton({
 
   // A revalidated payload (someone else's favorite, a navigation back) wins
   // over whatever this button last showed.
-  React.useEffect(() => {
-    setState({ favorited: deck.is_favorited ?? false, count: deck.favorite_count });
-  }, [deck.favorite_count, deck.is_favorited]);
+  useResetWhen([deck.favorite_count, deck.is_favorited], () =>
+    setState({ favorited: deck.is_favorited ?? false, count: deck.favorite_count }),
+  );
 
   if (!isSignedIn) {
     return (

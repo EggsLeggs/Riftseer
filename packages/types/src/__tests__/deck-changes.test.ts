@@ -6,8 +6,11 @@ import {
   deckRowKey,
   mergeDeckCardChange,
   mergeDeckCardChanges,
-} from "./deck-changes";
-import type { DeckCard, DeckCardChange } from "./types";
+} from "../deck/changes.ts";
+// The guest row is the one full deck row this package owns; the queue is
+// generic over rows, so it stands in for the wire row here.
+import type { GuestDeckCard as DeckCard } from "../deck/guest-deck.ts";
+import type { DeckCardChange } from "../deck/changes.ts";
 
 function change(overrides: Partial<DeckCardChange> = {}): DeckCardChange {
   return {

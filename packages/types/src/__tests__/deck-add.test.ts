@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { deckAddChange, eligibleZones, resolveAddZone } from "./deck-add";
-import type { DeckCard } from "./types";
+import { deckAddChange, eligibleZones, resolveAddZone } from "../deck/add.ts";
+// The guest row is the one full deck row this package owns; `deckAddChange`
+// is structural over rows, so it stands in for the wire row here.
+import type { GuestDeckCard as DeckCard } from "../deck/guest-deck.ts";
 
 function deckCard(overrides: Partial<DeckCard>): DeckCard {
   return {

@@ -29,6 +29,7 @@ import {
 import { deckHref, userDecksHref } from "../paths";
 
 import type { DeckComment, DeckCommentsPage, DeckDetail } from "../types";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 /**
  * The deck's comment thread, Reddit/YouTube-shaped: roots expanded, the first
@@ -381,9 +382,9 @@ function CommentLikeButton({
   });
   const [pending, setPending] = React.useState(false);
 
-  React.useEffect(() => {
-    setState({ liked: comment.is_liked ?? false, count: comment.like_count ?? 0 });
-  }, [comment.is_liked, comment.like_count]);
+  useResetWhen([comment.is_liked, comment.like_count], () =>
+    setState({ liked: comment.is_liked ?? false, count: comment.like_count ?? 0 }),
+  );
 
   if (!isSignedIn) {
     return (

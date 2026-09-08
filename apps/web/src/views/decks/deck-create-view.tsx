@@ -14,7 +14,11 @@ import { DECK_VISIBILITY_OPTIONS } from "@/features/decks/components/deck-metada
 import { useDeckLifecycleMutations } from "@/features/decks/hooks/use-deck-mutations";
 import { deckHref, importDeckHref, myDecksHref } from "@/features/decks/paths";
 import type { DeckVisibility } from "@/features/decks/types";
-import { SelectField, TextAreaField, TextField } from "@/views/admin/admin-form-field";
+import {
+  SelectField,
+  TextAreaField,
+  TextField,
+} from "@/features/admin/components/admin-form-field";
 
 /**
  * `/decks/new`. Metadata only — a new deck has no cards yet, so the create

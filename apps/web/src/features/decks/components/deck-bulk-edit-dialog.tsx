@@ -15,8 +15,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DECK_ZONE_LABELS, DECK_ZONES } from "@riftseer/types/deck";
-import { deckZoneSections } from "../grouping";
+import { deckZoneSections } from "@riftseer/types/deck/grouping";
 import type { DeckCard, DeckZone } from "../types";
+import { useResetWhen } from "@/lib/use-derived-state";
 
 function cardKey(card: Pick<DeckCard, "zone" | "printing_id" | "oracle_id">) {
   return `${card.zone}:${card.printing_id}:${card.oracle_id}`;
@@ -50,13 +51,13 @@ export function DeckBulkEditDialog({
   const [zone, setZone] = React.useState<DeckZone | "">("");
   const [quantity, setQuantity] = React.useState("");
 
-  React.useEffect(() => {
+  useResetWhen([open], () => {
     if (open) {
       setSelected(new Set());
       setZone("");
       setQuantity("");
     }
-  }, [open]);
+  });
 
   const sections = React.useMemo(() => deckZoneSections(editor.cards), [editor.cards]);
   const picked = editor.cards.filter((card) => selected.has(cardKey(card)));

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { deckStats, type StattableCard } from "./deck-stats";
+import { deckStats, type StattableCard } from "../deck/stats.ts";
 
 function card(overrides: Partial<StattableCard> = {}): StattableCard {
   return {

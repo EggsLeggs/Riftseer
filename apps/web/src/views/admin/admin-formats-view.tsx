@@ -44,8 +44,8 @@ import type {
   AdminLegalityStatus,
   AdminViolationSeverityInput,
 } from "@/features/admin/types";
-import { AdminPageHeader } from "./admin-page-header";
-import { SelectField } from "./admin-form-field";
+import { AdminPageHeader } from "@/features/admin/components/admin-page-header";
+import { SelectField } from "@/features/admin/components/admin-form-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /** Mirrors the API's accepted input shape; the stored code is always lowercase. */

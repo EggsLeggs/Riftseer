@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDownIcon, LayoutGrid, Layers, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useResetWhen } from "@/lib/use-derived-state";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -23,9 +24,7 @@ export function CardsNavMenu() {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
 
-  React.useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  useResetWhen([pathname], () => setOpen(false));
 
   const close = React.useCallback(() => setOpen(false), []);
 

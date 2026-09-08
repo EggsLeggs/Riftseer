@@ -2,29 +2,27 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import type { AddableCard } from "@riftseer/types/deck/add";
+import {
+  deckEditorCards,
+  deckEditorReducer,
+  initialDeckEditorState,
+  type DeckEditorAction,
+  type DeckEditorState,
+} from "@riftseer/types/deck/editor";
 
 import { applyDeckCardChangesAction } from "../actions";
-import { deckAddChange, type AddableCard } from "../deck-add";
-import {
-  applyDeckCardChanges,
-  deckMoveChanges,
-  deckPrintingSwapChanges,
-  mergeDeckCardChanges,
-} from "../deck-changes";
-import type { DeckCard, DeckCardChange, DeckToken, DeckViolation, DeckZone } from "../types";
+import type { DeckCard, DeckToken, DeckViolation, DeckZone } from "../types";
 
 /**
  * The builder's write path: a queue, a debounce and one request.
  *
- * `PUT /decks/:id/cards` takes an array and the RPC coalesces revisions inside
- * a five-minute window, so four presses of `+` must cost one request carrying
- * `quantity: 4` — not four requests that each write a revision row. Quantity
- * steps are therefore debounced; a structural edit (adding a card, moving a
- * zone) flushes at once, because `applyDeckCardChanges` cannot project a row
- * the server has never described.
- *
- * The queue itself, the merge rules and the optimistic projection are pure and
- * live in `deck-changes.ts`. This hook is only the timing and the request.
+ * What is queued, what is sent and what the list shows meanwhile is the
+ * reducer in `@riftseer/types/deck/editor`. This hook adds the two things a
+ * reducer cannot own: the 700ms debounce on quantity steps, and the request
+ * for whatever the reducer marks `inFlight`. Structural edits (an add, a move,
+ * a removal, an art swap) skip the debounce because the projection cannot
+ * show a row the server has never described.
  */
 
 const DEBOUNCE_MS = 700;
@@ -61,199 +59,134 @@ export interface DeckEditor extends DeckEditorSnapshot {
   flush: () => void;
 }
 
+type State = DeckEditorState<DeckEditorSnapshot>;
+type Action = DeckEditorAction<DeckEditorSnapshot>;
+
+const reducer: React.Reducer<State, Action> = deckEditorReducer;
+
+function sameSnapshot(a: DeckEditorSnapshot, b: DeckEditorSnapshot): boolean {
+  return a.cards === b.cards && a.tokens === b.tokens && a.violations === b.violations;
+}
+
 export function useDeckEditor(
   deckId: string,
   initial: DeckEditorSnapshot,
   enabled: boolean,
 ): DeckEditor {
-  const [snapshot, setSnapshot] = React.useState<DeckEditorSnapshot>(initial);
-  const [queue, setQueue] = React.useState<DeckCardChange[]>([]);
-  const [saving, setSaving] = React.useState(false);
+  const [state, dispatch] = React.useReducer(reducer, initial, initialDeckEditorState);
 
-  const queueRef = React.useRef<DeckCardChange[]>([]);
-  const inFlightRef = React.useRef(false);
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // A fresh server render (a rename, a revalidation) replaces the snapshot.
+  // The reducer refuses it while an edit is pending; this only notices that
+  // the parent handed over a new one, during render, so the old snapshot is
+  // never committed first.
+  const [seen, setSeen] = React.useState(initial);
+  if (!sameSnapshot(initial, seen)) {
+    setSeen(initial);
+    dispatch({ type: "reset", snapshot: initial });
+  }
 
-  const writeQueue = React.useCallback((next: DeckCardChange[]) => {
-    queueRef.current = next;
-    setQueue(next);
-  }, []);
+  const { queue, inFlight } = state;
 
-  // A fresh server render (a rename, a revalidation) replaces the snapshot, but
-  // only while nothing is pending: overwriting mid-edit would drop the copies
-  // the user just added and then re-add them on the next flush.
+  // The debounce. Every quantity step re-arms it, so four presses of `+` cost
+  // one request. Nothing is armed while a batch is out: the reducer sends the
+  // remainder itself when the answer lands.
   React.useEffect(() => {
-    if (queueRef.current.length > 0 || inFlightRef.current) return;
-    setSnapshot({
-      cards: initial.cards,
-      tokens: initial.tokens,
-      violations: initial.violations,
-    });
-  }, [initial.cards, initial.tokens, initial.violations]);
+    if (inFlight !== null || queue.length === 0) return;
+    const timer = setTimeout(() => dispatch({ type: "flush" }), DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [queue, inFlight]);
 
-  const flush = React.useCallback(async () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    if (inFlightRef.current) return;
-
-    const sent = queueRef.current;
-    if (sent.length === 0) return;
-
-    // Identity, not row key: a change queued while this batch was in flight is
-    // a new object from `mergeDeckCardChanges` and must survive the drop.
-    const sentSet = new Set(sent);
-    const drop = () => {
-      const remaining = queueRef.current.filter((change) => !sentSet.has(change));
-      queueRef.current = remaining;
-      setQueue(remaining);
-      return remaining;
-    };
-
-    inFlightRef.current = true;
-    setSaving(true);
-    const result = await applyDeckCardChangesAction(deckId, sent);
-    inFlightRef.current = false;
-
-    const remaining = drop();
-    if (result.ok) {
-      setSnapshot({
-        cards: result.data.cards,
-        tokens: result.data.tokens,
-        violations: result.data.violations,
-      });
-    } else {
+  // The request, one per batch the reducer puts on the wire.
+  React.useEffect(() => {
+    if (inFlight === null) return;
+    void applyDeckCardChangesAction(deckId, [...inFlight]).then((result) => {
+      if (result.ok) {
+        dispatch({
+          type: "flush_succeeded",
+          snapshot: {
+            cards: result.data.cards,
+            tokens: result.data.tokens,
+            violations: result.data.violations,
+          },
+        });
+        return;
+      }
       // Dropping the failed batch is the revert: the projection is computed
       // from the queue, so removing it puts the last server answer back on
       // screen rather than leaving a change that never landed.
       toast.error(result.error);
-    }
-    setSaving(remaining.length > 0);
-    if (remaining.length > 0) void flushRef.current();
-  }, [deckId]);
-
-  const flushRef = React.useRef(flush);
-  React.useEffect(() => {
-    flushRef.current = flush;
-  }, [flush]);
-
-  const enqueue = React.useCallback(
-    (changes: DeckCardChange[], immediate: boolean) => {
-      if (!enabled || changes.length === 0) return;
-      writeQueue(mergeDeckCardChanges(queueRef.current, changes));
-      setSaving(true);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (immediate) {
-        void flushRef.current();
-        return;
-      }
-      timerRef.current = setTimeout(() => void flushRef.current(), DEBOUNCE_MS);
-    },
-    [enabled, writeQueue],
-  );
+      dispatch({ type: "flush_failed" });
+    });
+  }, [deckId, inFlight]);
 
   // Best effort on the way out: a client-side navigation unmounts the builder
   // while the debounce is still pending, and the request outlives the render.
+  const queueRef = React.useRef(queue);
+  React.useEffect(() => {
+    queueRef.current = queue;
+  }, [queue]);
   React.useEffect(() => {
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
       if (queueRef.current.length > 0) {
         // The action resolves `{ ok: false }` for an API error but still
         // *rejects* on a transport failure, and there is no component left to
         // report it to — unhandled, it surfaces as a page-level error.
-        void applyDeckCardChangesAction(deckId, queueRef.current).catch(() => undefined);
-        queueRef.current = [];
+        void applyDeckCardChangesAction(deckId, [...queueRef.current]).catch(() => undefined);
       }
     };
   }, [deckId]);
 
   // A full page unload has no such second chance, so warn instead.
+  const dirty = queue.length > 0;
   React.useEffect(() => {
-    if (queue.length === 0) return;
+    if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [queue.length]);
+  }, [dirty]);
 
-  const cards = React.useMemo(
-    () => applyDeckCardChanges(snapshot.cards, queue),
-    [snapshot.cards, queue],
+  const cards = React.useMemo(() => deckEditorCards(state), [state]);
+
+  const edit = React.useCallback(
+    (action: Action) => {
+      if (enabled) dispatch(action);
+    },
+    [enabled],
   );
 
   const setQuantity = React.useCallback<DeckEditor["setQuantity"]>(
-    (card, quantity) => {
-      enqueue(
-        [
-          {
-            zone: card.zone as DeckZone,
-            printing_id: card.printing_id,
-            oracle_id: card.oracle_id,
-            quantity,
-            is_champion: card.is_champion,
-          },
-        ],
-        // A removal takes the row off screen, and the projection only reaches
-        // rows the server already knows; sending it now keeps the two in step.
-        quantity === 0,
-      );
-    },
-    [enqueue],
+    (card, quantity) => edit({ type: "set_quantity", card, quantity }),
+    [edit],
   );
-
   const addCard = React.useCallback<DeckEditor["addCard"]>(
-    (card, options) => {
-      enqueue([deckAddChange(cards, card, options)], true);
-    },
-    [cards, enqueue],
+    (card, options) => edit({ type: "add_card", card, ...options }),
+    [edit],
   );
-
   const moveZone = React.useCallback<DeckEditor["moveZone"]>(
-    (card, zone) => {
-      if (card.zone === zone) return;
-      enqueue(deckMoveChanges(cards, card, zone), true);
-    },
-    [cards, enqueue],
+    (card, zone) => edit({ type: "move_zone", card, zone }),
+    [edit],
   );
-
-  const changePrinting = React.useCallback<DeckEditor["changePrinting"]>(
-    (card, printing) => {
-      // Structural like a move: the projection cannot invent the new row, so
-      // the server's answer has to supply it.
-      enqueue(deckPrintingSwapChanges(cards, card, printing), true);
-    },
-    [cards, enqueue],
-  );
-
   const setChampion = React.useCallback<DeckEditor["setChampion"]>(
-    (card, isChampion) => {
-      enqueue(
-        [
-          {
-            zone: card.zone as DeckZone,
-            printing_id: card.printing_id,
-            oracle_id: card.oracle_id,
-            quantity: card.quantity,
-            is_champion: isChampion,
-          },
-        ],
-        false,
-      );
-    },
-    [enqueue],
+    (card, isChampion) => edit({ type: "set_champion", card, isChampion }),
+    [edit],
   );
+  const changePrinting = React.useCallback<DeckEditor["changePrinting"]>(
+    (card, printing) => edit({ type: "change_printing", card, printing }),
+    [edit],
+  );
+  const flush = React.useCallback(() => dispatch({ type: "flush" }), []);
 
   return {
     cards,
-    tokens: snapshot.tokens,
-    violations: snapshot.violations,
-    saving,
-    dirty: queue.length > 0,
+    tokens: state.snapshot.tokens,
+    violations: state.snapshot.violations,
+    saving: dirty,
+    dirty,
     setQuantity,
     addCard,
     moveZone,
     setChampion,
     changePrinting,
-    flush: () => void flushRef.current(),
+    flush,
   };
 }

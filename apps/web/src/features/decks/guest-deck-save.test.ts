@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 
-import { emptyGuestDeck, type GuestDeck, type GuestDeckCard } from "./guest-deck.ts";
+import {
+  emptyGuestDeck,
+  type GuestDeck,
+  type GuestDeckCard,
+} from "@riftseer/types/deck/guest-deck";
 
 // The two server actions are the whole dependency, so they are mocked at the
 // module boundary and the calls are recorded. `storage()` returns null without a

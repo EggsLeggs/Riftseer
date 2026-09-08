@@ -42,6 +42,7 @@ export function SitePreferencesProvider({ children }: { children: React.ReactNod
       return;
     }
 
+    // oxlint-disable-next-line react/set-state-in-effect -- storage is read after consent arrives; a render-time read would mismatch hydration
     setAccessibility(readAccessibilityPrefsFromStorage());
   }, [canPersistAccessibility, hasFetchedBanner]);
 

@@ -19,6 +19,7 @@ export default function AuthCallbackPage() {
     const errorDescription = params.get("error_description");
 
     if (errorDescription) {
+      // oxlint-disable-next-line react/set-state-in-effect -- the URL fragment never reaches the server, so it is read after hydration
       setState({ status: "error", message: errorDescription });
       return;
     }

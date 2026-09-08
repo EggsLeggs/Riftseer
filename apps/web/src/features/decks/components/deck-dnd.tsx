@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 
 import { cn } from "@/lib/utils";
-import { eligibleZones } from "../deck-add";
+import { eligibleZones } from "@riftseer/types/deck/add";
 import type { DeckCard, DeckZone } from "../types";
 
 /**
@@ -120,7 +120,7 @@ export function useDeckCardDraggable(card: DeckCard, disabled?: boolean) {
     disabled,
   });
   return {
-    ref: setNodeRef,
+    setNodeRef,
     isDragging,
     // No tabIndex and no role: without a KeyboardSensor the handle must stay
     // invisible to the tab order and to screen readers' interaction model.
@@ -134,7 +134,7 @@ export function useDeckZoneDroppable(zone: DeckZone, id: string = zone) {
   const droppable = useDroppable({ id, data: { zone } });
   const canReceive = active != null && zone !== active.zone && eligible.has(zone);
   return {
-    ref: droppable.setNodeRef,
+    setNodeRef: droppable.setNodeRef,
     /** True while a drag is up and this zone could take the card. */
     canReceive,
     /** True while the pointer is over this target with an eligible card. */
@@ -154,10 +154,10 @@ export function DeckZoneDropArea({
   className?: string;
   children: React.ReactNode;
 }) {
-  const { ref, canReceive, isOver } = useDeckZoneDroppable(zone, id);
+  const { setNodeRef, canReceive, isOver } = useDeckZoneDroppable(zone, id);
   return (
     <div
-      ref={ref}
+      ref={setNodeRef}
       className={cn(
         className,
         canReceive && "rounded-lg ring-1 ring-ring/40",

@@ -33,6 +33,7 @@ import {
   type CardResultsViewPreference,
 } from "@/features/site-preferences/accessibility-prefs";
 import { useSitePreferences } from "@/features/site-preferences/site-preferences-provider";
+import { useBrowserValue } from "@/lib/use-derived-state";
 
 const THEME_OPTIONS = [
   { value: "light", label: "Light", icon: SunIcon },
@@ -60,11 +61,7 @@ export function SitePreferencesFooterTrigger() {
 
 function ThemePreferenceControl({ id }: { id: string }) {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useBrowserValue(() => true, false);
 
   const value = mounted ? (theme ?? "system") : "system";
 

@@ -37,8 +37,9 @@ export function AdminCardRelationshipsPanel({ oracle }: { oracle: Oracle }) {
     },
     retry: false,
   });
-  React.useEffect(() => {
-    if (!relationships.data || synced) return;
+  // Seeded from the query once it lands, during render, so the first paint
+  // with data already shows it.
+  if (relationships.data && !synced) {
     setEntries(
       relationships.data.outgoing.map((edge) => ({
         kind: edge.kind,
@@ -49,7 +50,7 @@ export function AdminCardRelationshipsPanel({ oracle }: { oracle: Oracle }) {
       Object.fromEntries(relationships.data.outgoing.map((edge) => [edge.oracle_id, edge.name])),
     );
     setSynced(true);
-  }, [relationships.data, synced]);
+  }
   const results = useQuery({
     queryKey: cardsQueryKeys.relationshipSearch(search),
     queryFn: () => cardsApi.searchByName(search, { limit: 8 }),
