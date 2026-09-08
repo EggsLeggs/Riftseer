@@ -78,11 +78,21 @@ test("a printing with no source image has no image at all", async () => {
 test("hosting is gated on both the timestamp and the hash", async () => {
   // `image_hosted_at` without a hash cannot produce a versioned URL, so the
   // provider falls back rather than emitting keys that 404.
-  const printing = await resolveOne({
+  const noHash = await resolveOne({
     image_source_url: SOURCE,
     image_hosted_at: "2026-01-01T00:00:00.000Z",
     image_source_hash: null,
   });
 
-  expect(printing?.image).toEqual({ original: SOURCE });
+  expect(noHash?.image).toEqual({ original: SOURCE });
+
+  // A hash alone means the upload never finished, so the R2 objects the
+  // versioned URLs point at do not exist yet.
+  const noTimestamp = await resolveOne({
+    image_source_url: SOURCE,
+    image_hosted_at: null,
+    image_source_hash: HASH,
+  });
+
+  expect(noTimestamp?.image).toEqual({ original: SOURCE });
 });
