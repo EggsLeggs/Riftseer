@@ -70,6 +70,8 @@ export interface IngestResult {
   divergenceCount: number;
   /** Unmatched products, catalogue gaps and field diffs awaiting review. */
   reviewEntriesCount: number;
+  /** False when the run committed a catalogue but could not ask for its art. */
+  imageCatalogEnqueued: boolean;
   elapsedMs: number;
   ok: boolean;
   error?: string;
@@ -229,11 +231,17 @@ export async function runIngest(env: Env): Promise<IngestResult> {
 
     // The catalogue is committed by this point. Enqueuing the scan is only a
     // prompt to go host images, and the next scheduled run re-sends it, so a
-    // queue failure must not report an ingest that succeeded as failed.
+    // queue failure must not report an ingest that succeeded as failed. It is
+    // still an error, not a warning: this enqueue is the *only* thing that
+    // starts image hosting, so a run of them failing quietly is a catalogue
+    // that serves upstream art forever. `POST /images/reconcile` re-sends it
+    // without a full ingest.
+    let imageCatalogEnqueued = false;
     try {
       await enqueueCardImageCatalogJob(env.CARD_IMAGE_QUEUE);
+      imageCatalogEnqueued = true;
     } catch (err) {
-      logger.warn("Card image catalog enqueue failed — deferring to next run", {
+      logger.error("Card image catalog enqueue failed — no art will be hosted this run", {
         error: String(err),
       });
     }
@@ -253,6 +261,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       reviewEntries: reviewEntriesCount,
       rulingRuleTargets: ruleMatches?.targets ?? 0,
       rulingRuleMatches: ruleMatches?.matches ?? 0,
+      imageCatalogEnqueued,
       elapsedMs,
     });
     return {
@@ -262,6 +271,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       imageJobsCount: preparedImages.jobs.length,
       divergenceCount: divergences.length,
       reviewEntriesCount,
+      imageCatalogEnqueued,
       elapsedMs,
       ok: true,
     };
@@ -276,6 +286,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       imageJobsCount: 0,
       divergenceCount: 0,
       reviewEntriesCount: 0,
+      imageCatalogEnqueued: false,
       elapsedMs,
       ok: false,
       error,
