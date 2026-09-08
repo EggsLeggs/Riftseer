@@ -75,7 +75,7 @@ bun run preview:web     # builds and runs in workerd
 ```
 
 - oxlint and oxfmt are the linter and formatter, configured in `.oxlintrc.json` and `.oxfmtrc.json` at the root because ignore patterns resolve inside the config's own directory. No eslint, prettier or biome anywhere else; raycast keeps its own because `ray lint` requires them.
-- The React Compiler rules (`set-state-in-effect`, `refs`, `immutability`) are off until the web deck-logic extraction. Do not switch them on in passing.
+- The React Compiler rules (`set-state-in-effect`, `refs`, `immutability`) are on. A site that genuinely must read storage or the URL after hydration carries an inline `oxlint-disable-next-line` with its reason; never switch a rule off globally.
 - Boundary rules in `.config/dependency-cruiser.cjs` are structural invariants: no cycles, no relative imports into a sibling package's `src/`, ingest-worker never imports core, the render kernel is reached only through its index, and the API imports `@supabase/*` only from `apps/api/src/repos/` and `apps/api/src/lib/supabase.ts`.
 - `bun dev` does not exercise the Workers runtime. Run `bun run preview:web` before shipping anything that touches web's server runtime or bindings.
 - `ingest-worker` spells it `type-check`; everything else says `typecheck`, and root `typecheck` covers every workspace member.
