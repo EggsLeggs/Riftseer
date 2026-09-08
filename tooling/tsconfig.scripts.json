@@ -1,0 +1,19 @@
+{
+  // The repository's loose scripts: repo checks under `scripts/` and each
+  // app's own `scripts/`. They are TypeScript that CI runs, so they belong in
+  // `bun run typecheck` — `bun test` strips types rather than checking them,
+  // and every package tsconfig is rooted at its own `src`, so nothing covered
+  // these until a spec-generator change went out untypechecked.
+  //
+  // They run under Bun, not the Workers runtime, so they take bun and node
+  // types rather than @cloudflare/workers-types.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun", "node"],
+    // The two checks under `scripts/` are `.mjs`, and their tests import
+    // them. Without this tsc sees `any` and the tests prove nothing about the
+    // implementation they cover.
+    "allowJs": true
+  },
+  "include": ["../scripts/**/*.ts", "../apps/*/scripts/**/*.ts"]
+}
