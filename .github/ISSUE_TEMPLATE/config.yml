@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Idea or proposal
+    url: https://github.com/EggsLeggs/Riftseer/discussions
+    about: Not a bug, and not yet a specified feature. Start it in the Ideas category of Discussions.
+  - name: Security vulnerability
+    url: https://github.com/EggsLeggs/Riftseer/security/advisories/new
+    about: Report privately. Never open an issue for something exploitable.

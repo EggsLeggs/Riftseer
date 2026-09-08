@@ -1,0 +1,24 @@
+name: Feature request
+description: Something Riftseer should do. A feature pull request needs an accepted issue first, and this is that issue.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do and what stops you today. Lead with the problem, not the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What you would build, and which surfaces it touches (web, API, Discord, Reddit, Raycast, the Tabletop Simulator mod).
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before opening
+      options:
+        - label: I searched the existing issues and Discussions for this.
+          required: true
+        - label: I read docs/out-of-scope.md and this is not on it.
