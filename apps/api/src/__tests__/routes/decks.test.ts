@@ -17,7 +17,7 @@ import {
 } from "../../repos/decks.repo.ts";
 import { createAuthPlugin } from "../../plugins/auth.ts";
 import { createOptionalAuthPlugin } from "../../plugins/optional-auth.ts";
-import { decksRoutes } from "../../routes/decks.ts";
+import { decksRoutes } from "../../routes/decks/index.ts";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 

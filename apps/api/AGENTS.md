@@ -15,15 +15,16 @@ Copy `.dev.vars.example` to `.dev.vars` for local secrets. `wrangler.jsonc` and 
 
 ## Routes
 
-Nine route files, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` only binds that to the Worker. Check this list before adding a handler; a second `/formats` or `/auth` path is the easy mistake.
+Seven route files and two route directories, all mounted by `buildApp()` in `src/app.ts`; `src/index.ts` only binds that to the Worker. Check this list before adding a handler; a second `/formats` or `/auth` path is the easy mistake.
 
 - `src/routes/cards.ts`: oracle search and detail, printing lookup, batch resolve. `/cards` is oracle-shaped; `unique=prints` is the explicit printing mode.
-- `src/routes/admin.ts`: oracle, printing, delta, relationship, legality, ruling, set, format and reconciliation mutations.
-- `src/routes/decks.ts`: decks, zones, collaborators, revisions, invites, text import/export, card tags, favorites, view counts, comments and `/deck-folders`.
+- `src/routes/admin/`: one file per group (`dashboard.ts`, `review.ts`, `oracles.ts`, `printings.ts`, `images.ts`, `legalities.ts`, `formats.ts`, `rulings.ts`, `sets.ts`), each a function over the `AdminRouteContext` in `shared.ts`; `schemas.ts` holds the bodies and responses. `index.ts` mounts the groups under `/admin`.
+- `src/routes/decks/`: `crud.ts`, `cards.ts`, `comments.ts`, `favorites.ts`, `collaborators.ts`, `folders.ts`, `revisions.ts` and `export.ts` (text import and export), each exporting a reads group, a writes group or both over the `DeckRouteContext` built in `shared.ts`. `index.ts` mounts them and `/deck-folders`.
+- A group's position in `index.ts` is its position in `openapi.json`, because the spec lists paths in registration order. Add a route to the group it belongs to and expect the spec diff to show it there.
 - `src/routes/auth.ts`: register, login, refresh, logout, password reset, email change, `/auth/me`.
 - `src/routes/users.ts`: public profiles, followers, following, `/users/me`, follow and unfollow.
 - `src/routes/metafy.ts`: Metafy OAuth. The webhook and API client are `src/lib/metafy.ts`, and the webhook path is intercepted in `src/index.ts` before Elysia because HMAC verification needs the unconsumed raw body. Change one, check the others.
-- `src/routes/formats.ts`, `src/routes/sets.ts`, `src/routes/meta.ts`: public `GET /formats`, `GET /sets`, `GET /health` and `GET /meta`. Format mutations live in `admin.ts`.
+- `src/routes/formats.ts`, `src/routes/sets.ts`, `src/routes/meta.ts`: public `GET /formats`, `GET /sets`, `GET /health` and `GET /meta`. Format mutations live in `src/routes/admin/formats.ts`.
 
 ## The public reference is the spec
 
