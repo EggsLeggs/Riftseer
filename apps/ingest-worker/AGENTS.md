@@ -41,6 +41,9 @@ TCGPlayer, gallery and `applyLockedProductLinks` each sit in their own try/catch
 - Slugs are pinned. The RPC `coalesce`s on conflict, so a value persisted on first insert is never overwritten.
 - `keywords` is not sent. A database trigger derives it from the oracle's rules text on every write.
 - Image idempotency lives in `image_source_hash`: an unchanged hash keeps the existing R2 objects, a changed hash queues new variants. Hosted URLs derive from the printing id in `@riftseer/types/card-image`, and public URLs carry `?v=<hash>` so a corrected image bypasses immutable caches.
+- R2 outlives the rows that point at it. `image_hosted_at` is the only record that a printing is published, and a schema rebuild resets it while every object survives — which is how 1304 printings served upstream Riot URLs for five weeks with their art already hosted. So an image job HEADs the four objects first and, when all of them name the current hash, publishes without downloading anything; it rebuilds only when the set is incomplete or built from an older source. `hasCompleteCurrentImageSet` counts `original` too: keys are stable across source changes, so finding a key proves nothing about the bytes under it.
+- Publishing needs an orientation and nothing in the queue reads pixels, so a row without `image_orientation` is rebuilt rather than adopted. Ingest writes it from RiftCodex on every run.
+- `POST /images/reconcile` re-sends the catalogue scan on its own. Step 12 is the last thing an ingest does, so a run that dies in step 9 takes image hosting with it and nothing revives it until a whole ingest goes green. A stall has no other symptom: nothing breaks, the art just stays upstream, so `POST /ingest` reports `imageCatalogEnqueued` and a failed enqueue logs at error.
 - The review queue prune is queue-wide, so it runs only when both observers reported; pruning on one source's findings would delete the other's entries. Entries carry a fingerprint of the observed upstream value, so a dismissal sticks while a genuinely new disagreement resurfaces. Prices are never queued.
 
 ## Local development
@@ -50,13 +53,14 @@ TCGPlayer, gallery and `applyLockedProductLinks` each sit in their own try/catch
 bun run dev                                  # wrangler dev on :8787
 curl http://localhost:8787/                  # reports the host it would write to
 curl -X POST http://localhost:8787/ingest
+curl -X POST http://localhost:8787/images/reconcile   # re-send the catalogue scan alone
 curl "http://localhost:8787/cdn-cgi/mf/scheduled"
 wrangler types src/worker-configuration.d.ts --env-interface GeneratedEnv --include-runtime false   # after every wrangler.jsonc change
 ```
 
 - Run both the API and this worker with the same `--persist-to` directory; the package `dev` scripts use `../../.wrangler/shared`. Miniflare R2 and Queues are per-process otherwise, so an admin upload lands in the API's private bucket and the consumer never sees the object.
 - For a live admin-image end-to-end, run the API with `wrangler dev --remote` and do not run this worker locally. Per-binding `remote: true` on `CARD_IMAGES` is not enough; those puts fail with `503` or `put: Unspecified error` from the local proxy. Queues are unsupported in `--remote`, so prefer a real deploy for a full upload, queue, variants check.
-- `INGEST_SECRET` is optional and guards `POST /ingest` with a constant-time compare; unset means the route is unauthenticated. Optional secrets are typed by hand in `src/env.ts` because `wrangler types` only emits what the config declares.
+- `INGEST_SECRET` is optional and guards `POST /ingest` and `POST /images/reconcile` with a constant-time compare; unset means those routes are unauthenticated. Optional secrets are typed by hand in `src/env.ts` because `wrangler types` only emits what the config declares.
 
 ## Adding a file override
 

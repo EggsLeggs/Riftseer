@@ -3,6 +3,7 @@ import {
   CARD_IMAGE_VARIANTS,
   hostedObjectKeyFromUrl,
   printingImageObjectKeys,
+  type CardImageSize,
 } from "@riftseer/types/card-image";
 import type { Env } from "../env.ts";
 import { createSupabase } from "../supabase.ts";
@@ -28,17 +29,74 @@ interface CurrentPrintingImage {
   sourceUrl: string | null;
   sourceHash: string | null;
   sourceProvider: string | null;
+  orientation: string | null;
   hosted: boolean;
 }
 
-export function hasCompleteCurrentVariantSet(
+/**
+ * Every object a printing must have in R2 before it may be published, in one
+ * fixed order. `original` counts: it is the URL the download action hands out,
+ * so a variant set without it is not a hosted printing.
+ */
+const HOSTED_IMAGE_SIZES: readonly CardImageSize[] = [
+  "original",
+  ...CARD_IMAGE_VARIANTS.map((variant) => variant.name),
+];
+
+/**
+ * True when R2 holds the whole set *and* every object was built from this
+ * source.
+ *
+ * Object keys are stable across source changes, so finding all four keys proves
+ * nothing on its own: any of them may still hold bytes transcoded from the
+ * previous source. Each has to name this exact hash.
+ */
+export function hasCompleteCurrentImageSet(
   objects: Array<Pick<R2Object, "customMetadata"> | null>,
   sourceHash: string,
 ): boolean {
   return (
-    objects.length === CARD_IMAGE_VARIANTS.length &&
+    objects.length === HOSTED_IMAGE_SIZES.length &&
     objects.every((object) => object?.customMetadata?.sourceHash === sourceHash)
   );
+}
+
+function headHostedImageSet(
+  bucket: R2Bucket,
+  keys: Record<CardImageSize, string>,
+): Promise<Array<R2Object | null>> {
+  return Promise.all(HOSTED_IMAGE_SIZES.map((size) => bucket.head(keys[size])));
+}
+
+/**
+ * Stamp `image_hosted_at`, the one act that turns R2 objects into public URLs.
+ *
+ * Hash-guarded inside the RPC as well: the row must still point at the source
+ * these objects were built from, so a run that raced a source change publishes
+ * nothing rather than the wrong art. `false` means it lost that race.
+ */
+async function publishHostedMedia(
+  supabase: SupabaseClient,
+  printing: {
+    printingId: string;
+    sourceHash: string;
+    sourceUrl: string;
+    sourceProvider: string;
+    orientation: string | null;
+  },
+): Promise<boolean> {
+  const { data, error } = await supabase.rpc("apply_printing_hosted_media", {
+    p_printing_id: printing.printingId,
+    p_source_hash: printing.sourceHash,
+    p_source_url: printing.sourceUrl,
+    p_source_provider: printing.sourceProvider,
+    p_orientation: printing.orientation,
+    p_alt_text: null,
+  });
+  if (error) {
+    throw new Error(`apply_printing_hosted_media failed: ${error.message}`);
+  }
+  return data === true;
 }
 
 async function loadCurrentPrintingImage(
@@ -47,7 +105,9 @@ async function loadCurrentPrintingImage(
 ): Promise<CurrentPrintingImage | null> {
   const { data, error } = await supabase
     .from("printings")
-    .select("image_source_url, image_source_hash, image_source_provider, image_hosted_at")
+    .select(
+      "image_source_url, image_source_hash, image_source_provider, image_orientation, image_hosted_at",
+    )
     .eq("id", printingId)
     .limit(1);
   if (error) {
@@ -57,6 +117,7 @@ async function loadCurrentPrintingImage(
     image_source_url: string | null;
     image_source_hash: string | null;
     image_source_provider: string | null;
+    image_orientation: string | null;
     image_hosted_at: string | null;
   } | null;
   if (!row) return null;
@@ -64,6 +125,7 @@ async function loadCurrentPrintingImage(
     sourceUrl: row.image_source_url,
     sourceHash: row.image_source_hash,
     sourceProvider: row.image_source_provider,
+    orientation: row.image_orientation,
     hosted: row.image_hosted_at !== null,
   };
 }
@@ -233,11 +295,11 @@ function isImagesInputError(error: unknown): boolean {
   return (error as { code?: unknown }).code === 9412;
 }
 
-async function processCardImageJob(
+export async function processCardImageJob(
   supabase: SupabaseClient,
   env: Env,
   job: CardImageJob,
-): Promise<"queued" | "stale" | "unchanged" | "missing"> {
+): Promise<"queued" | "adopted" | "stale" | "unchanged" | "missing"> {
   const current = await loadCurrentPrintingImage(supabase, job.printingId);
   if (!current) return "missing";
 
@@ -250,6 +312,30 @@ async function processCardImageJob(
   }
   if (current.hosted) return "unchanged";
 
+  const keys = printingImageObjectKeys(job.printingId);
+
+  // R2 outlives the rows that point at it. A schema rebuild leaves every object
+  // in place and every `image_hosted_at` NULL, and re-fetching 1300 sources to
+  // re-transcode bytes we already hold would spend the upload quota producing
+  // identical files. So adopt a set that is already complete and current, and
+  // fall through to a rebuild only when it is not.
+  //
+  // `orientation` has to come from the row: nothing here reads the pixels, and
+  // publishing without it would leave the printing with no aspect to lay out.
+  if (current.orientation) {
+    const existing = await headHostedImageSet(env.CARD_IMAGES, keys);
+    if (hasCompleteCurrentImageSet(existing, job.sourceHash)) {
+      const published = await publishHostedMedia(supabase, {
+        printingId: job.printingId,
+        sourceHash: job.sourceHash,
+        sourceUrl: job.sourceUrl,
+        sourceProvider: job.sourceProvider,
+        orientation: current.orientation,
+      });
+      return published ? "adopted" : "stale";
+    }
+  }
+
   const timeoutMs = Number.parseInt(env.UPSTREAM_TIMEOUT_MS, 10);
   const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 30000;
   const source = await loadImageSource(env, job.sourceUrl, timeout);
@@ -259,7 +345,6 @@ async function processCardImageJob(
   if (source.oversized() || bytes.byteLength > MAX_SOURCE_BYTES) {
     throw new PermanentImageError(`image source exceeds ${MAX_SOURCE_BYTES} bytes`);
   }
-  const keys = printingImageObjectKeys(job.printingId);
   const objectMetadata = {
     printingId: job.printingId,
     sourceHash: job.sourceHash,
@@ -306,7 +391,7 @@ async function processCardImageJob(
   return "queued";
 }
 
-async function processCardImageVariantJob(
+export async function processCardImageVariantJob(
   supabase: SupabaseClient,
   env: Env,
   job: CardImageVariantJob,
@@ -341,31 +426,24 @@ async function processCardImageVariantJob(
     variant: variant.name,
   });
 
-  const hostedVariants = await Promise.all(
-    CARD_IMAGE_VARIANTS.map((candidate) => env.CARD_IMAGES.head(keys[candidate.name])),
-  );
-  // Object keys are stable across source changes. Merely finding all three keys
-  // is insufficient because some may still contain variants from the previous
-  // source. Publish only after every object identifies this exact hash.
-  if (!hasCompleteCurrentVariantSet(hostedVariants, job.sourceHash)) {
+  // This job wrote one variant; the others belong to sibling jobs that may not
+  // have run yet. Publication waits for the last of them.
+  if (
+    !hasCompleteCurrentImageSet(await headHostedImageSet(env.CARD_IMAGES, keys), job.sourceHash)
+  ) {
     return "variant";
   }
 
   // Hosted URLs are derived from the printing id, so publication is a single
-  // `image_hosted_at` stamp. Still hash-guarded: the row must point at the
-  // source these variants were built from.
-  const { data, error } = await supabase.rpc("apply_printing_hosted_media", {
-    p_printing_id: job.printingId,
-    p_source_hash: job.sourceHash,
-    p_source_url: sourceUrl,
-    p_source_provider: sourceProvider,
-    p_orientation: job.orientation,
-    p_alt_text: null,
+  // `image_hosted_at` stamp.
+  const published = await publishHostedMedia(supabase, {
+    printingId: job.printingId,
+    sourceHash: job.sourceHash,
+    sourceUrl,
+    sourceProvider,
+    orientation: job.orientation,
   });
-  if (error) {
-    throw new Error(`apply_printing_hosted_media failed: ${error.message}`);
-  }
-  return data === true ? "hosted" : "stale";
+  return published ? "hosted" : "stale";
 }
 
 function retryDelay(attempts: number): number {

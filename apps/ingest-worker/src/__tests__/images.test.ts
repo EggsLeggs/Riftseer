@@ -4,8 +4,13 @@ import {
   enqueueCardImageJobs,
   preparePrintingImageJobs,
 } from "../images/catalog.ts";
+import { printingImageObjectKeys } from "@riftseer/types/card-image";
 import { hashImageSourceUrl, selectBestImageSource } from "../images/model.ts";
-import { hasCompleteCurrentVariantSet } from "../images/processor.ts";
+import {
+  hasCompleteCurrentImageSet,
+  processCardImageJob,
+  processCardImageVariantJob,
+} from "../images/processor.ts";
 import {
   CARD_IMAGE_JOB_VERSION,
   isCardImageJob,
@@ -13,6 +18,7 @@ import {
   type CardImageJob,
 } from "../images/types.ts";
 import type { DurablePrinting } from "../pipeline/durable.ts";
+import type { Env } from "../env.ts";
 import { printing } from "./fixtures.ts";
 
 const BASE = "https://img.riftseer.com";
@@ -101,16 +107,15 @@ describe("image pipeline contracts", () => {
     });
   });
 
-  test("publishes only when every variant object carries the current source hash", () => {
+  test("publishes only when all four objects carry the current source hash", () => {
     const current = { customMetadata: { sourceHash: HASH } };
-    expect(hasCompleteCurrentVariantSet([current, current, current], HASH)).toBe(true);
-    expect(
-      hasCompleteCurrentVariantSet(
-        [current, { customMetadata: { sourceHash: "b".repeat(64) } }, current],
-        HASH,
-      ),
-    ).toBe(false);
-    expect(hasCompleteCurrentVariantSet([current, current, null], HASH)).toBe(false);
+    const stale = { customMetadata: { sourceHash: "b".repeat(64) } };
+    expect(hasCompleteCurrentImageSet([current, current, current, current], HASH)).toBe(true);
+    // The three variants alone are not a hosted printing: `original` is the URL
+    // the download action hands out.
+    expect(hasCompleteCurrentImageSet([current, current, current], HASH)).toBe(false);
+    expect(hasCompleteCurrentImageSet([current, stale, current, current], HASH)).toBe(false);
+    expect(hasCompleteCurrentImageSet([current, current, current, null], HASH)).toBe(false);
   });
 
   test("batches queue writes at Cloudflare's 100-message limit and starts discovery once", async () => {
@@ -157,5 +162,197 @@ describe("image pipeline contracts", () => {
     expect(isCardImageJob({ ...source, version: 1 })).toBe(false);
     expect(isCardImageVariantJob(variant)).toBe(true);
     expect(isCardImageVariantJob({ ...variant, sourceHash: "bad" })).toBe(false);
+  });
+});
+
+interface StoredRow {
+  image_source_url: string | null;
+  image_source_hash: string | null;
+  image_source_provider: string | null;
+  image_orientation: string | null;
+  image_hosted_at: string | null;
+}
+
+function row(overrides: Partial<StoredRow> = {}): StoredRow {
+  return {
+    image_source_url: "https://upstream.example/card.png",
+    image_source_hash: HASH,
+    image_source_provider: "riftcodex",
+    image_orientation: "portrait",
+    image_hosted_at: null,
+    ...overrides,
+  };
+}
+
+/** Just enough PostgREST for `loadCurrentPrintingImage` plus the publish RPC. */
+function store(stored: StoredRow | null, published = true) {
+  const rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = [];
+  return {
+    rpcCalls,
+    supabase: {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            limit: async () => ({ data: stored ? [stored] : [], error: null }),
+          }),
+        }),
+      }),
+      rpc: async (fn: string, args: Record<string, unknown>) => {
+        rpcCalls.push({ fn, args });
+        return { data: published, error: null };
+      },
+    },
+  };
+}
+
+// Derived, not restated: the key layout is the shared helper's contract and is
+// pinned by its own test. Hard-coding it here would let the two drift.
+const KEYS = printingImageObjectKeys("p");
+
+function completeSet(
+  sourceHash = HASH,
+): Record<string, { customMetadata: { sourceHash: string } }> {
+  return Object.fromEntries(
+    Object.values(KEYS).map((key) => [key, { customMetadata: { sourceHash } }]),
+  );
+}
+
+function environment(objects: Record<string, { customMetadata: { sourceHash: string } }>) {
+  const puts: string[] = [];
+  const sent: unknown[] = [];
+  const fetched: string[] = [];
+  const env = {
+    CARD_IMAGE_BASE_URL: BASE,
+    UPSTREAM_TIMEOUT_MS: "30000",
+    CARD_IMAGES: {
+      head: async (key: string) => objects[key] ?? null,
+      get: async (key: string) => {
+        const object = objects[key];
+        if (!object) return null;
+        return { ...object, body: new Blob([new Uint8Array([1, 2, 3])]).stream() };
+      },
+      put: async (key: string) => {
+        puts.push(key);
+      },
+    },
+    IMAGES: {
+      info: async () => ({ width: 744, height: 1039 }),
+      input: () => ({
+        transform: () => ({
+          output: async () => ({
+            response: () => new Response(new Blob([new Uint8Array([1])]), { status: 200 }),
+          }),
+        }),
+      }),
+    },
+    CARD_IMAGE_QUEUE: {
+      sendBatch: async (batch: Array<{ body: unknown }>) => {
+        sent.push(...batch.map((message) => message.body));
+      },
+    },
+  };
+  return { env: env as unknown as Env, puts, sent, fetched };
+}
+
+const JOB: CardImageJob = {
+  version: CARD_IMAGE_JOB_VERSION,
+  printingId: "p",
+  sourceUrl: "https://upstream.example/card.png",
+  sourceHash: HASH,
+  sourceProvider: "riftcodex",
+};
+
+describe("publishing art R2 already holds", () => {
+  test("adopts a complete current object set instead of re-hosting it", async () => {
+    const db = store(row());
+    const { env, puts, sent } = environment(completeSet());
+
+    expect(await processCardImageJob(db.supabase as never, env, JOB)).toBe("adopted");
+
+    // The whole point: nothing was downloaded, transcoded, uploaded or queued.
+    expect(puts).toEqual([]);
+    expect(sent).toEqual([]);
+    expect(db.rpcCalls).toEqual([
+      {
+        fn: "apply_printing_hosted_media",
+        args: {
+          p_printing_id: "p",
+          p_source_hash: HASH,
+          p_source_url: "https://upstream.example/card.png",
+          p_source_provider: "riftcodex",
+          p_orientation: "portrait",
+          p_alt_text: null,
+        },
+      },
+    ]);
+  });
+
+  test("adoption is idempotent: a row published in the meantime is left alone", async () => {
+    const db = store(row({ image_hosted_at: "2026-08-01T00:00:00Z" }));
+    const { env } = environment(completeSet());
+    expect(await processCardImageJob(db.supabase as never, env, JOB)).toBe("unchanged");
+    expect(db.rpcCalls).toEqual([]);
+  });
+
+  test("objects built from an older source are rebuilt, not adopted", async () => {
+    const db = store(row());
+    const objects = completeSet();
+    objects[KEYS.large] = { customMetadata: { sourceHash: "b".repeat(64) } };
+    const { env, puts, sent } = environment(objects);
+
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }))) as never;
+    try {
+      expect(await processCardImageJob(db.supabase as never, env, JOB)).toBe("queued");
+    } finally {
+      globalThis.fetch = original;
+    }
+
+    expect(puts).toEqual([KEYS.original]);
+    expect(sent).toHaveLength(3);
+    expect(db.rpcCalls).toEqual([]);
+  });
+
+  test("a row with no orientation is rebuilt: nothing here reads the pixels", async () => {
+    const db = store(row({ image_orientation: null }));
+    const { env, puts } = environment(completeSet());
+
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(new Blob([new Uint8Array([137, 80, 78, 71])], { type: "image/png" }))) as never;
+    try {
+      expect(await processCardImageJob(db.supabase as never, env, JOB)).toBe("queued");
+    } finally {
+      globalThis.fetch = original;
+    }
+    expect(puts).toEqual([KEYS.original]);
+    expect(db.rpcCalls).toEqual([]);
+  });
+
+  test("a source that moved on since the job was queued publishes nothing", async () => {
+    const db = store(row({ image_source_hash: "b".repeat(64) }));
+    const { env, puts } = environment(completeSet());
+    expect(await processCardImageJob(db.supabase as never, env, JOB)).toBe("stale");
+    expect(puts).toEqual([]);
+    expect(db.rpcCalls).toEqual([]);
+  });
+
+  test("a variant job will not publish over an original from another source", async () => {
+    const objects = completeSet();
+    objects[KEYS.original] = { customMetadata: { sourceHash: "b".repeat(64) } };
+    const db = store(row());
+    const { env } = environment(objects);
+    expect(
+      await processCardImageVariantJob(db.supabase as never, env, {
+        version: CARD_IMAGE_JOB_VERSION,
+        type: "variant",
+        printingId: "p",
+        sourceHash: HASH,
+        variant: "normal",
+        orientation: "portrait",
+      }),
+    ).toBe("variant");
+    expect(db.rpcCalls).toEqual([]);
   });
 });
