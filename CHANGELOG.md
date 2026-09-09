@@ -13,6 +13,7 @@ Notable changes to Riftseer. The format follows [Keep a Changelog](https://keepa
 - A VS Code workspace with one launch for the database, the API and the web app (#162).
 - The Tabletop Simulator mod, with its history, as `apps/tts` (#166).
 - Contributing guide, security policy, code of conduct, issue and PR templates, code owners, the API versioning promise and this changelog.
+- A button beside each Experience Counter in the TTS mod spawns a pile of the three Riftbound tokens; every click spawns another, so a drawn-down pile is refilled by clicking again.
 
 ### Changed
 
