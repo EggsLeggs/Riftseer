@@ -35,7 +35,7 @@ The satellites have their own gate, `.github/workflows/standalone.yml`: `npm ci`
 - One concern per PR. If the description says "also", it is two PRs.
 - The body is the problem in a sentence or two, then how you fixed it. `.github/PULL_REQUEST_TEMPLATE.md` asks for the rest.
 - If your change alters a rule someone follows or a term the glossary defines, update the nearest `AGENTS.md` or `CONTEXT.md` in the same diff. A rule that lives only in a PR description is lost on the next read.
-- UI changes carry before and after images, motion carries a short video, both uploaded to GitHub rather than committed.
+- Screenshots and clips are welcome on a PR, uploaded to GitHub rather than committed to the tree.
 - A route change regenerates and commits `apps/api/openapi.json` (`bun run generate:spec` inside `apps/api`). That diff is how API changes are reviewed; `docs/api-versioning.md` says what may change without notice.
 - No implementation plans, research notes or scratch files in the tree.
 

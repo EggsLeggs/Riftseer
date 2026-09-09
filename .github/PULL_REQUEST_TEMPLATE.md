@@ -14,7 +14,6 @@
 
 - [ ] One concern. If the description says "also", it is two pull requests.
 - [ ] Rules or terms changed? The nearest `AGENTS.md` or `CONTEXT.md` is updated in this diff.
-- [ ] UI changes carry before and after images, motion carries a short video, uploaded to GitHub rather than committed.
 - [ ] A route change regenerated and committed `apps/api/openapi.json`.
 - [ ] Legal copy changed? The "Last updated" date and the matching `LEGAL_*_VERSION` moved in this diff.
 

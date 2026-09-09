@@ -91,7 +91,7 @@ A change to shared behaviour is not done when the website shows it. Surfaces her
 
 - Conventional commit titles in plain language: `fix(web): new threads no longer spike CPU`. One concern per PR; if the description says "also", split it.
 - Body: the problem in a sentence or two, then how you fixed it. End with the model and harness that did the work.
-- UI changes need before/after images, motion needs a short video, uploaded to GitHub. Never commit PR-only assets.
+- Never commit PR-only assets. A screenshot or clip a PR needs is uploaded to GitHub, not added to the tree.
 - Renovate opens the routine dependency PRs weekly; OSV vulnerability fixes ignore the schedule. `docs/renovate.md` covers the cadence and how to force a run.
 - When babysitting: poll checks and comments newer than the last push, verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when the bots are green on the latest commit.
 - Track active work in the GitHub issue or project item that owns it (`docs/agents/issue-tracker.md`, labels in `docs/agents/triage-labels.md`). A merged PR is the implementation record; close its tracking item and keep no second checklist in the repository.
