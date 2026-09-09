@@ -27,13 +27,30 @@ def existing_filenames(out_dir: Path) -> dict:
     so a hand-picked slug like `7cf430_battlefield_count_control.lua` is reused
     instead of being regenerated from the nickname (which would create a
     duplicate file for the same GUID and make inject.py non-deterministic).
+
+    Two files already claiming one GUID is that same non-determinism, one step
+    earlier: whichever the glob yields last would win. Refuse rather than pick.
     """
     out = {}
-    for p in out_dir.glob('*.lua'):
+    for p in sorted(out_dir.glob('*.lua')):
         m = GUID_RE.match(p.name)
-        if m:
-            out[m.group(1)] = p.name
+        if not m:
+            continue
+        guid = m.group(1)
+        if guid in out:
+            raise SystemExit(duplicate_guid_error(guid, out[guid], p.name))
+        out[guid] = p.name
     return out
+
+
+def duplicate_guid_error(guid: str, first: str, second: str) -> str:
+    """One object has one script; two files for one GUID resolve by glob order."""
+    return (
+        f"Two files claim GUID {guid}: {first} and {second}.\n"
+        f"An object has one script, and which of these reached the save would "
+        f"depend on the filesystem. Delete whichever no longer matches the "
+        f"object's nickname."
+    )
 
 
 def slug(s: str) -> str:
