@@ -28,14 +28,28 @@ GUID_RE = re.compile(r'^([a-f0-9]{6})_')
 
 
 def load_object_scripts():
-    """Return {guid: lua_source} from scripts/objects/."""
+    """Return {guid: lua_source} from scripts/objects/.
+
+    Two files sharing a GUID prefix would resolve by glob order, so which one
+    reached the save would depend on the filesystem. Refuse rather than pick.
+    """
     out = {}
-    for p in (REPO / 'scripts' / 'objects').glob('*.lua'):
+    names = {}
+    for p in sorted((REPO / 'scripts' / 'objects').glob('*.lua')):
         m = GUID_RE.match(p.name)
         if not m:
             print(f"  skipping {p.name} (no GUID prefix)")
             continue
-        out[m.group(1)] = p.read_bytes().decode('utf-8')
+        guid = m.group(1)
+        if guid in names:
+            raise SystemExit(
+                f"Two files claim GUID {guid}: {names[guid]} and {p.name}.\n"
+                f"An object has one script, and which of these reached the save "
+                f"would depend on the filesystem. Delete whichever no longer "
+                f"matches the object's nickname."
+            )
+        names[guid] = p.name
+        out[guid] = p.read_bytes().decode('utf-8')
     return out
 
 
