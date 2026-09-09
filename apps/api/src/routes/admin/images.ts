@@ -1,3 +1,4 @@
+import { CARD_IMAGE_JOB_VERSION } from "@riftseer/types/card-image";
 import { t, Elysia } from "elysia";
 import { adminUploadObjectKey } from "@riftseer/types";
 import { ImageMutationResponseSchema, AdminErrorResponses } from "./schemas";
@@ -172,7 +173,7 @@ export function imageRoutes(ctx: AdminRouteContext) {
       let queued = true;
       try {
         await imageBindings.queue.send({
-          version: 1,
+          version: CARD_IMAGE_JOB_VERSION,
           printingId: params.id,
           sourceUrl: uploadedSourceUrl,
           sourceHash: uploadedSourceHash,
