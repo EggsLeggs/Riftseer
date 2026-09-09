@@ -37,7 +37,12 @@ import {
 } from "./pipeline/reconcile.ts";
 import { linkOracles } from "./pipeline/link.ts";
 import { buildOracles } from "./pipeline/oracles.ts";
-import { ingestCatalogue, loadOracleIdsByKey, refreshRulingRuleMatches } from "./pipeline/db.ts";
+import {
+  applyPrintingEnrichment,
+  ingestCatalogue,
+  loadOracleIdsByKey,
+  refreshRulingRuleMatches,
+} from "./pipeline/db.ts";
 import { collapseDuplicates } from "./pipeline/dedup.ts";
 import {
   applyLockedProductLinks,
@@ -61,7 +66,24 @@ function getTimeoutMs(env: Env): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30000;
 }
 
+/**
+ * Which half of the pipeline a run performs.
+ *
+ * They are split because they cannot share one invocation. A Worker on the free
+ * plan gets 50 subrequests, and doing both costs about 54: every cron run died
+ * at `ingest_catalogue batch 7/9`, leaving three batches a day stale and steps
+ * 10-12 unreached — including the one that asks for card art to be hosted.
+ *
+ * `catalogue` is the run that must succeed, so it keeps the headroom: RiftCodex
+ * is authoritative and its 15 pages plus the ten upsert RPCs are the floor.
+ * `prices` is advisory — it already degrades to "no prices this cycle" on any
+ * upstream failure — so it carries the 17 TCGPlayer calls and writes through
+ * `apply_printing_enrichment` instead of rewriting the catalogue.
+ */
+export type IngestMode = "catalogue" | "prices";
+
 export interface IngestResult {
+  mode: IngestMode;
   oraclesCount: number;
   printingsCount: number;
   setsCount: number;
@@ -72,14 +94,21 @@ export interface IngestResult {
   reviewEntriesCount: number;
   /** False when the run committed a catalogue but could not ask for its art. */
   imageCatalogEnqueued: boolean;
+  /** Printings whose TCGPlayer columns this run wrote. Always 0 in `catalogue`. */
+  enrichedCount: number;
   elapsedMs: number;
   ok: boolean;
   error?: string;
 }
 
-export async function runIngest(env: Env): Promise<IngestResult> {
+export async function runIngest(
+  env: Env,
+  { mode = "catalogue" }: { mode?: IngestMode } = {},
+): Promise<IngestResult> {
   const t0 = Date.now();
-  logger.info("Ingestion pipeline starting");
+  const isCatalogue = mode === "catalogue";
+  let enrichedCount = 0;
+  logger.info("Ingestion pipeline starting", { mode });
 
   try {
     const timeoutMs = getTimeoutMs(env);
@@ -129,20 +158,23 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // reconcile; a failure here leaves it null and skips that half entirely.
     let productMap: ProductMaps | null = null;
     let setGroupMap = new Map<string, number>();
-    try {
-      const tcgGroups = await fetchGroups(timeoutMs);
-      setGroupMap = matchTcgGroupsToSets(sets, tcgGroups);
-      const matchedGroupIds = new Set(setGroupMap.values());
-      const matchedGroups = tcgGroups.filter((group) => matchedGroupIds.has(group.groupId));
-      const groupResults = await fetchAllGroupResults(matchedGroups, timeoutMs);
-      productMap = buildProductMap(groupResults);
-      const enrichment = enrichPrintings(printings, productMap, setGroupMap);
-      logger.info("TCGPlayer enrichment complete", enrichment);
-    } catch (err) {
-      productMap = null;
-      logger.warn("TCGPlayer enrichment failed — continuing without prices", {
-        error: String(err),
-      });
+    // The 17 upstream calls that do not fit beside the catalogue upsert.
+    if (!isCatalogue) {
+      try {
+        const tcgGroups = await fetchGroups(timeoutMs);
+        setGroupMap = matchTcgGroupsToSets(sets, tcgGroups);
+        const matchedGroupIds = new Set(setGroupMap.values());
+        const matchedGroups = tcgGroups.filter((group) => matchedGroupIds.has(group.groupId));
+        const groupResults = await fetchAllGroupResults(matchedGroups, timeoutMs);
+        productMap = buildProductMap(groupResults);
+        const enrichment = enrichPrintings(printings, productMap, setGroupMap);
+        logger.info("TCGPlayer enrichment complete", enrichment);
+      } catch (err) {
+        productMap = null;
+        logger.warn("TCGPlayer enrichment failed — continuing without prices", {
+          error: String(err),
+        });
+      }
     }
 
     // 5. Group into oracles. Every printing restates the whole card upstream, so
@@ -191,8 +223,15 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       });
     }
 
-    // 9. The one step that must succeed.
-    const written = await ingestCatalogue(supabase, sets, oracles, deltas, relationships);
+    // 9. The one step that must succeed — on a catalogue run. A prices run has
+    // no catalogue to write: it applies the enrichment columns on their own,
+    // which is eleven fields per printing rather than every field of every one.
+    let written = { oracles: 0, printings: 0 };
+    if (isCatalogue) {
+      written = await ingestCatalogue(supabase, sets, oracles, deltas, relationships);
+    } else {
+      enrichedCount = await applyPrintingEnrichment(supabase, printings);
+    }
 
     // 10. Reconciliation runs after the upsert: `proposed_oracle_id` is a uuid,
     // and an oracle this run created has none until it commits. Both observers
@@ -202,8 +241,12 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // The queue prune is queue-wide: it drops every pending row this run did not
     // re-observe. Pruning on one source's findings would therefore delete the
     // other's, so it runs only when both reported.
+    // Only a prices run has the TCGPlayer half, and the queue prune is
+    // queue-wide: syncing on one source's findings would delete the other's. So
+    // reconciliation belongs to the run that observes both, not to whichever
+    // ran last.
     const observedBothSources = Boolean(productMap && galleryIndex);
-    if (productMap || galleryIndex) {
+    if (!isCatalogue && (productMap || galleryIndex)) {
       try {
         const entries = [
           ...(productMap ? buildReconciliationEntries(printings, productMap, setGroupMap) : []),
@@ -227,7 +270,7 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // 11. Rule-scoped rulings are re-materialised against the catalogue we just
     // wrote, so a rule written months ago picks up this run's new printings.
     // Must follow the upsert — it reads the projection, not the in-memory list.
-    const ruleMatches = await refreshRulingRuleMatches(supabase);
+    const ruleMatches = isCatalogue ? await refreshRulingRuleMatches(supabase) : null;
 
     // The catalogue is committed by this point. Enqueuing the scan is only a
     // prompt to go host images, and the next scheduled run re-sends it, so a
@@ -237,17 +280,21 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     // that serves upstream art forever. `POST /images/reconcile` re-sends it
     // without a full ingest.
     let imageCatalogEnqueued = false;
-    try {
-      await enqueueCardImageCatalogJob(env.CARD_IMAGE_QUEUE);
-      imageCatalogEnqueued = true;
-    } catch (err) {
-      logger.error("Card image catalog enqueue failed — no art will be hosted this run", {
-        error: String(err),
-      });
+    if (isCatalogue) {
+      try {
+        await enqueueCardImageCatalogJob(env.CARD_IMAGE_QUEUE);
+        imageCatalogEnqueued = true;
+      } catch (err) {
+        logger.error("Card image catalog enqueue failed — no art will be hosted this run", {
+          error: String(err),
+        });
+      }
     }
 
     const elapsedMs = Date.now() - t0;
     logger.info("Ingestion complete", {
+      mode,
+      enriched: enrichedCount,
       sets: sets.length,
       oracles: written.oracles,
       printings: written.printings,
@@ -265,6 +312,8 @@ export async function runIngest(env: Env): Promise<IngestResult> {
       elapsedMs,
     });
     return {
+      mode,
+      enrichedCount,
       oraclesCount: written.oracles,
       printingsCount: written.printings,
       setsCount: sets.length,
@@ -280,6 +329,8 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     const error = err instanceof Error ? err.message : String(err);
     logger.error("Ingestion pipeline failed", { error });
     return {
+      mode,
+      enrichedCount,
       oraclesCount: 0,
       printingsCount: 0,
       setsCount: 0,

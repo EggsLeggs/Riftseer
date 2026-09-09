@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { collapseDuplicates } from "../pipeline/dedup.ts";
-import { INGEST_RPC_CARD_BATCH_SIZE, ingestCatalogue } from "../pipeline/db.ts";
+import {
+  applyPrintingEnrichment,
+  ENRICHMENT_RPC_BATCH_SIZE,
+  INGEST_RPC_CARD_BATCH_SIZE,
+  ingestCatalogue,
+} from "../pipeline/db.ts";
 import { buildProductMap, collectorCandidates, enrichPrintings } from "../pipeline/enrich.ts";
 import { EdgeSet, linkChampionsLegends, linkOracles } from "../pipeline/link.ts";
 import { buildOracles, oracleDisplayName } from "../pipeline/oracles.ts";
@@ -124,6 +129,64 @@ describe("catalogue batching", () => {
     );
     expect(calls).toHaveLength(2);
     expect(calls.every((call) => call.payload.p_prune === false)).toBe(true);
+  });
+});
+
+describe("enrichment writes", () => {
+  const priced = (id: string) =>
+    printing(id, {
+      name: `Card ${id}`,
+      tcgplayer_url: `https://tcg/${id}`,
+      price_normal: 1.5,
+      tcgplayer_id: id,
+    });
+
+  test("sends only the columns enrichment owns", async () => {
+    const { client, calls } = ingestClient();
+    await applyPrintingEnrichment(client as never, [priced("p1")]);
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.name).toBe("apply_printing_enrichment");
+    expect(Object.keys(calls[0]?.payload.p_rows[0]).sort()).toEqual([
+      "id",
+      "image_source_hash",
+      "image_source_provider",
+      "image_source_url",
+      "price_foil",
+      "price_low_foil",
+      "price_low_normal",
+      "price_normal",
+      "released_at",
+      "tcgplayer_id",
+      "tcgplayer_url",
+    ]);
+  });
+
+  test("skips printings TCGPlayer never matched", async () => {
+    const { client, calls } = ingestClient();
+    // An unmatched printing carries no price and no URL. Sending it would ask
+    // the RPC to coalesce eleven nulls onto a row, which is a write that means
+    // nothing.
+    const written = await applyPrintingEnrichment(client as never, [
+      printing("p1", { name: "Unmatched" }),
+    ]);
+
+    expect(written).toBe(0);
+    expect(calls).toHaveLength(0);
+  });
+
+  test("batches without a per-row round trip", async () => {
+    const { client, calls } = ingestClient();
+    const printings = Array.from({ length: ENRICHMENT_RPC_BATCH_SIZE + 1 }, (_, index) =>
+      priced(`p${index}`),
+    );
+    await applyPrintingEnrichment(client as never, printings);
+
+    // The whole point: one RPC per 500 printings, not one per printing. The
+    // catalogue path costs nine RPCs for the same rows because it resends every
+    // column of every one.
+    expect(calls).toHaveLength(2);
+    expect(calls.map((call) => call.payload.p_rows.length)).toEqual([ENRICHMENT_RPC_BATCH_SIZE, 1]);
   });
 });
 

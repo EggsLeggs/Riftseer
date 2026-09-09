@@ -307,6 +307,87 @@ export interface IngestCatalogueResult {
   newPrintingSlugs: number;
 }
 
+/**
+ * Printings per `apply_printing_enrichment` call.
+ *
+ * Only eleven narrow columns per row, so these payloads are a fraction of a
+ * catalogue batch's — the 150 there is bounded by the work a transaction holds
+ * open, not by row count.
+ */
+export const ENRICHMENT_RPC_BATCH_SIZE = 500;
+
+/** The columns TCGPlayer enrichment owns, for one printing. */
+interface EnrichmentRow {
+  id: string;
+  tcgplayer_id: string | null;
+  tcgplayer_url: string | null;
+  released_at: string | null;
+  price_normal: number | null;
+  price_foil: number | null;
+  price_low_normal: number | null;
+  price_low_foil: number | null;
+  image_source_url: string | null;
+  image_source_hash: string | null;
+  image_source_provider: string | null;
+}
+
+function toEnrichmentRow(printing: IngestPrinting): EnrichmentRow {
+  return {
+    id: printing.id,
+    tcgplayer_id: printing.tcgplayer_id ?? null,
+    tcgplayer_url: printing.tcgplayer_url ?? null,
+    released_at: printing.released_at ?? null,
+    price_normal: printing.price_normal ?? null,
+    price_foil: printing.price_foil ?? null,
+    price_low_normal: printing.price_low_normal ?? null,
+    price_low_foil: printing.price_low_foil ?? null,
+    image_source_url: printing.image_source_url ?? null,
+    image_source_hash: printing.image_source_hash ?? null,
+    image_source_provider: printing.image_source_provider ?? null,
+  };
+}
+
+/**
+ * Write the enrichment columns for printings that already exist.
+ *
+ * The catalogue upsert is the only other writer of these columns, and it costs
+ * nine RPCs plus a prune because it resends every printing in full. Prices move
+ * daily and the catalogue does not, so refreshing one should not rewrite the
+ * other — that coupling is what kept enrichment inside an ingest invocation
+ * that could not afford its 17 upstream calls.
+ *
+ * Rows a payload omits are untouched, so this can never delete or create a
+ * printing; `apply_printing_enrichment` also mirrors the upsert's lock
+ * semantics, and the two have to keep agreeing.
+ */
+export async function applyPrintingEnrichment(
+  supabase: SupabaseClient,
+  printings: IngestPrinting[],
+): Promise<number> {
+  const rows = printings.filter((printing) => printing.tcgplayer_url || printing.price_normal);
+  if (rows.length === 0) {
+    logger.info("No enriched printings to write");
+    return 0;
+  }
+
+  let updated = 0;
+  const batchCount = Math.ceil(rows.length / ENRICHMENT_RPC_BATCH_SIZE);
+  for (let index = 0; index < batchCount; index++) {
+    const start = index * ENRICHMENT_RPC_BATCH_SIZE;
+    const batch = rows.slice(start, start + ENRICHMENT_RPC_BATCH_SIZE);
+    const result = await callRpcWithRetry<number>(
+      supabase,
+      "apply_printing_enrichment",
+      { p_rows: batch.map(toEnrichmentRow) },
+      `apply_printing_enrichment batch ${index + 1}/${batchCount}`,
+    );
+    updated += result ?? 0;
+  }
+
+  logger.info("Enrichment written", { sent: rows.length, updated, batches: batchCount });
+  return updated;
+}
+
 export async function ingestCatalogue(
   supabase: SupabaseClient,
   sets: IngestSet[],

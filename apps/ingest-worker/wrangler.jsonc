@@ -11,8 +11,14 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": false,
+  // Two schedules because the pipeline's two halves cannot share one
+  // invocation: a Worker gets 50 subrequests and doing both costs ~54. The
+  // six-hourly run writes the catalogue (~34); the daily one refreshes
+  // TCGPlayer prices and reconciliation (~41). `scheduled()` maps the cron
+  // expression to the mode, so these strings are load-bearing — change one and
+  // change src/index.ts with it.
   "triggers": {
-    "crons": ["0 */6 * * *"],
+    "crons": ["0 */6 * * *", "40 3 * * *"],
   },
   "vars": {
     "RIFTCODEX_BASE_URL": "https://api.riftcodex.com",
