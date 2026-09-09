@@ -67,10 +67,14 @@ export default {
     ctx.waitUntil(
       runIngest(env, { mode }).then((result) => {
         if (!result.ok) {
-          // A caught failure still returns 200 to Cloudflare, so this line is
-          // the only signal a scheduled run went wrong: the invocation is
-          // recorded as `outcome: "ok"` either way.
           console.error("Ingest worker failed", { mode, error: result.error });
+          // Rethrow so the invocation is recorded as an exception rather than
+          // `outcome: "ok"`. `runIngest` catches everything and returns a
+          // result, which is right for the HTTP route but made a failing cron
+          // indistinguishable from a healthy one: the dashboard showed five
+          // weeks of green while every run died at batch 7 of 9. Cron triggers
+          // are not retried, so this changes what is reported, not what runs.
+          throw new Error(`ingest ${mode} failed: ${result.error ?? "unknown"}`);
         }
       }),
     );
