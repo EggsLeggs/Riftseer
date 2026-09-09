@@ -4,6 +4,7 @@ import {
   enqueueCardImageJobs,
   preparePrintingImageJobs,
 } from "../images/catalog.ts";
+import { printingImageObjectKeys } from "@riftseer/types/card-image";
 import { hashImageSourceUrl, selectBestImageSource } from "../images/model.ts";
 import {
   hasCompleteCurrentImageSet,
@@ -204,12 +205,9 @@ function store(stored: StoredRow | null, published = true) {
   };
 }
 
-const KEYS = {
-  original: "cards/p/original",
-  small: "cards/p/small.webp",
-  normal: "cards/p/normal.webp",
-  large: "cards/p/large.webp",
-};
+// Derived, not restated: the key layout is the shared helper's contract and is
+// pinned by its own test. Hard-coding it here would let the two drift.
+const KEYS = printingImageObjectKeys("p");
 
 function completeSet(
   sourceHash = HASH,
