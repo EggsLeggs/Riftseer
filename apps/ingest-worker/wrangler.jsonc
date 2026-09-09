@@ -70,10 +70,19 @@
     "required": [
       "SUPABASE_URL",
       "SUPABASE_SERVICE_ROLE_KEY",
-      // Optional — unauthenticated upstream calls when unset.
-      "RIFTCODEX_API_KEY",
-      // Optional — leave unset only where POST /ingest may be called freely.
+      // Optional to the code, but listed because it IS set: the allowlist is
+      // also what lets it reach `wrangler dev`, and the POST /ingest guard is
+      // written `if (env.INGEST_SECRET)`, so a value that never arrives skips
+      // the check rather than failing it.
       "INGEST_SECRET",
     ],
+    // RIFTCODEX_API_KEY is deliberately absent. It is optional *and unset*,
+    // and a listed secret that is not configured fails `wrangler deploy`
+    // outright — not with a warning, as #175 assumed. Listing it broke every
+    // ingest deploy from 2026-09-08 09:43 until this line was written, so the
+    // worker ran a stale build while the fixes for it kept merging. Set it with
+    // `wrangler secret put RIFTCODEX_API_KEY` and add it back in the same
+    // change; until then ingest calls RiftCodex unauthenticated, as it always
+    // has. See docs/adding-an-env-var.md.
   },
 }
