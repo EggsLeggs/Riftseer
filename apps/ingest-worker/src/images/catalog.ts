@@ -125,25 +125,6 @@ export async function enqueueCardImageCatalogJob(queue: Queue): Promise<void> {
 }
 
 /**
- * How much of the catalogue is still serving upstream art.
- *
- * The publish pipeline is asynchronous and every one of its failures is
- * recoverable by re-running, which is exactly what makes a permanent stall
- * invisible: nothing breaks, the art just never becomes ours. This count is the
- * one number that says whether it is moving.
- */
-export async function countUnhostedPrintings(supabase: SupabaseClient): Promise<number> {
-  const { count, error } = await supabase
-    .from("printings")
-    .select("id", { count: "exact", head: true })
-    .is("image_hosted_at", null);
-  if (error) {
-    throw new Error(`count unhosted printings failed: ${error.message}`);
-  }
-  return count ?? 0;
-}
-
-/**
  * Every printing that has a source but no hosted variants — the fan-out the
  * queue consumer performs when it receives a catalogue job.
  */

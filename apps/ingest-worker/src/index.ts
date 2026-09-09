@@ -16,10 +16,9 @@
 
 import type { Env } from "./env.ts";
 import type { CardImageQueueJob } from "./images/types.ts";
-import { countUnhostedPrintings, enqueueCardImageCatalogJob } from "./images/catalog.ts";
+import { enqueueCardImageCatalogJob } from "./images/catalog.ts";
 import { processCardImageQueue } from "./images/processor.ts";
 import { runIngest } from "./ingest.ts";
-import { createSupabase } from "./supabase.ts";
 
 export type { Env };
 
@@ -81,20 +80,6 @@ export default {
         local: target.startsWith("localhost") || target.startsWith("127.0.0.1"),
         hint: "Trigger scheduled run locally: GET /cdn-cgi/mf/scheduled",
       });
-    }
-
-    // How much of the catalogue still serves upstream art. Hosting is
-    // asynchronous and every failure in it is silently recoverable, so a stall
-    // shows up nowhere else: `unhosted` staying flat across runs is the symptom.
-    if (request.method === "GET" && pathname === "/images/status") {
-      try {
-        return json({
-          worker: "riftseer-ingest",
-          unhosted: await countUnhostedPrintings(createSupabase(env)),
-        });
-      } catch (err) {
-        return json({ error: err instanceof Error ? err.message : String(err) }, 500);
-      }
     }
 
     // Re-send the catalogue scan on its own. The scan is otherwise reachable
