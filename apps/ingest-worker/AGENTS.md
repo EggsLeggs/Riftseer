@@ -65,3 +65,29 @@ wrangler types src/worker-configuration.d.ts --env-interface GeneratedEnv --incl
 ## Adding a file override
 
 Add the entry to the relevant JSON in `src/overrides/`. A new field also needs the interface in `src/overrides/index.ts` and its consumer in `src/pipeline/normalize.ts` or `src/pipeline/enrich.ts`. File overrides are for source-specific ingest fixes; admin-authored card edits go through the admin API, which writes the row and locks the column.
+
+## Two schedules, two halves
+
+The pipeline does not fit in one invocation. A Worker gets 50 subrequests and
+running everything costs about 54, so every cron run died at `ingest_catalogue
+batch 7/9` — three batches a day stale, and steps 10-12 never reached, which is
+why no card art was ever hosted.
+
+- `0 */6 * * *` runs `catalogue`: RiftCodex, the gallery, slugs, the ten upsert
+  RPCs, rulings and the image-catalogue enqueue. About 34 subrequests. This is
+  the run that must succeed, so it keeps the headroom.
+- `40 3 * * *` runs `prices`: TCGPlayer enrichment and reconciliation, written
+  through `apply_printing_enrichment` rather than the catalogue. About 41.
+
+`CRON_MODES` in `src/index.ts` maps expression to mode, and
+`bun run check:wrangler` fails on a `triggers.crons` entry the map does not
+name — otherwise a renamed schedule silently runs catalogue work and prices
+stop refreshing with nothing to show for it.
+
+Reconciliation belongs to the `prices` run because its queue prune is
+queue-wide: it drops every pending row the run did not re-observe, so syncing
+on one source's findings would delete the other's. Only the `prices` run sees
+both TCGPlayer and the gallery.
+
+`apply_printing_enrichment` mirrors the lock semantics of `ingest_catalogue`
+for the columns it writes. Change one and change the other.

@@ -18,7 +18,19 @@ import type { Env } from "./env.ts";
 import type { CardImageQueueJob } from "./images/types.ts";
 import { enqueueCardImageCatalogJob } from "./images/catalog.ts";
 import { processCardImageQueue } from "./images/processor.ts";
-import { runIngest } from "./ingest.ts";
+import { runIngest, type IngestMode } from "./ingest.ts";
+
+/**
+ * Which half of the pipeline each schedule runs.
+ *
+ * Every expression in `triggers.crons` must appear here, or the run silently
+ * does catalogue work on the prices schedule and prices stop being refreshed;
+ * `bun run check:wrangler` fails on an expression this map does not name.
+ */
+const CRON_MODES: Record<string, IngestMode> = {
+  "0 */6 * * *": "catalogue",
+  "40 3 * * *": "prices",
+};
 
 export type { Env };
 
@@ -47,11 +59,22 @@ async function authorized(request: Request, env: Env): Promise<boolean> {
 }
 
 export default {
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    // The cron expression selects the half to run. An unrecognised one falls
+    // back to the catalogue, the half whose staleness is visible to a reader.
+    const mode: IngestMode = CRON_MODES[event.cron] ?? "catalogue";
+
     ctx.waitUntil(
-      runIngest(env).then((result) => {
+      runIngest(env, { mode }).then((result) => {
         if (!result.ok) {
-          console.error("Ingest worker failed", { error: result.error });
+          console.error("Ingest worker failed", { mode, error: result.error });
+          // Rethrow so the invocation is recorded as an exception rather than
+          // `outcome: "ok"`. `runIngest` catches everything and returns a
+          // result, which is right for the HTTP route but made a failing cron
+          // indistinguishable from a healthy one: the dashboard showed five
+          // weeks of green while every run died at batch 7 of 9. Cron triggers
+          // are not retried, so this changes what is reported, not what runs.
+          throw new Error(`ingest ${mode} failed: ${result.error ?? "unknown"}`);
         }
       }),
     );

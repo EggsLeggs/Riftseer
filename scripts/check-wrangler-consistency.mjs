@@ -146,6 +146,33 @@ export function missingGeneratedBindings(configFile, config, typesFile, typesSou
     );
 }
 
+// The ingest worker's two schedules mean two different halves of the pipeline,
+// and `scheduled()` tells them apart by comparing `event.cron` to a literal.
+// A cron edited in one file and not the other does not fail anything: the run
+// silently does catalogue work on the prices schedule, and prices stop being
+// refreshed at all. Names only — the check does not care which expressions are
+// used, just that the worker recognises every one it is scheduled on.
+export function unmatchedIngestCrons(config, indexSource) {
+  const crons = config.triggers?.crons ?? [];
+  const map = indexSource.match(/const CRON_MODES[^=]*=\s*\{([\s\S]*?)\};/);
+  const known = map ? [...map[1].matchAll(/"([^"]+)":/g)].map((match) => match[1]) : [];
+  if (known.length === 0) return [];
+  return crons
+    .filter((cron) => !known.includes(cron))
+    .map(
+      (cron) =>
+        `apps/ingest-worker/src/index.ts: cron "${cron}" is scheduled in wrangler.jsonc ` +
+        `but matches no mode in scheduled() — it would silently run the default half`,
+    );
+}
+
+problems.push(
+  ...unmatchedIngestCrons(
+    ingest,
+    readFileSync(new URL("../apps/ingest-worker/src/index.ts", import.meta.url), "utf8"),
+  ),
+);
+
 for (const [configFile, config, typesFile] of [
   ["apps/api/wrangler.jsonc", api, "apps/api/src/worker-configuration.d.ts"],
   ["apps/ingest-worker/wrangler.jsonc", ingest, "apps/ingest-worker/src/worker-configuration.d.ts"],
