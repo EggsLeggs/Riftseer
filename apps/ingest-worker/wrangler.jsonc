@@ -14,6 +14,9 @@
   "triggers": {
     "crons": ["0 */6 * * *"],
   },
+  // Per-invocation CPU cap. Root AGENTS.md says when to raise it. It covers the
+  // cron, each queue batch and POST /ingest alike.
+  "limits": { "cpu_ms": 60000 },
   "vars": {
     "RIFTCODEX_BASE_URL": "https://api.riftcodex.com",
     "RIFTBOUND_GALLERY_BASE_URL": "https://content.publishing.riotgames.com",

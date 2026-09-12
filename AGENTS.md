@@ -16,6 +16,7 @@ Each of these already cost us something. Breaking one usually fails silently.
 - Printing ids must survive a rebuild. Deck rows and hosted image URLs are keyed on them.
 - Shared logic goes in `packages/types`, which has zero runtime dependencies. That is the only reason Workers, Devvit and browsers can all import it.
 - `apps/ingest-worker` never imports `@riftseer/core`; it pulls in Node built-ins Workers cannot load.
+- Cloudflare is on Workers Paid since 2026-09-12. A Worker gets 10,000 subrequests per invocation, so code no longer has to fit the Free plan's 50 (#189 split the ingest cron to fit and was closed). Requests, CPU time and Workers Logs past the monthly allowance are billed, and there is no spending cap. Every Worker declares `limits.cpu_ms`, and `bun run check:wrangler` fails without one. Raise a cap only against CPU time measured in Workers Observability, because a request over its cap fails with error 1102.
 - Prose and code follow `docs/standards.md`. If a rule here fights the task in front of you, say so loudly and get a maintainer's sign-off before breaking it.
 
 ## Defaults

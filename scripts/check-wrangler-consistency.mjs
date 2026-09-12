@@ -4,9 +4,11 @@
  *
  *   bun scripts/check-wrangler-consistency.mjs
  *
- * Three things drift silently between wrangler.jsonc files:
+ * These drift silently between wrangler.jsonc files:
  *
  *   compatibility_date   one Worker on an older runtime than the rest
+ *   limits.cpu_ms        a Worker with no CPU cap, billed for whatever a
+ *                        runaway request burns
  *   R2 and queue names   the API produces into a queue nobody consumes
  *   web's env.production wrangler does not inherit bindings under --env,
  *                        so the block duplicates the top level by hand
@@ -45,6 +47,23 @@ for (const [file, date] of dates) {
     problems.push(`${file}: compatibility_date is ${date}, others use ${newest}`);
   }
 }
+
+// Workers Paid bills CPU time past the monthly allowance with no spending cap,
+// so each Worker bounds what one invocation may burn. `limits` inherits under
+// --env, which is why web's env.production is not checked for its own copy.
+export function missingCpuLimits(entries) {
+  return entries
+    .filter(([, config]) => {
+      const cpuMs = config.limits?.cpu_ms;
+      return !(Number.isInteger(cpuMs) && cpuMs > 0);
+    })
+    .map(
+      ([file]) =>
+        `${file}: limits.cpu_ms must be a positive integer; every Worker declares a CPU cap`,
+    );
+}
+
+problems.push(...missingCpuLimits(configs));
 
 // The API and the ingest worker share the image bucket and the image queue.
 // Each binding name that appears in both must point at the same resource.
@@ -163,6 +182,6 @@ if (import.meta.main) {
   }
 
   console.log(
-    `Wrangler configs agree: compatibility_date ${newest}, shared R2 and queue names, web env.production matches its top level, generated Env types carry every declared binding.`,
+    `Wrangler configs agree: compatibility_date ${newest}, every Worker caps limits.cpu_ms, shared R2 and queue names, web env.production matches its top level, generated Env types carry every declared binding.`,
   );
 }

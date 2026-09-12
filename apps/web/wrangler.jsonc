@@ -31,6 +31,9 @@
   "observability": {
     "enabled": true,
   },
+  // Per-invocation CPU cap. Root AGENTS.md says when to raise it. `limits`
+  // inherits under --env, so env.production needs no copy.
+  "limits": { "cpu_ms": 5000 },
   "upload_source_maps": true,
   // https://developers.cloudflare.com/workers/wrangler/configuration/#secrets-configuration-property
   "secrets": {
