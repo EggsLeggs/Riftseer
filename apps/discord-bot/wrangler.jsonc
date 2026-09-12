@@ -5,6 +5,8 @@
   "compatibility_date": "2026-07-29",
   "workers_dev": true,
   "preview_urls": false,
+  // Per-invocation CPU cap. Root AGENTS.md says when to raise it.
+  "limits": { "cpu_ms": 1000 },
   "services": [
     {
       "binding": "RIFTSEER_API",

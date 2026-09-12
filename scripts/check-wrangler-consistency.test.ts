@@ -1,8 +1,28 @@
 import { describe, expect, test } from "bun:test";
 import {
+  missingCpuLimits,
   missingGeneratedBindings,
   productionBindingProblems,
 } from "./check-wrangler-consistency.mjs";
+
+describe("missingCpuLimits", () => {
+  test("names every Worker without a positive integer CPU cap", () => {
+    const configs = [
+      ["capped.jsonc", { limits: { cpu_ms: 1000 } }],
+      ["uncapped.jsonc", {}],
+      ["subrequests-only.jsonc", { limits: { subrequests: 50 } }],
+      ["zero.jsonc", { limits: { cpu_ms: 0 } }],
+      ["string.jsonc", { limits: { cpu_ms: "1000" } }],
+    ];
+
+    expect(missingCpuLimits(configs)).toEqual([
+      "uncapped.jsonc: limits.cpu_ms must be a positive integer; every Worker declares a CPU cap",
+      "subrequests-only.jsonc: limits.cpu_ms must be a positive integer; every Worker declares a CPU cap",
+      "zero.jsonc: limits.cpu_ms must be a positive integer; every Worker declares a CPU cap",
+      "string.jsonc: limits.cpu_ms must be a positive integer; every Worker declares a CPU cap",
+    ]);
+  });
+});
 
 const top = {
   name: "riftseer-web",
