@@ -1,4 +1,4 @@
-import { CARD_IMAGE_JOB_VERSION } from "@riftseer/types/card-image";
+import type { CardImageJob } from "@riftseer/types/card-image";
 import {
   AdminRepositoryError,
   type AdminDataRepository,
@@ -16,11 +16,7 @@ export const RECONCILIATION_MAX_LIMIT = 200;
 export const PRINTING_LIST_MAX_LIMIT = 200;
 export const ADMIN_IMAGE_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
-export interface AdminImageJob {
-  version: typeof CARD_IMAGE_JOB_VERSION;
-  printingId: string;
-  sourceUrl: string;
-  sourceHash: string;
+export interface AdminImageJob extends CardImageJob {
   sourceProvider: "admin";
 }
 
