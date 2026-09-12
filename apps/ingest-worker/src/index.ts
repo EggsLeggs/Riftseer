@@ -47,14 +47,12 @@ async function authorized(request: Request, env: Env): Promise<boolean> {
 }
 
 export default {
-  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
-    ctx.waitUntil(
-      runIngest(env).then((result) => {
-        if (!result.ok) {
-          console.error("Ingest worker failed", { error: result.error });
-        }
-      }),
-    );
+  async scheduled(_event: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    // runIngest reports failure as a value; rethrow it so the cron run is recorded as failed.
+    const result = await runIngest(env);
+    if (!result.ok) {
+      throw new Error(`Ingest failed: ${result.error ?? "unknown error"}`);
+    }
   },
 
   async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
