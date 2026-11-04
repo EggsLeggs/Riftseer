@@ -11,6 +11,54 @@ import type { Printing, PrintingImage } from "./card.ts";
  * a key or a cache-busting suffix.
  */
 
+/**
+ * Queue protocol version for a card-image job.
+ *
+ * The producer and the consumer are different Workers, so this cannot live in
+ * either: the API sent `version: 1` against a consumer requiring 2 from the
+ * oracle/printing split onward, and every admin upload's transcode was acked
+ * and discarded. Both sides import this so the two cannot drift again.
+ */
+export const CARD_IMAGE_JOB_VERSION = 2 as const;
+
+/** Lowercase hex SHA-256 — the only shape `hashImageSourceUrl` produces. */
+export const SOURCE_HASH_PATTERN = /^[a-f0-9]{64}$/;
+
+export type CardImageSourceProvider = "riftcodex" | "tcgplayer" | "admin";
+
+/**
+ * The message the API's admin upload sends and the ingest worker consumes.
+ *
+ * It lives here because those are two different Workers: nothing typechecks a
+ * queue, and a copy on each side is exactly how the producer came to send
+ * `version: 1` at a consumer requiring 2, silently discarding every admin
+ * upload's transcode.
+ */
+export interface CardImageJob {
+  version: typeof CARD_IMAGE_JOB_VERSION;
+  printingId: string;
+  sourceUrl: string;
+  sourceHash: string;
+  sourceProvider: CardImageSourceProvider;
+}
+
+export function isCardImageJob(value: unknown): value is CardImageJob {
+  if (!value || typeof value !== "object") return false;
+  const job = value as Partial<CardImageJob>;
+  return (
+    job.version === CARD_IMAGE_JOB_VERSION &&
+    typeof job.printingId === "string" &&
+    job.printingId.length > 0 &&
+    typeof job.sourceUrl === "string" &&
+    job.sourceUrl.length > 0 &&
+    typeof job.sourceHash === "string" &&
+    SOURCE_HASH_PATTERN.test(job.sourceHash) &&
+    (job.sourceProvider === "riftcodex" ||
+      job.sourceProvider === "tcgplayer" ||
+      job.sourceProvider === "admin")
+  );
+}
+
 /** Production custom domain for the `riftseer-cards` R2 bucket. */
 export const CARD_IMAGE_CDN_HOST = "img.riftseer.com";
 
