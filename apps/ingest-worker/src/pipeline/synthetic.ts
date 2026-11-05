@@ -13,6 +13,38 @@ import { normalizeCardName } from "../utils.ts";
 import type { IngestPrinting, IngestSet } from "./types.ts";
 
 /**
+ * Sets RiftCodex does not carry, built so `normalizeSets` output and these are
+ * indistinguishable downstream. A code RiftCodex already publishes wins: the
+ * override is for a gap, not for overriding live upstream data.
+ */
+export function syntheticSets(upstream: IngestSet[]): IngestSet[] {
+  const known = new Set(upstream.map((s) => s.set_code.toUpperCase()));
+  const built: IngestSet[] = [];
+
+  for (const [code, set] of Object.entries(overrides.syntheticSets)) {
+    const setCode = code.toUpperCase();
+    if (known.has(setCode)) continue;
+    built.push({
+      set_code: setCode,
+      set_name: set.set_name,
+      set_uri: `/search?q=&set=${setCode}`,
+      set_search_uri: undefined,
+      published_on: set.published_on ?? null,
+      is_promo: set.is_promo ?? false,
+      parent_set_code: set.parent_set_code ?? null,
+      riftcodex_set_id: undefined,
+      tcgplayer_group_id: set.tcgplayer_group_id,
+      cardmarket_id: undefined,
+    });
+  }
+
+  if (built.length > 0) {
+    logger.info("Injected synthetic sets", { sets: built.map((s) => s.set_code) });
+  }
+  return built;
+}
+
+/**
  * Build the synthetic printings for this run.
  *
  * A card naming a set the run does not have is dropped here with a warning

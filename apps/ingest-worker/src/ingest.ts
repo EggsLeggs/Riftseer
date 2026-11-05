@@ -23,7 +23,7 @@ import { fetchGroups, fetchAllGroupResults } from "./sources/tcgcsv.ts";
 import { fetchGalleryCards } from "./sources/riftbound-gallery.ts";
 import { applyGalleryEquipment, buildGalleryIndex, type GalleryIndex } from "./pipeline/gallery.ts";
 import { normalizeSets, normalizePrintings } from "./pipeline/normalize.ts";
-import { syntheticPrintings } from "./pipeline/synthetic.ts";
+import { syntheticPrintings, syntheticSets } from "./pipeline/synthetic.ts";
 import {
   buildProductMap,
   enrichPrintings,
@@ -98,7 +98,8 @@ export async function runIngest(env: Env): Promise<IngestResult> {
     ]);
 
     // 2. Normalize + collapse genuine upstream duplicate printings
-    const sets = normalizeSets(rawSets);
+    const upstreamSets = normalizeSets(rawSets);
+    const sets = [...upstreamSets, ...syntheticSets(upstreamSets)];
     // Synthetic cards join before dedup so they are indistinguishable from
     // upstream for every step after this one — including `linkTokens`, which
     // is the whole reason they exist.
