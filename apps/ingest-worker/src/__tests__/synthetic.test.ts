@@ -141,9 +141,18 @@ describe("synthetic token cards", () => {
     expect(mech?.image_orientation).toBe("portrait");
   });
 
-  test("each synthetic printing carries an image source", () => {
-    // A row without one is never published and is rebuilt every run.
+  test("a printing either has an image source or is knowingly waiting for one", () => {
+    // `loadPendingCardImageJobs` skips a row with no source rather than
+    // queueing a job that cannot run, so an entry may be created ahead of its
+    // art — which is where the three Radiance token reprints sit, waiting on
+    // an admin upload because no published scan of them exists yet.
+    const AWAITING_ART = new Set(["rad-t01", "rad-t05", "rad-t06"]);
+
     for (const p of syntheticPrintings(ALL_SETS)) {
+      if (AWAITING_ART.has(p.id)) {
+        expect(p.image_source_url).toBeUndefined();
+        continue;
+      }
       expect(p.image_source_url).toBeTruthy();
     }
   });

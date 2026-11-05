@@ -2536,6 +2536,16 @@
     "set_code": "RAD",
     "text_plain": "When you play me or when I become exhausted, play a 1 :rb_might: Recruit unit token to your base. I have +1 :rb_might: for each other exhausted unit you control."
   },
+  "rad-t01": {
+    "card_type": "Unit",
+    "collector_number": "T01",
+    "image_orientation": "portrait",
+    "might": 1,
+    "name": "Bird",
+    "riftbound_id": "rad-t01",
+    "set_code": "RAD",
+    "supertype": "Token"
+  },
   "rad-t02": {
     "artist": "Kudos Productions",
     "card_type": "Gear",
@@ -2547,6 +2557,25 @@
     "set_code": "RAD",
     "supertype": "Token",
     "text_plain": "[Deploy] (Play this only to a battlefield. When an opponent holds here, kill this.) [Deathknell] Deal 2 to an enemy unit here and kill all other Bombs you control here."
+  },
+  "rad-t05": {
+    "card_type": "Gear",
+    "collector_number": "T05",
+    "image_orientation": "portrait",
+    "name": "Gold",
+    "riftbound_id": "rad-t05",
+    "set_code": "RAD",
+    "supertype": "Token"
+  },
+  "rad-t06": {
+    "card_type": "Unit",
+    "collector_number": "T06",
+    "image_orientation": "portrait",
+    "might": 3,
+    "name": "Mech",
+    "riftbound_id": "rad-t06",
+    "set_code": "RAD",
+    "supertype": "Token"
   },
   "sfd-t01": {
     "artist": "Dao Trong Le",
