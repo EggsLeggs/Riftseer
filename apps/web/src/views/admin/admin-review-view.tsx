@@ -59,6 +59,17 @@ const SOURCE_LABELS: Record<AdminReviewSource, string> = {
   gallery: "Official gallery",
 };
 
+/**
+ * Both halves of a diff render through this, because an absent value and an
+ * explicitly empty one both have to read as something. The gallery states a
+ * card has no rules text by sending `[NO TEXT]`, which reaches the queue as an
+ * empty proposal — an arrow pointing at nothing is indistinguishable from a
+ * broken row.
+ */
+function statedOrEmpty(value: string | null | undefined): string {
+  return value ? value : "empty";
+}
+
 const FIELD_LABELS: Record<string, string> = {
   collector_number: "Collector number",
   released_at: "Release date",
@@ -338,8 +349,10 @@ function ReviewRow({
           {field && (
             <span className="text-xs">
               {FIELD_LABELS[field] ?? field}:{" "}
-              <span className="text-muted-foreground line-through">{current_value || "empty"}</span>{" "}
-              → <span className="font-medium">{proposed_value}</span>
+              <span className="text-muted-foreground line-through">
+                {statedOrEmpty(current_value)}
+              </span>{" "}
+              → <span className="font-medium">{statedOrEmpty(proposed_value)}</span>
             </span>
           )}
         </div>
