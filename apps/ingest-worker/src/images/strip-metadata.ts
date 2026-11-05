@@ -166,6 +166,26 @@ function stripWebp(bytes: Uint8Array): StripResult {
   return { bytes: out, removed };
 }
 
+/**
+ * Index of the next real marker at or after `from`, stepping over entropy-coded
+ * scan data: `FF 00` is a stuffed data byte, `FFD0`-`FFD7` are restart markers,
+ * and a run of `FF` is fill. Everything else beginning `FF` ends the scan.
+ */
+function nextMarkerAfterScan(bytes: Uint8Array, from: number): number {
+  let i = from;
+  while (i + 1 < bytes.byteLength) {
+    if (bytes[i] === 0xff) {
+      const next = bytes[i + 1]!;
+      const stuffed = next === 0x00;
+      const restart = next >= 0xd0 && next <= 0xd7;
+      const fill = next === 0xff;
+      if (!stuffed && !restart && !fill) return i;
+    }
+    i++;
+  }
+  return bytes.byteLength;
+}
+
 function stripJpeg(bytes: Uint8Array): StripResult {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const kept: Uint8Array[] = [bytes.subarray(0, 2)]; // SOI
@@ -175,11 +195,18 @@ function stripJpeg(bytes: Uint8Array): StripResult {
 
   while (at + 4 <= bytes.byteLength) {
     if (bytes[at] !== 0xff) break; // not a marker: keep the rest verbatim
-    const marker = bytes[at + 1]!;
-    if (marker === 0xda) break; // start of scan — entropy data follows
-    const length = view.getUint16(at + 2);
-    const end = at + 2 + length;
-    if (end > bytes.byteLength) break;
+    // A marker code may be preceded by any number of extra `FF` fill bytes.
+    // Reading `at + 1` blindly takes a fill byte for the marker, misreads the
+    // length that follows, and walks out of step — which left Exif in place.
+    let fill = at;
+    while (fill + 1 < bytes.byteLength && bytes[fill + 1] === 0xff) fill++;
+    const marker = bytes[fill + 1]!;
+    if (marker === 0xd9) break; // end of image
+    if (fill + 4 > bytes.byteLength) break;
+    const length = view.getUint16(fill + 2);
+    const end = fill + 2 + length;
+    if (end > bytes.byteLength || length < 2) break;
+
     const name = JPEG_METADATA_MARKERS.get(marker);
     if (name) {
       removed.push(name);
@@ -188,6 +215,16 @@ function stripJpeg(bytes: Uint8Array): StripResult {
       total += end - at;
     }
     at = end;
+
+    // A scan is not the end of the file: a progressive JPEG has several, and
+    // APP or COM segments are legal between them. Copy the entropy-coded data
+    // verbatim and carry on looking for metadata after it.
+    if (marker === 0xda) {
+      const resume = nextMarkerAfterScan(bytes, end);
+      kept.push(bytes.subarray(end, resume));
+      total += resume - end;
+      at = resume;
+    }
   }
   if (at < bytes.byteLength) {
     kept.push(bytes.subarray(at));

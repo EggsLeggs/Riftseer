@@ -161,6 +161,33 @@ describe("stripImageMetadata", () => {
     expect(out[20]! & 0x10).toBe(0x10); // alpha bit kept
   });
 
+  test("skips JPEG fill bytes before a marker", async () => {
+    // A marker code may be preceded by extra `FF`. Reading the byte after the
+    // first one takes a fill byte for the marker and walks out of step, which
+    // left the segment — and so the metadata — in the published `original`.
+    const bytes = new Uint8Array(
+      await Bun.file(`${import.meta.dir}/fixtures/jpeg-fill-bytes.jpg`).arrayBuffer(),
+    );
+    const { bytes: out, removed } = stripImageMetadata(bytes);
+
+    expect(removed).toEqual(["COM"]);
+    expect(new TextDecoder("latin1").decode(out)).not.toContain("SECRET-FILL");
+  });
+
+  test("keeps scanning for metadata between the scans of a progressive JPEG", async () => {
+    // A progressive file has many scans and may carry APP or COM between them.
+    // Stopping at the first scan copied all of that into `original` verbatim.
+    const bytes = new Uint8Array(
+      await Bun.file(`${import.meta.dir}/fixtures/jpeg-multi-scan.jpg`).arrayBuffer(),
+    );
+    const { bytes: out, removed } = stripImageMetadata(bytes);
+
+    expect(removed).toEqual(["COM"]);
+    expect(new TextDecoder("latin1").decode(out)).not.toContain("SECRET-MIDSCAN");
+    // the scan data itself survives untouched, byte stuffing and all
+    expect(out.byteLength).toBe(bytes.byteLength - 18);
+  });
+
   test("never mutates the input", () => {
     const input = png([pngChunk("IHDR", [1]), pngChunk("tEXt", [2]), pngChunk("IEND")]);
     const before = Uint8Array.from(input);
