@@ -148,6 +148,20 @@ describe("synthetic token cards", () => {
     expect(withStat).toHaveLength(178);
   });
 
+  test("Radiance champions carry the supertype that makes them link", () => {
+    // `linkChampionsLegends` indexes on `isChampion`, which reads the
+    // supertype. Without it a Radiance champion never enters the index and no
+    // legend can find it — the import shipped with every one of them unlinked.
+    const rad = syntheticPrintings([...ALL_SETS, set("RAD")]).filter((p) => p.set_code === "RAD");
+    const champions = rad.filter((p) => p.supertype === "Champion");
+    const ahri = rad.find((p) => p.id === "rad-038-167");
+
+    expect(champions.length).toBe(55);
+    expect(ahri?.supertype).toBe("Champion");
+    // a plain unit is not promoted by the rule
+    expect(rad.find((p) => p.id === "rad-001-167")?.supertype).toBeUndefined();
+  });
+
   test("a named Radiance card matches the printed card exactly", () => {
     const ahri = syntheticPrintings([...ALL_SETS, set("RAD")]).find((p) => p.id === "rad-038-167");
 

@@ -206,6 +206,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-015-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ionia", "Akali"],
     "text_plain": "The first time I move each turn, [Add] :rb_energy_1::rb_rune_rainbow:. The second time I move each turn, banish the top card of your Main Deck. Until your next Ending Phase, you may play that card. (You still pay its costs.)"
   },
@@ -282,6 +283,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-020-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Noxus", "Mordekaiser"],
     "text_plain": "[Accelerate] (You may pay :rb_energy_1::rb_rune_fury: as an additional cost to have me enter ready.) [Assault 3] (+3 :rb_might: while I'm an attacker.) Once each turn, if I would die, you may kill a friendly unit to heal me, exhaust me, and recall me instead."
   },
@@ -298,6 +300,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-020a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Noxus", "Mordekaiser"],
     "text_plain": "[Accelerate] [Assault 3] Once each turn, if I would die, you may kill a friendly unit to heal me, exhaust me, and recall me instead."
   },
@@ -314,6 +317,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-021-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ekko", "Zaun"],
     "text_plain": "I enter ready. [Assault] (+1 :rb_might: while I'm an attacker.) [Action][>] Discard 1, :rb_energy_1::rb_rune_fury:: Banish me, then play me to your base, ignoring my cost."
   },
@@ -330,6 +334,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-021a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ekko", "Zaun"],
     "text_plain": "I enter ready. [Assault] [Action][>] Discard 1, :rb_energy_1::rb_rune_fury:: Banish me, then play me to your base, ignoring my cost."
   },
@@ -359,6 +364,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-023-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Bandle City", "Ziggs"],
     "text_plain": "When you play me, play a Bomb gear token to a battlefield. (It has [Deploy]. When it dies, deal 2 to an enemy there and kill your other Bombs there.) Abilities of friendly gear deal 1 Bonus Damage."
   },
@@ -375,6 +381,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-023a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Bandle City", "Ziggs"],
     "text_plain": "When you play me, play a Bomb gear token to a battlefield. Abilities of friendly gear deal 1 Bonus Damage."
   },
@@ -581,6 +588,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-038-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ahri", "Ionia"],
     "text_plain": "[Disarm] (When I attack, give an enemy unit here -1 :rb_might: this turn.) When you reduce the Might of an enemy unit here by 1 or more, give me +1 :rb_might: this turn."
   },
@@ -638,6 +646,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-042-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Orianna"],
     "text_plain": "[Shield] (+1 :rb_might: while I'm a defender.) I don't deal combat damage unless there's a friendly gear here."
   },
@@ -653,6 +662,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-042a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Orianna"],
     "text_plain": "[Shield] I don't deal combat damage unless there's a friendly gear here."
   },
@@ -668,6 +678,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-043-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Riven"],
     "text_plain": "When I become exhausted, choose one that hasn't been chosen this turn \u2014 [Buff] me. (Give me a +1 :rb_might: buff if I don't have one.) Spend my buff to [Stun] an enemy unit. (It doesn't deal combat damage this turn.) Spend my buff to ready me."
   },
@@ -683,6 +694,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-043a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Riven"],
     "text_plain": "When I become exhausted, choose one that hasn't been chosen this turn \u2014 [Buff] me. Spend my buff to [Stun] an enemy unit. Spend my buff to ready me."
   },
@@ -714,6 +726,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-045-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Shurima", "K'Sante"],
     "text_plain": "[Shield] (+1 :rb_might: while I'm a defender.) When I attack or defend, double the [Shield] of a unit you control here this turn."
   },
@@ -730,6 +743,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-045a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Shurima", "K'Sante"],
     "text_plain": "[Shield] When I attack or defend, double the [Shield] of a unit you control here this turn."
   },
@@ -953,6 +967,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-061-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ekko", "Zaun"],
     "text_plain": "As an additional cost to play me, return a friendly unit to its owner's hand. [Ganking] (I can move from battlefield to battlefield.)"
   },
@@ -968,6 +983,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-061a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ekko", "Zaun"],
     "text_plain": "As an additional cost to play me, return a friendly unit to its owner's hand. [Ganking]"
   },
@@ -999,6 +1015,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-063-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Kai'Sa", "The Void"],
     "text_plain": "[Disarm] (When I attack, give an enemy unit here -1 :rb_might: this turn). While I'm in a showdown, your spells have [Reaction]. (Play them any time, even before spells and abilities resolve.)"
   },
@@ -1028,6 +1045,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-065-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Seraphine"],
     "text_plain": "[Disarm 2] (When I attack, give an enemy unit here -2 :rb_might: this turn.) Once each turn, when you exhaust three or more friendly units at the same time, you may draw 1."
   },
@@ -1044,6 +1062,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-065a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Seraphine"],
     "text_plain": "[Disarm 2] Once each turn, when you exhaust three or more friendly units at the same time, you may draw 1."
   },
@@ -1090,6 +1109,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-068-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Orianna"],
     "text_plain": "Once each turn, while I'm at a battlefield, you may pay :rb_energy_1::rb_rune_rainbow: less to play a gear."
   },
@@ -1105,6 +1125,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-068a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Orianna"],
     "text_plain": "Once each turn, while I'm at a battlefield, you may pay :rb_energy_1::rb_rune_rainbow: less to play a gear."
   },
@@ -1346,6 +1367,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-085-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Bilgewater", "Graves"],
     "text_plain": "When I attack or defend, deal damage equal to my Might to all enemy units here. I don't deal combat damage."
   },
@@ -1361,6 +1383,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-086-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Shurima", "K'Sante"],
     "text_plain": "[Accelerate] (You may pay :rb_energy_1::rb_rune_body: as an additional cost to have me enter ready.) [Shield 2] (+2 :rb_might: while I'm a defender.) When I hold, channel 1 rune."
   },
@@ -1376,6 +1399,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-086a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Shurima", "K'Sante"],
     "text_plain": "[Accelerate] [Shield 2] When I hold, channel 1 rune."
   },
@@ -1435,6 +1459,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-090-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Evelynn"],
     "text_plain": "[Ambush] (You may play me as a [Reaction] to a battlefield where you have units.) When you play a card from face down, ready me and give me +1 :rb_might: this turn."
   },
@@ -1451,6 +1476,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-090a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Evelynn"],
     "text_plain": "[Ambush] When you play a card from face down, ready me and give me +1 :rb_might: this turn."
   },
@@ -1467,6 +1493,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-091-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Demacia", "Jarvan IV"],
     "text_plain": "Your gear with [Deploy] have [Action]. (They can be played on your turn or in showdowns.) When I conquer, if there is a friendly gear with [Deploy] here, channel 1 rune exhausted."
   },
@@ -1483,6 +1510,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-091a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Demacia", "Jarvan IV"],
     "text_plain": "Your gear with [Deploy] have [Action]. When I conquer, if there is a friendly gear with [Deploy] here, channel 1 rune exhausted."
   },
@@ -1735,6 +1763,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-109-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Evelynn"],
     "text_plain": "[Disarm] (When I attack, give an enemy unit here -1 :rb_might: this turn.) When I hold, if you control a facedown card here, score 1 point."
   },
@@ -1751,6 +1780,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-109a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Evelynn"],
     "text_plain": "[Disarm] When I hold, if you control a facedown card here, score 1 point."
   },
@@ -1766,6 +1796,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-110-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Yordle", "Bandle City", "Lulu"],
     "text_plain": "When I move, you may have another unit's base Might become 4 this turn."
   },
@@ -1796,6 +1827,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-112-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Bandle City", "Ziggs"],
     "text_plain": ":rb_energy_1:, :rb_exhaust:: Play a Bomb gear token to a battlefield. (It has [Deploy]. When it dies, deal 2 to an enemy there and kill your other Bombs there.) When I defend, you may kill a friendly gear to give me +2 :rb_might: this turn."
   },
@@ -1811,6 +1843,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-112a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Bandle City", "Ziggs"],
     "text_plain": ":rb_energy_1:, :rb_exhaust:: Play a Bomb gear token to a battlefield. When I defend, you may kill a friendly gear to give me +2 :rb_might: this turn."
   },
@@ -1841,6 +1874,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-114-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Riven"],
     "text_plain": "When another friendly unit becomes exhausted, give me +1 :rb_might: this turn. Exhaust a friendly unit: Ready a unit. Use this ability only once each turn."
   },
@@ -1857,6 +1891,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-114a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Riven"],
     "text_plain": "When another friendly unit is exhausted, give me +1 :rb_might: this turn. Exhaust a friendly unit: Ready a unit. Use this ability only once each turn."
   },
@@ -2112,6 +2147,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-132-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Yordle", "Heimerdinger", "Piltover"],
     "text_plain": "If you would play a unit token to a location while I'm at a battlefield, you may play a 3 :rb_might: Mech unit token to that same location instead."
   },
@@ -2128,6 +2164,7 @@
     "rarity": "Rare",
     "riftbound_id": "rad-133-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Demacia", "Jarvan IV"],
     "text_plain": "[Assault] (+1 :rb_might: while I'm attacking.) [Tank] (I must be assigned combat damage first.) When I attack, you may move a unit you control to my battlefield."
   },
@@ -2144,6 +2181,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-133a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Demacia", "Jarvan IV"],
     "text_plain": "[Assault] [Tank] When I attack, you may move a unit you control to my battlefield."
   },
@@ -2202,6 +2240,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-137-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Noxus", "Mordekaiser"],
     "text_plain": "When you play me or when I attack, you may discard 1 to kill a unit or gear."
   },
@@ -2218,6 +2257,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-137a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Noxus", "Mordekaiser"],
     "text_plain": "When you play me or when I attack, you may discard 1 to kill a unit or gear."
   },
@@ -2234,6 +2274,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-138-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Seraphine"],
     "text_plain": "When you play me or when I become exhausted, play a 1 :rb_might: Recruit unit token to your base. I have +1 :rb_might: for each other exhausted unit you control."
   },
@@ -2250,6 +2291,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-138a-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Seraphine"],
     "text_plain": "When you play me or when I become exhausted, play a 1 :rb_might: Recruit unit token to your base. I have +1 :rb_might: for each other exhausted unit you control."
   },
@@ -2637,6 +2679,7 @@
     "rarity": "Epic",
     "riftbound_id": "rad-167-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ixtal", "Neeko"],
     "text_plain": "(Neutral cards can go in decks of any Domain.) If Neeko is in your deck, choose 3 different legends in addition to your starting legend. (Different means none match names.) When you play me, choose one of those legends and add it to your Legend Zone while I'm on the board."
   },
@@ -2661,7 +2704,8 @@
     "is_signature": true,
     "name": "Ekko - Boy Who Shattered Time",
     "riftbound_id": "rad-168*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-169-167": {
     "card_type": "Legend",
@@ -2684,7 +2728,8 @@
     "is_signature": true,
     "name": "Ziggs - Hexplosives Expert",
     "riftbound_id": "rad-169*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-170-167": {
     "card_type": "Legend",
@@ -2707,7 +2752,8 @@
     "is_signature": true,
     "name": "Mordekaiser - Iron Revenant",
     "riftbound_id": "rad-170*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-171-167": {
     "card_type": "Legend",
@@ -2730,7 +2776,8 @@
     "is_signature": true,
     "name": "Orianna - Lady of Clockwork",
     "riftbound_id": "rad-171*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-172-167": {
     "card_type": "Legend",
@@ -2753,7 +2800,8 @@
     "is_signature": true,
     "name": "K'Sante - Pride of Nazumah",
     "riftbound_id": "rad-172*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-173-167": {
     "card_type": "Legend",
@@ -2776,7 +2824,8 @@
     "is_signature": true,
     "name": "Riven - The Exile",
     "riftbound_id": "rad-173*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-174-167": {
     "card_type": "Legend",
@@ -2799,7 +2848,8 @@
     "is_signature": true,
     "name": "Seraphine - Starry-Eyed Songstress",
     "riftbound_id": "rad-174*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-175-167": {
     "card_type": "Legend",
@@ -2822,7 +2872,8 @@
     "is_signature": true,
     "name": "Evelynn - Agony's Embrace",
     "riftbound_id": "rad-175*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-176-167": {
     "card_type": "Legend",
@@ -2850,6 +2901,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-177-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ekko", "Zaun"],
     "text_plain": "I enter ready. [Assault] [Action][>] Discard 1, :rb_energy_1::rb_rune_fury:: Banish me, then play me to your base, ignoring my cost."
   },
@@ -2865,6 +2917,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-178-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Shurima", "K'Sante"],
     "text_plain": "[Accelerate] [Shield 2] When I hold, channel 1 rune."
   },
@@ -2876,7 +2929,8 @@
     "is_signature": true,
     "name": "K'Sante - Courageous",
     "riftbound_id": "rad-178*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-179-167": {
     "card_type": "Unit",
@@ -2891,6 +2945,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-179-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Aphelios", "Mount Targon"],
     "text_plain": "When you attach an Equipment to me, choose one that hasn't been chosen this turn \u2014 Ready 2 runes. Channel 1 rune exhausted. [Buff] a friendly unit."
   },
@@ -2902,7 +2957,8 @@
     "is_signature": true,
     "name": "Jarvan IV - Exemplar of Demacia",
     "riftbound_id": "rad-179*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-180-167": {
     "card_type": "Unit",
@@ -2917,6 +2973,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-180-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ezreal", "Piltover"],
     "text_plain": "When I attack or defend, deal damage equal to my Might to an enemy unit here. I don't deal combat damage. :rb_rune_mind:: [Action] \u2014 Move me to your base."
   },
@@ -2928,7 +2985,8 @@
     "is_signature": true,
     "name": "Ezreal - Dashing",
     "riftbound_id": "rad-180*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-181-167": {
     "card_type": "Unit",
@@ -2943,6 +3001,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-181-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Yone", "Ionia", "Demon"],
     "text_plain": "[Weaponmaster] When I conquer a battlefield that was uncontrolled, deal damage equal to my Might to an enemy unit in a base."
   },
@@ -2954,7 +3013,8 @@
     "is_signature": true,
     "name": "Yone - Blademaster",
     "riftbound_id": "rad-181*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-182-167": {
     "card_type": "Unit",
@@ -2969,6 +3029,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-182-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Kayn", "Ionia"],
     "text_plain": "[Ganking] If I have moved twice this turn, I don't take damage."
   },
@@ -2980,7 +3041,8 @@
     "is_signature": true,
     "name": "Kayn - Unleashed",
     "riftbound_id": "rad-182*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-183-167": {
     "card_type": "Unit",
@@ -2995,6 +3057,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-183-167",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Sett", "Ionia"],
     "text_plain": "[Tank] I get +1 :rb_might: for each buffed friendly unit at my battlefield."
   },
@@ -3006,7 +3069,8 @@
     "is_signature": true,
     "name": "Sett - Kingpin",
     "riftbound_id": "rad-183*-167",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Signature"
   },
   "rad-184-167": {
     "card_type": "Battlefield",
@@ -3029,7 +3093,8 @@
     "name": "Fury Rune",
     "rarity": "Common",
     "riftbound_id": "rad-r01",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r01a": {
     "card_type": "Rune",
@@ -3040,7 +3105,8 @@
     "name": "Fury Rune",
     "rarity": "Showcase",
     "riftbound_id": "rad-r01a",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r02": {
     "card_type": "Rune",
@@ -3051,7 +3117,8 @@
     "name": "Calm Rune",
     "rarity": "Common",
     "riftbound_id": "rad-r02",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r02a": {
     "card_type": "Rune",
@@ -3062,7 +3129,8 @@
     "name": "Calm Rune",
     "rarity": "Showcase",
     "riftbound_id": "rad-r02a",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r03": {
     "card_type": "Rune",
@@ -3073,7 +3141,8 @@
     "name": "Mind Rune",
     "rarity": "Common",
     "riftbound_id": "rad-r03",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r03a": {
     "card_type": "Rune",
@@ -3084,7 +3153,8 @@
     "name": "Mind Rune",
     "rarity": "Showcase",
     "riftbound_id": "rad-r03a",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r04": {
     "card_type": "Rune",
@@ -3095,7 +3165,8 @@
     "name": "Body Rune",
     "rarity": "Common",
     "riftbound_id": "rad-r04",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r04a": {
     "card_type": "Rune",
@@ -3106,7 +3177,8 @@
     "name": "Body Rune",
     "rarity": "Showcase",
     "riftbound_id": "rad-r04a",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r05": {
     "card_type": "Rune",
@@ -3117,7 +3189,8 @@
     "name": "Chaos Rune",
     "rarity": "Common",
     "riftbound_id": "rad-r05",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r05a": {
     "card_type": "Rune",
@@ -3128,7 +3201,8 @@
     "name": "Chaos Rune",
     "rarity": "Showcase",
     "riftbound_id": "rad-r05a",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r06": {
     "card_type": "Rune",
@@ -3139,7 +3213,8 @@
     "name": "Order Rune",
     "rarity": "Common",
     "riftbound_id": "rad-r06",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-r06a": {
     "card_type": "Rune",
@@ -3150,7 +3225,8 @@
     "name": "Order Rune",
     "rarity": "Showcase",
     "riftbound_id": "rad-r06a",
-    "set_code": "RAD"
+    "set_code": "RAD",
+    "supertype": "Basic"
   },
   "rad-sp1-005": {
     "card_type": "Unit",
@@ -3165,6 +3241,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-sp1-005",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ahri", "Ionia"],
     "text_plain": "[Disarm] When you reduce the Might of an enemy unit here by 1 or more, give me +1 :rb_might: this turn."
   },
@@ -3181,6 +3258,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-sp2-005",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Ionia", "Akali"],
     "text_plain": "The first time I move each turn, [Add] :rb_energy_1::rb_rune_rainbow:. The second time I move each turn, banish the top card of your Main Deck. Until your next Ending Phase, you may play that card."
   },
@@ -3197,6 +3275,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-sp3-005",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Evelynn"],
     "text_plain": "[Disarm] When I hold, if you control a facedown card here, score 1 point."
   },
@@ -3213,6 +3292,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-sp4-005",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Kai'Sa", "The Void"],
     "text_plain": "[Disarm] While I'm in a showdown, your spells have [Reaction]."
   },
@@ -3229,6 +3309,7 @@
     "rarity": "Showcase",
     "riftbound_id": "rad-sp5-005",
     "set_code": "RAD",
+    "supertype": "Champion",
     "tags": ["Piltover", "Seraphine"],
     "text_plain": "When you play me or when I become exhausted, play a 1 :rb_might: Recruit unit token to your base. I have +1 :rb_might: for each other exhausted unit you control."
   },
