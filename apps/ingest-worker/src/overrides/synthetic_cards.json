@@ -2047,11 +2047,12 @@
   },
   "rad-168star-167": {
     "card_type": "Legend",
-    "collector_number": "168*",
+    "collector_number": "168",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/ekko-boy-who-shattered-time-signature.jpg",
     "is_signature": true,
     "name": "Ekko - Boy Who Shattered Time",
+    "riftbound_id": "rad-168*-167",
     "set_code": "RAD"
   },
   "rad-169-167": {
@@ -2067,11 +2068,12 @@
   },
   "rad-169star-167": {
     "card_type": "Legend",
-    "collector_number": "169*",
+    "collector_number": "169",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/ziggs-hexplosives-expert-signature.jpg",
     "is_signature": true,
     "name": "Ziggs - Hexplosives Expert",
+    "riftbound_id": "rad-169*-167",
     "set_code": "RAD"
   },
   "rad-170-167": {
@@ -2087,11 +2089,12 @@
   },
   "rad-170star-167": {
     "card_type": "Legend",
-    "collector_number": "170*",
+    "collector_number": "170",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/mordekaiser-iron-revenant-signature.jpg",
     "is_signature": true,
     "name": "Mordekaiser - Iron Revenant",
+    "riftbound_id": "rad-170*-167",
     "set_code": "RAD"
   },
   "rad-171-167": {
@@ -2107,11 +2110,12 @@
   },
   "rad-171star-167": {
     "card_type": "Legend",
-    "collector_number": "171*",
+    "collector_number": "171",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/orianna-lady-of-clockwork-signature.jpg",
     "is_signature": true,
     "name": "Orianna - Lady of Clockwork",
+    "riftbound_id": "rad-171*-167",
     "set_code": "RAD"
   },
   "rad-172-167": {
@@ -2127,11 +2131,12 @@
   },
   "rad-172star-167": {
     "card_type": "Legend",
-    "collector_number": "172*",
+    "collector_number": "172",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/k-sante-pride-of-nazumah-signature.jpg",
     "is_signature": true,
     "name": "K'Sante - Pride of Nazumah",
+    "riftbound_id": "rad-172*-167",
     "set_code": "RAD"
   },
   "rad-173-167": {
@@ -2147,11 +2152,12 @@
   },
   "rad-173star-167": {
     "card_type": "Legend",
-    "collector_number": "173*",
+    "collector_number": "173",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/riven-the-exile-signature.jpg",
     "is_signature": true,
     "name": "Riven - The Exile",
+    "riftbound_id": "rad-173*-167",
     "set_code": "RAD"
   },
   "rad-174-167": {
@@ -2167,11 +2173,12 @@
   },
   "rad-174star-167": {
     "card_type": "Legend",
-    "collector_number": "174*",
+    "collector_number": "174",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/seraphine-starry-eyed-songstress-signature.jpg",
     "is_signature": true,
     "name": "Seraphine - Starry-Eyed Songstress",
+    "riftbound_id": "rad-174*-167",
     "set_code": "RAD"
   },
   "rad-175-167": {
@@ -2187,11 +2194,12 @@
   },
   "rad-175star-167": {
     "card_type": "Legend",
-    "collector_number": "175*",
+    "collector_number": "175",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/evelynn-agonys-embrace-signature.jpg",
     "is_signature": true,
     "name": "Evelynn - Agony's Embrace",
+    "riftbound_id": "rad-175*-167",
     "set_code": "RAD"
   },
   "rad-176-167": {
@@ -2229,11 +2237,12 @@
   },
   "rad-178star-167": {
     "card_type": "Legend",
-    "collector_number": "178*",
+    "collector_number": "178",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/ksante-courageous-signature.jpg",
     "is_signature": true,
     "name": "K'Sante - Courageous",
+    "riftbound_id": "rad-178*-167",
     "set_code": "RAD"
   },
   "rad-179-167": {
@@ -2249,11 +2258,12 @@
   },
   "rad-179star-167": {
     "card_type": "Legend",
-    "collector_number": "179*",
+    "collector_number": "179",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/jarvan-iv-exemplar-of-demacia-signature.jpg",
     "is_signature": true,
     "name": "Jarvan IV - Exemplar of Demacia",
+    "riftbound_id": "rad-179*-167",
     "set_code": "RAD"
   },
   "rad-180-167": {
@@ -2269,11 +2279,12 @@
   },
   "rad-180star-167": {
     "card_type": "Legend",
-    "collector_number": "180*",
+    "collector_number": "180",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/ezreal-dashing-signature.jpg",
     "is_signature": true,
     "name": "Ezreal - Dashing",
+    "riftbound_id": "rad-180*-167",
     "set_code": "RAD"
   },
   "rad-181-167": {
@@ -2289,11 +2300,12 @@
   },
   "rad-181star-167": {
     "card_type": "Legend",
-    "collector_number": "181*",
+    "collector_number": "181",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/yone-blademaster-signature.jpg",
     "is_signature": true,
     "name": "Yone - Blademaster",
+    "riftbound_id": "rad-181*-167",
     "set_code": "RAD"
   },
   "rad-182-167": {
@@ -2309,11 +2321,12 @@
   },
   "rad-182star-167": {
     "card_type": "Legend",
-    "collector_number": "182*",
+    "collector_number": "182",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/kayn-unleashed-signature.jpg",
     "is_signature": true,
     "name": "Kayn - Unleashed",
+    "riftbound_id": "rad-182*-167",
     "set_code": "RAD"
   },
   "rad-183-167": {
@@ -2329,11 +2342,12 @@
   },
   "rad-183star-167": {
     "card_type": "Legend",
-    "collector_number": "183*",
+    "collector_number": "183",
     "image_orientation": "portrait",
     "image_source_url": "https://riftcompare.com/radiance-spoilers/sett-kingpin-signature.jpg",
     "is_signature": true,
     "name": "Sett - Kingpin",
+    "riftbound_id": "rad-183*-167",
     "set_code": "RAD"
   },
   "rad-184-167": {
@@ -2529,6 +2543,7 @@
     "image_orientation": "portrait",
     "image_source_url": "https://wiki.leagueoflegends.com/en-us/images/RB_card_RAD-T02.png?b487a",
     "name": "Bomb",
+    "riftbound_id": "rad-t02",
     "set_code": "RAD",
     "supertype": "Token",
     "text_plain": "[Deploy] (Play this only to a battlefield. When an opponent holds here, kill this.) [Deathknell] Deal 2 to an enemy unit here and kill all other Bombs you control here."
@@ -2542,6 +2557,7 @@
     "image_source_url": "https://cdn.piltoverarchive.com/cards/SFD-T01.webp?width=2048",
     "might": 3,
     "name": "Mech",
+    "riftbound_id": "sfd-t01",
     "set_code": "SFD",
     "supertype": "Token"
   },
@@ -2554,6 +2570,7 @@
     "image_source_url": "https://cdn.piltoverarchive.com/cards/SFD-T02.webp?width=2048",
     "might": 2,
     "name": "Sand Soldier",
+    "riftbound_id": "sfd-t02",
     "set_code": "SFD",
     "supertype": "Token"
   },
@@ -2564,6 +2581,7 @@
     "image_orientation": "landscape",
     "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e44f173629322a4e0c32d3f8902c294d4482ef42-1039x744.png?accountingTag=RB",
     "name": "Baron Pit",
+    "riftbound_id": "unl-t01",
     "set_code": "UNL",
     "supertype": "Token",
     "text_plain": "(You can't start the game with a token battlefield.) Units can move here from anywhere."
@@ -2576,6 +2594,7 @@
     "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/949a2e43263a9fe0d957595325c7e2ebe06bf85f-744x1039.png?accountingTag=RB",
     "might": 1,
     "name": "Bird",
+    "riftbound_id": "unl-t02",
     "set_code": "UNL",
     "supertype": "Token",
     "text_plain": "[Deflect] (Opponents must pay :rb_rune_rainbow: to choose me with a spell or ability.)"
@@ -2587,6 +2606,7 @@
     "image_orientation": "landscape",
     "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/fad09d6bd9bf38e376f430ecb0b400762420d061-1039x744.png?accountingTag=RB",
     "name": "Brush",
+    "riftbound_id": "unl-t03",
     "set_code": "UNL",
     "supertype": "Token",
     "text_plain": "Bird, Cat, Dog, Poro, and Ivern units here have +1 :rb_might:. When you score here, you may replace this with the battlefield it replaced."
@@ -2598,6 +2618,7 @@
     "image_orientation": "portrait",
     "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/e566605fa989e12e91cd3d3e0b7985f7a8be8e74-744x1039.png?accountingTag=RB",
     "name": "Gold",
+    "riftbound_id": "unl-t05",
     "set_code": "UNL",
     "supertype": "Token",
     "text_plain": "[Reaction][>] Kill this, :rb_exhaust:: [Add] :rb_rune_rainbow:. (Abilities that add resources can't be reacted to.)"
@@ -2610,6 +2631,7 @@
     "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/80327b196c59841a67a65327974a93223a3c541a-744x1039.png?accountingTag=RB",
     "might": 0,
     "name": "Reflection",
+    "riftbound_id": "unl-t06",
     "set_code": "UNL",
     "supertype": "Token",
     "text_plain": "(I become a copy of something when played. I don't get that card's play effects.)"
@@ -2622,6 +2644,7 @@
     "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/1a90578f055e01515ebfb069dc3dbdba08d24da0-744x1039.png?accountingTag=RB",
     "might": 3,
     "name": "Sprite",
+    "riftbound_id": "unl-t07",
     "set_code": "UNL",
     "supertype": "Token",
     "text_plain": "[Temporary] (Kill me at the start of your Beginning Phase, before scoring.)"
@@ -2634,6 +2657,7 @@
     "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/08b9ccf225fc2ae9eb9b5668e5361b09789210ee-744x1039.png?accountingTag=RB",
     "might": 1,
     "name": "Recruit",
+    "riftbound_id": "ven-t04",
     "set_code": "VEN",
     "supertype": "Token"
   },
@@ -2645,6 +2669,7 @@
     "image_source_url": "https://cdn.piltoverarchive.com/cards/VEN-T05.webp?width=2048",
     "might": 0,
     "name": "Shadow Clone",
+    "riftbound_id": "ven-t05",
     "set_code": "VEN",
     "supertype": "Token",
     "text_plain": "When I attack, you may banish a unit from your trash. If you do, give me [Assault 4] this turn."
@@ -2658,6 +2683,7 @@
     "image_source_url": "https://cdn.piltoverarchive.com/cards/VEN-T06.webp?width=2048",
     "might": 1,
     "name": "Tentacle",
+    "riftbound_id": "ven-t06",
     "set_code": "VEN",
     "supertype": "Token"
   }
