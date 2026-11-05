@@ -8,6 +8,8 @@ import { CardApiError } from "./errors";
 export { CardApiError } from "./errors";
 
 const MAX_SEARCH_LIMIT = 100;
+/** Enough for the largest set with room to spare; Origins is 352 printings. */
+const MAX_SET_PAGES = 12;
 
 const cardsClient = createApiClient();
 const API_BASE = env.NEXT_PUBLIC_API_URL.replace(/\/+$/, "");
@@ -184,16 +186,38 @@ export const cardsApi = {
     }
   },
 
+  /**
+   * Every printing in a set, which means paging: the API clamps `limit` to 100
+   * and documents it, so one request showed the first hundred and silently
+   * dropped the rest. Every set above that size was affected — Origins lost
+   * 252 of 352 — and it read as cards missing from the catalogue rather than
+   * from the page, because the count in the header came from the set row.
+   */
   async getSetCards(
     setCode: string,
     opts: { includePrices?: boolean } = {},
   ): Promise<SearchByNameResult> {
-    return cardsApi.searchByName("", {
-      set: setCode.toUpperCase(),
-      limit: MAX_SEARCH_LIMIT,
-      includePrices: opts.includePrices,
-      unique: true,
-    });
+    const cards: SearchByNameResult["cards"] = [];
+    let total = 0;
+    let offset = 0;
+
+    // Bounded: a `total` that never agrees with what comes back must not spin.
+    for (let page = 0; page < MAX_SET_PAGES; page++) {
+      const result = await cardsApi.searchByName("", {
+        set: setCode.toUpperCase(),
+        limit: MAX_SEARCH_LIMIT,
+        offset,
+        includePrices: opts.includePrices,
+        unique: true,
+      });
+      total = result.total;
+      cards.push(...result.cards);
+      offset += result.cards.length;
+      // A short page is the last one; an empty page would otherwise loop.
+      if (result.cards.length < MAX_SEARCH_LIMIT || cards.length >= total) break;
+    }
+
+    return { count: cards.length, cards, total, offset: 0, limit: cards.length };
   },
 
   async browseAll(
