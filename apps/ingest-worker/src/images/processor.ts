@@ -9,6 +9,7 @@ import type { Env } from "../env.ts";
 import { createSupabase } from "../supabase.ts";
 import { logger } from "../utils.ts";
 import { enqueueCardImageJobs, loadPendingCardImageJobs } from "./catalog.ts";
+import { stripImageMetadata } from "./strip-metadata.ts";
 import {
   CARD_IMAGE_JOB_VERSION,
   isCardImageCatalogJob,
@@ -341,9 +342,20 @@ export async function processCardImageJob(
   const source = await loadImageSource(env, job.sourceUrl, timeout);
   // Buffer before tee: Blob/R2 streams lose their declared length across
   // TransformStream / tee, and IMAGES.info requires a known-length body.
-  const bytes = new Uint8Array(await new Response(source.body).arrayBuffer());
-  if (source.oversized() || bytes.byteLength > MAX_SOURCE_BYTES) {
+  const downloaded = new Uint8Array(await new Response(source.body).arrayBuffer());
+  if (source.oversized() || downloaded.byteLength > MAX_SOURCE_BYTES) {
     throw new PermanentImageError(`image source exceeds ${MAX_SOURCE_BYTES} bytes`);
+  }
+  // `original` is stored verbatim and served publicly, so a source's metadata
+  // would be published as-is. Strip before anything sees these bytes.
+  const { bytes, removed } = stripImageMetadata(downloaded);
+  if (removed.length > 0) {
+    // Deduped: a PNG can carry dozens of `tEXt` chunks and this is one log line.
+    logger.info("Stripped image metadata", {
+      printingId: job.printingId,
+      removed: [...new Set(removed)],
+      bytesSaved: downloaded.byteLength - bytes.byteLength,
+    });
   }
   const objectMetadata = {
     printingId: job.printingId,
