@@ -356,14 +356,48 @@ export function buildReconciliationEntries(
  * Verified against the live corpus: with this normalisation the two sources
  * agree on all 1,301 shared printings, so any diff filed here is real drift.
  */
+/**
+ * The gallery ships HTML, so its rules text arrives entity-escaped: `&quot;`
+ * and `&gt;` where ours holds `"` and `>`. Comparing the two raw filed a diff
+ * for every card quoting another card's text — 40 of them — that no admin
+ * could ever action, because both sides were already correct.
+ *
+ * `&amp;` is decoded last, or `&amp;quot;` would decode twice into a quote.
+ */
+const HTML_ENTITIES: Array<[RegExp, string]> = [
+  [/&quot;/g, '"'],
+  [/&#0*39;|&apos;/g, "'"],
+  [/&lt;/g, "<"],
+  [/&gt;/g, ">"],
+  [/&nbsp;/g, " "],
+  [/&amp;/g, "&"],
+];
+
+function decodeEntities(value: string): string {
+  return HTML_ENTITIES.reduce((text, [pattern, char]) => text.replace(pattern, char), value);
+}
+
 function comparableText(value: string | null | undefined): string | null {
   if (!value) return null;
-  const plain = value
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
+  const plain = decodeEntities(value.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
+  // The gallery prints a literal `[NO TEXT]` on cards with no rules text, where
+  // we store nothing. That is the same statement, not a disagreement.
+  if (/^\[no text\]$/i.test(plain)) return null;
   return plain || null;
+}
+
+/**
+ * Collector numbers compare on value, not on padding. The riftbound id
+ * zero-pads where the printed card does not, so ours reads `038` against the
+ * gallery's `38` on every card below 100 — 123 diffs that say nothing.
+ * Applied to both sides, so a genuine disagreement still surfaces.
+ */
+function comparableCollectorNumber(value: unknown): string | null {
+  const text = comparableValue(value);
+  if (text === null) return null;
+  return text.replace(/^([A-Za-z]*)0+(\d)/, "$1$2");
 }
 
 function comparableValue(value: unknown): string | null {
@@ -419,8 +453,8 @@ function galleryFieldPairs(
   return [
     [
       "collector_number",
-      comparableValue(printing.collector_number),
-      comparableValue(galleryPrintedCollectorNumber(raw)),
+      comparableCollectorNumber(printing.collector_number),
+      comparableCollectorNumber(galleryPrintedCollectorNumber(raw)),
     ],
     ["rarity", comparableValue(printing.rarity), comparableValue(raw.rarity?.value?.label)],
     ["type", comparableValue(printing.card_type), comparableValue(raw.cardType?.type?.[0]?.label)],
