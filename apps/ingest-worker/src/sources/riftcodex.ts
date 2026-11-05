@@ -198,6 +198,23 @@ interface PrintedVariantSignals {
  * signature, `sp3` belongs to a special collection, and a collector above the
  * printed set size is overnumbered.
  */
+/**
+ * Finishes RiftCodex names but does not model.
+ *
+ * A metal card is a separate product with its own TCGPlayer id and price, and
+ * upstream ships it as a second row under the *same* `riftbound_id` with
+ * `(Metal)` on the name and nothing in `metadata.finishes`. Without this the
+ * pair looks like a duplicate: `collapseDuplicates` folded them and
+ * `collapseGroup` kept the base's `tcgplayer_id`, so 16 OPP metal products
+ * were dropped every run with nothing to show for it.
+ *
+ * `oracleKeyForName` strips the suffix, so both printings still share one
+ * oracle — which is right, it is one card in two finishes.
+ */
+export function derivedFinishes(name: string | undefined): string[] {
+  return /\(metal\)\s*$/i.test(name ?? "") ? ["metal"] : [];
+}
+
 export function printedVariantSignals(riftboundId: string): PrintedVariantSignals {
   const parts = parsePrintedId(riftboundId);
   if (!parts) {
@@ -262,7 +279,7 @@ export function rawToPrinting(raw: RawCard): IngestPrinting {
     released_at: normalizeDate(raw.released_at),
     rarity: raw.classification?.rarity || undefined,
     flavour_text: raw.text?.flavour ? repairFlavourText(raw.text.flavour) : undefined,
-    finishes: raw.metadata?.finishes ?? [],
+    finishes: raw.metadata?.finishes ?? derivedFinishes(raw.name),
     is_signature: (raw.metadata?.signature ?? false) || variantSignals.signature,
     is_alternate_art: (raw.metadata?.alternate_art ?? false) || variantSignals.alternateArt,
     is_overnumbered: (raw.metadata?.overnumbered ?? false) || variantSignals.overnumbered,
