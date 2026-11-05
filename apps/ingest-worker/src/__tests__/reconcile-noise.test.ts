@@ -99,4 +99,49 @@ describe("gallery reconciliation drops formatting-only differences", () => {
 
     expect(fields(entries)).not.toContain("text");
   });
+
+  test("but [NO TEXT] against text we hold is a disagreement, not a silence", () => {
+    // The whole risk of normalising: `[NO TEXT]` is a claim about the card, so
+    // it has to keep disagreeing with a card whose rules text we do store.
+    const entries = buildGalleryReconciliationEntries(
+      [printing({ text_rich: "Deal 2 damage." })],
+      index({
+        publicCode: "TST-038/100",
+        collectorNumber: 38,
+        text: { richText: { body: "[NO TEXT]" } },
+      }),
+    );
+
+    expect(fields(entries)).toContain("text");
+  });
+
+  test("a gallery that omits text makes no claim about ours", () => {
+    // Distinct from `[NO TEXT]`: the gallery omits a field it has nothing for
+    // rather than sending null, and an omission is not evidence of anything.
+    const entries = buildGalleryReconciliationEntries(
+      [printing({ text_rich: "Deal 2 damage." })],
+      index({ publicCode: "TST-038/100", collectorNumber: 38 }),
+    );
+
+    expect(fields(entries)).toEqual([]);
+  });
+});
+
+describe("a proposal states the value, it does not restate the comparison", () => {
+  test("a collector-number proposal keeps the printed padding", () => {
+    // Confirming writes `proposed_value` into `printing.collector_number`, so
+    // the compared form must not reach it: the token track is printed `T03`,
+    // and `T3` would land in the column and every slug derived from it.
+    const entries = buildGalleryReconciliationEntries(
+      [printing({ collector_number: "T13" })],
+      index({ publicCode: "TST-T03/100", collectorNumber: 3 }),
+    );
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.payload).toMatchObject({
+      field: "collector_number",
+      current_value: "T13",
+      proposed_value: "T03",
+    });
+  });
 });
