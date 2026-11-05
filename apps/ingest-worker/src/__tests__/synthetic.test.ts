@@ -125,6 +125,39 @@ describe("synthetic token cards", () => {
     expect(oracles.length).toBeLessThan(rad.length);
   });
 
+  test("Radiance cards carry the stats a deck is built from", () => {
+    // The first import shipped 219 cards with no energy, might, power, domains
+    // or tags. Nothing failed — the reconciliation queue just filled with ~390
+    // field diffs reporting it, which is what the queue is for.
+    const rad = syntheticPrintings([...ALL_SETS, set("RAD")]).filter(
+      (p) => p.set_code === "RAD" && !p.is_token,
+    );
+    const withDomain = rad.filter((p) => p.domains.length > 0);
+    const withTags = rad.filter((p) => p.tags.length > 0);
+    const withStat = rad.filter((p) => p.energy !== null || p.might !== null || p.power !== null);
+
+    // Measured, not rounded. 233 is 219 gallery rows plus 14 starred
+    // signatures, which carry no stats of their own and inherit them through
+    // the oracle they share with their base printing. Not every card has every
+    // field: a battlefield has no stats, and only champions and legends carry
+    // the character tags `characterTags()` links on.
+    expect(rad).toHaveLength(233);
+    // a domain is colour identity; without one no deck can legally use the card
+    expect(withDomain).toHaveLength(208);
+    expect(withTags).toHaveLength(101);
+    expect(withStat).toHaveLength(178);
+  });
+
+  test("a named Radiance card matches the printed card exactly", () => {
+    const ahri = syntheticPrintings([...ALL_SETS, set("RAD")]).find((p) => p.id === "rad-038-167");
+
+    expect(ahri?.energy).toBe(4);
+    expect(ahri?.might).toBe(4);
+    expect(ahri?.power).toBe(1);
+    expect(ahri?.domains).toEqual(["Calm"]);
+    expect(ahri?.tags).toEqual(["Ahri", "Ionia"]);
+  });
+
   test("synthetic ids never take the shape of a RiftCodex ObjectId", () => {
     // The upsert is ON CONFLICT (id); a collision would overwrite a real row.
     for (const id of Object.keys(overrides.syntheticCards)) {
