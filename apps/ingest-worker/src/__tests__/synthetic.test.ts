@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { syntheticPrintings } from "../pipeline/synthetic.ts";
+import { syntheticPrintings, syntheticSets } from "../pipeline/synthetic.ts";
 import { buildOracles } from "../pipeline/oracles.ts";
 import { linkOracles } from "../pipeline/link.ts";
 import { collapseDuplicates } from "../pipeline/dedup.ts";
@@ -76,6 +76,53 @@ describe("synthetic token cards", () => {
     expect(byMaker.get("deserts call")).toBe("sand soldier");
     expect(byMaker.get("death mark")).toBe("shadow clone");
     expect(byMaker.get("assembly rig")).toBe("mech");
+  });
+
+  test("Radiance arrives as a set, since no upstream path can create one", () => {
+    const built = syntheticSets(ALL_SETS);
+    const rad = built.find((s) => s.set_code === "RAD");
+
+    expect(rad?.set_name).toBe("Radiance");
+    expect(rad?.published_on).toBe("2026-10-23");
+    expect(rad?.is_promo).toBe(false);
+    // card_count is recomputed by the RPC from the printings that landed
+    expect(rad).not.toHaveProperty("card_count");
+  });
+
+  test("a set RiftCodex already publishes is never shadowed", () => {
+    // The override fills a gap; it must not override live upstream data.
+    const built = syntheticSets([...ALL_SETS, set("RAD")]);
+
+    expect(built.find((s) => s.set_code === "RAD")).toBeUndefined();
+  });
+
+  test("Radiance variant flags derive from the printed id, not from authoring", () => {
+    const rad = syntheticPrintings([...ALL_SETS, set("RAD")]).filter((p) => p.set_code === "RAD");
+
+    expect(rad.length).toBeGreaterThan(200);
+    // `rad-020a-167` is alternate art, `rad-sp1-005` a special collection,
+    // `rad-175-167` overnumbered against a 167-card run, `rad-168*-167` a signature.
+    expect(rad.find((p) => p.id === "rad-020a-167")?.is_alternate_art).toBe(true);
+    expect(rad.find((p) => p.id === "rad-sp1-005")?.is_special_collection).toBe(true);
+    expect(rad.find((p) => p.id === "rad-175-167")?.is_overnumbered).toBe(true);
+    expect(rad.some((p) => p.is_signature)).toBe(true);
+    // and a plain one carries none of them
+    const plain = rad.find((p) => p.id === "rad-001-167");
+    expect([plain?.is_alternate_art, plain?.is_overnumbered, plain?.is_special_collection]).toEqual(
+      [false, false, false],
+    );
+  });
+
+  test("a signature is another printing of its base oracle, not a new one", () => {
+    const rad = syntheticPrintings([...ALL_SETS, set("RAD")]).filter((p) => p.set_code === "RAD");
+    const { oracles } = buildOracles(collapseDuplicates(rad));
+    const ekko = rad.filter((p) => p.name.startsWith("Ekko - Boy Who Shattered Time"));
+
+    // the base printing and the starred signature share one oracle name
+    expect(ekko.length).toBeGreaterThan(1);
+    expect(new Set(ekko.map((p) => p.name)).size).toBe(1);
+    // 234 printings collapse to far fewer oracles
+    expect(oracles.length).toBeLessThan(rad.length);
   });
 
   test("synthetic ids never take the shape of a RiftCodex ObjectId", () => {

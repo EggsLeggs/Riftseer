@@ -2,6 +2,7 @@ import riftcodexSetsRaw from "./riftcodex_sets.json";
 import tcgplayerGroupsRaw from "./tcgplayer_groups.json";
 import cardsRaw from "./cards.json";
 import syntheticCardsRaw from "./synthetic_cards.json";
+import syntheticSetsRaw from "./synthetic_sets.json";
 
 export interface RiftcodexSetOverride {
   /** Override the display name. */
@@ -52,6 +53,27 @@ export interface CardOverride {
  * Keyed by the printing id to create, which must not collide with a RiftCodex
  * ObjectId — use the printed form, `sfd-t01`.
  */
+/**
+ * A set RiftCodex does not carry, injected into the run as if it did.
+ *
+ * `normalizeSets` builds from RiftCodex's `/sets` alone, and
+ * `matchTcgGroupsToSets` ignores a TCGPlayer group with no set to attach to,
+ * so a set RiftCodex has not published cannot reach us by any existing path —
+ * and `ingest_catalogue` joins printings to sets by code, so every synthetic
+ * card in that set is skipped until the set exists.
+ *
+ * `card_count` is deliberately absent: the RPC recomputes it from the
+ * printings that actually landed, so authoring one would only ever be a lie
+ * waiting to be overwritten.
+ */
+export interface SyntheticSetOverride {
+  set_name: string;
+  published_on?: string;
+  is_promo?: boolean;
+  parent_set_code?: string;
+  tcgplayer_group_id?: number;
+}
+
 export interface SyntheticCardOverride {
   name: string;
   card_type: string;
@@ -70,12 +92,20 @@ export interface SyntheticCardOverride {
   image_orientation?: string;
   /** Drives the `*` in the public slug, so it must match the printed card. */
   is_signature?: boolean;
+  /**
+   * The printed id, e.g. `rad-020a-167`. Supplied in preference to authoring
+   * the variant flags: `printedVariantSignals` reads alternate art, signature,
+   * special collection and overnumbered straight off it, which is how upstream
+   * printings get theirs, so the two cannot drift.
+   */
+  riftbound_id?: string;
 }
 
 export type RiftcodexSetOverrides = Record<string, RiftcodexSetOverride>;
 export type TcgplayerGroupOverrides = Record<string, TcgplayerGroupOverride>;
 export type CardOverrides = Record<string, CardOverride>;
 export type SyntheticCardOverrides = Record<string, SyntheticCardOverride>;
+export type SyntheticSetOverrides = Record<string, SyntheticSetOverride>;
 
 /**
  * JSON schema (by top-level key):
@@ -201,6 +231,34 @@ function validateSyntheticCardOverrides(raw: unknown): SyntheticCardOverrides {
       image_source_url: value.image_source_url as string | undefined,
       image_orientation: value.image_orientation as string | undefined,
       is_signature: value.is_signature as boolean | undefined,
+      riftbound_id: value.riftbound_id as string | undefined,
+    };
+  }
+  return validated;
+}
+
+function validateSyntheticSetOverrides(raw: unknown): SyntheticSetOverrides {
+  if (!isRecord(raw)) throw new Error("Invalid synthetic_sets.json: expected object map");
+  const validated: SyntheticSetOverrides = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (!isRecord(value)) throw new Error(`Invalid synthetic_sets.${key}: expected object`);
+    assertOptionalType(value.published_on, "string", "published_on", key);
+    assertOptionalType(value.is_promo, "boolean", "is_promo", key);
+    assertOptionalType(value.parent_set_code, "string", "parent_set_code", key);
+    if (value.tcgplayer_group_id !== undefined && typeof value.tcgplayer_group_id !== "number") {
+      throw new Error(`Invalid synthetic_sets.${key}.tcgplayer_group_id: expected number`);
+    }
+    if ("card_count" in value) {
+      throw new Error(
+        `Invalid synthetic_sets.${key}: card_count is recomputed by the RPC, do not author it`,
+      );
+    }
+    validated[key] = {
+      set_name: assertRequiredString(value.set_name, "set_name", key),
+      published_on: value.published_on as string | undefined,
+      is_promo: value.is_promo as boolean | undefined,
+      parent_set_code: value.parent_set_code as string | undefined,
+      tcgplayer_group_id: value.tcgplayer_group_id as number | undefined,
     };
   }
   return validated;
@@ -211,4 +269,5 @@ export const overrides = {
   tcgplayerGroups: validateTcgplayerGroupOverrides(tcgplayerGroupsRaw),
   cards: validateCardOverrides(cardsRaw),
   syntheticCards: validateSyntheticCardOverrides(syntheticCardsRaw),
+  syntheticSets: validateSyntheticSetOverrides(syntheticSetsRaw),
 };
