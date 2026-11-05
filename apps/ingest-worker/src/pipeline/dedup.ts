@@ -27,6 +27,19 @@ function printedCollectorKey(printing: IngestPrinting): string {
   return base.toLowerCase();
 }
 
+/**
+ * Finishes that make a row its own printing rather than a duplicate.
+ *
+ * Upstream files a metal card under the same `riftbound_id` as its base, so
+ * without this the two collapse and the metal product's `tcgplayer_id` and
+ * price are lost. They still share an oracle — `oracleKeyForName` strips the
+ * `(Metal)` suffix — so this splits the printing, not the card.
+ */
+function finishKey(printing: IngestPrinting): string {
+  const finishes = printing.finishes ?? [];
+  return finishes.length > 0 ? `|${[...finishes].sort().join(",")}` : "";
+}
+
 function dedupKey(printing: IngestPrinting): string {
   const set = printing.set_code ?? "";
   const riftboundId = printing.riftbound_id?.trim().toLowerCase();
@@ -34,11 +47,11 @@ function dedupKey(printing: IngestPrinting): string {
     // The full Riftbound id identifies the printing. Promo collections can
     // reuse collector numbers across unrelated cards, so the printed collector
     // segment alone is not globally unique within every synthetic promo set.
-    return `${set}|${riftboundId}`;
+    return `${set}|${riftboundId}${finishKey(printing)}`;
   }
 
   const collector = printedCollectorKey(printing);
-  return `${set}|${collector}|${printing.name_normalized}`;
+  return `${set}|${collector}|${printing.name_normalized}${finishKey(printing)}`;
 }
 
 /** Prefer records whose variant metadata agrees with the printed collector id. */
