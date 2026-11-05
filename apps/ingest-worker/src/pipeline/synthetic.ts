@@ -7,6 +7,7 @@
  */
 
 import { overrides } from "../overrides/index.ts";
+import { printedCollectorNumber, printedVariantSignals } from "../sources/riftcodex.ts";
 import { logger } from "../utils.ts";
 import { normalizeCardName } from "../utils.ts";
 import type { IngestPrinting, IngestSet } from "./types.ts";
@@ -30,6 +31,15 @@ export function syntheticPrintings(sets: IngestSet[]): IngestPrinting[] {
       skipped.push(`${id} (${setCode})`);
       continue;
     }
+    // Derived exactly as upstream derives them, so a synthetic printing cannot
+    // disagree with a real one about what its own number means.
+    const variants = card.riftbound_id
+      ? printedVariantSignals(card.riftbound_id)
+      : { alternateArt: false, signature: false, specialCollection: false, overnumbered: false };
+    const collectorNumber = card.riftbound_id
+      ? printedCollectorNumber(card.riftbound_id, card.collector_number)
+      : card.collector_number;
+
     printings.push({
       id,
       name: card.name,
@@ -48,14 +58,15 @@ export function syntheticPrintings(sets: IngestSet[]): IngestPrinting[] {
       domains: [],
       set_code: setCode,
       artist: card.artist,
-      collector_number: card.collector_number,
+      collector_number: collectorNumber,
       rarity: card.rarity,
       flavour_text: card.flavour_text,
       finishes: [],
-      is_signature: card.is_signature ?? false,
-      is_alternate_art: false,
-      is_overnumbered: false,
-      is_special_collection: false,
+      riftbound_id: card.riftbound_id,
+      is_signature: card.is_signature ?? variants.signature,
+      is_alternate_art: variants.alternateArt,
+      is_overnumbered: variants.overnumbered,
+      is_special_collection: variants.specialCollection,
       image_source_url: card.image_source_url,
       image_orientation: card.image_orientation,
     });

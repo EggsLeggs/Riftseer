@@ -70,6 +70,13 @@ export interface SyntheticCardOverride {
   image_orientation?: string;
   /** Drives the `*` in the public slug, so it must match the printed card. */
   is_signature?: boolean;
+  /**
+   * The printed id, e.g. `rad-020a-167`. Supplied in preference to authoring
+   * the variant flags: `printedVariantSignals` reads alternate art, signature,
+   * special collection and overnumbered straight off it, which is how upstream
+   * printings get theirs, so the two cannot drift.
+   */
+  riftbound_id?: string;
 }
 
 export type RiftcodexSetOverrides = Record<string, RiftcodexSetOverride>;
@@ -201,6 +208,7 @@ function validateSyntheticCardOverrides(raw: unknown): SyntheticCardOverrides {
       image_source_url: value.image_source_url as string | undefined,
       image_orientation: value.image_orientation as string | undefined,
       is_signature: value.is_signature as boolean | undefined,
+      riftbound_id: value.riftbound_id as string | undefined,
     };
   }
   return validated;

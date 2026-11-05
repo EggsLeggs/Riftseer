@@ -101,3 +101,26 @@ describe("synthetic token cards", () => {
     }
   });
 });
+
+describe("synthetic slugs match what RiftCodex would produce", () => {
+  test("a signature's marker lives on the id, never on the collector number", () => {
+    // `buildPublicSlugSegments` puts the collector number straight into the
+    // path, so `168*` would pin `rad/168*/signature/…` where the RiftCodex
+    // mapper stores `168`. Slugs are pinned on first insert.
+    for (const [id, card] of Object.entries(overrides.syntheticCards)) {
+      expect(card.collector_number).not.toContain("*");
+      if (card.is_signature) {
+        expect(card.riftbound_id).toContain("*");
+        expect(id).not.toContain("*");
+      }
+    }
+  });
+
+  test("every synthetic card carries its printed id", () => {
+    // `buildGalleryReconciliationEntries` indexes on `riftbound_id`; without
+    // one, the queue files a false missing-printing entry every run.
+    for (const p of syntheticPrintings(ALL_SETS)) {
+      expect(p.riftbound_id).toBeTruthy();
+    }
+  });
+});
