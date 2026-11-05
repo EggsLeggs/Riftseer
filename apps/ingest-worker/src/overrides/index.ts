@@ -90,6 +90,10 @@ export interface SyntheticCardOverride {
   image_source_url?: string;
   /** `portrait` or `landscape`; battlefields are landscape. */
   image_orientation?: string;
+  /** Colour identity. Empty means a card no deck can legally build around. */
+  domains?: string[];
+  /** Character and region tags; `characterTags()` links champions by these. */
+  tags?: string[];
   /** Drives the `*` in the public slug, so it must match the printed card. */
   is_signature?: boolean;
   /**
@@ -210,6 +214,15 @@ function validateSyntheticCardOverrides(raw: unknown): SyntheticCardOverrides {
       assertOptionalType(value[field], "string", field, key);
     }
     assertOptionalType(value.is_signature, "boolean", "is_signature", key);
+    for (const field of ["domains", "tags"]) {
+      const arrayValue = value[field];
+      if (
+        arrayValue !== undefined &&
+        (!Array.isArray(arrayValue) || arrayValue.some((v) => typeof v !== "string"))
+      ) {
+        throw new Error(`Invalid synthetic_cards.${key}.${field}: expected string[]`);
+      }
+    }
     for (const field of ["might", "energy", "power"]) {
       if (value[field] !== undefined && typeof value[field] !== "number") {
         throw new Error(`Invalid synthetic_cards.${key}.${field}: expected number`);
@@ -232,6 +245,8 @@ function validateSyntheticCardOverrides(raw: unknown): SyntheticCardOverrides {
       image_orientation: value.image_orientation as string | undefined,
       is_signature: value.is_signature as boolean | undefined,
       riftbound_id: value.riftbound_id as string | undefined,
+      domains: value.domains as string[] | undefined,
+      tags: value.tags as string[] | undefined,
     };
   }
   return validated;
