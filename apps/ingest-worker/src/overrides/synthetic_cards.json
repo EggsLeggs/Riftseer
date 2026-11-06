@@ -3421,6 +3421,18 @@
     "supertype": "Token",
     "text_plain": "Bird, Cat, Dog, Poro, and Ivern units here have +1 :rb_might:. When you score here, you may replace this with the battlefield it replaced."
   },
+  "unl-t04": {
+    "artist": "League Splash Team",
+    "collector_number": "T04",
+    "domains": ["Colorless"],
+    "image_orientation": "portrait",
+    "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/64b9df938587aa93a3d0769a349d9b0cc6942dc2-744x1039.png?accountingTag=RB",
+    "name": "Buff",
+    "riftbound_id": "unl-t04",
+    "set_code": "UNL",
+    "supertype": "Token",
+    "text_plain": "A unit may have no more than one buff at a time."
+  },
   "unl-t05": {
     "artist": "Kudos Productions",
     "card_type": "Gear",
@@ -3462,6 +3474,18 @@
     "supertype": "Token",
     "tags": ["Fae"],
     "text_plain": "[Temporary] (Kill me at the start of your Beginning Phase, before scoring.)"
+  },
+  "unl-t08": {
+    "artist": "Rafael Zanchetin",
+    "collector_number": "T08",
+    "domains": ["Colorless"],
+    "image_orientation": "portrait",
+    "image_source_url": "https://cmsassets.rgpub.io/sanity/images/dsfx7636/game_data_live/715d5bb52fc8ce0886b28f1c15fe89457e504fc9-744x1039.png?accountingTag=RB",
+    "name": "XP Tracker",
+    "riftbound_id": "unl-t08",
+    "set_code": "UNL",
+    "supertype": "Token",
+    "text_plain": "Track gained XP here. Some cards get bonuses based on your [Level]. Some cards can spend XP for powerful effects."
   },
   "ven-t04": {
     "artist": "Six More Vodka",
