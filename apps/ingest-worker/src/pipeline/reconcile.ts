@@ -377,14 +377,25 @@ function decodeEntities(value: string): string {
   return HTML_ENTITIES.reduce((text, [pattern, char]) => text.replace(pattern, char), value);
 }
 
+/**
+ * "This card has no rules text", as both sides state it: the gallery prints a
+ * literal `[NO TEXT]` and we store nothing at all. Folding the two onto one
+ * value is what stops 6 agreements reading as disagreement.
+ *
+ * It has to be a value and not `null`, because `null` already means something
+ * else here — a gallery that omits the field entirely, making no claim, which
+ * the caller skips. Spelling `[NO TEXT]` as `null` would silence the case
+ * where the gallery says a card has no rules text and we hold some, and that
+ * is a genuine disagreement.
+ */
+const NO_RULES_TEXT = "";
+
 function comparableText(value: string | null | undefined): string | null {
   if (!value) return null;
   const plain = decodeEntities(value.replace(/<br\s*\/?>/gi, " ").replace(/<[^>]+>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
-  // The gallery prints a literal `[NO TEXT]` on cards with no rules text, where
-  // we store nothing. That is the same statement, not a disagreement.
-  if (/^\[no text\]$/i.test(plain)) return null;
+  if (/^\[no text\]$/i.test(plain)) return NO_RULES_TEXT;
   return plain || null;
 }
 
@@ -442,26 +453,81 @@ function galleryCardPayload(raw: RawGalleryCard, riftboundId: string): Reconcili
 }
 
 /**
- * Every field the gallery and RiftCodex both state, paired for comparison. A
- * field the gallery omits is not a disagreement — it omits `might` on the 599
+ * Every field the gallery and RiftCodex both state, paired for comparison.
+ *
+ * A row holds two kinds of value and they must not be conflated. `ours` and
+ * `theirs` decide whether this is a disagreement at all, so they are
+ * normalised: padding and markup are spelling, not drift. `current` and
+ * `proposed` are what each side states, and they are what the entry carries,
+ * because confirming one puts `proposed_value` straight into the column
+ * (`buildConfirmPatch` in `apps/api/src/routes/admin/review.ts`). Comparing on
+ * the normalised form while proposing it too would write the gallery's `T03`
+ * to a row — and a slug — that reads `T03` as `T3`.
+ *
+ * A field the gallery omits is not a disagreement — it omits `might` on the 599
  * printings that have none rather than sending null.
  */
-function galleryFieldPairs(
-  printing: IngestPrinting,
-  raw: RawGalleryCard,
-): Array<[ReconciliationField, string | null, string | null]> {
+interface GalleryFieldPair {
+  field: ReconciliationField;
+  ours: string | null;
+  theirs: string | null;
+  current: string | null;
+  proposed: string | null;
+}
+
+/** A field whose stated values are already in comparable form. */
+function statedAsCompared(
+  field: ReconciliationField,
+  ours: string | null,
+  theirs: string | null,
+): GalleryFieldPair {
+  return { field, ours, theirs, current: ours, proposed: theirs };
+}
+
+function galleryFieldPairs(printing: IngestPrinting, raw: RawGalleryCard): GalleryFieldPair[] {
+  const theirCollector = galleryPrintedCollectorNumber(raw);
   return [
-    [
-      "collector_number",
-      comparableCollectorNumber(printing.collector_number),
-      comparableCollectorNumber(galleryPrintedCollectorNumber(raw)),
-    ],
-    ["rarity", comparableValue(printing.rarity), comparableValue(raw.rarity?.value?.label)],
-    ["type", comparableValue(printing.card_type), comparableValue(raw.cardType?.type?.[0]?.label)],
-    ["energy", comparableValue(printing.energy), comparableValue(raw.energy?.value?.id)],
-    ["might", comparableValue(printing.might), comparableValue(raw.might?.value?.id)],
-    ["power", comparableValue(printing.power), comparableValue(raw.power?.value?.id)],
-    ["text", comparableText(printing.text_rich), comparableText(raw.text?.richText?.body)],
+    {
+      field: "collector_number",
+      ours: comparableCollectorNumber(printing.collector_number),
+      theirs: comparableCollectorNumber(theirCollector),
+      current: comparableValue(printing.collector_number),
+      proposed: comparableValue(theirCollector),
+    },
+    statedAsCompared(
+      "rarity",
+      comparableValue(printing.rarity),
+      comparableValue(raw.rarity?.value?.label),
+    ),
+    statedAsCompared(
+      "type",
+      comparableValue(printing.card_type),
+      comparableValue(raw.cardType?.type?.[0]?.label),
+    ),
+    statedAsCompared(
+      "energy",
+      comparableValue(printing.energy),
+      comparableValue(raw.energy?.value?.id),
+    ),
+    statedAsCompared(
+      "might",
+      comparableValue(printing.might),
+      comparableValue(raw.might?.value?.id),
+    ),
+    statedAsCompared(
+      "power",
+      comparableValue(printing.power),
+      comparableValue(raw.power?.value?.id),
+    ),
+    // `text` is the one field an admin cannot confirm, so the pair an entry
+    // carries is the rendered text the review page shows rather than either
+    // side's markup. Storing no text is the same claim as the gallery's
+    // `[NO TEXT]`, and only that claim — a gallery that says nothing stays null.
+    statedAsCompared(
+      "text",
+      comparableText(printing.text_rich) ?? NO_RULES_TEXT,
+      comparableText(raw.text?.richText?.body),
+    ),
   ];
 }
 
@@ -519,7 +585,7 @@ export function buildGalleryReconciliationEntries(
       continue;
     }
 
-    for (const [field, ours, theirs] of galleryFieldPairs(printing, raw)) {
+    for (const { field, ours, theirs, current, proposed } of galleryFieldPairs(printing, raw)) {
       if (theirs === null || ours === theirs) continue;
       entries.push({
         // The observed value is part of the identity, so a dismissal sticks
@@ -530,8 +596,8 @@ export function buildGalleryReconciliationEntries(
         payload: {
           gallery: galleryCardPayload(raw, riftboundId),
           field,
-          current_value: ours,
-          proposed_value: theirs,
+          current_value: current,
+          proposed_value: proposed,
           printing_id: printing.id,
           printing_name: printing.name,
         },
