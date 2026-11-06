@@ -20,6 +20,9 @@ const CASES: Array<{
   { card_type: "Battlefield", line: "Battlefield", icon: "battlefield" },
   { card_type: "Rune", line: "Rune", icon: "rune" },
   { supertype: "Signature", line: "Signature", icon: "signature" },
+  // Riot prints two tokens with no card type at all — Buff and XP Tracker are
+  // markers, not units, gear or battlefields — so the supertype stands alone.
+  { supertype: "Token", is_token: true, line: "Token", icon: "unit" },
   { card_type: "  ", supertype: "", line: null, icon: null },
   { line: null, icon: null },
 ];

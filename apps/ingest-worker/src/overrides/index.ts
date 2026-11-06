@@ -76,7 +76,14 @@ export interface SyntheticSetOverride {
 
 export interface SyntheticCardOverride {
   name: string;
-  card_type: string;
+  /**
+   * Optional, because Riot prints two cards without one: `Buff` and
+   * `XP Tracker` are markers rather than units, gear or battlefields, and the
+   * gallery states their type as empty where every other token names one.
+   * `cardTypeLine()` renders the supertype alone for these, so they read
+   * "Token" rather than being forced into a type the card does not print.
+   */
+  card_type?: string;
   supertype?: string;
   set_code: string;
   collector_number: string;
@@ -213,6 +220,7 @@ function validateSyntheticCardOverrides(raw: unknown): SyntheticCardOverrides {
     ]) {
       assertOptionalType(value[field], "string", field, key);
     }
+    assertOptionalType(value.card_type, "string", "card_type", key);
     assertOptionalType(value.is_signature, "boolean", "is_signature", key);
     for (const field of ["domains", "tags"]) {
       const arrayValue = value[field];
@@ -230,7 +238,7 @@ function validateSyntheticCardOverrides(raw: unknown): SyntheticCardOverrides {
     }
     validated[key] = {
       name: assertRequiredString(value.name, "name", key),
-      card_type: assertRequiredString(value.card_type, "card_type", key),
+      card_type: value.card_type as string | undefined,
       set_code: assertRequiredString(value.set_code, "set_code", key),
       collector_number: assertRequiredString(value.collector_number, "collector_number", key),
       supertype: value.supertype as string | undefined,

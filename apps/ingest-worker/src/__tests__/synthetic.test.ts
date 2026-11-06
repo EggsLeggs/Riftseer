@@ -179,6 +179,30 @@ describe("synthetic token cards", () => {
     }
   });
 
+  test("a token Riot prints with no card type keeps none", () => {
+    // Buff and XP Tracker are the only two cards in the gallery with an empty
+    // `cardType.type`: markers rather than units, gear or battlefields.
+    // Inventing a type for them would publish a type line the card does not
+    // print, and `cardTypeLine()` already renders the supertype alone.
+    const printings = syntheticPrintings(ALL_SETS);
+    const typeless = printings.filter((p) => p.card_type === undefined);
+
+    expect(typeless.map((p) => p.name).sort()).toEqual(["Buff", "XP Tracker"]);
+    expect(typeless.every((p) => p.is_token)).toBe(true);
+    expect(typeless.every((p) => p.image_source_url)).toBeTruthy();
+  });
+
+  test("the Buff token carries no might, because +1 is a bonus", () => {
+    // The printed card shows `+1` in the might slot, which is a bonus granted
+    // to the unit it attaches to, not a might of its own. The gallery reports
+    // it under `might` all the same, exactly as it does for the 40 equipment
+    // cards, so storing it would publish "1 might" on a marker.
+    const buff = syntheticPrintings(ALL_SETS).find((p) => p.name === "Buff");
+
+    expect(buff?.might).toBeNull();
+    expect(buff?.energy).toBeNull();
+  });
+
   test("battlefield tokens keep their landscape orientation", () => {
     const printings = syntheticPrintings(ALL_SETS);
     const baronPit = printings.find((p) => p.name === "Baron Pit");
